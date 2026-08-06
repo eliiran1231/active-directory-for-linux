@@ -42,6 +42,8 @@ public class GroupPrincipal : Principal
 
     private protected override string CreateObjectClass => "group";
 
+    internal override string CategoryFilter => "(objectCategory=group)";
+
     /// <summary>The members of this group. Changes need a <see cref="Principal.Save"/>.</summary>
     public PrincipalCollection Members => _members ??= new PrincipalCollection(this);
 

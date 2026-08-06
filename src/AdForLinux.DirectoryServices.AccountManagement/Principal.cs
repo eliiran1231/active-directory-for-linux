@@ -2,6 +2,7 @@ using AdForLinux.DirectoryServices;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
+
 /// <summary>
 /// Base of the principal types (users, groups), like Microsoft's
 /// <c>Principal</c>. Reads its data from the underlying
@@ -88,6 +89,54 @@ public abstract class Principal : IDisposable
 
     /// <summary>The objectClass to create this principal with, e.g. "user".</summary>
     private protected abstract string CreateObjectClass { get; }
+
+    /// <summary>
+    /// The filter piece that selects this kind of principal, e.g.
+    /// <c>(objectCategory=group)</c>. Used by searches.
+    /// </summary>
+    internal abstract string CategoryFilter { get; }
+
+    /// <summary>The values staged before the object is saved, by LDAP attribute.</summary>
+    internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
+
+    /// <summary>
+    /// The groups this principal is a direct member of. Nested groups are not
+    /// followed — use <see cref="GetAuthorizationGroups"/> for that.
+    /// </summary>
+    public PrincipalSearchResult<Principal> GetGroups() =>
+        FindGroups($"(member={IdentityFilter.Escape(RequireDistinguishedName())})");
+
+    /// <summary>
+    /// Every group this principal belongs to, directly or through nesting. Uses
+    /// the AD matching rule LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941).
+    /// </summary>
+    public PrincipalSearchResult<Principal> GetAuthorizationGroups() =>
+        FindGroups($"(member:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(RequireDistinguishedName())})");
+
+    private PrincipalSearchResult<Principal> FindGroups(string membershipFilter)
+    {
+        var filter = $"(&(objectCategory=group){membershipFilter})";
+        var root = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        try
+        {
+            using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
+            var groups = new List<Principal>();
+            foreach (var result in searcher.FindAll())
+            {
+                groups.Add(new GroupPrincipal(ContextRef, result.GetDirectoryEntry()));
+            }
+
+            return new PrincipalSearchResult<Principal>(groups);
+        }
+        finally
+        {
+            root.Dispose();
+        }
+    }
+
+    private string RequireDistinguishedName() =>
+        DistinguishedName ?? throw new InvalidOperationException(
+            "The principal must be saved before its groups can be read.");
 
     /// <summary>Runs just before a new object is created, to fill in defaults.</summary>
     private protected virtual void OnBeforeCreate()

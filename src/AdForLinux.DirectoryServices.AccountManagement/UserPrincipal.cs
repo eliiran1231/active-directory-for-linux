@@ -22,6 +22,8 @@ public class UserPrincipal : AuthenticablePrincipal
 
     private protected override string CreateObjectClass => "user";
 
+    internal override string CategoryFilter => "(objectCategory=person)(objectClass=user)";
+
     // userAccountControl bit that forces smartcard logon.
     private const int SmartcardRequired = 0x40000;
 
