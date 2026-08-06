@@ -21,6 +21,36 @@ public class DirectoryEntryReadTests
     }
 
     [Fact]
+    public void Parameterless_entry_can_be_configured_before_it_binds()
+    {
+        using var entry = new DirectoryEntry();
+
+        Assert.Equal(string.Empty, entry.Path);
+        Assert.Equal(AuthenticationTypes.Secure, entry.AuthenticationType);
+
+        entry.Path = TestSettings.PathFor(TestSettings.AdministratorDn);
+        entry.AuthenticationType = AuthenticationTypes.SecureSocketsLayer;
+        entry.Username = TestSettings.BindDn;
+        entry.Password = TestSettings.BindPassword;
+
+        Assert.Equal("Administrator", entry.Properties["sAMAccountName"].Value);
+    }
+
+    [Fact]
+    public void Adsi_only_operations_fail_with_a_clear_platform_exception()
+    {
+        using var entry = new DirectoryEntry();
+
+        Assert.Equal(string.Empty, entry.Path);
+        Assert.Equal(AuthenticationTypes.Secure, entry.AuthenticationType);
+        Assert.Equal(PasswordEncodingMethod.PasswordEncodingSsl, entry.Options.PasswordEncoding);
+        Assert.Throws<PlatformNotSupportedException>(() => entry.InvokeGet("objectClass"));
+        Assert.Throws<PlatformNotSupportedException>(() => entry.CopyTo(entry));
+        Assert.Throws<PlatformNotSupportedException>(() => _ = entry.NativeObject);
+        Assert.Throws<PlatformNotSupportedException>(() => _ = entry.SchemaEntry);
+    }
+
+    [Fact]
     public void Name_is_the_relative_dn()
     {
         using var entry = Open(TestSettings.AdministratorDn);
