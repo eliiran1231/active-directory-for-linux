@@ -20,6 +20,26 @@ public class UserPrincipal : AuthenticablePrincipal
         AttachExisting(context, entry);
     }
 
+    private protected override string CreateObjectClass => "user";
+
+    // userAccountControl bit that forces smartcard logon.
+    private const int SmartcardRequired = 0x40000;
+
+    /// <summary>
+    /// Whether the account must use a smartcard to log on. Reads and writes the
+    /// SMARTCARD_REQUIRED bit of <c>userAccountControl</c>; setting it needs a
+    /// <see cref="Principal.Save"/>.
+    /// </summary>
+    public bool SmartcardLogonRequired
+    {
+        get
+        {
+            var flags = ReadUserAccountControl();
+            return flags is not null && (flags.Value & SmartcardRequired) != 0;
+        }
+        set => SetUserAccountControlBit(SmartcardRequired, value);
+    }
+
     /// <summary>The first name (<c>givenName</c>).</summary>
     public string? GivenName
     {

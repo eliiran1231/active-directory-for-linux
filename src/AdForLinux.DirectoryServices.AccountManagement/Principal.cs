@@ -86,6 +86,74 @@ public abstract class Principal : IDisposable
     /// <summary>The most specific structural class, e.g. "user" or "group".</summary>
     public string? StructuralObjectClass => Entry?.SchemaClassName;
 
+    /// <summary>The objectClass to create this principal with, e.g. "user".</summary>
+    private protected abstract string CreateObjectClass { get; }
+
+    /// <summary>
+    /// Writes this principal to the directory. A new principal is created under
+    /// the context container (its <see cref="Name"/> becomes the CN); an
+    /// existing one has its changed properties written.
+    /// </summary>
+    public void Save()
+    {
+        if (Entry is not null)
+        {
+            Entry.CommitChanges();
+            return;
+        }
+
+        var cn = GetString("cn")
+            ?? throw new InvalidOperationException("Name must be set before saving a new principal.");
+
+        var parent = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        try
+        {
+            var child = parent.Children.Add($"CN={EscapeRdnValue(cn)}", CreateObjectClass);
+            foreach (var (name, value) in _pending)
+            {
+                // The CN is already set by the RDN above.
+                if (value is null || name.Equals("cn", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                child.Properties[name].Value = value;
+            }
+
+            child.CommitChanges();
+            Entry = child;
+            _pending.Clear();
+        }
+        finally
+        {
+            parent.Dispose();
+        }
+    }
+
+    /// <summary>Deletes this principal from the directory.</summary>
+    public void Delete()
+    {
+        if (Entry is null)
+        {
+            throw new InvalidOperationException("Cannot delete a principal that has not been saved.");
+        }
+
+        Entry.DeleteTree();
+        Entry.Dispose();
+        Entry = null;
+    }
+
+    /// <summary>Escapes a value for use as an RDN (RFC 4514).</summary>
+    private static string EscapeRdnValue(string value) => value
+        .Replace("\\", "\\\\")
+        .Replace(",", "\\,")
+        .Replace("+", "\\+")
+        .Replace("\"", "\\\"")
+        .Replace("<", "\\<")
+        .Replace(">", "\\>")
+        .Replace(";", "\\;")
+        .Replace("=", "\\=");
+
     /// <summary>The underlying <see cref="DirectoryEntry"/>.</summary>
     public object? GetUnderlyingObject() => Entry;
 

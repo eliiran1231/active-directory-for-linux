@@ -146,6 +146,26 @@ public class DirectoryEntry : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sends a single Replace for one attribute right away, without touching the
+    /// other pending changes. Used for operations that act immediately, like a
+    /// password reset.
+    /// </summary>
+    internal void ReplaceAttributeImmediate(string attributeName, object value)
+    {
+        var connection = GetConnection();
+        var modification = new DirectoryAttributeModification
+        {
+            Name = attributeName,
+            Operation = DirectoryAttributeOperation.Replace,
+        };
+        AddValue(modification, value);
+
+        var request = new ModifyRequest(_path.DistinguishedName);
+        request.Modifications.Add(modification);
+        connection.SendRequest(request);
+    }
+
     /// <summary>Deletes this object and everything under it.</summary>
     public void DeleteTree()
     {
