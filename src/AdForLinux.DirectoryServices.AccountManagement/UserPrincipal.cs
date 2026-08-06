@@ -70,6 +70,20 @@ public class UserPrincipal : AuthenticablePrincipal
         set => SetString("telephoneNumber", value);
     }
 
+    /// <summary>The middle name.</summary>
+    public string? MiddleName
+    {
+        get => GetString("middleName");
+        set => SetString("middleName", value);
+    }
+
+    /// <summary>The employee id.</summary>
+    public string? EmployeeId
+    {
+        get => GetString("employeeID");
+        set => SetString("employeeID", value);
+    }
+
     /// <summary>Finds a user by a value across the common identity attributes.</summary>
     public static UserPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
         Find(context, null, identityValue);

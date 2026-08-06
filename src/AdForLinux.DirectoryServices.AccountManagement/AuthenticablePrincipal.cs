@@ -12,7 +12,10 @@ public abstract class AuthenticablePrincipal : Principal
 {
     // userAccountControl bits.
     private const int AccountDisabled = 0x2;
+    private const int PasswordNotRequiredFlag = 0x20;
     private const int NormalAccount = 0x200;
+    private const int NotDelegated = 0x100000;
+    private const int PasswordDoesNotExpire = 0x10000;
 
     /// <summary>
     /// Whether the account is enabled. Reads and writes the ACCOUNTDISABLE bit
@@ -33,6 +36,121 @@ public abstract class AuthenticablePrincipal : Principal
                 SetUserAccountControlBit(AccountDisabled, on: !value.Value);
             }
         }
+    }
+
+    /// <summary>
+    /// When the account expires, or null if it never does. Setting it needs a
+    /// <see cref="Principal.Save"/>. Times are UTC.
+    /// </summary>
+    public DateTime? AccountExpirationDate
+    {
+        get => AdFileTime.ToDateTime(GetString("accountExpires"));
+        set => SetString("accountExpires", AdFileTime.FromDateTime(value));
+    }
+
+    /// <summary>When the account was locked out, or null if it is not locked.</summary>
+    public DateTime? AccountLockoutTime => AdFileTime.ToDateTime(GetString("lockoutTime"));
+
+    /// <summary>
+    /// When the account last logged on, or null if never. Read only. This is
+    /// the replicated <c>lastLogonTimestamp</c> when present, which can lag by
+    /// days; otherwise the local <c>lastLogon</c> of the server we asked.
+    /// </summary>
+    public DateTime? LastLogon =>
+        AdFileTime.ToDateTime(GetString("lastLogonTimestamp"))
+        ?? AdFileTime.ToDateTime(GetString("lastLogon"));
+
+    /// <summary>
+    /// When the password was last set, or null if the user must change it at
+    /// next logon.
+    /// </summary>
+    public DateTime? LastPasswordSet => AdFileTime.ToDateTime(GetString("pwdLastSet"));
+
+    /// <summary>How many bad password attempts have been counted.</summary>
+    public int BadLogonCount =>
+        int.TryParse(GetString("badPwdCount"), out var count) ? count : 0;
+
+    /// <summary>When the last bad password attempt happened, or null.</summary>
+    public DateTime? LastBadPasswordAttempt => AdFileTime.ToDateTime(GetString("badPasswordTime"));
+
+    /// <summary>Whether the password never expires. Needs a Save.</summary>
+    public bool PasswordNeverExpires
+    {
+        get => HasUserAccountControlBit(PasswordDoesNotExpire);
+        set => SetUserAccountControlBit(PasswordDoesNotExpire, value);
+    }
+
+    /// <summary>Whether the account may have no password. Needs a Save.</summary>
+    public bool PasswordNotRequired
+    {
+        get => HasUserAccountControlBit(PasswordNotRequiredFlag);
+        set => SetUserAccountControlBit(PasswordNotRequiredFlag, value);
+    }
+
+    /// <summary>Whether the account may be delegated. Needs a Save.</summary>
+    public bool DelegationPermitted
+    {
+        // Stored inverted: the NOT_DELEGATED bit means delegation is blocked.
+        get => !HasUserAccountControlBit(NotDelegated);
+        set => SetUserAccountControlBit(NotDelegated, !value);
+    }
+
+    /// <summary>The home directory path.</summary>
+    public string? HomeDirectory
+    {
+        get => GetString("homeDirectory");
+        set => SetString("homeDirectory", value);
+    }
+
+    /// <summary>The home drive letter.</summary>
+    public string? HomeDrive
+    {
+        get => GetString("homeDrive");
+        set => SetString("homeDrive", value);
+    }
+
+    /// <summary>The logon script path.</summary>
+    public string? ScriptPath
+    {
+        get => GetString("scriptPath");
+        set => SetString("scriptPath", value);
+    }
+
+    /// <summary>
+    /// Whether the account is locked out right now. An account stays stamped
+    /// with a lockout time after the lockout has expired, so we compare it with
+    /// the domain's lockout duration, like Microsoft does.
+    /// </summary>
+    public bool IsAccountLockedOut()
+    {
+        var lockedAt = AccountLockoutTime;
+        if (lockedAt is null)
+        {
+            return false;
+        }
+
+        var duration = ReadDomainLockoutDuration();
+        if (duration is null)
+        {
+            // Locked until an administrator unlocks it.
+            return true;
+        }
+
+        return DateTime.UtcNow < lockedAt.Value + duration.Value;
+    }
+
+    private TimeSpan? ReadDomainLockoutDuration()
+    {
+        // lockoutDuration lives on the domain object at the naming context root,
+        // which is not the container when the context is scoped.
+        using var domain = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
+        return AdFileTime.ToDuration(domain.Properties["lockoutDuration"].Value?.ToString());
+    }
+
+    private bool HasUserAccountControlBit(int bit)
+    {
+        var flags = ReadUserAccountControl();
+        return flags is not null && (flags.Value & bit) != 0;
     }
 
     /// <summary>

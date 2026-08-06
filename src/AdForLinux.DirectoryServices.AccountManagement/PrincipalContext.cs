@@ -98,7 +98,15 @@ public class PrincipalContext : IDisposable
     /// The container (base DN) for searches. If none was given, it is discovered
     /// from the server's default naming context on first use.
     /// </summary>
-    public string Container => _container ??= DiscoverDefaultNamingContext();
+    public string Container => _container ??= DefaultNamingContext;
+
+    /// <summary>
+    /// The domain root DN, whatever <see cref="Container"/> is scoped to.
+    /// Domain-wide settings such as the lockout policy live here.
+    /// </summary>
+    internal string DefaultNamingContext => _defaultNamingContext ??= DiscoverDefaultNamingContext();
+
+    private string? _defaultNamingContext;
 
     /// <summary>
     /// Checks a username and password by trying a bind. Returns true if it
