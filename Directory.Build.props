@@ -1,0 +1,11 @@
+<Project>
+  <!-- Shared build settings for every project in the repo. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- We ship a Linux copy of Microsoft's directory APIs under a new name. -->
+    <Company>AdForLinux</Company>
+  </PropertyGroup>
+</Project>

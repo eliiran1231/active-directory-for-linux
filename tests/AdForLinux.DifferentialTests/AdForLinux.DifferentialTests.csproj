@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows-only differential tests.
+
+    These reference the REAL Microsoft System.DirectoryServices.AccountManagement
+    (Windows-only) AND our Linux clone, run the same operations against the same
+    AD, and compare. They cannot build or run on Linux, so they are excluded from
+    the Linux/Docker build. Run them on a Windows machine joined to (or able to
+    reach) a Windows Server AD. See tests/AdForLinux.DifferentialTests/README.md.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>AdForLinux.DifferentialTests</RootNamespace>
+    <!-- The real Microsoft library is Windows-only. -->
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- The real Microsoft high-level API (Windows-only). -->
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="9.0.0" />
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Our Linux clone, side by side with the real one (different namespace). -->
+    <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices\AdForLinux.DirectoryServices.csproj" />
+    <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices.AccountManagement\AdForLinux.DirectoryServices.AccountManagement.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Low layer: DirectoryEntry / DirectorySearcher on top of S.DS.Protocols. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>AdForLinux.DirectoryServices</RootNamespace>
+    <AssemblyName>AdForLinux.DirectoryServices</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Cross-platform LDAP client. Works on Linux, unlike System.DirectoryServices. -->
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The high layer and the functional tests reach internal infrastructure. -->
+    <InternalsVisibleTo Include="AdForLinux.DirectoryServices.AccountManagement" />
+    <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
+  </ItemGroup>
+
+</Project>
