@@ -1,4 +1,5 @@
 using System.DirectoryServices.Protocols;
+using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
@@ -17,7 +18,7 @@ internal static class RootDse
         var request = new SearchRequest(
             null,                     // empty base DN = rootDSE
             "(objectClass=*)",
-            SearchScope.Base,
+            ProtocolScope.Base,
             attributes);
 
         var response = (SearchResponse)connection.SendRequest(request);

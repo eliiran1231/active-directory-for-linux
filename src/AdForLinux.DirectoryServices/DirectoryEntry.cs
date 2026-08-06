@@ -1,5 +1,6 @@
 using System.DirectoryServices.Protocols;
 using AdForLinux.DirectoryServices.Ldap;
+using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
 namespace AdForLinux.DirectoryServices;
 
@@ -110,7 +111,7 @@ public class DirectoryEntry : IDisposable
         var request = new SearchRequest(
             _path.DistinguishedName,
             "(objectClass=*)",
-            SearchScope.Base,
+            ProtocolScope.Base,
             "*");
 
         var response = (SearchResponse)connection.SendRequest(request);
@@ -126,31 +127,31 @@ public class DirectoryEntry : IDisposable
 
     private static void LoadEntry(SearchResultEntry entry, PropertyCollection properties)
     {
-        foreach (string name in entry.Attributes.AttributeNames)
+        foreach (var (name, value) in SearchEntryReader.Read(entry))
         {
-            var attribute = entry.Attributes[name];
-            var target = properties.GetOrAdd(name);
-
-            // LDAP delivers every value as raw bytes. Decode text attributes to
-            // strings; keep binary ones (objectGUID, objectSid, …) as byte[].
-            if (LdapAttributeSchema.IsBinary(name))
-            {
-                foreach (var value in attribute.GetValues(typeof(byte[])))
-                {
-                    target.Add(value);
-                }
-            }
-            else
-            {
-                foreach (var value in attribute.GetValues(typeof(string)))
-                {
-                    target.Add(value);
-                }
-            }
+            properties.GetOrAdd(name).Add(value);
         }
     }
 
     internal LdapConnection GetConnection() => _connection ??= LdapConnectionFactory.CreateBound(BuildOptions());
+
+    internal string? ServerHost => _path.Host;
+
+    internal int? ServerPort => _path.Port;
+
+    /// <summary>
+    /// Builds a new entry for another DN on the same server, carrying the same
+    /// credentials and bind options. Used for search results, parents, children.
+    /// </summary>
+    internal DirectoryEntry CreateEntryForDn(string distinguishedName)
+    {
+        var path = new LdapPath(_path.Host, _path.Port, distinguishedName).ToString();
+        return new DirectoryEntry(path, _username, _password, _authenticationType);
+    }
+
+    /// <summary>Builds the LDAP path for a DN on this entry's server.</summary>
+    internal string PathForDn(string distinguishedName) =>
+        new LdapPath(_path.Host, _path.Port, distinguishedName).ToString();
 
     internal LdapConnectionOptions BuildOptions()
     {
