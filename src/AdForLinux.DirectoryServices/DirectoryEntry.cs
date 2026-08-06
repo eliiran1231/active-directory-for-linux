@@ -166,6 +166,56 @@ public class DirectoryEntry : IDisposable
         connection.SendRequest(request);
     }
 
+    /// <summary>
+    /// Adds and removes individual values of one attribute in a single request,
+    /// without rewriting the values that are already there. Used for group
+    /// membership, where replacing the whole list would be unsafe.
+    /// </summary>
+    internal void ApplyValueChanges(
+        string attributeName,
+        IReadOnlyCollection<string> toAdd,
+        IReadOnlyCollection<string> toRemove)
+    {
+        if (toAdd.Count == 0 && toRemove.Count == 0)
+        {
+            return;
+        }
+
+        var request = new ModifyRequest(_path.DistinguishedName);
+
+        if (toRemove.Count > 0)
+        {
+            var deletion = new DirectoryAttributeModification
+            {
+                Name = attributeName,
+                Operation = DirectoryAttributeOperation.Delete,
+            };
+            foreach (var value in toRemove)
+            {
+                deletion.Add(value);
+            }
+
+            request.Modifications.Add(deletion);
+        }
+
+        if (toAdd.Count > 0)
+        {
+            var addition = new DirectoryAttributeModification
+            {
+                Name = attributeName,
+                Operation = DirectoryAttributeOperation.Add,
+            };
+            foreach (var value in toAdd)
+            {
+                addition.Add(value);
+            }
+
+            request.Modifications.Add(addition);
+        }
+
+        GetConnection().SendRequest(request);
+    }
+
     /// <summary>Deletes this object and everything under it.</summary>
     public void DeleteTree()
     {

@@ -89,6 +89,16 @@ public abstract class Principal : IDisposable
     /// <summary>The objectClass to create this principal with, e.g. "user".</summary>
     private protected abstract string CreateObjectClass { get; }
 
+    /// <summary>Runs just before a new object is created, to fill in defaults.</summary>
+    private protected virtual void OnBeforeCreate()
+    {
+    }
+
+    /// <summary>Runs after a successful save, for extra work like membership.</summary>
+    private protected virtual void OnAfterSave()
+    {
+    }
+
     /// <summary>
     /// Writes this principal to the directory. A new principal is created under
     /// the context container (its <see cref="Name"/> becomes the CN); an
@@ -99,8 +109,11 @@ public abstract class Principal : IDisposable
         if (Entry is not null)
         {
             Entry.CommitChanges();
+            OnAfterSave();
             return;
         }
+
+        OnBeforeCreate();
 
         var cn = GetString("cn")
             ?? throw new InvalidOperationException("Name must be set before saving a new principal.");
@@ -123,6 +136,7 @@ public abstract class Principal : IDisposable
             child.CommitChanges();
             Entry = child;
             _pending.Clear();
+            OnAfterSave();
         }
         finally
         {
