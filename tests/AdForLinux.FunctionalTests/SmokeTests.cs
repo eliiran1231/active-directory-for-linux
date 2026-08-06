@@ -13,8 +13,10 @@ public class SmokeTests
     [Fact]
     public void Both_libraries_are_referenced()
     {
-        Assert.Equal("AdForLinux.DirectoryServices", LowLayerName.Value);
-        Assert.Equal("AdForLinux.DirectoryServices.AccountManagement", HighLayerName.Value);
+        Assert.Equal("AdForLinux.DirectoryServices",
+            typeof(DirectoryEntry).Assembly.GetName().Name);
+        Assert.Equal("AdForLinux.DirectoryServices.AccountManagement",
+            typeof(PrincipalContext).Assembly.GetName().Name);
     }
 
     [Fact]

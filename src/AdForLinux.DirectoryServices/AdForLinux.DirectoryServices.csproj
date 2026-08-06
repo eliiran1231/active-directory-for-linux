@@ -13,7 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Let the Linux functional tests reach internal infrastructure. -->
+    <!-- The high layer and the functional tests reach internal infrastructure. -->
+    <InternalsVisibleTo Include="AdForLinux.DirectoryServices.AccountManagement" />
     <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
   </ItemGroup>
 

@@ -25,6 +25,9 @@ public static class TestSettings
     public static string BaseDn =>
         Environment.GetEnvironmentVariable("AD_BASE_DN") ?? "DC=samdom,DC=example,DC=com";
 
+    /// <summary>Server name in <c>host:port</c> form, for PrincipalContext.</summary>
+    public static string ServerName => $"{Host}:{Port}";
+
     /// <summary>Well-known DN of the built-in Administrator account.</summary>
     public static string AdministratorDn => $"CN=Administrator,CN=Users,{BaseDn}";
 
