@@ -57,8 +57,11 @@ LDAPTLS_REQCERT=never
 ```
 
 The managed "verify certificate" callback that works on Windows actually breaks
-the TLS handshake on Linux, so the library uses `LDAPTLS_REQCERT` there instead.
-`docker-compose.yml` already sets it for the tests.
+the TLS handshake on Linux. `SkipCertificateCheck` therefore requires
+`LDAPTLS_REQCERT=never` to already be set when the process starts; the library
+never changes it at runtime because that would weaken certificate verification
+for every OpenLDAP connection in the process. `docker-compose.yml` already sets
+it for the tests.
 
 ## Testing
 

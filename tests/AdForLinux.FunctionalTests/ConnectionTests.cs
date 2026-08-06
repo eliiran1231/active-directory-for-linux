@@ -53,4 +53,24 @@ public class ConnectionTests
         var values = RootDse.Read(connection, "supportedLDAPVersion");
         Assert.True(values.Count >= 0); // did not throw = anonymous bind worked
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("demand")]
+    public void OpenLdap_certificate_skip_requires_process_start_configuration(string? certificateRequirement)
+    {
+        var exception = Assert.Throws<PlatformNotSupportedException>(
+            () => LdapConnectionFactory.EnsureOpenLdapCertificateSkipIsConfigured(certificateRequirement));
+
+        Assert.Contains("LDAPTLS_REQCERT=never", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("never")]
+    [InlineData(" NEVER ")]
+    public void OpenLdap_certificate_skip_accepts_preconfigured_never(string certificateRequirement)
+    {
+        LdapConnectionFactory.EnsureOpenLdapCertificateSkipIsConfigured(certificateRequirement);
+    }
 }

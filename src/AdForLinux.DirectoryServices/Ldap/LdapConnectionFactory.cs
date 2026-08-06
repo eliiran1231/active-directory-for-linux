@@ -61,10 +61,10 @@ internal static class LdapConnectionFactory
     /// is the clean way. On Linux/macOS the client is native OpenLDAP: setting
     /// that callback actually breaks the TLS handshake, and cert checking is
     /// controlled by <c>LDAPTLS_REQCERT</c> (or ldap.conf), which OpenLDAP reads
-    /// from the environment at start-up. So there we rely on that variable —
-    /// set it to <c>never</c> before launching the process (docker-compose does
-    /// this for the tests). We also set it here as a best effort, though it may
-    /// be too late if the native library already read it.
+    /// from the environment at start-up. The variable must therefore already
+    /// be <c>never</c> before launching the process (docker-compose does this
+    /// for the tests). Never change it here: that would weaken certificate
+    /// validation process-wide, including for unrelated connections.
     /// </summary>
     private static void ConfigureCertificateSkip(LdapConnection connection)
     {
@@ -74,7 +74,20 @@ internal static class LdapConnectionFactory
         }
         else
         {
-            Environment.SetEnvironmentVariable("LDAPTLS_REQCERT", "never");
+            EnsureOpenLdapCertificateSkipIsConfigured(
+                Environment.GetEnvironmentVariable("LDAPTLS_REQCERT"));
         }
+    }
+
+    internal static void EnsureOpenLdapCertificateSkipIsConfigured(string? certificateRequirement)
+    {
+        if (string.Equals(certificateRequirement?.Trim(), "never", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new PlatformNotSupportedException(
+            "SkipCertificateCheck cannot be configured per connection on Linux or macOS. " +
+            "Start the process with LDAPTLS_REQCERT=never (or configure ldap.conf) before opening any LDAP connections.");
     }
 }
