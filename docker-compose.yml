@@ -22,6 +22,8 @@ services:
       AD_BIND_DN: administrator@samdom.example.com
       AD_BIND_PW: Passw0rd
       AD_BASE_DN: DC=samdom,DC=example,DC=com
+      # OpenLDAP client: do not verify the self-signed smblds certificate.
+      LDAPTLS_REQCERT: never
     # Run the Linux functional tests on BOTH runtimes.
     command: >
       sh -c "dotnet test tests/AdForLinux.FunctionalTests -f net10.0 &&

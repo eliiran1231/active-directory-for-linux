@@ -21,8 +21,21 @@ Windows).
 
 ## Auth
 
-Simple bind (username + password) over LDAPS / StartTLS. A self-signed
-certificate can be trusted for tests. No Kerberos yet.
+Simple bind (username + password) over LDAPS. A self-signed certificate can be
+trusted for tests. No Kerberos yet.
+
+### Skipping a self-signed certificate on Linux
+
+On Linux the LDAP client is native OpenLDAP. To trust a self-signed
+certificate, launch the process with:
+
+```
+LDAPTLS_REQCERT=never
+```
+
+The managed "verify certificate" callback that works on Windows actually breaks
+the TLS handshake on Linux, so the library uses `LDAPTLS_REQCERT` there instead.
+`docker-compose.yml` already sets it for the tests.
 
 ## Testing
 

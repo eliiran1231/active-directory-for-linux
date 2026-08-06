@@ -12,4 +12,9 @@
     <PackageReference Include="System.DirectoryServices.Protocols" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Let the Linux functional tests reach internal infrastructure. -->
+    <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
+  </ItemGroup>
+
 </Project>
