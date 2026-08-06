@@ -24,4 +24,11 @@ public static class TestSettings
 
     public static string BaseDn =>
         Environment.GetEnvironmentVariable("AD_BASE_DN") ?? "DC=samdom,DC=example,DC=com";
+
+    /// <summary>Well-known DN of the built-in Administrator account.</summary>
+    public static string AdministratorDn => $"CN=Administrator,CN=Users,{BaseDn}";
+
+    /// <summary>Builds an LDAP path for a DN, using the test host and port.</summary>
+    public static string PathFor(string distinguishedName) =>
+        $"LDAP://{Host}:{Port}/{distinguishedName}";
 }
