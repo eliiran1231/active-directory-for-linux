@@ -21,6 +21,7 @@ public class DirectoryEntry : IDisposable
     private LdapPath _path;
     private LdapConnection? _connection;
     private PropertyCollection? _properties;
+    private bool _isNew;
 
     /// <summary>Opens an entry from an <c>LDAP://host/DN</c> path, anonymous bind.</summary>
     public DirectoryEntry(string path)
@@ -93,6 +94,130 @@ public class DirectoryEntry : IDisposable
         }
     }
 
+    /// <summary>The child objects directly under this one. Use to add or remove.</summary>
+    public DirectoryEntries Children => new(this);
+
+    /// <summary>
+    /// Writes pending changes to the server. For a new object (from
+    /// <c>Children.Add</c>) this creates it; for an existing one it sends only
+    /// the changed attributes, like Microsoft's <c>CommitChanges</c>.
+    /// </summary>
+    public void CommitChanges()
+    {
+        var connection = GetConnection();
+
+        if (_isNew)
+        {
+            var add = new AddRequest(_path.DistinguishedName);
+            foreach (var property in Properties)
+            {
+                if (property.Count > 0)
+                {
+                    add.Attributes.Add(ToAttribute(property));
+                }
+            }
+
+            connection.SendRequest(add);
+            _isNew = false;
+        }
+        else
+        {
+            EnsureLoaded();
+            var modify = new ModifyRequest(_path.DistinguishedName);
+            foreach (var property in _properties!)
+            {
+                if (!property.Changed)
+                {
+                    continue;
+                }
+
+                modify.Modifications.Add(ToModification(property));
+            }
+
+            if (modify.Modifications.Count > 0)
+            {
+                connection.SendRequest(modify);
+            }
+        }
+
+        foreach (var property in _properties!)
+        {
+            property.ResetChanged();
+        }
+    }
+
+    /// <summary>Deletes this object and everything under it.</summary>
+    public void DeleteTree()
+    {
+        var connection = GetConnection();
+        var delete = new DeleteRequest(_path.DistinguishedName);
+        // Ask the server to delete the whole subtree (OID 1.2.840.113556.1.4.805).
+        delete.Controls.Add(new TreeDeleteControl());
+        connection.SendRequest(delete);
+    }
+
+    /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
+    internal static DirectoryEntry NewChild(DirectoryEntry parent, string relativeName, string schemaClassName)
+    {
+        var dn = $"{relativeName},{parent._path.DistinguishedName}";
+        var path = new LdapPath(parent._path.Host, parent._path.Port, dn).ToString();
+
+        var child = new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
+        {
+            _isNew = true,
+            _properties = new PropertyCollection(),
+        };
+
+        // The structural class; AD fills in the rest of the class chain.
+        child._properties["objectClass"].Value = schemaClassName;
+        return child;
+    }
+
+    private static DirectoryAttribute ToAttribute(PropertyValueCollection property)
+    {
+        var attribute = new DirectoryAttribute { Name = property.PropertyName };
+        foreach (var value in property)
+        {
+            AddValue(attribute, value);
+        }
+
+        return attribute;
+    }
+
+    private static DirectoryAttributeModification ToModification(PropertyValueCollection property)
+    {
+        var modification = new DirectoryAttributeModification
+        {
+            Name = property.PropertyName,
+            Operation = property.Count == 0
+                ? DirectoryAttributeOperation.Delete   // cleared = remove the attribute
+                : DirectoryAttributeOperation.Replace,
+        };
+
+        foreach (var value in property)
+        {
+            AddValue(modification, value);
+        }
+
+        return modification;
+    }
+
+    private static void AddValue(DirectoryAttribute attribute, object value)
+    {
+        switch (value)
+        {
+            case byte[] bytes:
+                attribute.Add(bytes);
+                break;
+            case string text:
+                attribute.Add(text);
+                break;
+            default:
+                attribute.Add(value.ToString());
+                break;
+        }
+    }
+
     /// <summary>Re-reads this object's attributes from the server.</summary>
     public void RefreshCache()
     {
@@ -129,7 +254,7 @@ public class DirectoryEntry : IDisposable
     {
         foreach (var (name, value) in SearchEntryReader.Read(entry))
         {
-            properties.GetOrAdd(name).Add(value);
+            properties.GetOrAdd(name).AddLoaded(value);
         }
     }
 

@@ -22,6 +22,15 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     /// <summary>The attribute name these values belong to.</summary>
     public string PropertyName { get; }
 
+    /// <summary>
+    /// True once the values were changed since the last load or commit. The
+    /// entry uses this to know what to send on CommitChanges.
+    /// </summary>
+    internal bool Changed { get; private set; }
+
+    /// <summary>Clears the changed flag after a successful commit or load.</summary>
+    internal void ResetChanged() => Changed = false;
+
     /// <summary>Number of values.</summary>
     public int Count => _values.Count;
 
@@ -43,19 +52,16 @@ public sealed class PropertyValueCollection : IEnumerable<object>
         set
         {
             _values.Clear();
-            if (value is null)
-            {
-                return;
-            }
-
             if (value is object[] many)
             {
                 _values.AddRange(many);
             }
-            else
+            else if (value is not null)
             {
                 _values.Add(value);
             }
+
+            Changed = true;
         }
     }
 
@@ -63,11 +69,16 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public int Add(object value)
     {
         _values.Add(value);
+        Changed = true;
         return _values.Count - 1;
     }
 
     /// <summary>Adds several values.</summary>
-    public void AddRange(IEnumerable<object> values) => _values.AddRange(values);
+    public void AddRange(IEnumerable<object> values)
+    {
+        _values.AddRange(values);
+        Changed = true;
+    }
 
     /// <summary>Removes one value.</summary>
     public void Remove(object value)
@@ -76,14 +87,22 @@ public sealed class PropertyValueCollection : IEnumerable<object>
         if (index >= 0)
         {
             _values.RemoveAt(index);
+            Changed = true;
         }
     }
+
+    /// <summary>Appends a value read from the server, without marking it changed.</summary>
+    internal void AddLoaded(object value) => _values.Add(value);
 
     /// <summary>True if the value is present.</summary>
     public bool Contains(object value) => _values.Exists(v => ValueEquals(v, value));
 
     /// <summary>Removes every value.</summary>
-    public void Clear() => _values.Clear();
+    public void Clear()
+    {
+        _values.Clear();
+        Changed = true;
+    }
 
     private static bool ValueEquals(object a, object b)
     {
