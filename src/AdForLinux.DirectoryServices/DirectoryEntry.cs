@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.DirectoryServices.Protocols;
 using AdForLinux.DirectoryServices.Ldap;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
@@ -12,20 +13,40 @@ namespace AdForLinux.DirectoryServices;
 /// <see cref="Name"/>, <see cref="SchemaClassName"/>, and <see cref="Guid"/>.
 /// Writing arrives in a later step.
 /// </summary>
-public class DirectoryEntry : IDisposable
+public class DirectoryEntry : Component
 {
-    private readonly string? _username;
-    private readonly string? _password;
-    private readonly AuthenticationTypes _authenticationType;
+    private string? _username;
+    private string? _password;
+    private AuthenticationTypes _authenticationType;
 
     private LdapPath _path;
     private LdapConnection? _connection;
     private PropertyCollection? _properties;
     private bool _isNew;
+    private bool _usePropertyCache = true;
+    private DirectoryEntryConfiguration? _options;
+
+    /// <summary>Creates an unbound entry, like Microsoft's parameterless constructor.</summary>
+    public DirectoryEntry()
+    {
+        _path = new LdapPath(null, null, string.Empty);
+        _authenticationType = AuthenticationTypes.Secure;
+    }
+
+    /// <summary>
+    /// Creates an entry from an ADSI native object. ADSI native objects do not
+    /// exist on Linux, so use an LDAP path instead.
+    /// </summary>
+    public DirectoryEntry(object nativeAdsObject)
+    {
+        ArgumentNullException.ThrowIfNull(nativeAdsObject);
+        throw new PlatformNotSupportedException(
+            "DirectoryEntry(object) requires an ADSI native object, which is not available on Linux. Use an LDAP path.");
+    }
 
     /// <summary>Opens an entry from an <c>LDAP://host/DN</c> path, anonymous bind.</summary>
     public DirectoryEntry(string path)
-        : this(path, null, null, AuthenticationTypes.None)
+        : this(path, null, null, AuthenticationTypes.Secure)
     {
     }
 
@@ -48,8 +69,63 @@ public class DirectoryEntry : IDisposable
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
     public string Path
     {
-        get => _path.ToString();
-        set => _path = LdapPath.Parse(value);
+        get => !_path.HasHost && string.IsNullOrEmpty(_path.DistinguishedName) ? string.Empty : _path.ToString();
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            ResetBinding(string.IsNullOrWhiteSpace(value)
+                ? new LdapPath(null, null, string.Empty)
+                : LdapPath.Parse(value));
+        }
+    }
+
+    /// <summary>Gets or sets the authentication options for this entry.</summary>
+    public AuthenticationTypes AuthenticationType
+    {
+        get => _authenticationType;
+        set
+        {
+            if (_authenticationType != value)
+            {
+                _authenticationType = value;
+                ResetConnection();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the user name used to bind to LDAP.</summary>
+    public string? Username
+    {
+        get => _username;
+        set
+        {
+            if (!string.Equals(_username, value, StringComparison.Ordinal))
+            {
+                _username = value;
+                ResetConnection();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the password used to bind to LDAP.</summary>
+    public string? Password
+    {
+        private get => _password;
+        set
+        {
+            if (!string.Equals(_password, value, StringComparison.Ordinal))
+            {
+                _password = value;
+                ResetConnection();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets whether property changes are cached until <see cref="CommitChanges"/>.</summary>
+    public bool UsePropertyCache
+    {
+        get => _usePropertyCache;
+        set => _usePropertyCache = value;
     }
 
     /// <summary>The distinguished name of this object.</summary>
@@ -83,6 +159,39 @@ public class DirectoryEntry : IDisposable
             return value is byte[] bytes && bytes.Length == 16 ? new Guid(bytes) : Guid.Empty;
         }
     }
+
+    /// <summary>The object GUID in the provider's string form.</summary>
+    public string NativeGuid => Guid == Guid.Empty ? string.Empty : Guid.ToString("B");
+
+    /// <summary>ADSI native objects are not available through LDAP protocols.</summary>
+    public object NativeObject => throw new PlatformNotSupportedException(
+        "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
+
+    /// <summary>Gets the LDAP provider options associated with this entry.</summary>
+    public DirectoryEntryConfiguration Options => _options ??= new DirectoryEntryConfiguration(this);
+
+    /// <summary>LDAP security descriptors are not yet surfaced by this Linux port.</summary>
+    public ActiveDirectorySecurity ObjectSecurity
+    {
+        get => throw new PlatformNotSupportedException(
+            "DirectoryEntry.ObjectSecurity requires Active Directory security descriptor support, which is not yet available on Linux.");
+        set => throw new PlatformNotSupportedException(
+            "DirectoryEntry.ObjectSecurity requires Active Directory security descriptor support, which is not yet available on Linux.");
+    }
+
+    /// <summary>The parent entry, or <see langword="null"/> for a naming-context root.</summary>
+    public DirectoryEntry? Parent
+    {
+        get
+        {
+            var parentDn = ParentDistinguishedName(_path.DistinguishedName);
+            return parentDn is null ? null : CreateEntryForDn(parentDn);
+        }
+    }
+
+    /// <summary>ADSI schema entries are not available through the portable LDAP API.</summary>
+    public DirectoryEntry SchemaEntry => throw new PlatformNotSupportedException(
+        "DirectoryEntry.SchemaEntry requires ADSI schema-provider behavior, which is not available on Linux.");
 
     /// <summary>The loaded attributes. Reading this binds and fetches on first use.</summary>
     public PropertyCollection Properties
@@ -235,8 +344,8 @@ public class DirectoryEntry : IDisposable
         var child = new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
         {
             _isNew = true,
-            _properties = new PropertyCollection(),
         };
+        child._properties = new PropertyCollection(child.OnPropertyChanged);
 
         // The structural class; AD fills in the rest of the class chain.
         child._properties["objectClass"].Value = schemaClassName;
@@ -295,7 +404,80 @@ public class DirectoryEntry : IDisposable
         EnsureLoaded();
     }
 
-    private void EnsureLoaded()
+    /// <summary>Re-reads the specified attributes into the local property cache.</summary>
+    public void RefreshCache(string[] propertyNames)
+    {
+        ArgumentNullException.ThrowIfNull(propertyNames);
+        _properties = null;
+        EnsureLoaded(propertyNames);
+    }
+
+    /// <summary>Closes this entry and releases its LDAP connection.</summary>
+    public void Close() => Dispose();
+
+    /// <summary>Determines whether an LDAP path resolves to an entry.</summary>
+    public static bool Exists(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        try
+        {
+            using var entry = new DirectoryEntry(path);
+            entry.RefreshCache(new[] { "objectClass" });
+            return true;
+        }
+        catch (DirectoryOperationException ex) when (ex.Response.ResultCode == ResultCode.NoSuchObject)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Renames this entry under its existing parent.</summary>
+    public void Rename(string newName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        MoveOrRename(ParentDistinguishedName(_path.DistinguishedName), newName);
+    }
+
+    /// <summary>Moves this entry beneath <paramref name="newParent"/>.</summary>
+    public void MoveTo(DirectoryEntry newParent)
+    {
+        ArgumentNullException.ThrowIfNull(newParent);
+        MoveOrRename(newParent.DistinguishedName, RelativeName(_path.DistinguishedName));
+    }
+
+    /// <summary>Moves this entry beneath <paramref name="newParent"/> and renames it.</summary>
+    public void MoveTo(DirectoryEntry newParent, string newName)
+    {
+        ArgumentNullException.ThrowIfNull(newParent);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        MoveOrRename(newParent.DistinguishedName, newName);
+    }
+
+    /// <summary>
+    /// ADSI exposes a provider copy operation; LDAP has no interoperable copy
+    /// operation, so callers must create a child and copy supported attributes explicitly.
+    /// </summary>
+    public DirectoryEntry CopyTo(DirectoryEntry newParent) =>
+        throw new PlatformNotSupportedException("LDAP does not define an interoperable DirectoryEntry copy operation.");
+
+    /// <inheritdoc cref="CopyTo(DirectoryEntry)"/>
+    public DirectoryEntry CopyTo(DirectoryEntry newParent, string newName) =>
+        throw new PlatformNotSupportedException("LDAP does not define an interoperable DirectoryEntry copy operation.");
+
+    /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
+    public object? Invoke(string methodName, params object?[]? args) =>
+        throw new PlatformNotSupportedException("DirectoryEntry.Invoke requires ADSI/COM and is not available on Linux.");
+
+    /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
+    public object? InvokeGet(string propertyName) =>
+        throw new PlatformNotSupportedException("DirectoryEntry.InvokeGet requires ADSI/COM and is not available on Linux.");
+
+    /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
+    public void InvokeSet(string propertyName, params object?[]? args) =>
+        throw new PlatformNotSupportedException("DirectoryEntry.InvokeSet requires ADSI/COM and is not available on Linux.");
+
+    private void EnsureLoaded(string[]? propertyNames = null)
     {
         if (_properties is not null)
         {
@@ -307,10 +489,10 @@ public class DirectoryEntry : IDisposable
             _path.DistinguishedName,
             "(objectClass=*)",
             ProtocolScope.Base,
-            "*");
+            propertyNames is { Length: > 0 } ? propertyNames : new[] { "*" });
 
         var response = (SearchResponse)connection.SendRequest(request);
-        var properties = new PropertyCollection();
+        var properties = new PropertyCollection(OnPropertyChanged);
 
         if (response.Entries.Count > 0)
         {
@@ -391,10 +573,68 @@ public class DirectoryEntry : IDisposable
         return distinguishedName;
     }
 
-    public void Dispose()
+    private void OnPropertyChanged(PropertyValueCollection property)
+    {
+        if (_usePropertyCache || _isNew)
+        {
+            return;
+        }
+
+        var request = new ModifyRequest(_path.DistinguishedName);
+        request.Modifications.Add(ToModification(property));
+        GetConnection().SendRequest(request);
+        property.ResetChanged();
+    }
+
+    private void MoveOrRename(string? parentDn, string newName)
+    {
+        if (string.IsNullOrEmpty(parentDn))
+        {
+            throw new InvalidOperationException("The entry has no parent naming context to move or rename within.");
+        }
+
+        var request = new ModifyDNRequest(_path.DistinguishedName, parentDn, newName)
+        {
+            DeleteOldRdn = true,
+        };
+        GetConnection().SendRequest(request);
+        ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
+    }
+
+    private static string? ParentDistinguishedName(string distinguishedName)
+    {
+        for (var i = 0; i < distinguishedName.Length; i++)
+        {
+            if (distinguishedName[i] == ',' && (i == 0 || distinguishedName[i - 1] != '\\'))
+            {
+                return distinguishedName[(i + 1)..];
+            }
+        }
+
+        return null;
+    }
+
+    private void ResetBinding(LdapPath path)
+    {
+        _path = path;
+        _properties = null;
+        ResetConnection();
+    }
+
+    private void ResetConnection()
     {
         _connection?.Dispose();
         _connection = null;
-        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Releases the LDAP connection held by this entry.</summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            ResetConnection();
+        }
+
+        base.Dispose(disposing);
     }
 }

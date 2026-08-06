@@ -11,9 +11,11 @@ public sealed class PropertyCollection : IEnumerable<PropertyValueCollection>
 {
     private readonly Dictionary<string, PropertyValueCollection> _byName =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Action<PropertyValueCollection>? _onChanged;
 
-    internal PropertyCollection()
+    internal PropertyCollection(Action<PropertyValueCollection>? onChanged = null)
     {
+        _onChanged = onChanged;
     }
 
     /// <summary>
@@ -26,7 +28,7 @@ public sealed class PropertyCollection : IEnumerable<PropertyValueCollection>
         {
             if (!_byName.TryGetValue(propertyName, out var values))
             {
-                values = new PropertyValueCollection(propertyName);
+                values = new PropertyValueCollection(propertyName, _onChanged);
                 _byName[propertyName] = values;
             }
 

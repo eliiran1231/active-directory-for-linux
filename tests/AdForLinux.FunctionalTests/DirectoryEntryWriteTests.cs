@@ -85,6 +85,59 @@ public class DirectoryEntryWriteTests
             () => _ = reopened.Properties["sAMAccountName"].Value);
     }
 
+    [Fact]
+    public void Rename_updates_the_entry_path_and_preserves_properties()
+    {
+        var oldName = $"adfl-grp-{Guid.NewGuid():N}";
+        var newName = $"adfl-grp-{Guid.NewGuid():N}";
+        var newDn = $"CN={newName},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={oldName}", "group");
+            child.Properties["sAMAccountName"].Value = oldName;
+            child.CommitChanges();
+
+            child.Rename($"CN={newName}");
+
+            Assert.Equal(newDn, child.DistinguishedName);
+            Assert.Equal(newName, child.Properties["cn"].Value);
+
+            using var reopened = Open(newDn);
+            Assert.Equal(oldName, reopened.Properties["sAMAccountName"].Value);
+        }
+        finally
+        {
+            SafeDelete(newDn);
+        }
+    }
+
+    [Fact]
+    public void Disabling_property_cache_writes_changes_immediately()
+    {
+        var name = $"adfl-grp-{Guid.NewGuid():N}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={name}", "group");
+            child.Properties["sAMAccountName"].Value = name;
+            child.CommitChanges();
+            child.UsePropertyCache = false;
+
+            child.Properties["description"].Value = "written without CommitChanges";
+
+            using var reopened = Open(dn);
+            Assert.Equal("written without CommitChanges", reopened.Properties["description"].Value);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
     private static void SafeDelete(string dn)
     {
         try

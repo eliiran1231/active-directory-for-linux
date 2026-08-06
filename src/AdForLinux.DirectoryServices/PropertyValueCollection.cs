@@ -13,10 +13,12 @@ namespace AdForLinux.DirectoryServices;
 public sealed class PropertyValueCollection : IEnumerable<object>
 {
     private readonly List<object> _values = new();
+    private readonly Action<PropertyValueCollection>? _onChanged;
 
-    internal PropertyValueCollection(string propertyName)
+    internal PropertyValueCollection(string propertyName, Action<PropertyValueCollection>? onChanged = null)
     {
         PropertyName = propertyName;
+        _onChanged = onChanged;
     }
 
     /// <summary>The attribute name these values belong to.</summary>
@@ -61,7 +63,7 @@ public sealed class PropertyValueCollection : IEnumerable<object>
                 _values.Add(value);
             }
 
-            Changed = true;
+            MarkChanged();
         }
     }
 
@@ -69,7 +71,7 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public int Add(object value)
     {
         _values.Add(value);
-        Changed = true;
+        MarkChanged();
         return _values.Count - 1;
     }
 
@@ -77,7 +79,7 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public void AddRange(IEnumerable<object> values)
     {
         _values.AddRange(values);
-        Changed = true;
+        MarkChanged();
     }
 
     /// <summary>Removes one value.</summary>
@@ -87,7 +89,7 @@ public sealed class PropertyValueCollection : IEnumerable<object>
         if (index >= 0)
         {
             _values.RemoveAt(index);
-            Changed = true;
+            MarkChanged();
         }
     }
 
@@ -101,7 +103,7 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public void Clear()
     {
         _values.Clear();
-        Changed = true;
+        MarkChanged();
     }
 
     private static bool ValueEquals(object a, object b)
@@ -117,6 +119,12 @@ public sealed class PropertyValueCollection : IEnumerable<object>
         }
 
         return Equals(a, b);
+    }
+
+    private void MarkChanged()
+    {
+        Changed = true;
+        _onChanged?.Invoke(this);
     }
 
     public IEnumerator<object> GetEnumerator() => _values.GetEnumerator();
