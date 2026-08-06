@@ -1,0 +1,31 @@
+# Build and test our Linux clone against the running smblds Samba AD DC.
+#
+# smblds already runs on the host and publishes 636 (LDAPS). This test
+# container reaches it through the host gateway. We skip TLS certificate
+# checks because smblds uses a self-signed certificate.
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/src
+      - nuget-cache:/root/.nuget/packages
+    working_dir: /src
+    extra_hosts:
+      # Lets the container reach the host's published LDAPS port by name.
+      - "host.docker.internal:host-gateway"
+    environment:
+      AD_HOST: host.docker.internal
+      AD_PORT: "636"
+      AD_USE_TLS: "true"
+      AD_BIND_DN: administrator@samdom.example.com
+      AD_BIND_PW: Passw0rd
+      AD_BASE_DN: DC=samdom,DC=example,DC=com
+    # Run the Linux functional tests on BOTH runtimes.
+    command: >
+      sh -c "dotnet test tests/AdForLinux.FunctionalTests -f net10.0 &&
+             dotnet test tests/AdForLinux.FunctionalTests -f net8.0"
+
+volumes:
+  nuget-cache:

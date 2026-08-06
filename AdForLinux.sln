@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{378D9D75-B8ED-4ABE-B9CC-42BC7508C835}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DirectoryServices", "src\AdForLinux.DirectoryServices\AdForLinux.DirectoryServices.csproj", "{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DirectoryServices.AccountManagement", "src\AdForLinux.DirectoryServices.AccountManagement\AdForLinux.DirectoryServices.AccountManagement.csproj", "{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C2AA4E38-FAB4-4339-8690-72187906222C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.FunctionalTests", "tests\AdForLinux.FunctionalTests\AdForLinux.FunctionalTests.csproj", "{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DifferentialTests", "tests\AdForLinux.DifferentialTests\AdForLinux.DifferentialTests.csproj", "{1B2F0979-D404-49CE-B660-825276F9B40D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B2F0979-D404-49CE-B660-825276F9B40D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B2F0979-D404-49CE-B660-825276F9B40D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B2F0979-D404-49CE-B660-825276F9B40D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B2F0979-D404-49CE-B660-825276F9B40D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9} = {378D9D75-B8ED-4ABE-B9CC-42BC7508C835}
+		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B} = {378D9D75-B8ED-4ABE-B9CC-42BC7508C835}
+		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4} = {C2AA4E38-FAB4-4339-8690-72187906222C}
+		{1B2F0979-D404-49CE-B660-825276F9B40D} = {C2AA4E38-FAB4-4339-8690-72187906222C}
+	EndGlobalSection
+EndGlobal
