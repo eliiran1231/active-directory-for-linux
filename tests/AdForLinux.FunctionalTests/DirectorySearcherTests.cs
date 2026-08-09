@@ -42,6 +42,32 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void Filter_only_constructor_and_defaults_match_microsoft()
+    {
+        using var searcher = new DirectorySearcher("(objectClass=person)");
+
+        Assert.Equal("(objectClass=person)", searcher.Filter);
+        Assert.Null(searcher.SearchRoot);
+        Assert.Equal(SearchScope.Subtree, searcher.SearchScope);
+        Assert.Equal(TimeSpan.FromSeconds(-1), searcher.ClientTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(-1), searcher.ServerPageTimeLimit);
+        Assert.Equal(TimeSpan.FromSeconds(-1), searcher.ServerTimeLimit);
+        Assert.NotNull(searcher.Sort);
+        Assert.Null(searcher.Sort.PropertyName);
+        Assert.Equal(SortDirection.Ascending, searcher.Sort.Direction);
+    }
+
+    [Fact]
+    public void Invalid_limits_and_null_sort_fail_like_microsoft()
+    {
+        using var searcher = new DirectorySearcher();
+
+        Assert.Throws<ArgumentException>(() => searcher.PageSize = -1);
+        Assert.Throws<ArgumentException>(() => searcher.SizeLimit = -1);
+        Assert.Throws<ArgumentNullException>(() => searcher.Sort = null!);
+    }
+
+    [Fact]
     public void Attribute_scope_query_requires_base_scope()
     {
         using var searcher = new DirectorySearcher();

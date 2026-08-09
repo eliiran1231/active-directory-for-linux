@@ -14,9 +14,14 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public class DirectorySearcher : IDisposable
 {
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(-1);
+
     private SearchScope _searchScope = SearchScope.Subtree;
     private bool _searchScopeSpecified;
     private string _attributeScopeQuery = string.Empty;
+    private int _pageSize;
+    private int _sizeLimit;
+    private SortOption _sort = new();
 
     /// <summary>Creates a searcher with no root yet.</summary>
     public DirectorySearcher()
@@ -34,6 +39,12 @@ public class DirectorySearcher : IDisposable
     {
         SearchRoot = searchRoot;
         Filter = filter;
+    }
+
+    /// <summary>Creates a searcher with a filter and no root yet.</summary>
+    public DirectorySearcher(string filter)
+        : this(null, filter)
+    {
     }
 
     /// <summary>Creates a searcher with a filter and properties to retrieve.</summary>
@@ -102,12 +113,40 @@ public class DirectorySearcher : IDisposable
     public StringCollection PropertiesToLoad { get; } = new();
 
     /// <summary>Page size for <see cref="FindAll"/>. 0 turns paging off.</summary>
-    public int PageSize { get; set; }
+    public int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException(
+                    "The PageSize must be greater than 0 or set to 0 for no paging.", nameof(value));
+            }
+
+            _pageSize = value;
+        }
+    }
 
     /// <summary>Server-side cap on results. 0 means the server default.</summary>
-    public int SizeLimit { get; set; }
+    public int SizeLimit
+    {
+        get => _sizeLimit;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException("SizeLimit must be greater than or equal to 0.", nameof(value));
+            }
 
-    /// <summary>Gets or sets whether the provider performs asynchronous searches.</summary>
+            _sizeLimit = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the ADSI asynchronous-search preference. The value is retained for API
+    /// compatibility; <see cref="FindOne"/> and <see cref="FindAll"/> complete synchronously.
+    /// </summary>
     public bool Asynchronous { get; set; }
 
     /// <summary>Gets or sets the LDAP attribute used for ADSI attribute-scoped queries.</summary>
@@ -133,11 +172,14 @@ public class DirectorySearcher : IDisposable
         }
     }
 
-    /// <summary>Gets or sets whether returned results are cached by the provider.</summary>
+    /// <summary>
+    /// Gets or sets the ADSI result-caching preference. The value is retained for API
+    /// compatibility; LDAP results are materialized before <see cref="FindAll"/> returns.
+    /// </summary>
     public bool CacheResults { get; set; } = true;
 
     /// <summary>Gets or sets the maximum time the client waits for a response.</summary>
-    public TimeSpan ClientTimeout { get; set; } = Timeout.InfiniteTimeSpan;
+    public TimeSpan ClientTimeout { get; set; } = DefaultTimeout;
 
     /// <summary>Gets or sets how LDAP aliases are dereferenced.</summary>
     public DereferenceAlias DerefAlias { get; set; }
@@ -158,13 +200,17 @@ public class DirectorySearcher : IDisposable
     public SecurityMasks SecurityMasks { get; set; }
 
     /// <summary>Gets or sets the server time limit for each page.</summary>
-    public TimeSpan ServerPageTimeLimit { get; set; } = Timeout.InfiniteTimeSpan;
+    public TimeSpan ServerPageTimeLimit { get; set; } = DefaultTimeout;
 
     /// <summary>Gets or sets the server time limit for the search.</summary>
-    public TimeSpan ServerTimeLimit { get; set; } = Timeout.InfiniteTimeSpan;
+    public TimeSpan ServerTimeLimit { get; set; } = DefaultTimeout;
 
     /// <summary>Gets or sets the optional server-side sort.</summary>
-    public SortOption? Sort { get; set; }
+    public SortOption Sort
+    {
+        get => _sort;
+        set => _sort = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     /// <summary>Gets or sets whether deleted objects are included.</summary>
     public bool Tombstone { get; set; }
@@ -263,10 +309,10 @@ public class DirectorySearcher : IDisposable
         request.Aliases = (System.DirectoryServices.Protocols.DereferenceAlias)(int)DerefAlias;
         request.TypesOnly = PropertyNamesOnly;
 
-        var timeLimit = ServerTimeLimit != Timeout.InfiniteTimeSpan
+        var timeLimit = ServerTimeLimit >= TimeSpan.Zero
             ? ServerTimeLimit
             : ServerPageTimeLimit;
-        if (timeLimit != Timeout.InfiniteTimeSpan)
+        if (timeLimit >= TimeSpan.Zero)
         {
             request.TimeLimit = timeLimit;
         }
@@ -276,7 +322,7 @@ public class DirectorySearcher : IDisposable
             request.Controls.Add(new ExtendedDNControl((ExtendedDNFlag)(int)ExtendedDN));
         }
 
-        if (Sort?.PropertyName is { Length: > 0 } sortProperty)
+        if (Sort.PropertyName is { Length: > 0 } sortProperty)
         {
             request.Controls.Add(new SortRequestControl(sortProperty, Sort.Direction == SortDirection.Descending));
         }
@@ -498,7 +544,7 @@ public class DirectorySearcher : IDisposable
         var originalTimeout = connection.Timeout;
         try
         {
-            if (ClientTimeout != Timeout.InfiniteTimeSpan)
+            if (ClientTimeout >= TimeSpan.Zero)
             {
                 connection.Timeout = ClientTimeout;
             }
