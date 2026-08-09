@@ -27,6 +27,13 @@ Windows).
 `FindAll` with paging, and DN-valued `AttributeScopeQuery` emulation),
 `SearchResult`, and the property collections.
 
+`AttributeScopeQuery` uses the server's native ASQ control when available,
+preserving server-side filtering and cross-DSA result semantics without one
+request per referenced DN. On LDAP servers that do not support that control,
+the library validates the attribute's AD schema syntax and falls back to
+individual base searches. That fallback is O(number of references) LDAP
+requests and referral chasing can differ from native AD ASQ behavior.
+
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
@@ -89,6 +96,6 @@ docker compose up --build --abort-on-container-exit
 ```
 
 This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 86 tests, all against a real Samba AD domain controller.
+tests on each. 87 tests, all against a real Samba AD domain controller.
 
 The tests create and delete their own objects under `CN=Users`.

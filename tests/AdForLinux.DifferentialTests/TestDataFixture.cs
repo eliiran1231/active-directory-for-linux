@@ -88,6 +88,9 @@ public sealed class TestDataFixture : IDisposable
         using (var group = container.Children.Add($"CN={GroupName}", "group"))
         {
             group.Properties["sAMAccountName"].Value = GroupName;
+            // Deliberately DN-looking text in a non-DN schema attribute. ASQ
+            // must reject the schema type instead of following this value.
+            group.Properties["description"].Value = UserDn;
             group.CommitChanges();
             _created.Add(GroupDn);
         }

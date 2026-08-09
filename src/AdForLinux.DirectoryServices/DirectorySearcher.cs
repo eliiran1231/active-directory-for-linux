@@ -317,6 +317,22 @@ public class DirectorySearcher : IDisposable
         var connection = root.GetConnection();
         ConfigureConnection(connection);
 
+        // Samba accepts ASQ controls for non-DN attributes instead of returning
+        // AD's invalidAttributeSyntax (21), so validate against attributeSchema
+        // before either the native or emulated execution path.
+        AdForLinux.DirectoryServices.Ldap.LdapAttributeSchema
+            .EnsureDistinguishedNameAttribute(connection, _attributeScopeQuery);
+
+        var nativeResults = TryNativeAttributeScopeQuery(connection, root, maximumResults);
+        if (nativeResults is not null)
+        {
+            return nativeResults;
+        }
+
+        // Non-AD LDAP servers may not implement LDAP_SERVER_ASQ_OID. The
+        // compatibility fallback follows each reference separately. The schema
+        // validation above prevents ordinary strings from being treated as DNs.
+
         var referencedDns = ReadAttributeScopeDns(connection, root.DistinguishedName);
         if (referencedDns.Count == 0 || maximumResults == 0)
         {
@@ -357,6 +373,59 @@ public class DirectorySearcher : IDisposable
         }
 
         return results;
+    }
+
+    private List<SearchResult>? TryNativeAttributeScopeQuery(
+        LdapConnection connection,
+        DirectoryEntry root,
+        int maximumResults)
+    {
+        var request = BuildRequest();
+        request.Scope = ProtocolScope.Base;
+        if (maximumResults != int.MaxValue)
+        {
+            request.SizeLimit = maximumResults;
+        }
+
+        request.Controls.Add(new AsqRequestControl(_attributeScopeQuery)
+        {
+            IsCritical = true,
+        });
+
+        SearchResponse response;
+        try
+        {
+            response = SendSearch(connection, request);
+        }
+        catch (DirectoryOperationException ex)
+            when (ex.Response.ResultCode == ResultCode.UnavailableCriticalExtension)
+        {
+            return null;
+        }
+
+        var asq = response.Controls.OfType<AsqResponseControl>().FirstOrDefault();
+        if (asq is null)
+        {
+            return null;
+        }
+
+        if (asq.Result == ResultCode.UnavailableCriticalExtension)
+        {
+            return null;
+        }
+
+        if (asq.Result is not ResultCode.Success and not ResultCode.SizeLimitExceeded)
+        {
+            throw new DirectoryOperationException(
+                $"AttributeScopeQuery failed with LDAP {asq.Result} ({(int)asq.Result}).");
+        }
+
+        UpdateControlState(response);
+        return response.Entries
+            .Cast<SearchResultEntry>()
+            .Take(maximumResults)
+            .Select(entry => new SearchResult(entry, root))
+            .ToList();
     }
 
     private List<string> ReadAttributeScopeDns(LdapConnection connection, string rootDistinguishedName)

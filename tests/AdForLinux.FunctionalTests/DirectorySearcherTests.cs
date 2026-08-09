@@ -262,18 +262,61 @@ public class DirectorySearcherTests
     }
 
     [Fact]
-    public void Attribute_scope_query_rejects_a_non_dn_attribute()
+    public void Attribute_scope_query_rejects_an_unset_non_dn_attribute()
+    {
+        var groupName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var groupDn = TestDirectory.Create(groupName, "group", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = groupName,
+        });
+
+        try
+        {
+            AssertInvalidAttributeScopeQuery(groupDn, "description");
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+        }
+    }
+
+    [Fact]
+    public void Attribute_scope_query_rejects_non_dn_text_that_is_an_existing_dn()
+    {
+        var userName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var groupName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var userDn = TestDirectory.Create(userName, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = userName,
+        });
+        var groupDn = TestDirectory.Create(groupName, "group", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = groupName,
+            ["description"] = userDn,
+        });
+
+        try
+        {
+            AssertInvalidAttributeScopeQuery(groupDn, "description");
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    private static void AssertInvalidAttributeScopeQuery(string rootDn, string attributeName)
     {
         using var root = new DirectoryEntry(
-            TestSettings.PathFor(TestSettings.AdministratorDn),
-            TestSettings.BindDn,
-            TestSettings.BindPassword,
+            TestSettings.PathFor(rootDn), TestSettings.BindDn, TestSettings.BindPassword,
             AuthenticationTypes.SecureSocketsLayer);
         using var searcher = new DirectorySearcher(root)
         {
-            AttributeScopeQuery = "sAMAccountName",
+            AttributeScopeQuery = attributeName,
         };
 
-        Assert.Throws<ProtocolDirectoryOperationException>(() => searcher.FindAll());
+        var error = Assert.Throws<ProtocolDirectoryOperationException>(() => searcher.FindAll());
+        Assert.Contains("InvalidAttributeSyntax (21)", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
