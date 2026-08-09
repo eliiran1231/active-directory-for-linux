@@ -3,6 +3,8 @@ using System.DirectoryServices.Protocols;
 using AdForLinux.DirectoryServices.Ldap;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
+#pragma warning disable CA1416 // Security descriptors are transported as LDAP bytes; no local OS ACL is accessed.
+
 namespace AdForLinux.DirectoryServices;
 
 /// <summary>
@@ -25,6 +27,8 @@ public class DirectoryEntry : Component
     private bool _isNew;
     private bool _usePropertyCache = true;
     private DirectoryEntryConfiguration? _options;
+    private ActiveDirectorySecurity? _objectSecurity;
+    private bool _objectSecurityChanged;
 
     /// <summary>Creates an unbound entry, like Microsoft's parameterless constructor.</summary>
     public DirectoryEntry()
@@ -170,13 +174,21 @@ public class DirectoryEntry : Component
     /// <summary>Gets the LDAP provider options associated with this entry.</summary>
     public DirectoryEntryConfiguration Options => _options ??= new DirectoryEntryConfiguration(this);
 
-    /// <summary>LDAP security descriptors are not yet surfaced by this Linux port.</summary>
+    /// <summary>Gets or sets this entry's Active Directory security descriptor.</summary>
     public ActiveDirectorySecurity ObjectSecurity
     {
-        get => throw new PlatformNotSupportedException(
-            "DirectoryEntry.ObjectSecurity requires Active Directory security descriptor support, which is not yet available on Linux.");
-        set => throw new PlatformNotSupportedException(
-            "DirectoryEntry.ObjectSecurity requires Active Directory security descriptor support, which is not yet available on Linux.");
+        get
+        {
+            EnsureAccessControlSupported();
+            return _objectSecurity ??= ReadObjectSecurity();
+        }
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            EnsureAccessControlSupported();
+            _objectSecurity = value;
+            _objectSecurityChanged = true;
+        }
     }
 
     /// <summary>The parent entry, or <see langword="null"/> for a naming-context root.</summary>
@@ -226,6 +238,8 @@ public class DirectoryEntry : Component
                 }
             }
 
+            AddObjectSecurity(add);
+
             connection.SendRequest(add);
             _isNew = false;
         }
@@ -243,6 +257,8 @@ public class DirectoryEntry : Component
                 modify.Modifications.Add(ToModification(property));
             }
 
+            AddObjectSecurity(modify);
+
             if (modify.Modifications.Count > 0)
             {
                 connection.SendRequest(modify);
@@ -253,6 +269,8 @@ public class DirectoryEntry : Component
         {
             property.ResetChanged();
         }
+
+        _objectSecurityChanged = false;
     }
 
     /// <summary>
@@ -401,6 +419,8 @@ public class DirectoryEntry : Component
     public void RefreshCache()
     {
         _properties = null;
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
         EnsureLoaded();
     }
 
@@ -409,6 +429,8 @@ public class DirectoryEntry : Component
     {
         ArgumentNullException.ThrowIfNull(propertyNames);
         _properties = null;
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
         EnsureLoaded(propertyNames);
     }
 
@@ -501,6 +523,73 @@ public class DirectoryEntry : Component
 
         _properties = properties;
     }
+
+    private ActiveDirectorySecurity ReadObjectSecurity()
+    {
+        var masks = EffectiveSecurityMasks();
+        var request = new SearchRequest(
+            _path.DistinguishedName,
+            "(objectClass=*)",
+            ProtocolScope.Base,
+            "nTSecurityDescriptor");
+        request.Controls.Add(new SecurityDescriptorFlagControl(
+            (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
+
+        var response = (SearchResponse)GetConnection().SendRequest(request);
+        if (response.Entries.Count == 0)
+        {
+            throw new InvalidOperationException("The directory entry did not return a security descriptor.");
+        }
+
+        var attribute = response.Entries[0].Attributes["nTSecurityDescriptor"];
+        if (attribute is null || attribute.Count == 0 || attribute[0] is not byte[] binaryForm)
+        {
+            throw new InvalidOperationException("The directory entry did not return a binary security descriptor.");
+        }
+
+        return new ActiveDirectorySecurity(binaryForm, masks);
+    }
+
+    private static void EnsureAccessControlSupported()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException(
+                "ActiveDirectorySecurity derives from the Windows-only System.Security.AccessControl object-security model.");
+        }
+    }
+
+    private void AddObjectSecurity(DirectoryRequest request)
+    {
+        if (_objectSecurity is null || (!_objectSecurityChanged && !_objectSecurity.IsModified()))
+        {
+            return;
+        }
+
+        var binaryForm = _objectSecurity.GetSecurityDescriptorBinaryForm();
+        switch (request)
+        {
+            case AddRequest add:
+                add.Attributes.Add(new DirectoryAttribute("nTSecurityDescriptor", binaryForm));
+                break;
+            case ModifyRequest modify:
+                var replacement = new DirectoryAttributeModification
+                {
+                    Name = "nTSecurityDescriptor",
+                    Operation = DirectoryAttributeOperation.Replace,
+                };
+                replacement.Add(binaryForm);
+                modify.Modifications.Add(replacement);
+                break;
+        }
+
+        request.Controls.Add(new SecurityDescriptorFlagControl(
+            (System.DirectoryServices.Protocols.SecurityMasks)(int)_objectSecurity.RetrievedMasks));
+    }
+
+    private SecurityMasks EffectiveSecurityMasks() => Options.SecurityMasks == SecurityMasks.None
+        ? SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl
+        : Options.SecurityMasks;
 
     private static void LoadEntry(SearchResultEntry entry, PropertyCollection properties)
     {
@@ -618,6 +707,8 @@ public class DirectoryEntry : Component
     {
         _path = path;
         _properties = null;
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
         ResetConnection();
     }
 
