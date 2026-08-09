@@ -242,6 +242,7 @@ public class DirectoryEntry : Component
     public void CommitChanges()
     {
         var connection = GetConnection();
+        var objectSecurityWritten = false;
 
         if (_isNew)
         {
@@ -254,7 +255,7 @@ public class DirectoryEntry : Component
                 }
             }
 
-            AddObjectSecurity(add);
+            objectSecurityWritten = AddObjectSecurity(add);
 
             connection.SendRequest(add);
             _isNew = false;
@@ -273,7 +274,7 @@ public class DirectoryEntry : Component
                 modify.Modifications.Add(ToModification(property));
             }
 
-            AddObjectSecurity(modify);
+            objectSecurityWritten = AddObjectSecurity(modify);
 
             if (modify.Modifications.Count > 0)
             {
@@ -284,6 +285,14 @@ public class DirectoryEntry : Component
         foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
         {
             property.ResetChanged();
+        }
+
+        if (objectSecurityWritten)
+        {
+            // DirectoryObjectSecurity does not expose a way to clear its
+            // internal modification flags. Discard the successfully written
+            // instance so the next access reloads a clean descriptor from AD.
+            _objectSecurity = null;
         }
 
         _objectSecurityChanged = false;
@@ -575,11 +584,11 @@ public class DirectoryEntry : Component
         }
     }
 
-    private void AddObjectSecurity(DirectoryRequest request)
+    private bool AddObjectSecurity(DirectoryRequest request)
     {
         if (_objectSecurity is null || (!_objectSecurityChanged && !_objectSecurity.IsModified()))
         {
-            return;
+            return false;
         }
 
         var binaryForm = _objectSecurity.GetSecurityDescriptorBinaryForm();
@@ -601,6 +610,7 @@ public class DirectoryEntry : Component
 
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)_objectSecurity.RetrievedMasks));
+        return true;
     }
 
     private void CommitIfNotCaching()

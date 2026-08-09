@@ -50,6 +50,74 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
     }
 
     [Fact]
+    public void Successful_ObjectSecurity_commit_reloads_clean_state_and_empty_commit_does_not_rewrite()
+    {
+        var objectType = Guid.NewGuid();
+        var identity = ReadOurObjectSid();
+        var rule = new Ours.ActiveDirectoryAccessRule(
+            identity,
+            Ours.ActiveDirectoryRights.ReadProperty,
+            AccessControlType.Allow,
+            objectType,
+            Ours.ActiveDirectorySecurityInheritance.None);
+
+        try
+        {
+            using var entry = OurEntry();
+            entry.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
+            var dirtySecurity = entry.ObjectSecurity;
+            dirtySecurity.AddAccessRule(rule);
+            entry.ObjectSecurity = dirtySecurity;
+
+            entry.CommitChanges();
+
+            var reloadedSecurity = entry.ObjectSecurity;
+            Assert.NotSame(dirtySecurity, reloadedSecurity);
+            Assert.True(ContainsOurRule(reloadedSecurity, identity, objectType));
+
+            entry.CommitChanges();
+
+            // A second descriptor write would invalidate the cache again. The
+            // same instance proves AddObjectSecurity no longer considered the
+            // freshly reloaded descriptor dirty.
+            Assert.Same(reloadedSecurity, entry.ObjectSecurity);
+
+            using var reread = OurEntry();
+            reread.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
+            Assert.True(ContainsOurRule(reread.ObjectSecurity, identity, objectType));
+        }
+        finally
+        {
+            RemoveOurRule(rule);
+        }
+    }
+
+    [Fact]
+    public void Failed_ObjectSecurity_commit_keeps_the_dirty_cached_descriptor()
+    {
+        var objectType = Guid.NewGuid();
+        var identity = ReadOurObjectSid();
+        using var entry = OurEntry();
+        entry.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
+        var dirtySecurity = entry.ObjectSecurity;
+        dirtySecurity.AddAccessRule(new Ours.ActiveDirectoryAccessRule(
+            identity,
+            Ours.ActiveDirectoryRights.ReadProperty,
+            AccessControlType.Allow,
+            objectType,
+            Ours.ActiveDirectorySecurityInheritance.None));
+        entry.ObjectSecurity = dirtySecurity;
+        entry.Username = $"no-such-object-security-user-{Guid.NewGuid():N}@example.invalid";
+
+        var error = Record.Exception(entry.CommitChanges);
+
+        Assert.NotNull(error);
+        Assert.True(error is System.DirectoryServices.Protocols.LdapException or
+            System.DirectoryServices.Protocols.DirectoryOperationException);
+        Assert.Same(dirtySecurity, entry.ObjectSecurity);
+    }
+
+    [Fact]
     public void Dacl_change_round_trips_without_replacing_unrequested_security_sections()
     {
         var objectType = Guid.NewGuid();
