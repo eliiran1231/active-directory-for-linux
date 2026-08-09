@@ -46,9 +46,12 @@ also present: schema-name collections, `DirectoryEntryConfiguration`, the
 Active Directory access-rule/security-descriptor family, and
 `DirectoryServicesCOMException`. Security-descriptor reads and writes use the
 LDAP security-descriptor control on Windows. The access-rule family derives
-from `System.Security.AccessControl`, which modern .NET supports only on
-Windows, so `DirectoryEntry.ObjectSecurity` fails explicitly on Linux instead
-of pretending that the descriptor can be safely manipulated there.
+from `System.Security.AccessControl`. On current .NET 8 and .NET 10 Linux
+runtimes, even binary `SecurityIdentifier` construction and an empty
+`DirectoryObjectSecurity` descriptor throw `PlatformNotSupportedException`.
+Consequently `DirectoryEntry.ObjectSecurity` keeps an explicit Linux guard;
+transporting the LDAP bytes is portable, but constructing the API's required
+SID/ACL object model is not.
 
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
