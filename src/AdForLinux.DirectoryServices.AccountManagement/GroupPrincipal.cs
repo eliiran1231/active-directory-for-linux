@@ -75,7 +75,8 @@ public class GroupPrincipal : Principal
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
             var members = new List<Principal>();
-            foreach (var result in searcher.FindAll())
+            using var results = searcher.FindAll();
+            foreach (var result in results.Cast<SearchResult>())
             {
                 var entry = result.GetDirectoryEntry();
                 var principal = PrincipalFactory.FromEntry(ContextRef, entry);

@@ -10,6 +10,7 @@ namespace AdForLinux.DirectoryServices;
 public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
 {
     private readonly DirectoryEntry _parent;
+    private readonly SchemaNameCollection _schemaFilter = new();
 
     internal DirectoryEntries(DirectoryEntry parent)
     {
@@ -23,21 +24,78 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
     public DirectoryEntry Add(string name, string schemaClassName) =>
         DirectoryEntry.NewChild(_parent, name, schemaClassName);
 
+    /// <summary>
+    /// Gets the schema classes included when enumerating the children. An empty
+    /// collection includes children of every class.
+    /// </summary>
+    public SchemaNameCollection SchemaFilter => _schemaFilter;
+
+    /// <summary>Finds a child by relative distinguished name.</summary>
+    public DirectoryEntry Find(string name) => Find(name, null);
+
+    /// <summary>Finds a child by relative distinguished name and optional schema class.</summary>
+    public DirectoryEntry Find(string name, string? schemaClassName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        var child = _parent.CreateEntryForDn($"{name},{_parent.DistinguishedName}");
+        try
+        {
+            child.RefreshCache();
+            if (!string.IsNullOrEmpty(schemaClassName)
+                && !string.Equals(child.SchemaClassName, schemaClassName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Child '{name}' does not have schema class '{schemaClassName}'.");
+            }
+
+            return child;
+        }
+        catch
+        {
+            child.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Deletes a child object and its subtree.</summary>
     public void Remove(DirectoryEntry child) => child.DeleteTree();
 
-    public IEnumerator<DirectoryEntry> GetEnumerator()
+    public IEnumerator GetEnumerator() => Enumerate().GetEnumerator();
+
+    IEnumerator<DirectoryEntry> IEnumerable<DirectoryEntry>.GetEnumerator() => Enumerate().GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    private IEnumerable<DirectoryEntry> Enumerate()
     {
-        using var searcher = new DirectorySearcher(_parent, "(objectClass=*)")
+        using var searcher = new DirectorySearcher(_parent, BuildSchemaFilter())
         {
             SearchScope = SearchScope.OneLevel,
         };
 
-        foreach (var result in searcher.FindAll())
+        using var results = searcher.FindAll();
+        foreach (var result in results.Cast<SearchResult>())
         {
             yield return result.GetDirectoryEntry();
         }
     }
 
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    private string BuildSchemaFilter()
+    {
+        if (_schemaFilter.Count == 0)
+        {
+            return "(objectClass=*)";
+        }
+
+        var clauses = _schemaFilter.Select(name => $"(objectClass={EscapeFilterValue(name)})");
+        return $"(|{string.Concat(clauses)})";
+    }
+
+    private static string EscapeFilterValue(string value) => value
+        .Replace("\\", "\\5c", StringComparison.Ordinal)
+        .Replace("*", "\\2a", StringComparison.Ordinal)
+        .Replace("(", "\\28", StringComparison.Ordinal)
+        .Replace(")", "\\29", StringComparison.Ordinal)
+        .Replace("\0", "\\00", StringComparison.Ordinal);
 }

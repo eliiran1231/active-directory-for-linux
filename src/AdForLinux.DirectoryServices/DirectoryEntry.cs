@@ -218,7 +218,7 @@ public class DirectoryEntry : Component
         if (_isNew)
         {
             var add = new AddRequest(_path.DistinguishedName);
-            foreach (var property in Properties)
+            foreach (var property in (IEnumerable<PropertyValueCollection>)Properties)
             {
                 if (property.Count > 0)
                 {
@@ -233,7 +233,7 @@ public class DirectoryEntry : Component
         {
             EnsureLoaded();
             var modify = new ModifyRequest(_path.DistinguishedName);
-            foreach (var property in _properties!)
+            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
             {
                 if (!property.Changed)
                 {
@@ -249,7 +249,7 @@ public class DirectoryEntry : Component
             }
         }
 
-        foreach (var property in _properties!)
+        foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
         {
             property.ResetChanged();
         }

@@ -355,7 +355,7 @@ public class DirectorySearcher : IDisposable
         if (HasAttributeScopeQuery)
         {
             var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
-            return new SearchResultCollection(FindAttributeScoped(root, maximumResults));
+            return new SearchResultCollection(FindAttributeScoped(root, maximumResults), GetPropertiesLoaded());
         }
 
         var connection = root.GetConnection();
@@ -399,8 +399,10 @@ public class DirectorySearcher : IDisposable
             }
         }
 
-        return new SearchResultCollection(results);
+        return new SearchResultCollection(results, GetPropertiesLoaded());
     }
+
+    private string[] GetPropertiesLoaded() => PropertiesToLoad.Cast<string>().ToArray();
 
     private SearchRequest BuildRequest()
     {

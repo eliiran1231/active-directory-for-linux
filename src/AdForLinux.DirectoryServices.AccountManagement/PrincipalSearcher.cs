@@ -65,7 +65,8 @@ public class PrincipalSearcher : IDisposable
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
             var found = new List<Principal>();
-            foreach (var result in searcher.FindAll())
+            using var results = searcher.FindAll();
+            foreach (var result in results.Cast<SearchResult>())
             {
                 var entry = result.GetDirectoryEntry();
                 var principal = PrincipalFactory.FromEntry(context, entry);
