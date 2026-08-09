@@ -1,3 +1,4 @@
+using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.AccountManagement;
 using Xunit;
 
@@ -22,6 +23,17 @@ public class GroupMembershipSearchTests
         {
             ["sAMAccountName"] = name,
         });
+
+    private static string CreateOrganizationalUnit(string name)
+    {
+        var dn = $"OU={name},{TestSettings.BaseDn}";
+        using var domain = new DirectoryEntry(
+            TestSettings.PathFor(TestSettings.BaseDn), TestSettings.BindDn, TestSettings.BindPassword,
+            AuthenticationTypes.SecureSocketsLayer);
+        using var organizationalUnit = domain.Children.Add($"OU={name}", "organizationalUnit");
+        organizationalUnit.CommitChanges();
+        return dn;
+    }
 
     [Fact]
     public void GetGroups_returns_direct_groups_only()
@@ -97,6 +109,95 @@ public class GroupMembershipSearchTests
             TestDirectory.Delete(DnFor(outerName));
             TestDirectory.Delete(DnFor(innerName));
             TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void GetMembers_returns_direct_or_recursive_members()
+    {
+        var userName = NewName();
+        var innerName = NewName();
+        var outerName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var inner = new GroupPrincipal(context, innerName);
+            inner.Save();
+            using var outer = new GroupPrincipal(context, outerName);
+            outer.Save();
+
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+            inner.Members.Add(user);
+            inner.Save();
+            outer.Members.Add(inner);
+            outer.Save();
+
+            using var direct = outer.GetMembers();
+            Assert.Equal(new[] { innerName }, direct.Select(p => p.SamAccountName));
+
+            using var recursive = outer.GetMembers(recursive: true);
+            var names = recursive.Select(p => p.SamAccountName).ToList();
+            Assert.Contains(userName, names);
+            Assert.DoesNotContain(innerName, names);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(outerName));
+            TestDirectory.Delete(DnFor(innerName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void GetMembers_recursive_ignores_the_context_container()
+    {
+        var specialOuName = NewName();
+        var normalOuName = NewName();
+        var outerName = NewName();
+        var innerName = NewName();
+        var userName = NewName();
+        var specialOuDn = CreateOrganizationalUnit(specialOuName);
+        var normalOuDn = CreateOrganizationalUnit(normalOuName);
+        var outerDn = $"CN={outerName},{specialOuDn}";
+        var innerDn = $"CN={innerName},{normalOuDn}";
+        var userDn = $"CN={userName},{normalOuDn}";
+
+        try
+        {
+            using var specialContext = new PrincipalContext(
+                ContextType.Domain, TestSettings.ServerName, specialOuDn,
+                TestSettings.BindDn, TestSettings.BindPassword);
+            using var normalContext = new PrincipalContext(
+                ContextType.Domain, TestSettings.ServerName, normalOuDn,
+                TestSettings.BindDn, TestSettings.BindPassword);
+            using var outer = new GroupPrincipal(specialContext, outerName);
+            using var inner = new GroupPrincipal(normalContext, innerName);
+            using var user = new UserPrincipal(normalContext)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            };
+
+            outer.Save();
+            inner.Save();
+            user.Save();
+            inner.Members.Add(user);
+            inner.Save();
+            outer.Members.Add(inner);
+            outer.Save();
+
+            using var members = outer.GetMembers(recursive: true);
+            Assert.Equal(new[] { userName }, members.Select(member => member.SamAccountName));
+        }
+        finally
+        {
+            TestDirectory.Delete(outerDn);
+            TestDirectory.Delete(innerDn);
+            TestDirectory.Delete(userDn);
+            TestDirectory.Delete(specialOuDn);
+            TestDirectory.Delete(normalOuDn);
         }
     }
 

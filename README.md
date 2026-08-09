@@ -30,9 +30,10 @@ Windows).
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
 `UnlockAccount`, `ExpirePasswordNow`, `Enabled`, account dates and flags,
-`GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetGroups`,
-`GetAuthorizationGroups` (recursive, via `LDAP_MATCHING_RULE_IN_CHAIN`), and
-`PrincipalSearcher` query-by-example with wildcards.
+`GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
+recursive), `GetGroups`, `GetAuthorizationGroups` (recursive, via
+`LDAP_MATCHING_RULE_IN_CHAIN`), and `PrincipalSearcher` query-by-example with
+wildcards.
 
 ### Not supported
 

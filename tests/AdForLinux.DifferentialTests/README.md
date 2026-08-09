@@ -29,7 +29,7 @@ property that disagreed, not just the first.
 | File | Compares |
 | --- | --- |
 | `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, `ValidateCredentials` |
-| `GroupPrincipalComparisonTests` | group properties, `Members`, `GetGroups`, `GetAuthorizationGroups` |
+| `GroupPrincipalComparisonTests` | group properties, `Members`, `GetMembers`, `GetGroups`, `GetAuthorizationGroups` |
 | `DirectoryEntryComparisonTests` | `DirectoryEntry` properties, `DirectorySearcher` `FindOne`/`FindAll` |
 | `PrincipalSearcherComparisonTests` | query-by-example search, including wildcards |
 

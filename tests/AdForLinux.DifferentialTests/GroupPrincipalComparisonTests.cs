@@ -18,18 +18,18 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         _data = data;
     }
 
-    private static Ms.PrincipalContext MicrosoftContext() =>
+    private static Ms.PrincipalContext MicrosoftContext(string? container = null) =>
         new(Ms.ContextType.Domain,
             DifferentialSettings.ServerName,
-            DifferentialSettings.UsersContainer,
+            container ?? DifferentialSettings.UsersContainer,
             Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
-    private static Ours.PrincipalContext OurContext() =>
+    private static Ours.PrincipalContext OurContext(string? container = null) =>
         new(Ours.ContextType.Domain,
             DifferentialSettings.ServerName,
-            DifferentialSettings.UsersContainer,
+            container ?? DifferentialSettings.UsersContainer,
             Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
@@ -103,6 +103,86 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetMembers_matches_for_direct_and_recursive_searches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+
+        using var ms = Ms.GroupPrincipal.FindByIdentity(msContext, _data.NestedGroupName);
+        using var ours = Ours.GroupPrincipal.FindByIdentity(ourContext, _data.NestedGroupName);
+
+        Assert.NotNull(ms);
+        Assert.NotNull(ours);
+
+        using var msDirect = ms!.GetMembers();
+        using var ourDirect = ours!.GetMembers();
+        using var msRecursive = ms.GetMembers(recursive: true);
+        using var ourRecursive = ours.GetMembers(recursive: true);
+
+        new Comparison($"GetMembers for {_data.NestedGroupName}")
+            .CheckSet("direct member DNs",
+                msDirect.Select(p => p.DistinguishedName),
+                ourDirect.Select(p => p.DistinguishedName))
+            .CheckSet("recursive member DNs",
+                msRecursive.Select(p => p.DistinguishedName),
+                ourRecursive.Select(p => p.DistinguishedName))
+            .Assert();
+    }
+
+    [Fact]
+    public void GetMembers_recursive_ignores_the_context_container()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var specialOuDn = $"OU=adfl-special-{suffix},{DifferentialSettings.BaseDn}";
+        var normalOuDn = $"OU=adfl-normal-{suffix},{DifferentialSettings.BaseDn}";
+        var outerName = $"adfl-outer-{suffix}";
+        var innerName = $"adfl-inner-{suffix}";
+        var userName = $"adfl-user-{suffix}";
+        var outerDn = $"CN={outerName},{specialOuDn}";
+        var innerDn = $"CN={innerName},{normalOuDn}";
+        var userDn = $"CN={userName},{normalOuDn}";
+
+        try
+        {
+            CreateOrganizationalUnit(specialOuDn);
+            CreateOrganizationalUnit(normalOuDn);
+            CreateUser(userDn, userName);
+
+            using var msSpecial = MicrosoftContext(specialOuDn);
+            using var msNormal = MicrosoftContext(normalOuDn);
+            using var ourSpecial = OurContext(specialOuDn);
+            using var msOuter = new Ms.GroupPrincipal(msSpecial, outerName);
+            using var msInner = new Ms.GroupPrincipal(msNormal, innerName);
+            msOuter.Save();
+            msInner.Save();
+
+            using var msUser = Ms.UserPrincipal.FindByIdentity(msNormal, userName)!;
+            msInner.Members.Add(msUser);
+            msInner.Save();
+            msOuter.Members.Add(msInner);
+            msOuter.Save();
+
+            using var ours = Ours.GroupPrincipal.FindByIdentity(ourSpecial, outerName)!;
+            using var msMembers = msOuter.GetMembers(recursive: true);
+            using var ourMembers = ours.GetMembers(recursive: true);
+
+            new Comparison("GetMembers recursive outside the context container")
+                .CheckSet("member DNs",
+                    msMembers.Select(member => member.DistinguishedName),
+                    ourMembers.Select(member => member.DistinguishedName))
+                .Assert();
+        }
+        finally
+        {
+            Delete(outerDn);
+            Delete(innerDn);
+            Delete(userDn);
+            Delete(specialOuDn);
+            Delete(normalOuDn);
+        }
+    }
+
+    [Fact]
     public void GetGroups_matches_for_the_user()
     {
         using var msContext = MicrosoftContext();
@@ -155,5 +235,45 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.Contains(_data.GroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, msDns, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void CreateOrganizationalUnit(string distinguishedName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        var relativeName = distinguishedName[..separator];
+        var parentDn = distinguishedName[(separator + 1)..];
+        using var parent = Open(parentDn);
+        using var organizationalUnit = parent.Children.Add(relativeName, "organizationalUnit");
+        organizationalUnit.CommitChanges();
+    }
+
+    private static void CreateUser(string distinguishedName, string samAccountName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        var relativeName = distinguishedName[..separator];
+        var parentDn = distinguishedName[(separator + 1)..];
+        using var parent = Open(parentDn);
+        using var user = parent.Children.Add(relativeName, "user");
+        user.Properties["sAMAccountName"].Value = samAccountName;
+        user.CommitChanges();
+    }
+
+    private static System.DirectoryServices.DirectoryEntry Open(string distinguishedName) =>
+        new(DifferentialSettings.PathFor(distinguishedName),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            System.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+
+    private static void Delete(string distinguishedName)
+    {
+        try
+        {
+            using var entry = Open(distinguishedName);
+            entry.DeleteTree();
+        }
+        catch
+        {
+            // Best effort cleanup for a failed differential setup.
+        }
     }
 }
