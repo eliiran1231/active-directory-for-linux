@@ -24,7 +24,8 @@ Windows).
 **Low layer** — `DirectoryEntry` (read properties, write, `CommitChanges`,
 `Children.Add`, `DeleteTree`, `Name`, `SchemaClassName`, `Guid`),
 `DirectorySearcher` (`Filter`, `SearchScope`, `PropertiesToLoad`, `FindOne`,
-`FindAll` with paging), `SearchResult`, and the property collections.
+`FindAll` with paging, and DN-valued `AttributeScopeQuery` emulation),
+`SearchResult`, and the property collections.
 
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
@@ -88,6 +89,6 @@ docker compose up --build --abort-on-container-exit
 ```
 
 This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 69 tests, all against a real Samba AD domain controller.
+tests on each. 86 tests, all against a real Samba AD domain controller.
 
 The tests create and delete their own objects under `CN=Users`.

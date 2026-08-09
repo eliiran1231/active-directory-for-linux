@@ -1,5 +1,6 @@
 using AdForLinux.DirectoryServices;
 using Xunit;
+using ProtocolDirectoryOperationException = System.DirectoryServices.Protocols.DirectoryOperationException;
 
 namespace AdForLinux.FunctionalTests;
 
@@ -41,15 +42,17 @@ public class DirectorySearcherTests
     }
 
     [Fact]
-    public void Unsupported_adsi_search_modes_fail_explicitly()
+    public void Attribute_scope_query_requires_base_scope()
     {
-        using var root = new DirectoryEntry();
-        using var searcher = new DirectorySearcher(root)
-        {
-            AttributeScopeQuery = "member",
-        };
+        using var searcher = new DirectorySearcher();
 
-        Assert.Throws<PlatformNotSupportedException>(() => searcher.FindOne());
+        searcher.AttributeScopeQuery = "member";
+        Assert.Equal(SearchScope.Base, searcher.SearchScope);
+
+        searcher.AttributeScopeQuery = null;
+        searcher.SearchScope = SearchScope.Subtree;
+
+        Assert.Throws<ArgumentException>(() => searcher.AttributeScopeQuery = "member");
     }
 
     [Fact]
@@ -150,5 +153,127 @@ public class DirectorySearcherTests
 
         // A provisioned AD has well over 100 objects in its subtree.
         Assert.True(all.Count > 100, $"expected many objects, got {all.Count}");
+    }
+
+    [Fact]
+    public void Attribute_scope_query_filters_and_loads_referenced_objects()
+    {
+        var userName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var nestedName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var groupName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var userDn = TestDirectory.Create(userName, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = userName,
+        });
+        var nestedDn = TestDirectory.Create(nestedName, "group", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = nestedName,
+        });
+        var groupDn = TestDirectory.Create(groupName, "group", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = groupName,
+            ["member"] = userDn,
+        });
+
+        try
+        {
+            using (var group = new DirectoryEntry(
+                       TestSettings.PathFor(groupDn), TestSettings.BindDn, TestSettings.BindPassword,
+                       AuthenticationTypes.SecureSocketsLayer))
+            {
+                group.Properties["member"].Add(nestedDn);
+                group.CommitChanges();
+            }
+
+            using var root = new DirectoryEntry(
+                TestSettings.PathFor(groupDn), TestSettings.BindDn, TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer);
+            using var searcher = new DirectorySearcher(root)
+            {
+                AttributeScopeQuery = "member",
+                Filter = "(objectClass=user)",
+            };
+            searcher.PropertiesToLoad.Add("sAMAccountName");
+
+            var first = searcher.FindOne();
+            var result = Assert.Single(searcher.FindAll());
+
+            Assert.NotNull(first);
+            Assert.Equal(userName, first!.Properties["sAMAccountName"][0]);
+            Assert.Equal(userName, result.Properties["sAMAccountName"][0]);
+            Assert.False(result.Properties.Contains("description"));
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(nestedDn);
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Attribute_scope_query_applies_size_limit_across_references()
+    {
+        var firstName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var secondName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var groupName = $"adfl-a-{Guid.NewGuid():N}"[..18];
+        var firstDn = TestDirectory.Create(firstName, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = firstName,
+        });
+        var secondDn = TestDirectory.Create(secondName, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = secondName,
+        });
+        var groupDn = TestDirectory.Create(groupName, "group", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = groupName,
+            ["member"] = firstDn,
+        });
+
+        try
+        {
+            using (var group = new DirectoryEntry(
+                       TestSettings.PathFor(groupDn), TestSettings.BindDn, TestSettings.BindPassword,
+                       AuthenticationTypes.SecureSocketsLayer))
+            {
+                group.Properties["member"].Add(secondDn);
+                group.CommitChanges();
+            }
+
+            using var root = new DirectoryEntry(
+                TestSettings.PathFor(groupDn), TestSettings.BindDn, TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer);
+            using var searcher = new DirectorySearcher(root)
+            {
+                AttributeScopeQuery = "member",
+                Filter = "(objectClass=user)",
+                SizeLimit = 1,
+            };
+
+            Assert.Single(searcher.FindAll());
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(secondDn);
+            TestDirectory.Delete(firstDn);
+        }
+    }
+
+    [Fact]
+    public void Attribute_scope_query_rejects_a_non_dn_attribute()
+    {
+        using var root = new DirectoryEntry(
+            TestSettings.PathFor(TestSettings.AdministratorDn),
+            TestSettings.BindDn,
+            TestSettings.BindPassword,
+            AuthenticationTypes.SecureSocketsLayer);
+        using var searcher = new DirectorySearcher(root)
+        {
+            AttributeScopeQuery = "sAMAccountName",
+        };
+
+        Assert.Throws<ProtocolDirectoryOperationException>(() => searcher.FindAll());
     }
 }

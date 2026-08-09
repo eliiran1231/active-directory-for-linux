@@ -1,4 +1,6 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.DirectoryServices.Protocols;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
@@ -12,6 +14,10 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public class DirectorySearcher : IDisposable
 {
+    private SearchScope _searchScope = SearchScope.Subtree;
+    private bool _searchScopeSpecified;
+    private string _attributeScopeQuery = string.Empty;
+
     /// <summary>Creates a searcher with no root yet.</summary>
     public DirectorySearcher()
     {
@@ -34,6 +40,7 @@ public class DirectorySearcher : IDisposable
     public DirectorySearcher(string filter, string[] propertiesToLoad)
         : this(null, filter, propertiesToLoad, SearchScope.Subtree)
     {
+        _searchScopeSpecified = false;
     }
 
     /// <summary>Creates a searcher with a filter, properties, and scope.</summary>
@@ -46,6 +53,7 @@ public class DirectorySearcher : IDisposable
     public DirectorySearcher(DirectoryEntry? searchRoot, string filter, string[] propertiesToLoad)
         : this(searchRoot, filter, propertiesToLoad, SearchScope.Subtree)
     {
+        _searchScopeSpecified = false;
     }
 
     /// <summary>Creates a searcher with a root, filter, properties, and scope.</summary>
@@ -69,7 +77,26 @@ public class DirectorySearcher : IDisposable
     public string Filter { get; set; } = "(objectClass=*)";
 
     /// <summary>How deep to search. Subtree by default.</summary>
-    public SearchScope SearchScope { get; set; } = SearchScope.Subtree;
+    public SearchScope SearchScope
+    {
+        get => _searchScope;
+        set
+        {
+            if (value < SearchScope.Base || value > SearchScope.Subtree)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SearchScope));
+            }
+
+            if (!string.IsNullOrEmpty(_attributeScopeQuery) && value != SearchScope.Base)
+            {
+                throw new ArgumentException(
+                    "SearchScope must be Base when AttributeScopeQuery is set.", nameof(value));
+            }
+
+            _searchScope = value;
+            _searchScopeSpecified = true;
+        }
+    }
 
     /// <summary>Attributes to return. Empty means all.</summary>
     public StringCollection PropertiesToLoad { get; } = new();
@@ -84,7 +111,27 @@ public class DirectorySearcher : IDisposable
     public bool Asynchronous { get; set; }
 
     /// <summary>Gets or sets the LDAP attribute used for ADSI attribute-scoped queries.</summary>
-    public string? AttributeScopeQuery { get; set; }
+    [AllowNull]
+    public string AttributeScopeQuery
+    {
+        get => _attributeScopeQuery;
+        set
+        {
+            value ??= string.Empty;
+            if (value.Length > 0)
+            {
+                if (_searchScopeSpecified && SearchScope != SearchScope.Base)
+                {
+                    throw new ArgumentException(
+                        "SearchScope must be Base when AttributeScopeQuery is set.", nameof(value));
+                }
+
+                _searchScope = SearchScope.Base;
+            }
+
+            _attributeScopeQuery = value;
+        }
+    }
 
     /// <summary>Gets or sets whether returned results are cached by the provider.</summary>
     public bool CacheResults { get; set; } = true;
@@ -129,6 +176,11 @@ public class DirectorySearcher : IDisposable
     public SearchResult? FindOne()
     {
         var root = RequireRoot();
+        if (HasAttributeScopeQuery)
+        {
+            return FindAttributeScoped(root, maximumResults: 1).FirstOrDefault();
+        }
+
         var request = BuildRequest();
         request.SizeLimit = 1;
 
@@ -145,6 +197,12 @@ public class DirectorySearcher : IDisposable
     public SearchResultCollection FindAll()
     {
         var root = RequireRoot();
+        if (HasAttributeScopeQuery)
+        {
+            var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
+            return new SearchResultCollection(FindAttributeScoped(root, maximumResults));
+        }
+
         var connection = root.GetConnection();
         ConfigureConnection(connection);
         var results = new List<SearchResult>();
@@ -195,12 +253,6 @@ public class DirectorySearcher : IDisposable
         var attributes = PropertiesToLoad.Count > 0
             ? PropertiesToLoad.Cast<string>().ToArray()
             : Array.Empty<string>();
-
-        if (!string.IsNullOrWhiteSpace(AttributeScopeQuery))
-        {
-            throw new PlatformNotSupportedException(
-                "AttributeScopeQuery is an ADSI-specific search mode with no portable LDAP equivalent.");
-        }
 
         var request = new SearchRequest(
             root.DistinguishedName,
@@ -255,6 +307,116 @@ public class DirectorySearcher : IDisposable
             request.SizeLimit = SizeLimit;
         }
 
+        return request;
+    }
+
+    private bool HasAttributeScopeQuery => _attributeScopeQuery.Length > 0;
+
+    private List<SearchResult> FindAttributeScoped(DirectoryEntry root, int maximumResults)
+    {
+        var connection = root.GetConnection();
+        ConfigureConnection(connection);
+
+        var referencedDns = ReadAttributeScopeDns(connection, root.DistinguishedName);
+        if (referencedDns.Count == 0 || maximumResults == 0)
+        {
+            return new List<SearchResult>();
+        }
+
+        var results = new List<SearchResult>();
+        foreach (var distinguishedName in referencedDns)
+        {
+            var request = BuildRequest(distinguishedName);
+            request.Scope = ProtocolScope.Base;
+            request.SizeLimit = 1;
+
+            SearchResponse response;
+            try
+            {
+                response = SendSearch(connection, request);
+            }
+            catch (DirectoryOperationException ex)
+                when (ex.Response.ResultCode == ResultCode.NoSuchObject)
+            {
+                // A stale DN-valued reference behaves like an ASQ row that no
+                // longer resolves: it contributes no result.
+                continue;
+            }
+
+            UpdateControlState(response);
+            if (response.Entries.Count == 0)
+            {
+                continue;
+            }
+
+            results.Add(new SearchResult(response.Entries[0], root));
+            if (results.Count >= maximumResults)
+            {
+                break;
+            }
+        }
+
+        return results;
+    }
+
+    private List<string> ReadAttributeScopeDns(LdapConnection connection, string rootDistinguishedName)
+    {
+        var values = new List<string>();
+        var requestedAttribute = _attributeScopeQuery;
+
+        while (true)
+        {
+            var request = new SearchRequest(
+                rootDistinguishedName,
+                "(objectClass=*)",
+                ProtocolScope.Base,
+                requestedAttribute);
+            var response = SendSearch(connection, request);
+            if (response.Entries.Count == 0)
+            {
+                break;
+            }
+
+            var returnedAttribute = response.Entries[0].Attributes.AttributeNames
+                .Cast<string>()
+                .FirstOrDefault(name =>
+                    name.Equals(_attributeScopeQuery, StringComparison.OrdinalIgnoreCase) ||
+                    name.StartsWith($"{_attributeScopeQuery};range=", StringComparison.OrdinalIgnoreCase));
+            if (returnedAttribute is null)
+            {
+                break;
+            }
+
+            var attribute = response.Entries[0].Attributes[returnedAttribute];
+            foreach (var value in attribute.GetValues(typeof(string)))
+            {
+                values.Add((string)value);
+            }
+
+            var rangeMarker = returnedAttribute.IndexOf(";range=", StringComparison.OrdinalIgnoreCase);
+            if (rangeMarker < 0 || returnedAttribute.EndsWith("-*", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            var range = returnedAttribute[(rangeMarker + ";range=".Length)..];
+            var separator = range.IndexOf('-');
+            if (separator < 0 || !int.TryParse(range[(separator + 1)..], out var end))
+            {
+                throw new DirectoryOperationException(
+                    $"Directory server returned an invalid attribute range '{returnedAttribute}'.");
+            }
+
+            requestedAttribute = $"{_attributeScopeQuery};range={end + 1}-*";
+        }
+
+        return values;
+    }
+
+    private SearchRequest BuildRequest(string distinguishedName)
+    {
+        var request = BuildRequest();
+        request.DistinguishedName = distinguishedName;
         return request;
     }
 

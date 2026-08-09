@@ -178,4 +178,39 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
                 ourResults.Select(r => r.Properties["distinguishedname"][0].ToString()))
             .Assert();
     }
+
+    [Fact]
+    public void Searcher_attribute_scope_query_matches()
+    {
+        using var msRoot = MicrosoftEntry(_data.GroupDn);
+        using var ourRoot = OurEntry(_data.GroupDn);
+        using var msSearcher = new Ms.DirectorySearcher(msRoot)
+        {
+            AttributeScopeQuery = "member",
+            Filter = "(objectClass=user)",
+        };
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot)
+        {
+            AttributeScopeQuery = "member",
+            Filter = "(objectClass=user)",
+        };
+        msSearcher.PropertiesToLoad.Add("sAMAccountName");
+        msSearcher.PropertiesToLoad.Add("distinguishedName");
+        ourSearcher.PropertiesToLoad.Add("sAMAccountName");
+        ourSearcher.PropertiesToLoad.Add("distinguishedName");
+
+        using var msResults = msSearcher.FindAll();
+        var ourResults = ourSearcher.FindAll();
+
+        new Comparison("DirectorySearcher.AttributeScopeQuery")
+            .Check("SearchScope", msSearcher.SearchScope.ToString(), ourSearcher.SearchScope.ToString())
+            .Check("Count", msResults.Count, ourResults.Count)
+            .CheckSet("paths",
+                msResults.Cast<Ms.SearchResult>().Select(result => result.Path),
+                ourResults.Select(result => result.Path))
+            .CheckSet("sAMAccountName",
+                msResults.Cast<Ms.SearchResult>().Select(result => result.Properties["sAMAccountName"][0].ToString()),
+                ourResults.Select(result => result.Properties["sAMAccountName"][0].ToString()))
+            .Assert();
+    }
 }
