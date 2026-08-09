@@ -105,6 +105,22 @@ public class LowLevelFeatureFamiliesTests
     }
 
     [Fact]
+    public void Required_sid_and_acl_primitives_are_unavailable_on_linux()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // S-1-1-0 (Everyone) in binary form. Even the pure-binary SID
+        // constructor is platform-guarded by modern .NET on Linux.
+        var worldSid = new byte[] { 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 };
+
+        Assert.Throws<PlatformNotSupportedException>(() => new SecurityIdentifier(worldSid, 0));
+        Assert.Throws<PlatformNotSupportedException>(() => new ActiveDirectorySecurity());
+    }
+
+    [Fact]
     public void Directory_services_com_exception_preserves_standard_exception_shape()
     {
         var inner = new InvalidOperationException("inner");

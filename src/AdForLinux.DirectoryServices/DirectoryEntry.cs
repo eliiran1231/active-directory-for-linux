@@ -129,7 +129,22 @@ public class DirectoryEntry : Component
     public bool UsePropertyCache
     {
         get => _usePropertyCache;
-        set => _usePropertyCache = value;
+        set
+        {
+            if (value == _usePropertyCache)
+            {
+                return;
+            }
+
+            // Microsoft flushes the current cache before switching to immediate
+            // writes. This includes a pending ObjectSecurity assignment.
+            if (!value)
+            {
+                CommitChanges();
+            }
+
+            _usePropertyCache = value;
+        }
     }
 
     /// <summary>The distinguished name of this object.</summary>
@@ -188,6 +203,7 @@ public class DirectoryEntry : Component
             EnsureAccessControlSupported();
             _objectSecurity = value;
             _objectSecurityChanged = true;
+            CommitIfNotCaching();
         }
     }
 
@@ -585,6 +601,14 @@ public class DirectoryEntry : Component
 
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)_objectSecurity.RetrievedMasks));
+    }
+
+    private void CommitIfNotCaching()
+    {
+        if (!UsePropertyCache)
+        {
+            CommitChanges();
+        }
     }
 
     private SecurityMasks EffectiveSecurityMasks() => Options.SecurityMasks == SecurityMasks.None

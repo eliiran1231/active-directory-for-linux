@@ -31,6 +31,7 @@ property that disagreed, not just the first.
 | `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, `ValidateCredentials` |
 | `GroupPrincipalComparisonTests` | group properties, `Members`, `GetMembers`, `GetGroups`, `GetAuthorizationGroups` |
 | `DirectoryEntryComparisonTests` | `DirectoryEntry` properties, `DirectorySearcher` `FindOne`/`FindAll` |
+| `ObjectSecurityComparisonTests` | live DACL round trips, partial `SecurityMasks`, and cached versus immediate `ObjectSecurity` writes |
 | `PrincipalSearcherComparisonTests` | query-by-example search, including wildcards |
 
 ## How to run
@@ -41,10 +42,15 @@ property that disagreed, not just the first.
    ```powershell
    $env:AD_HOST    = "your-dc.example.com"
    $env:AD_PORT    = "636"
+   $env:AD_USE_TLS = "true"
    $env:AD_BIND_DN = "administrator@example.com"
    $env:AD_BIND_PW = "yourPassword"
    $env:AD_BASE_DN = "DC=example,DC=com"
    ```
+
+   Set `AD_USE_TLS=false` with port 389 for a disposable test DC that permits
+   simple LDAP binds. The ObjectSecurity fixture does not set a password, so it
+   can exercise Microsoft and AdForLinux behavior without requiring LDAPS.
 
 3. Run:
 
@@ -59,7 +65,9 @@ delete them at the end.
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
-  `CN=Users`, and to set a password.
+  `CN=Users`, to set a password, and to read the SACL for the disposable ACL
+  test object. The SACL read is required to prove that a DACL-only update does not
+  replace security-descriptor sections that were not requested.
 - **`GetAuthorizationGroups` is not compared one-for-one.** Microsoft also
   returns computed groups (like *Domain Users* and well-known SIDs) that a plain
   LDAP query cannot see. So the test checks that our answer is a *subset* of

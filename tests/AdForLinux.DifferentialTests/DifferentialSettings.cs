@@ -12,6 +12,10 @@ public static class DifferentialSettings
     public static int Port =>
         int.TryParse(Environment.GetEnvironmentVariable("AD_PORT"), out var p) ? p : 636;
 
+    public static bool UseTls =>
+        (Environment.GetEnvironmentVariable("AD_USE_TLS") ?? "true")
+            .Equals("true", StringComparison.OrdinalIgnoreCase);
+
     public static string BindDn =>
         Environment.GetEnvironmentVariable("AD_BIND_DN") ?? "administrator@samdom.example.com";
 
