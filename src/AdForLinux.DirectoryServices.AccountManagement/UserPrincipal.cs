@@ -7,15 +7,32 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <see cref="FindByIdentity(PrincipalContext, string)"/>, then read its
 /// properties.
 /// </summary>
+[DirectoryRdnPrefix("CN")]
 public class UserPrincipal : AuthenticablePrincipal
 {
     /// <summary>Starts a new, unsaved user in a context. Saving arrives later.</summary>
-    public UserPrincipal(PrincipalContext context)
+    public UserPrincipal(PrincipalContext context) : base(context)
     {
-        ContextRef = context;
     }
 
-    internal UserPrincipal(PrincipalContext context, DirectoryEntry entry)
+    /// <summary>Starts a new user with its account name, password, and enabled state.</summary>
+    public UserPrincipal(PrincipalContext context, string samAccountName, string password, bool enabled)
+        : base(context, samAccountName, password, enabled)
+    {
+    }
+
+    public static new PrincipalSearchResult<UserPrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByLockoutTime<UserPrincipal>(context, time, type);
+    public static new PrincipalSearchResult<UserPrincipal> FindByLogonTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByLogonTime<UserPrincipal>(context, time, type);
+    public static new PrincipalSearchResult<UserPrincipal> FindByExpirationTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByExpirationTime<UserPrincipal>(context, time, type);
+    public static new PrincipalSearchResult<UserPrincipal> FindByBadPasswordAttempt(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByBadPasswordAttempt<UserPrincipal>(context, time, type);
+    public static new PrincipalSearchResult<UserPrincipal> FindByPasswordSetTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByPasswordSetTime<UserPrincipal>(context, time, type);
+
+    internal UserPrincipal(PrincipalContext context, DirectoryEntry entry) : base(context)
     {
         AttachExisting(context, entry);
     }

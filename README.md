@@ -47,8 +47,9 @@ materialized before they are returned.
 `UnlockAccount`, `ExpirePasswordNow`, `Enabled`, account dates and flags,
 `GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
 recursive), `GetGroups`, `GetAuthorizationGroups` (recursive, via
-`LDAP_MATCHING_RULE_IN_CHAIN`), and `PrincipalSearcher` query-by-example with
-wildcards.
+`LDAP_MATCHING_RULE_IN_CHAIN`), `ComputerPrincipal` with mutable service
+principal names, and `PrincipalSearcher` query-by-example with wildcards and
+advanced date/count comparisons.
 
 ### Not supported
 
@@ -56,7 +57,7 @@ wildcards.
   domain auto-discovery on Linux.
 - **Kerberos / Negotiate.** Simple bind over TLS only.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
-- `ComputerPrincipal`, certificate members, and the COM/event surface.
+- Certificate members and the COM/event surface.
 
 ## Auth
 
@@ -103,6 +104,7 @@ docker compose up --build --abort-on-container-exit
 ```
 
 This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 87 tests, all against a real Samba AD domain controller.
+tests on each. 109 tests run on each target, including live coverage against a
+real Samba AD domain controller.
 
 The tests create and delete their own objects under `CN=Users`.

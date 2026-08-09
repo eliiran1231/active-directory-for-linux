@@ -19,6 +19,34 @@ public class UserPrincipalWriteTests
     private static string DnFor(string cn) => $"CN={cn},{TestDirectory.UsersContainer}";
 
     [Fact]
+    public void Four_argument_constructor_can_create_an_enabled_user_with_a_valid_password()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+
+        try
+        {
+            using var context = Context();
+            using (var user = new UserPrincipal(
+                context, name, "Str0ng!Passw0rd#2026", enabled: true))
+            {
+                user.UserPrincipalName = $"{name}@samdom.example.com";
+                user.Save();
+            }
+
+            using var found = UserPrincipal.FindByIdentity(context, name);
+            Assert.NotNull(found);
+            Assert.True(found!.Enabled);
+            Assert.True(context.ValidateCredentials(
+                $"{name}@samdom.example.com", "Str0ng!Passw0rd#2026"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Save_creates_a_new_user()
     {
         var name = NewName();

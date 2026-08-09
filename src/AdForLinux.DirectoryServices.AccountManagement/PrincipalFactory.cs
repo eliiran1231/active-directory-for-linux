@@ -16,6 +16,11 @@ internal static class PrincipalFactory
             .Select(value => value.ToString())
             .ToArray();
 
+        if (classes.Contains("computer", StringComparer.OrdinalIgnoreCase))
+        {
+            return new ComputerPrincipal(context, entry);
+        }
+
         if (classes.Contains("group", StringComparer.OrdinalIgnoreCase))
         {
             return new GroupPrincipal(context, entry);
