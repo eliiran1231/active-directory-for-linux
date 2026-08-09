@@ -34,6 +34,13 @@ the library validates the attribute's AD schema syntax and falls back to
 individual base searches. That fallback is O(number of references) LDAP
 requests and referral chasing can differ from native AD ASQ behavior.
 
+The broader `DirectorySearcher` constructor and option surface maps timeouts,
+alias/referral behavior, sorting, DirSync, virtual-list-view, tombstone,
+extended-DN, property-names-only, and security-mask requests to LDAP protocol
+settings and controls. ADSI's `Asynchronous` and `CacheResults` flags are kept
+for source compatibility, but searches complete synchronously and results are
+materialized before they are returned.
+
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
