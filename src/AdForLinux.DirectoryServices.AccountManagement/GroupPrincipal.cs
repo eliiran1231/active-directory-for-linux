@@ -65,8 +65,12 @@ public class GroupPrincipal : Principal
         }
 
         var groupDn = RequireEntry().DistinguishedName;
-        var filter = $"(memberOf:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(groupDn)})";
-        var root = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        // Recursive results contain only leaves. Groups are traversal nodes,
+        // whereas GetMembers(false) may return direct group members.
+        var filter = $"(&(memberOf:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(groupDn)})(!(objectClass=group)))";
+        // GetMembers is not constrained by PrincipalContext.Container: group
+        // members in other containers must still be returned.
+        var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
         try
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };

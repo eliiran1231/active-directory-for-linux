@@ -290,15 +290,14 @@ public class DirectorySearcher : IDisposable
 
     private void ConfigureConnection(LdapConnection connection)
     {
-        // ADSI uses bit flags (None = 0, Subordinate = 0x20, External =
-        // 0x40), whereas Protocols uses a compact enum. On Linux the
-        // protocol implementation accepts only None and All; map either
-        // partial ADSI mode to All rather than passing its incompatible raw
-        // numeric value.
-        connection.SessionOptions.ReferralChasing = ReferralChasing switch
+        // The native Linux LDAP implementation accepts only None and All.
+        // Keep the ADSI-compatible partial modes on Windows, and degrade them
+        // to All only where the underlying runtime cannot represent them.
+        connection.SessionOptions.ReferralChasing = OperatingSystem.IsWindows()
+            ? (ReferralChasingOptions)(int)ReferralChasing
+            : ReferralChasing switch
         {
             ReferralChasingOption.None => ReferralChasingOptions.None,
-            ReferralChasingOption.All => ReferralChasingOptions.All,
             _ => ReferralChasingOptions.All,
         };
     }
