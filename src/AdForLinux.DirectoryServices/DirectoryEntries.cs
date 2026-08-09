@@ -88,7 +88,8 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
             return "(objectClass=*)";
         }
 
-        var clauses = _schemaFilter.Select(name => $"(objectClass={EscapeFilterValue(name)})");
+        var clauses = _schemaFilter.Cast<string>()
+            .Select(name => $"(objectClass={EscapeFilterValue(name)})");
         return $"(|{string.Concat(clauses)})";
     }
 

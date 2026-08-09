@@ -5,7 +5,7 @@ namespace AdForLinux.DirectoryServices;
 /// <summary>
 /// Schema class names used by <see cref="DirectoryEntries.SchemaFilter"/>.
 /// </summary>
-public sealed class SchemaNameCollection : IList, IEnumerable<string>
+public sealed class SchemaNameCollection : IList
 {
     private readonly List<string> _names = new();
 
@@ -73,9 +73,7 @@ public sealed class SchemaNameCollection : IList, IEnumerable<string>
 
     public void RemoveAt(int index) => _names.RemoveAt(index);
 
-    public IEnumerator<string> GetEnumerator() => _names.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public IEnumerator GetEnumerator() => _names.GetEnumerator();
 
     bool IList.IsFixedSize => false;
 

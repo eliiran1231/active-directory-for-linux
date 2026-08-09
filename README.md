@@ -41,6 +41,15 @@ settings and controls. ADSI's `Asynchronous` and `CacheResults` flags are kept
 for source compatibility, but searches complete synchronously and results are
 materialized before they are returned.
 
+The remaining modern `System.DirectoryServices` low-level public surface is
+also present: schema-name collections, `DirectoryEntryConfiguration`, the
+Active Directory access-rule/security-descriptor family, and
+`DirectoryServicesCOMException`. Security-descriptor reads and writes use the
+LDAP security-descriptor control on Windows. The access-rule family derives
+from `System.Security.AccessControl`, which modern .NET supports only on
+Windows, so `DirectoryEntry.ObjectSecurity` fails explicitly on Linux instead
+of pretending that the descriptor can be safely manipulated there.
+
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
@@ -58,6 +67,13 @@ advanced date/count comparisons.
 - **Kerberos / Negotiate.** Simple bind over TLS only.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - Certificate members and the COM/event surface.
+- **Active Directory ACL manipulation on Linux.** The public rule types are
+  available for source compatibility, but their required
+  `System.Security.AccessControl` base classes are Windows-only in modern .NET.
+- **Legacy `DirectoryServicesPermission*` types.** These belonged to .NET
+  Framework Code Access Security. They are absent from the modern
+  `System.DirectoryServices` reference assembly and CAS is not supported by
+  .NET 8/10, so this library does not recreate them.
 
 ## Auth
 

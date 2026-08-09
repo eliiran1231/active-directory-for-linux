@@ -48,13 +48,13 @@ public sealed class SortOption
 
 /// <summary>Options controlling Active Directory directory synchronization.</summary>
 [Flags]
-public enum DirectorySynchronizationOptions
+public enum DirectorySynchronizationOptions : long
 {
     None = 0,
     ObjectSecurity = 0x1,
     ParentsFirst = 0x800,
     PublicDataOnly = 0x2000,
-    IncrementalValues = unchecked((int)0x80000000),
+    IncrementalValues = 0x80000000,
 }
 
 /// <summary>Stores the cookie and options used by an Active Directory DirSync search.</summary>
@@ -94,6 +94,9 @@ public sealed class DirectorySynchronization
     /// <summary>Returns an independent copy of the current synchronization cookie.</summary>
     public byte[] GetDirectorySynchronizationCookie() => _cookie.ToArray();
 
+    /// <summary>Creates an independent copy of this synchronization state.</summary>
+    public DirectorySynchronization Copy() => new(this);
+
     /// <summary>Clears the synchronization cookie.</summary>
     public void ResetDirectorySynchronizationCookie() => _cookie = Array.Empty<byte>();
 
@@ -106,7 +109,7 @@ public sealed class DirectorySynchronization
 
     /// <summary>Creates the Protocols control for the current request state.</summary>
     internal System.DirectoryServices.Protocols.DirSyncRequestControl CreateControl() =>
-        new(_cookie, (System.DirectoryServices.Protocols.DirectorySynchronizationOptions)(int)Option);
+        new(_cookie, (System.DirectoryServices.Protocols.DirectorySynchronizationOptions)(long)Option);
 
     /// <summary>Captures the cookie returned by the server.</summary>
     internal void Update(System.DirectoryServices.Protocols.DirSyncResponseControl response) =>
