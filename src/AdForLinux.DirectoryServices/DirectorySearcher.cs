@@ -16,12 +16,21 @@ public class DirectorySearcher : IDisposable
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(-1);
 
+    private bool _cacheResults = true;
+    private bool _cacheResultsSpecified;
+    private TimeSpan _clientTimeout = DefaultTimeout;
+    private DereferenceAlias _derefAlias;
+    private DirectorySynchronization? _directorySynchronization;
     private SearchScope _searchScope = SearchScope.Subtree;
     private bool _searchScopeSpecified;
     private string _attributeScopeQuery = string.Empty;
     private int _pageSize;
+    private ReferralChasingOption _referralChasing = ReferralChasingOption.External;
+    private TimeSpan _serverPageTimeLimit = DefaultTimeout;
+    private TimeSpan _serverTimeLimit = DefaultTimeout;
     private int _sizeLimit;
     private SortOption _sort = new();
+    private DirectoryVirtualListView? _virtualListView;
 
     /// <summary>Creates a searcher with no root yet.</summary>
     public DirectorySearcher()
@@ -48,20 +57,20 @@ public class DirectorySearcher : IDisposable
     }
 
     /// <summary>Creates a searcher with a filter and properties to retrieve.</summary>
-    public DirectorySearcher(string filter, string[] propertiesToLoad)
+    public DirectorySearcher(string filter, string[]? propertiesToLoad)
         : this(null, filter, propertiesToLoad, SearchScope.Subtree)
     {
         _searchScopeSpecified = false;
     }
 
     /// <summary>Creates a searcher with a filter, properties, and scope.</summary>
-    public DirectorySearcher(string filter, string[] propertiesToLoad, SearchScope searchScope)
+    public DirectorySearcher(string filter, string[]? propertiesToLoad, SearchScope searchScope)
         : this(null, filter, propertiesToLoad, searchScope)
     {
     }
 
     /// <summary>Creates a searcher with a root, filter, and properties.</summary>
-    public DirectorySearcher(DirectoryEntry? searchRoot, string filter, string[] propertiesToLoad)
+    public DirectorySearcher(DirectoryEntry? searchRoot, string filter, string[]? propertiesToLoad)
         : this(searchRoot, filter, propertiesToLoad, SearchScope.Subtree)
     {
         _searchScopeSpecified = false;
@@ -71,14 +80,16 @@ public class DirectorySearcher : IDisposable
     public DirectorySearcher(
         DirectoryEntry? searchRoot,
         string filter,
-        string[] propertiesToLoad,
+        string[]? propertiesToLoad,
         SearchScope searchScope)
     {
-        ArgumentNullException.ThrowIfNull(propertiesToLoad);
         SearchRoot = searchRoot;
         Filter = filter;
         SearchScope = searchScope;
-        PropertiesToLoad.AddRange(propertiesToLoad);
+        if (propertiesToLoad is not null)
+        {
+            PropertiesToLoad.AddRange(propertiesToLoad);
+        }
     }
 
     /// <summary>The entry the search starts from. Required before searching.</summary>
@@ -122,6 +133,11 @@ public class DirectorySearcher : IDisposable
             {
                 throw new ArgumentException(
                     "The PageSize must be greater than 0 or set to 0 for no paging.", nameof(value));
+            }
+
+            if (value != 0 && DirectorySynchronization is not null)
+            {
+                throw new ArgumentException("DirectorySynchronization cannot be combined with PageSize.");
             }
 
             _pageSize = value;
@@ -176,16 +192,61 @@ public class DirectorySearcher : IDisposable
     /// Gets or sets the ADSI result-caching preference. The value is retained for API
     /// compatibility; LDAP results are materialized before <see cref="FindAll"/> returns.
     /// </summary>
-    public bool CacheResults { get; set; } = true;
+    public bool CacheResults
+    {
+        get => _cacheResults;
+        set
+        {
+            if (value && VirtualListView is not null)
+            {
+                throw new ArgumentException("VirtualListView cannot be combined with CacheResults.");
+            }
+
+            _cacheResults = value;
+            _cacheResultsSpecified = true;
+        }
+    }
 
     /// <summary>Gets or sets the maximum time the client waits for a response.</summary>
-    public TimeSpan ClientTimeout { get; set; } = DefaultTimeout;
+    public TimeSpan ClientTimeout
+    {
+        get => _clientTimeout;
+        set
+        {
+            ValidateTimeout(value);
+            _clientTimeout = value;
+        }
+    }
 
     /// <summary>Gets or sets how LDAP aliases are dereferenced.</summary>
-    public DereferenceAlias DerefAlias { get; set; }
+    public DereferenceAlias DerefAlias
+    {
+        get => _derefAlias;
+        set
+        {
+            if (value < DereferenceAlias.Never || value > DereferenceAlias.Always)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(DereferenceAlias));
+            }
+
+            _derefAlias = value;
+        }
+    }
 
     /// <summary>Gets or sets the optional directory synchronization configuration.</summary>
-    public DirectorySynchronization? DirectorySynchronization { get; set; }
+    public DirectorySynchronization? DirectorySynchronization
+    {
+        get => _directorySynchronization;
+        set
+        {
+            if (value is not null && PageSize != 0)
+            {
+                throw new ArgumentException("DirectorySynchronization cannot be combined with PageSize.");
+            }
+
+            _directorySynchronization = value;
+        }
+    }
 
     /// <summary>Gets or sets the extended-DN format requested from the server.</summary>
     public ExtendedDN ExtendedDN { get; set; }
@@ -194,16 +255,47 @@ public class DirectorySearcher : IDisposable
     public bool PropertyNamesOnly { get; set; }
 
     /// <summary>Gets or sets the referral-chasing behavior.</summary>
-    public ReferralChasingOption ReferralChasing { get; set; } = ReferralChasingOption.External;
+    public ReferralChasingOption ReferralChasing
+    {
+        get => _referralChasing;
+        set
+        {
+            if (value is not ReferralChasingOption.None and
+                not ReferralChasingOption.Subordinate and
+                not ReferralChasingOption.External and
+                not ReferralChasingOption.All)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ReferralChasingOption));
+            }
+
+            _referralChasing = value;
+        }
+    }
 
     /// <summary>Gets or sets the requested security descriptor sections.</summary>
     public SecurityMasks SecurityMasks { get; set; }
 
     /// <summary>Gets or sets the server time limit for each page.</summary>
-    public TimeSpan ServerPageTimeLimit { get; set; } = DefaultTimeout;
+    public TimeSpan ServerPageTimeLimit
+    {
+        get => _serverPageTimeLimit;
+        set
+        {
+            ValidateTimeout(value);
+            _serverPageTimeLimit = value;
+        }
+    }
 
     /// <summary>Gets or sets the server time limit for the search.</summary>
-    public TimeSpan ServerTimeLimit { get; set; } = DefaultTimeout;
+    public TimeSpan ServerTimeLimit
+    {
+        get => _serverTimeLimit;
+        set
+        {
+            ValidateTimeout(value);
+            _serverTimeLimit = value;
+        }
+    }
 
     /// <summary>Gets or sets the optional server-side sort.</summary>
     public SortOption Sort
@@ -216,7 +308,24 @@ public class DirectorySearcher : IDisposable
     public bool Tombstone { get; set; }
 
     /// <summary>Gets or sets the optional virtual-list-view configuration.</summary>
-    public DirectoryVirtualListView? VirtualListView { get; set; }
+    public DirectoryVirtualListView? VirtualListView
+    {
+        get => _virtualListView;
+        set
+        {
+            if (value is not null)
+            {
+                if (_cacheResultsSpecified && CacheResults)
+                {
+                    throw new ArgumentException("VirtualListView cannot be combined with CacheResults.");
+                }
+
+                _cacheResults = false;
+            }
+
+            _virtualListView = value;
+        }
+    }
 
     /// <summary>Returns the first match, or null if there is none.</summary>
     public SearchResult? FindOne()
@@ -598,6 +707,14 @@ public class DirectorySearcher : IDisposable
         SearchScope.OneLevel => ProtocolScope.OneLevel,
         _ => ProtocolScope.Subtree,
     };
+
+    private static void ValidateTimeout(TimeSpan value)
+    {
+        if (value.TotalSeconds > int.MaxValue)
+        {
+            throw new ArgumentException("The value exceeds the maximum allowed.", nameof(value));
+        }
+    }
 
     public void Dispose() => GC.SuppressFinalize(this);
 }

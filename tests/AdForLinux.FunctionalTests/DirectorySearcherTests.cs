@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices;
+using System.ComponentModel;
 using Xunit;
 using ProtocolDirectoryOperationException = System.DirectoryServices.Protocols.DirectoryOperationException;
 
@@ -65,6 +66,87 @@ public class DirectorySearcherTests
         Assert.Throws<ArgumentException>(() => searcher.PageSize = -1);
         Assert.Throws<ArgumentException>(() => searcher.SizeLimit = -1);
         Assert.Throws<ArgumentNullException>(() => searcher.Sort = null!);
+    }
+
+    [Fact]
+    public void Constructors_allow_null_properties_to_load_like_microsoft()
+    {
+        using var filterOnly = new DirectorySearcher("(objectClass=person)", null);
+        using var filterAndScope = new DirectorySearcher("(objectClass=person)", null, SearchScope.OneLevel);
+        using var rooted = new DirectorySearcher(null, "(objectClass=person)", null);
+        using var rootedAndScoped = new DirectorySearcher(
+            null, "(objectClass=person)", null, SearchScope.OneLevel);
+
+        Assert.Empty(filterOnly.PropertiesToLoad.Cast<string>());
+        Assert.Empty(filterAndScope.PropertiesToLoad.Cast<string>());
+        Assert.Empty(rooted.PropertiesToLoad.Cast<string>());
+        Assert.Empty(rootedAndScoped.PropertiesToLoad.Cast<string>());
+    }
+
+    [Fact]
+    public void Page_size_and_directory_synchronization_are_mutually_exclusive()
+    {
+        using var pageFirst = new DirectorySearcher { PageSize = 100 };
+        Assert.Throws<ArgumentException>(
+            () => pageFirst.DirectorySynchronization = new DirectorySynchronization());
+        Assert.Null(pageFirst.DirectorySynchronization);
+
+        using var synchronizationFirst = new DirectorySearcher
+        {
+            DirectorySynchronization = new DirectorySynchronization(),
+        };
+        Assert.Throws<ArgumentException>(() => synchronizationFirst.PageSize = 100);
+        Assert.Equal(0, synchronizationFirst.PageSize);
+
+        synchronizationFirst.PageSize = 0;
+        synchronizationFirst.DirectorySynchronization = null;
+        synchronizationFirst.PageSize = 100;
+        Assert.Equal(100, synchronizationFirst.PageSize);
+    }
+
+    [Fact]
+    public void Virtual_list_view_enforces_cache_results_semantics()
+    {
+        using var implicitCaching = new DirectorySearcher();
+        implicitCaching.VirtualListView = new DirectoryVirtualListView();
+        Assert.False(implicitCaching.CacheResults);
+
+        using var explicitCaching = new DirectorySearcher { CacheResults = true };
+        Assert.Throws<ArgumentException>(
+            () => explicitCaching.VirtualListView = new DirectoryVirtualListView());
+        Assert.Null(explicitCaching.VirtualListView);
+
+        using var viewFirst = new DirectorySearcher
+        {
+            VirtualListView = new DirectoryVirtualListView(),
+        };
+        Assert.Throws<ArgumentException>(() => viewFirst.CacheResults = true);
+        Assert.False(viewFirst.CacheResults);
+
+        using var cachingDisabled = new DirectorySearcher { CacheResults = false };
+        cachingDisabled.VirtualListView = new DirectoryVirtualListView();
+        Assert.NotNull(cachingDisabled.VirtualListView);
+    }
+
+    [Fact]
+    public void Option_setters_validate_enum_and_timeout_ranges()
+    {
+        using var searcher = new DirectorySearcher();
+
+        Assert.Throws<InvalidEnumArgumentException>(
+            () => searcher.DerefAlias = (DereferenceAlias)int.MaxValue);
+        Assert.Throws<InvalidEnumArgumentException>(
+            () => searcher.ReferralChasing = (ReferralChasingOption)int.MaxValue);
+
+        var maximum = TimeSpan.FromSeconds(int.MaxValue);
+        var tooLarge = maximum.Add(TimeSpan.FromSeconds(1));
+        searcher.ClientTimeout = maximum;
+        searcher.ServerPageTimeLimit = maximum;
+        searcher.ServerTimeLimit = maximum;
+
+        Assert.Throws<ArgumentException>(() => searcher.ClientTimeout = tooLarge);
+        Assert.Throws<ArgumentException>(() => searcher.ServerPageTimeLimit = tooLarge);
+        Assert.Throws<ArgumentException>(() => searcher.ServerTimeLimit = tooLarge);
     }
 
     [Fact]
