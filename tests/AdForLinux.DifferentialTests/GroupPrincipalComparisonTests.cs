@@ -103,6 +103,33 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetMembers_matches_for_direct_and_recursive_searches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+
+        using var ms = Ms.GroupPrincipal.FindByIdentity(msContext, _data.NestedGroupName);
+        using var ours = Ours.GroupPrincipal.FindByIdentity(ourContext, _data.NestedGroupName);
+
+        Assert.NotNull(ms);
+        Assert.NotNull(ours);
+
+        using var msDirect = ms!.GetMembers();
+        using var ourDirect = ours!.GetMembers();
+        using var msRecursive = ms.GetMembers(recursive: true);
+        using var ourRecursive = ours.GetMembers(recursive: true);
+
+        new Comparison($"GetMembers for {_data.NestedGroupName}")
+            .CheckSet("direct member DNs",
+                msDirect.Select(p => p.DistinguishedName),
+                ourDirect.Select(p => p.DistinguishedName))
+            .CheckSet("recursive member DNs",
+                msRecursive.Select(p => p.DistinguishedName),
+                ourRecursive.Select(p => p.DistinguishedName))
+            .Assert();
+    }
+
+    [Fact]
     public void GetGroups_matches_for_the_user()
     {
         using var msContext = MicrosoftContext();

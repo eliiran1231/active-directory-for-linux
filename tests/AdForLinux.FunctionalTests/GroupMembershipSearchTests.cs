@@ -101,6 +101,44 @@ public class GroupMembershipSearchTests
     }
 
     [Fact]
+    public void GetMembers_returns_direct_or_recursive_members()
+    {
+        var userName = NewName();
+        var innerName = NewName();
+        var outerName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var inner = new GroupPrincipal(context, innerName);
+            inner.Save();
+            using var outer = new GroupPrincipal(context, outerName);
+            outer.Save();
+
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+            inner.Members.Add(user);
+            inner.Save();
+            outer.Members.Add(inner);
+            outer.Save();
+
+            using var direct = outer.GetMembers();
+            Assert.Equal(new[] { innerName }, direct.Select(p => p.SamAccountName));
+
+            using var recursive = outer.GetMembers(recursive: true);
+            var names = recursive.Select(p => p.SamAccountName).ToList();
+            Assert.Contains(innerName, names);
+            Assert.Contains(userName, names);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(outerName));
+            TestDirectory.Delete(DnFor(innerName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
     public void Administrator_is_in_domain_admins()
     {
         using var context = new PrincipalContext(

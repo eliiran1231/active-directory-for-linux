@@ -47,6 +47,51 @@ public class GroupPrincipal : Principal
     /// <summary>The members of this group. Changes need a <see cref="Principal.Save"/>.</summary>
     public PrincipalCollection Members => _members ??= new PrincipalCollection(this);
 
+    /// <summary>Returns this group's direct members.</summary>
+    public PrincipalSearchResult<Principal> GetMembers() => GetMembers(recursive: false);
+
+    /// <summary>
+    /// Returns this group's members. When <paramref name="recursive"/> is
+    /// true, members of nested groups are included as well.
+    /// </summary>
+    public PrincipalSearchResult<Principal> GetMembers(bool recursive)
+    {
+        if (!recursive)
+        {
+            // Materialize the collection so the returned result owns and
+            // disposes the principals, just like other PrincipalSearchResult
+            // APIs. This also keeps staged membership changes visible.
+            return new PrincipalSearchResult<Principal>(Members.ToList());
+        }
+
+        var groupDn = RequireEntry().DistinguishedName;
+        var filter = $"(memberOf:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(groupDn)})";
+        var root = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        try
+        {
+            using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
+            var members = new List<Principal>();
+            foreach (var result in searcher.FindAll())
+            {
+                var entry = result.GetDirectoryEntry();
+                var principal = PrincipalFactory.FromEntry(ContextRef, entry);
+                if (principal is null)
+                {
+                    entry.Dispose();
+                    continue;
+                }
+
+                members.Add(principal);
+            }
+
+            return new PrincipalSearchResult<Principal>(members);
+        }
+        finally
+        {
+            root.Dispose();
+        }
+    }
+
     /// <summary>
     /// How widely the group can be used. Null before the object is saved and no
     /// scope was set.

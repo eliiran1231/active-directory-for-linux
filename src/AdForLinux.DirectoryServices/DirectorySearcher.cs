@@ -290,8 +290,17 @@ public class DirectorySearcher : IDisposable
 
     private void ConfigureConnection(LdapConnection connection)
     {
-        connection.SessionOptions.ReferralChasing =
-            (ReferralChasingOptions)(int)ReferralChasing;
+        // ADSI uses bit flags (None = 0, Subordinate = 0x20, External =
+        // 0x40), whereas Protocols uses a compact enum. On Linux the
+        // protocol implementation accepts only None and All; map either
+        // partial ADSI mode to All rather than passing its incompatible raw
+        // numeric value.
+        connection.SessionOptions.ReferralChasing = ReferralChasing switch
+        {
+            ReferralChasingOption.None => ReferralChasingOptions.None,
+            ReferralChasingOption.All => ReferralChasingOptions.All,
+            _ => ReferralChasingOptions.All,
+        };
     }
 
     private void UpdateControlState(SearchResponse response)
