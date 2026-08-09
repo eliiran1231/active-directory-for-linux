@@ -178,4 +178,79 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
                 ourResults.Select(r => r.Properties["distinguishedname"][0].ToString()))
             .Assert();
     }
+
+    [Fact]
+    public void Searcher_attribute_scope_query_matches()
+    {
+        using var msRoot = MicrosoftEntry(_data.GroupDn);
+        using var ourRoot = OurEntry(_data.GroupDn);
+        using var msSearcher = new Ms.DirectorySearcher(msRoot)
+        {
+            AttributeScopeQuery = "member",
+            Filter = "(objectClass=user)",
+        };
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot)
+        {
+            AttributeScopeQuery = "member",
+            Filter = "(objectClass=user)",
+        };
+        msSearcher.PropertiesToLoad.Add("sAMAccountName");
+        msSearcher.PropertiesToLoad.Add("distinguishedName");
+        ourSearcher.PropertiesToLoad.Add("sAMAccountName");
+        ourSearcher.PropertiesToLoad.Add("distinguishedName");
+
+        using var msResults = msSearcher.FindAll();
+        var ourResults = ourSearcher.FindAll();
+
+        new Comparison("DirectorySearcher.AttributeScopeQuery")
+            .Check("SearchScope", msSearcher.SearchScope.ToString(), ourSearcher.SearchScope.ToString())
+            .Check("Count", msResults.Count, ourResults.Count)
+            .CheckSet("paths",
+                msResults.Cast<Ms.SearchResult>().Select(result => result.Path),
+                ourResults.Select(result => result.Path))
+            .CheckSet("sAMAccountName",
+                msResults.Cast<Ms.SearchResult>().Select(result => result.Properties["sAMAccountName"][0].ToString()),
+                ourResults.Select(result => result.Properties["sAMAccountName"][0].ToString()))
+            .Assert();
+    }
+
+    [Fact]
+    public void Searcher_attribute_scope_query_rejects_unset_non_dn_attribute()
+    {
+        CompareInvalidAttributeScopeQuery(_data.NestedGroupDn, "unset non-DN attribute");
+    }
+
+    [Fact]
+    public void Searcher_attribute_scope_query_rejects_dn_text_in_non_dn_attribute()
+    {
+        CompareInvalidAttributeScopeQuery(_data.GroupDn, "DN text in non-DN attribute");
+    }
+
+    private static void CompareInvalidAttributeScopeQuery(string rootDn, string scenario)
+    {
+        using var msRoot = MicrosoftEntry(rootDn);
+        using var ourRoot = OurEntry(rootDn);
+        using var msSearcher = new Ms.DirectorySearcher(msRoot)
+        {
+            AttributeScopeQuery = "description",
+        };
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot)
+        {
+            AttributeScopeQuery = "description",
+        };
+
+        var msError = Record.Exception(() =>
+        {
+            using var results = msSearcher.FindAll();
+            _ = results.Count;
+        });
+        var ourError = Record.Exception(() => _ = ourSearcher.FindAll());
+
+        new Comparison($"DirectorySearcher.AttributeScopeQuery {scenario}")
+            .Check("throws", msError is not null, ourError is not null)
+            .Assert();
+        Assert.NotNull(msError);
+        Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
+        Assert.Contains("InvalidAttributeSyntax (21)", ourError!.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
