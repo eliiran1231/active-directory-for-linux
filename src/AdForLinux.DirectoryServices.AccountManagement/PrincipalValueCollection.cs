@@ -111,7 +111,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     int IList.Add(object? value)
     {
         Add(Cast(value));
-        return Count;
+        return Count - 1;
     }
 
     bool IList.Contains(object? value) => Contains(Cast(value));

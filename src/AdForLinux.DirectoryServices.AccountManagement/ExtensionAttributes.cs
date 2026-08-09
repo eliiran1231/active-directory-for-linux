@@ -10,7 +10,11 @@ public sealed class DirectoryPropertyAttribute : Attribute
     }
 
     public string SchemaAttributeName { get; }
-    public ContextType? Context { get; set; }
+    public ContextType? Context
+    {
+        get => null;
+        set { }
+    }
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]

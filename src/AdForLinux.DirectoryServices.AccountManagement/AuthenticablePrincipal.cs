@@ -19,6 +19,7 @@ public abstract class AuthenticablePrincipal : Principal
     private const int PasswordDoesNotExpire = 0x10000;
     private AdvancedFilters? _advancedSearchFilter;
     private string? _passwordToSet;
+    private bool? _enabledAfterPassword;
 
     protected internal AuthenticablePrincipal(PrincipalContext context)
     {
@@ -40,8 +41,8 @@ public abstract class AuthenticablePrincipal : Principal
 
         SamAccountName = samAccountName;
         Name = samAccountName;
-        Enabled = enabled;
         _passwordToSet = password;
+        Enabled = enabled;
     }
 
     public virtual AdvancedFilters AdvancedSearchFilter =>
@@ -65,7 +66,18 @@ public abstract class AuthenticablePrincipal : Principal
         {
             if (value is not null)
             {
-                SetUserAccountControlBit(AccountDisabled, on: !value.Value);
+                if (_passwordToSet is not null && Entry is null)
+                {
+                    // AD requires the password to be established before the
+                    // account is enabled. Remember the requested final state,
+                    // but always create a constructor-initialized account disabled.
+                    _enabledAfterPassword = value.Value;
+                    SetUserAccountControlBit(AccountDisabled, on: true);
+                }
+                else
+                {
+                    SetUserAccountControlBit(AccountDisabled, on: !value.Value);
+                }
             }
         }
     }
@@ -238,6 +250,13 @@ public abstract class AuthenticablePrincipal : Principal
         {
             SetPassword(_passwordToSet);
             _passwordToSet = null;
+        }
+
+        if (_enabledAfterPassword is not null)
+        {
+            Enabled = _enabledAfterPassword.Value;
+            Entry!.CommitChanges();
+            _enabledAfterPassword = null;
         }
     }
 

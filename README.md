@@ -104,7 +104,7 @@ docker compose up --build --abort-on-container-exit
 ```
 
 This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 107 tests run on each target, including live coverage against a
+tests on each. 109 tests run on each target, including live coverage against a
 real Samba AD domain controller.
 
 The tests create and delete their own objects under `CN=Users`.

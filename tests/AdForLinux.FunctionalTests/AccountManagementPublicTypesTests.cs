@@ -21,9 +21,9 @@ public class AccountManagementPublicTypesTests
         values.Add("HOST/server.example.test");
         values.Insert(0, "RestrictedKrbHost/server.example.test");
         IList list = values;
-        var returnedCount = list.Add("TERMSRV/server.example.test");
+        var returnedIndex = list.Add("TERMSRV/server.example.test");
 
-        Assert.Equal(3, returnedCount);
+        Assert.Equal(2, returnedIndex);
         Assert.Equal(3, values.Count);
         Assert.Equal("RestrictedKrbHost/server.example.test", values[0]);
         Assert.False(values.IsFixedSize);
@@ -66,7 +66,7 @@ public class AccountManagementPublicTypesTests
         var rdn = new DirectoryRdnPrefixAttribute("CN");
 
         Assert.Equal("extensionAttribute1", property.SchemaAttributeName);
-        Assert.Equal(ContextType.Domain, property.Context);
+        Assert.Null(property.Context);
         Assert.Equal("customPerson", objectClass.ObjectClass);
         Assert.Null(objectClass.Context);
         Assert.Equal("CN", rdn.RdnPrefix);

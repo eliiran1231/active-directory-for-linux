@@ -15,6 +15,12 @@ public class UserPrincipal : AuthenticablePrincipal
     {
     }
 
+    /// <summary>Starts a new user with its account name, password, and enabled state.</summary>
+    public UserPrincipal(PrincipalContext context, string samAccountName, string password, bool enabled)
+        : base(context, samAccountName, password, enabled)
+    {
+    }
+
     public static new PrincipalSearchResult<UserPrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>
         FindByLockoutTime<UserPrincipal>(context, time, type);
     public static new PrincipalSearchResult<UserPrincipal> FindByLogonTime(PrincipalContext context, DateTime time, MatchType type) =>

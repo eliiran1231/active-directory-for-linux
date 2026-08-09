@@ -40,6 +40,32 @@ public class ComputerPrincipalTests
     }
 
     [Fact]
+    public void Constructor_can_create_an_enabled_computer_with_a_valid_password()
+    {
+        var name = $"adfl-ec-{Guid.NewGuid():N}"[..18];
+        var accountName = $"{name}$";
+        var dn = $"CN={accountName},{TestDirectory.UsersContainer}";
+
+        try
+        {
+            using var context = Context();
+            using (var computer = new ComputerPrincipal(
+                context, accountName, "Str0ng!ComputerPass#2026", enabled: true))
+            {
+                computer.Save();
+            }
+
+            using var found = ComputerPrincipal.FindByIdentity(context, accountName);
+            Assert.NotNull(found);
+            Assert.True(found!.Enabled);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Computer_can_be_found_materialized_and_updated()
     {
         var name = $"adfl-c-{Guid.NewGuid():N}"[..18];
