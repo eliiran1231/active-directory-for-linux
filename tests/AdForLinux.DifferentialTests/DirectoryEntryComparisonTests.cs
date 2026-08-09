@@ -1,3 +1,4 @@
+using System.Collections;
 using Xunit;
 using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
@@ -81,6 +82,42 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check("Count", ms.Properties["noSuchAttributeHere"].Count,
                             ours.Properties["noSuchAttributeHere"].Count)
             .Assert();
+    }
+
+    [Fact]
+    public void Property_collection_non_generic_copy_copies_property_values()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+
+        var msValues = new Ms.PropertyValueCollection[ms.Properties.Count];
+        var ourValues = new Ours.PropertyValueCollection[ours.Properties.Count];
+
+        ((ICollection)ms.Properties).CopyTo(msValues, 0);
+        ((ICollection)ours.Properties).CopyTo(ourValues, 0);
+
+        new Comparison("PropertyCollection.ICollection.CopyTo")
+            .CheckSet("property names",
+                msValues.Select(value => value.PropertyName),
+                ourValues.Select(value => value.PropertyName))
+            .Assert();
+    }
+
+    [Fact]
+    public void Directory_entries_find_requires_the_actual_schema_class()
+    {
+        using var msContainer = MicrosoftEntry(DifferentialSettings.UsersContainer);
+        using var ourContainer = OurEntry(DifferentialSettings.UsersContainer);
+        var relativeName = $"CN={_data.UserName}";
+
+        var msError = Record.Exception(() => msContainer.Children.Find(relativeName, "person"));
+        var ourError = Record.Exception(() => ourContainer.Children.Find(relativeName, "person"));
+
+        new Comparison("DirectoryEntries.Find schema class")
+            .Check("derived class rejected", msError is not null, ourError is not null)
+            .Assert();
+        Assert.NotNull(msError);
+        Assert.IsType<InvalidOperationException>(ourError);
     }
 
     [Fact]

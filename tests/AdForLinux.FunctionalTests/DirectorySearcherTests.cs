@@ -273,8 +273,8 @@ public class DirectorySearcherTests
 
         using var results = searcher.FindAll();
 
-        Assert.Equal(new[] { "sAMAccountName", "distinguishedName", "ADsPath" }, results.PropertiesLoaded);
-        Assert.Contains("ADsPath", searcher.PropertiesToLoad.Cast<string>());
+        Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, results.PropertiesLoaded);
+        Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, searcher.PropertiesToLoad.Cast<string>());
         Assert.Equal(IntPtr.Zero, results.Handle);
     }
 
@@ -299,6 +299,7 @@ public class DirectorySearcherTests
 
             Assert.Equal(dn, found.DistinguishedName, ignoreCase: true);
             Assert.Equal(name, found.Properties["sAMAccountName"].Value);
+            Assert.Throws<InvalidOperationException>(() => children.Find($"CN={name}", "person"));
             Assert.Contains(children, child =>
                 string.Equals(child.DistinguishedName, dn, StringComparison.OrdinalIgnoreCase));
         }

@@ -33,6 +33,8 @@ public class CollectionCompatibilityTests
 
         IDictionary dictionary = properties;
         Assert.True(dictionary.Contains("CN"));
+        Assert.True(dictionary.IsFixedSize);
+        Assert.True(dictionary.IsReadOnly);
         Assert.Same(properties["cn"], dictionary["CN"]);
         Assert.Contains("cn", properties.PropertyNames.Cast<string>(), StringComparer.OrdinalIgnoreCase);
         Assert.Contains(properties["cn"], properties.Values.Cast<PropertyValueCollection>());
@@ -40,6 +42,17 @@ public class CollectionCompatibilityTests
         var copy = new PropertyValueCollection[1];
         properties.CopyTo(copy, 0);
         Assert.Same(properties["cn"], copy[0]);
+
+        ICollection collection = properties;
+        var interfaceCopy = new PropertyValueCollection[properties.Count];
+        collection.CopyTo(interfaceCopy, 0);
+        Assert.Same(properties["cn"], interfaceCopy[0]);
+
+        var enumerator = properties.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Same(properties["cn"], enumerator.Current);
+        Assert.Equal("cn", (string)enumerator.Key, ignoreCase: true);
+
         Assert.Throws<NotSupportedException>(() => dictionary.Add("mail", properties["mail"]));
     }
 

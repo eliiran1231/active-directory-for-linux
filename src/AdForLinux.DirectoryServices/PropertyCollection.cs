@@ -54,14 +54,14 @@ public sealed class PropertyCollection : IDictionary, IEnumerable<PropertyValueC
 
     internal PropertyValueCollection GetOrAdd(string propertyName) => this[propertyName];
 
-    public IDictionaryEnumerator GetEnumerator() => ((IDictionary)_byName).GetEnumerator();
+    public IDictionaryEnumerator GetEnumerator() => new PropertyEnumerator(_byName.GetEnumerator());
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     IEnumerator<PropertyValueCollection> IEnumerable<PropertyValueCollection>.GetEnumerator() =>
         _byName.Values.GetEnumerator();
 
-    bool IDictionary.IsFixedSize => false;
+    bool IDictionary.IsFixedSize => true;
 
     bool IDictionary.IsReadOnly => true;
 
@@ -91,5 +91,51 @@ public sealed class PropertyCollection : IDictionary, IEnumerable<PropertyValueC
 
     object ICollection.SyncRoot => this;
 
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_byName).CopyTo(array, index);
+    void ICollection.CopyTo(Array array, int index)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+        if (array.Rank != 1)
+        {
+            throw new ArgumentException("Only single-dimensional arrays are supported.", nameof(array));
+        }
+
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        if (index > array.Length - Count)
+        {
+            throw new ArgumentException("The destination array is not large enough.", nameof(array));
+        }
+
+        foreach (var value in _byName.Values)
+        {
+            array.SetValue(value, index++);
+        }
+    }
+
+    private sealed class PropertyEnumerator : IDictionaryEnumerator, IDisposable
+    {
+        private readonly IEnumerator<KeyValuePair<string, PropertyValueCollection>> _inner;
+
+        internal PropertyEnumerator(IEnumerator<KeyValuePair<string, PropertyValueCollection>> inner)
+        {
+            _inner = inner;
+        }
+
+        public object Current => Value;
+
+        public DictionaryEntry Entry => new(Key, Value);
+
+        public object Key => _inner.Current.Key;
+
+        public object Value => _inner.Current.Value;
+
+        public bool MoveNext() => _inner.MoveNext();
+
+        public void Reset() => _inner.Reset();
+
+        public void Dispose() => _inner.Dispose();
+    }
 }

@@ -43,7 +43,7 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
         {
             child.RefreshCache();
             if (!string.IsNullOrEmpty(schemaClassName)
-                && !child.Properties["objectClass"].Contains(schemaClassName))
+                && !string.Equals(child.SchemaClassName, schemaClassName, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException(
                     $"Child '{name}' does not have schema class '{schemaClassName}'.");

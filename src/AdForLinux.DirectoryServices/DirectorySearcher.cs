@@ -402,22 +402,7 @@ public class DirectorySearcher : IDisposable
         return new SearchResultCollection(results, GetPropertiesLoaded());
     }
 
-    private string[] GetPropertiesLoaded()
-    {
-        if (PropertiesToLoad.Count == 0)
-        {
-            return Array.Empty<string>();
-        }
-
-        if (!PropertiesToLoad.Contains("ADsPath"))
-        {
-            // ADSI adds this pseudo-property so SearchResult can reopen an entry.
-            // Protocols supplies Path directly, but preserve the public metadata.
-            PropertiesToLoad.Add("ADsPath");
-        }
-
-        return PropertiesToLoad.Cast<string>().ToArray();
-    }
+    private string[] GetPropertiesLoaded() => PropertiesToLoad.Cast<string>().ToArray();
 
     private SearchRequest BuildRequest()
     {
