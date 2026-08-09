@@ -103,6 +103,8 @@ public class PrincipalSearcher : IDisposable
                 .Where(pair => pair.Value is not null)
                 .Select(pair => $"({pair.Key}={EscapeKeepingWildcards(pair.Value!.ToString()!)})"));
 
+        conditions += string.Concat(example.AdvancedFilterConditions);
+
         return (context, $"(&{example.CategoryFilter}{conditions})");
     }
 

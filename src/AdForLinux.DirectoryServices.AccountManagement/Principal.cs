@@ -12,6 +12,7 @@ public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
 
     private protected PrincipalContext ContextRef = null!;
 
@@ -234,6 +235,36 @@ public abstract class Principal : IDisposable
 
         return _pending.TryGetValue(attributeName, out var value) ? value?.ToString() : null;
     }
+
+    private protected IEnumerable<string> GetValues(string attributeName)
+    {
+        if (Entry is not null)
+        {
+            return Entry.Properties[attributeName].Cast<object>().Select(value => value.ToString()!).ToArray();
+        }
+
+        return _pending.TryGetValue(attributeName, out var value) && value is IEnumerable<object> many
+            ? many.Select(item => item.ToString()!).ToArray()
+            : Array.Empty<string>();
+    }
+
+    private protected void SetValues<T>(string attributeName, IReadOnlyList<T> values)
+    {
+        var array = values.Cast<object>().ToArray();
+        if (Entry is not null)
+        {
+            Entry.Properties[attributeName].Value = array;
+        }
+        else
+        {
+            _pending[attributeName] = array;
+        }
+    }
+
+    internal void SetAdvancedFilter(string attribute, string value, MatchType match) =>
+        _advancedFilters[attribute] = AdvancedFilters.ToLdapCondition(attribute, value, match);
+
+    internal IEnumerable<string> AdvancedFilterConditions => _advancedFilters.Values;
 
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)

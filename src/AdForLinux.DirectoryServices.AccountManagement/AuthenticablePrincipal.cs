@@ -8,6 +8,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <c>AuthenticablePrincipal</c>. Adds account state and password operations on
 /// top of <see cref="Principal"/>.
 /// </summary>
+[DirectoryRdnPrefix("CN")]
 public abstract class AuthenticablePrincipal : Principal
 {
     // userAccountControl bits.
@@ -16,6 +17,37 @@ public abstract class AuthenticablePrincipal : Principal
     private const int NormalAccount = 0x200;
     private const int NotDelegated = 0x100000;
     private const int PasswordDoesNotExpire = 0x10000;
+    private AdvancedFilters? _advancedSearchFilter;
+    private string? _passwordToSet;
+
+    protected internal AuthenticablePrincipal(PrincipalContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ContextRef = context;
+    }
+
+    protected internal AuthenticablePrincipal(
+        PrincipalContext context,
+        string samAccountName,
+        string password,
+        bool enabled)
+        : this(context)
+    {
+        if (samAccountName is null || password is null)
+        {
+            throw new ArgumentException("The account name and password cannot be null.");
+        }
+
+        SamAccountName = samAccountName;
+        Name = samAccountName;
+        Enabled = enabled;
+        _passwordToSet = password;
+    }
+
+    public virtual AdvancedFilters AdvancedSearchFilter =>
+        _advancedSearchFilter ??= new AdvancedFilters(this);
+
+    private protected virtual int DefaultUserAccountControl => NormalAccount;
 
     /// <summary>
     /// Whether the account is enabled. Reads and writes the ACCOUNTDISABLE bit
@@ -190,7 +222,7 @@ public abstract class AuthenticablePrincipal : Principal
 
     private protected void SetUserAccountControlBit(int bit, bool on)
     {
-        var flags = ReadUserAccountControl() ?? NormalAccount;
+        var flags = ReadUserAccountControl() ?? DefaultUserAccountControl;
         flags = on ? flags | bit : flags & ~bit;
         SetString("userAccountControl", flags.ToString());
     }
@@ -198,4 +230,67 @@ public abstract class AuthenticablePrincipal : Principal
     private DirectoryEntry RequireSaved() =>
         Entry ?? throw new InvalidOperationException(
             "The account must be saved before this operation.");
+
+    private protected override void OnAfterSave()
+    {
+        base.OnAfterSave();
+        if (_passwordToSet is not null)
+        {
+            SetPassword(_passwordToSet);
+            _passwordToSet = null;
+        }
+    }
+
+    public static PrincipalSearchResult<AuthenticablePrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, "lockoutTime", time, type);
+    public static PrincipalSearchResult<AuthenticablePrincipal> FindByLogonTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, "lastLogonTimestamp", time, type);
+    public static PrincipalSearchResult<AuthenticablePrincipal> FindByExpirationTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, "accountExpires", time, type);
+    public static PrincipalSearchResult<AuthenticablePrincipal> FindByBadPasswordAttempt(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, "badPasswordTime", time, type);
+    public static PrincipalSearchResult<AuthenticablePrincipal> FindByPasswordSetTime(PrincipalContext context, DateTime time, MatchType type) =>
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, "pwdLastSet", time, type);
+
+    protected static PrincipalSearchResult<T> FindByLockoutTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
+        FindByAdvancedFilter<T>(context, "lockoutTime", time, type);
+    protected static PrincipalSearchResult<T> FindByLogonTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
+        FindByAdvancedFilter<T>(context, "lastLogonTimestamp", time, type);
+    protected static PrincipalSearchResult<T> FindByExpirationTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
+        FindByAdvancedFilter<T>(context, "accountExpires", time, type);
+    protected static PrincipalSearchResult<T> FindByBadPasswordAttempt<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
+        FindByAdvancedFilter<T>(context, "badPasswordTime", time, type);
+    protected static PrincipalSearchResult<T> FindByPasswordSetTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
+        FindByAdvancedFilter<T>(context, "pwdLastSet", time, type);
+
+    private static PrincipalSearchResult<T> FindByAdvancedFilter<T>(PrincipalContext context, string attribute, DateTime time, MatchType type)
+        where T : AuthenticablePrincipal
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var category = typeof(T) == typeof(ComputerPrincipal)
+            ? "(objectCategory=computer)"
+            : typeof(T) == typeof(UserPrincipal)
+                ? "(objectCategory=person)(objectClass=user)"
+                : "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
+        var value = time.ToUniversalTime().ToFileTimeUtc().ToString();
+        var condition = AdvancedFilters.ToLdapCondition(attribute, value, type);
+        using var root = context.CreateDirectoryEntry(context.Container);
+        using var searcher = new DirectorySearcher(root, $"(&{category}{condition})") { PageSize = 500 };
+        using var results = searcher.FindAll();
+        var principals = new List<T>();
+        foreach (var result in results.Cast<SearchResult>())
+        {
+            var entry = result.GetDirectoryEntry();
+            if (PrincipalFactory.FromEntry(context, entry) is T principal)
+            {
+                principals.Add(principal);
+            }
+            else
+            {
+                entry.Dispose();
+            }
+        }
+
+        return new PrincipalSearchResult<T>(principals);
+    }
 }

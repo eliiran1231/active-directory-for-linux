@@ -7,6 +7,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <see cref="FindByIdentity(PrincipalContext, string)"/>, or make a new one and
 /// call <c>Save</c>. Manage membership through <see cref="Members"/>.
 /// </summary>
+[DirectoryRdnPrefix("CN")]
 public class GroupPrincipal : Principal
 {
     // groupType flags from AD.
