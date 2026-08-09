@@ -264,6 +264,51 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void FindAll_reports_the_explicitly_loaded_properties()
+    {
+        using var root = Root();
+        using var searcher = new DirectorySearcher(root, "(sAMAccountName=Administrator)");
+        searcher.PropertiesToLoad.Add("sAMAccountName");
+        searcher.PropertiesToLoad.Add("distinguishedName");
+
+        using var results = searcher.FindAll();
+
+        Assert.Equal(new[] { "sAMAccountName", "distinguishedName", "ADsPath" }, results.PropertiesLoaded);
+        Assert.Contains("ADsPath", searcher.PropertiesToLoad.Cast<string>());
+        Assert.Equal(IntPtr.Zero, results.Handle);
+    }
+
+    [Fact]
+    public void Directory_entries_find_and_schema_filter_work_for_protocol_children()
+    {
+        var name = $"adfl-c-{Guid.NewGuid():N}"[..18];
+        var dn = TestDirectory.Create(name, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = name,
+        });
+
+        try
+        {
+            using var users = new DirectoryEntry(
+                TestSettings.PathFor(TestDirectory.UsersContainer), TestSettings.BindDn, TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer);
+            var children = users.Children;
+            children.SchemaFilter.Add("user");
+
+            using var found = children.Find($"CN={name}", "user");
+
+            Assert.Equal(dn, found.DistinguishedName, ignoreCase: true);
+            Assert.Equal(name, found.Properties["sAMAccountName"].Value);
+            Assert.Contains(children, child =>
+                string.Equals(child.DistinguishedName, dn, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Attribute_scope_query_filters_and_loads_referenced_objects()
     {
         var userName = $"adfl-a-{Guid.NewGuid():N}"[..18];

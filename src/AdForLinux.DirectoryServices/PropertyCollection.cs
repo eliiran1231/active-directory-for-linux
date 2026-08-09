@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices;
 /// Like Microsoft's type, asking for a missing attribute returns an empty
 /// collection (it does not throw), so callers can always read <c>.Value</c>.
 /// </summary>
-public sealed class PropertyCollection : IEnumerable<PropertyValueCollection>
+public sealed class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollection>
 {
     private readonly Dictionary<string, PropertyValueCollection> _byName =
         new(StringComparer.OrdinalIgnoreCase);
@@ -43,11 +43,53 @@ public sealed class PropertyCollection : IEnumerable<PropertyValueCollection>
     public int Count => _byName.Count;
 
     /// <summary>All attribute names.</summary>
-    public ICollection<string> PropertyNames => _byName.Keys;
+    public ICollection PropertyNames => _byName.Keys;
+
+    /// <summary>All property value collections.</summary>
+    public ICollection Values => _byName.Values;
+
+    /// <summary>Copies the property value collections to an array.</summary>
+    public void CopyTo(PropertyValueCollection[] array, int index) =>
+        _byName.Values.CopyTo(array, index);
 
     internal PropertyValueCollection GetOrAdd(string propertyName) => this[propertyName];
 
-    public IEnumerator<PropertyValueCollection> GetEnumerator() => _byName.Values.GetEnumerator();
+    public IDictionaryEnumerator GetEnumerator() => ((IDictionary)_byName).GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    IEnumerator<PropertyValueCollection> IEnumerable<PropertyValueCollection>.GetEnumerator() =>
+        _byName.Values.GetEnumerator();
+
+    bool IDictionary.IsFixedSize => false;
+
+    bool IDictionary.IsReadOnly => true;
+
+    ICollection IDictionary.Keys => PropertyNames;
+
+    ICollection IDictionary.Values => Values;
+
+    object? IDictionary.this[object key]
+    {
+        get => key is string name ? this[name] : null;
+        set => throw new NotSupportedException("The property dictionary is read-only.");
+    }
+
+    void IDictionary.Add(object key, object? value) =>
+        throw new NotSupportedException("The property dictionary is read-only.");
+
+    void IDictionary.Clear() => throw new NotSupportedException("The property dictionary is read-only.");
+
+    bool IDictionary.Contains(object key) => key is string name && Contains(name);
+
+    IDictionaryEnumerator IDictionary.GetEnumerator() => GetEnumerator();
+
+    void IDictionary.Remove(object key) =>
+        throw new NotSupportedException("The property dictionary is read-only.");
+
+    bool ICollection.IsSynchronized => false;
+
+    object ICollection.SyncRoot => this;
+
+    void ICollection.CopyTo(Array array, int index) => ((ICollection)_byName).CopyTo(array, index);
 }

@@ -121,7 +121,8 @@ public abstract class Principal : IDisposable
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
             var groups = new List<Principal>();
-            foreach (var result in searcher.FindAll())
+            using var results = searcher.FindAll();
+            foreach (var result in results.Cast<SearchResult>())
             {
                 groups.Add(new GroupPrincipal(ContextRef, result.GetDirectoryEntry()));
             }

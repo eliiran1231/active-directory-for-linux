@@ -10,7 +10,7 @@ namespace AdForLinux.DirectoryServices;
 /// Values are strings for text attributes and <c>byte[]</c> for binary ones,
 /// the same shapes S.DS.Protocols returns.
 /// </summary>
-public sealed class PropertyValueCollection : IEnumerable<object>
+public sealed class PropertyValueCollection : IList, IEnumerable<object>
 {
     private readonly List<object> _values = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
@@ -37,7 +37,15 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public int Count => _values.Count;
 
     /// <summary>Gets the value at an index.</summary>
-    public object this[int index] => _values[index];
+    public object this[int index]
+    {
+        get => _values[index];
+        set
+        {
+            _values[index] = value;
+            MarkChanged();
+        }
+    }
 
     /// <summary>
     /// The value in the shape Microsoft uses: null / single value / object[].
@@ -82,6 +90,16 @@ public sealed class PropertyValueCollection : IEnumerable<object>
         MarkChanged();
     }
 
+    /// <summary>Adds several values.</summary>
+    public void AddRange(object[] values) => AddRange((IEnumerable<object>)values);
+
+    /// <summary>Adds every value from another property collection.</summary>
+    public void AddRange(PropertyValueCollection values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        AddRange(values._values);
+    }
+
     /// <summary>Removes one value.</summary>
     public void Remove(object value)
     {
@@ -98,6 +116,26 @@ public sealed class PropertyValueCollection : IEnumerable<object>
 
     /// <summary>True if the value is present.</summary>
     public bool Contains(object value) => _values.Exists(v => ValueEquals(v, value));
+
+    /// <summary>Copies the values to an array.</summary>
+    public void CopyTo(object[] array, int index) => _values.CopyTo(array, index);
+
+    /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
+    public int IndexOf(object value) => _values.FindIndex(v => ValueEquals(v, value));
+
+    /// <summary>Inserts a value at the specified index.</summary>
+    public void Insert(int index, object value)
+    {
+        _values.Insert(index, value);
+        MarkChanged();
+    }
+
+    /// <summary>Removes the value at the specified index.</summary>
+    public void RemoveAt(int index)
+    {
+        _values.RemoveAt(index);
+        MarkChanged();
+    }
 
     /// <summary>Removes every value.</summary>
     public void Clear()
@@ -130,4 +168,36 @@ public sealed class PropertyValueCollection : IEnumerable<object>
     public IEnumerator<object> GetEnumerator() => _values.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    bool IList.IsFixedSize => false;
+
+    bool IList.IsReadOnly => false;
+
+    object? IList.this[int index]
+    {
+        get => this[index];
+        set => this[index] = value!;
+    }
+
+    int IList.Add(object? value) => Add(value!);
+
+    bool IList.Contains(object? value) => value is not null && Contains(value);
+
+    int IList.IndexOf(object? value) => value is not null ? IndexOf(value) : -1;
+
+    void IList.Insert(int index, object? value) => Insert(index, value!);
+
+    void IList.Remove(object? value)
+    {
+        if (value is not null)
+        {
+            Remove(value);
+        }
+    }
+
+    bool ICollection.IsSynchronized => false;
+
+    object ICollection.SyncRoot => this;
+
+    void ICollection.CopyTo(Array array, int index) => ((ICollection)_values).CopyTo(array, index);
 }

@@ -1,0 +1,106 @@
+using System.Collections;
+using AdForLinux.DirectoryServices;
+using Xunit;
+
+namespace AdForLinux.FunctionalTests;
+
+public class CollectionCompatibilityTests
+{
+    [Fact]
+    public void Schema_name_collection_supports_the_list_contract()
+    {
+        using var entry = new DirectoryEntry();
+        var schemas = entry.Children.SchemaFilter;
+        schemas.AddRange(new[] { "user", "group" });
+
+        IList list = schemas;
+        list.Insert(1, "computer");
+
+        Assert.True(schemas.Contains("USER"));
+        Assert.Equal(1, schemas.IndexOf("COMPUTER"));
+        Assert.Equal(new[] { "user", "computer", "group" }, schemas.Cast<string>());
+
+        var copy = new string[schemas.Count];
+        schemas.CopyTo(copy, 0);
+        Assert.Equal(new[] { "user", "computer", "group" }, copy);
+    }
+
+    [Fact]
+    public void Property_collection_supports_dictionary_and_copy_contracts()
+    {
+        var properties = new PropertyCollection();
+        properties["cn"].Add("Alice");
+
+        IDictionary dictionary = properties;
+        Assert.True(dictionary.Contains("CN"));
+        Assert.Same(properties["cn"], dictionary["CN"]);
+        Assert.Contains("cn", properties.PropertyNames.Cast<string>(), StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(properties["cn"], properties.Values.Cast<PropertyValueCollection>());
+
+        var copy = new PropertyValueCollection[1];
+        properties.CopyTo(copy, 0);
+        Assert.Same(properties["cn"], copy[0]);
+        Assert.Throws<NotSupportedException>(() => dictionary.Add("mail", properties["mail"]));
+    }
+
+    [Fact]
+    public void Property_value_collection_supports_mutable_list_helpers()
+    {
+        var values = new PropertyValueCollection("member");
+        values.AddRange(new object[] { "first", "third" });
+        values.Insert(1, "second");
+        values[2] = "last";
+
+        IList list = values;
+        list.Add("tail");
+
+        Assert.Equal(1, values.IndexOf("SECOND"));
+        Assert.Equal(new object[] { "first", "second", "last", "tail" }, values.Cast<object>());
+
+        var copy = new object[values.Count];
+        values.CopyTo(copy, 0);
+        Assert.Equal(values.Cast<object>(), copy);
+
+        values.RemoveAt(3);
+        Assert.Equal(3, values.Count);
+        Assert.True(values.Changed);
+    }
+
+    [Fact]
+    public void Result_property_collections_are_read_only_dictionary_and_collection_views()
+    {
+        var properties = new ResultPropertyCollection();
+        properties.Set("cn", new object[] { "Alice", "Alias" });
+
+        IDictionary dictionary = properties;
+        Assert.True(dictionary.Contains("CN"));
+        Assert.True(dictionary.IsReadOnly);
+        Assert.Single(properties);
+        Assert.Equal(1, properties["cn"].IndexOf("Alias"));
+
+        var values = new object[2];
+        properties["cn"].CopyTo(values, 0);
+        Assert.Equal(new object[] { "Alice", "Alias" }, values);
+
+        var collections = new ResultPropertyValueCollection[1];
+        properties.CopyTo(collections, 0);
+        Assert.Same(properties["cn"], collections[0]);
+        Assert.Throws<NotSupportedException>(() => dictionary.Clear());
+    }
+
+    [Fact]
+    public void Search_result_collection_exposes_protocol_compatible_metadata_and_disposal()
+    {
+        var requested = new[] { "cn", "mail" };
+        var results = new SearchResultCollection(Array.Empty<SearchResult>(), requested);
+
+        requested[0] = "changed";
+        Assert.Empty(results);
+        Assert.Equal(new[] { "cn", "mail" }, results.PropertiesLoaded);
+        Assert.Equal(IntPtr.Zero, results.Handle);
+        Assert.IsAssignableFrom<ICollection>(results);
+
+        results.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => results.Handle);
+    }
+}
