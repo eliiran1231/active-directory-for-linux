@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices.Ldap;
+using System.DirectoryServices.Protocols;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -52,6 +53,24 @@ public class ConnectionTests
 
         var values = RootDse.Read(connection, "supportedLDAPVersion");
         Assert.True(values.Count >= 0); // did not throw = anonymous bind worked
+    }
+
+    [Fact]
+    public void Connection_factory_maps_simple_bind_to_basic_authentication()
+    {
+        var basicOptions = new LdapConnectionOptions
+        {
+            Host = TestSettings.Host,
+            Port = TestSettings.Port,
+            UseSsl = TestSettings.UseTls,
+            SkipCertificateCheck = true,
+            BindDn = "user@example.test",
+            BindPassword = "password",
+            AuthenticationType = AuthType.Basic,
+        };
+        using var basic = LdapConnectionFactory.Create(basicOptions);
+        Assert.Equal(AuthType.Basic, basic.AuthType);
+
     }
 
     [Theory]

@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices.AccountManagement;
+using System.DirectoryServices.Protocols;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -91,6 +92,68 @@ public class PrincipalContextTests
             TestSettings.BindDn,
             "definitely-wrong-password",
             ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer));
+    }
+
+    [Fact]
+    public void Explicit_context_options_map_to_ldap_authentication_and_protection()
+    {
+        using var simpleContext = new PrincipalContext(
+            ContextType.Domain,
+            "dc.example.test",
+            "DC=example,DC=test",
+            ContextOptions.SimpleBind,
+            "user@example.test",
+            "password");
+        var simple = simpleContext.BuildOptions();
+        Assert.Equal(AuthType.Basic, simple.AuthenticationType);
+        Assert.False(simple.Signing);
+        Assert.False(simple.Sealing);
+
+        using var negotiateContext = new PrincipalContext(
+            ContextType.Domain,
+            "dc.example.test",
+            "DC=example,DC=test",
+            ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing,
+            "user@example.test",
+            "password");
+        var negotiate = negotiateContext.BuildOptions();
+        Assert.Equal(AuthType.Negotiate, negotiate.AuthenticationType);
+        Assert.True(negotiate.Signing);
+        Assert.True(negotiate.Sealing);
+    }
+
+    [Fact]
+    public void ValidateCredentials_rejects_mismatched_null_credentials()
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain, "dc.example.test", "DC=example,DC=test");
+
+        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
+            null!, "password", ContextOptions.SimpleBind));
+        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
+            "user", null!, ContextOptions.SimpleBind));
+    }
+
+    [Fact]
+    public void ValidateCredentials_rejects_invalid_context_options()
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain, "dc.example.test", "DC=example,DC=test");
+
+        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
+            "user", "password", ContextOptions.Negotiate | ContextOptions.SimpleBind));
+        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
+            "user", "password", 0));
+    }
+
+    [Fact]
+    public void ValidateCredentials_propagates_non_authentication_ldap_failures()
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain, "127.0.0.1:1", "DC=example,DC=test");
+
+        Assert.Throws<LdapException>(() => context.ValidateCredentials(
+            "user", "password", ContextOptions.SimpleBind));
     }
 
     [Fact]

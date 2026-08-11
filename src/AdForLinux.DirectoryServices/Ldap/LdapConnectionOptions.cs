@@ -1,4 +1,5 @@
 using System.Net;
+using System.DirectoryServices.Protocols;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
@@ -27,6 +28,15 @@ internal sealed class LdapConnectionOptions
     /// </summary>
     public bool SkipCertificateCheck { get; init; }
 
+    /// <summary>The LDAP authentication mechanism used for the bind.</summary>
+    public AuthType AuthenticationType { get; init; } = AuthType.Basic;
+
+    /// <summary>Whether SASL signing is requested for the connection.</summary>
+    public bool Signing { get; init; }
+
+    /// <summary>Whether SASL sealing is requested for the connection.</summary>
+    public bool Sealing { get; init; }
+
     /// <summary>
     /// Bind user. A UPN (user@domain), a DOMAIN\user, or a full DN.
     /// Null or empty means an anonymous (unauthenticated) bind.
@@ -36,10 +46,12 @@ internal sealed class LdapConnectionOptions
     /// <summary>Bind password. Ignored for anonymous bind.</summary>
     public string? BindPassword { get; init; }
 
-    /// <summary>True when no bind user was given.</summary>
-    public bool IsAnonymous => string.IsNullOrEmpty(BindDn);
+    /// <summary>True when a Basic bind has no username, or Anonymous was requested explicitly.</summary>
+    public bool IsAnonymous =>
+        AuthenticationType == AuthType.Anonymous ||
+        (AuthenticationType == AuthType.Basic && string.IsNullOrEmpty(BindDn));
 
-    /// <summary>Builds the credential for a simple bind, or null when anonymous.</summary>
+    /// <summary>Builds the explicit credential, or null to use anonymous/default credentials.</summary>
     public NetworkCredential? ToCredential() =>
-        IsAnonymous ? null : new NetworkCredential(BindDn, BindPassword);
+        string.IsNullOrEmpty(BindDn) ? null : new NetworkCredential(BindDn, BindPassword);
 }

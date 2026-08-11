@@ -28,6 +28,15 @@ public class PrincipalSurfaceComparisonTests
         Assert.NotNull(ourOptions);
         Assert.Equal(microsoftOptions!.CanWrite, ourOptions!.CanWrite);
 
+        var microsoftContext = typeof(Ms.PrincipalSearcher).GetProperty(
+            nameof(Ms.PrincipalSearcher.Context));
+        var ourContext = typeof(Ours.PrincipalSearcher).GetProperty(
+            nameof(Ours.PrincipalSearcher.Context));
+        Assert.NotNull(microsoftContext);
+        Assert.NotNull(ourContext);
+        Assert.Equal(microsoftContext!.CanRead, ourContext!.CanRead);
+        Assert.Equal(microsoftContext.CanWrite, ourContext.CanWrite);
+
         var microsoftUnderlying = typeof(Ms.PrincipalSearcher).GetMethod(
             nameof(Ms.PrincipalSearcher.GetUnderlyingSearcher), Type.EmptyTypes);
         var ourUnderlying = typeof(Ours.PrincipalSearcher).GetMethod(

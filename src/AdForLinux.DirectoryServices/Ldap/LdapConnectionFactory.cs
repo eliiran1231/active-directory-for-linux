@@ -4,7 +4,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 
 /// <summary>
 /// Opens and binds an <see cref="LdapConnection"/> from
-/// <see cref="LdapConnectionOptions"/>. Simple bind over TLS.
+/// <see cref="LdapConnectionOptions"/>.
 /// </summary>
 internal static class LdapConnectionFactory
 {
@@ -15,10 +15,26 @@ internal static class LdapConnectionFactory
     /// </summary>
     public static LdapConnection CreateBound(LdapConnectionOptions options)
     {
+        var connection = Create(options);
+        try
+        {
+            connection.Bind();
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Creates and configures a connection without binding it.</summary>
+    internal static LdapConnection Create(LdapConnectionOptions options)
+    {
         var identifier = new LdapDirectoryIdentifier(options.Host, options.Port);
         var connection = new LdapConnection(identifier)
         {
-            AuthType = options.IsAnonymous ? AuthType.Anonymous : AuthType.Basic,
+            AuthType = options.IsAnonymous ? AuthType.Anonymous : options.AuthenticationType,
         };
 
         connection.SessionOptions.ProtocolVersion = 3;
@@ -32,6 +48,18 @@ internal static class LdapConnectionFactory
         {
             // LDAPS: TLS wraps the socket from the start (port 636).
             connection.SessionOptions.SecureSocketLayer = true;
+        }
+
+        // On OpenLDAP, even assigning false can force early server access.
+        // Leave the platform defaults alone unless the caller requested these.
+        if (options.Signing)
+        {
+            connection.SessionOptions.Signing = true;
+        }
+
+        if (options.Sealing)
+        {
+            connection.SessionOptions.Sealing = true;
         }
 
         var credential = options.ToCredential();
@@ -50,7 +78,6 @@ internal static class LdapConnectionFactory
             connection.SessionOptions.StartTransportLayerSecurity(null);
         }
 
-        connection.Bind();
         return connection;
     }
 

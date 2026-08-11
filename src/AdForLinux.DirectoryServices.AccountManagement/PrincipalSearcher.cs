@@ -46,6 +46,13 @@ public class PrincipalSearcher : IDisposable
                 throw new ArgumentNullException(nameof(QueryFilter));
             }
 
+            if (value.IsPersisted)
+            {
+                throw new ArgumentException(
+                    "A persisted principal cannot be used as a query filter.",
+                    nameof(QueryFilter));
+            }
+
             var previousContext = _context;
             _queryFilter = value;
             _context = value.Context;
@@ -56,22 +63,13 @@ public class PrincipalSearcher : IDisposable
         }
     }
 
-    /// <summary>The context searched. Taken from the example if not set.</summary>
+    /// <summary>The context taken from the current query filter.</summary>
     public PrincipalContext? Context
     {
         get
         {
             ThrowIfDisposed();
-            return _context ?? QueryFilter?.Context;
-        }
-        set
-        {
-            ThrowIfDisposed();
-            if (!ReferenceEquals(_context, value))
-            {
-                _context = value;
-                ResetUnderlyingSearcher();
-            }
+            return _context;
         }
     }
 
@@ -126,7 +124,11 @@ public class PrincipalSearcher : IDisposable
     public Type GetUnderlyingSearcherType()
     {
         ThrowIfDisposed();
-        _ = Build();
+        if (_queryFilter is null)
+        {
+            throw new InvalidOperationException("QueryFilter must be set before searching.");
+        }
+
         return typeof(DirectorySearcher);
     }
 
@@ -161,7 +163,13 @@ public class PrincipalSearcher : IDisposable
         var example = QueryFilter
             ?? throw new InvalidOperationException("QueryFilter must be set before searching.");
 
-        var context = Context
+        if (example.IsPersisted)
+        {
+            throw new InvalidOperationException(
+                "A persisted principal cannot be used as a query filter.");
+        }
+
+        var context = _context
             ?? throw new InvalidOperationException("No context: set Context or give the example one.");
 
         var conditions = string.Concat(

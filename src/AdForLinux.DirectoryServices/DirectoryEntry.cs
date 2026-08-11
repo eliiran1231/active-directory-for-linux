@@ -20,6 +20,7 @@ public class DirectoryEntry : Component
     private string? _username;
     private string? _password;
     private AuthenticationTypes _authenticationType;
+    private LdapConnectionOptions? _connectionOptionsOverride;
 
     private LdapPath _path;
     private LdapConnection? _connection;
@@ -70,6 +71,20 @@ public class DirectoryEntry : Component
         _authenticationType = authenticationType;
     }
 
+    /// <summary>Opens an entry using an AccountManagement LDAP bind configuration.</summary>
+    internal DirectoryEntry(string path, LdapConnectionOptions connectionOptions)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(connectionOptions);
+        _path = LdapPath.Parse(path);
+        _username = connectionOptions.BindDn;
+        _password = connectionOptions.BindPassword;
+        _authenticationType = connectionOptions.UseSsl
+            ? AuthenticationTypes.SecureSocketsLayer
+            : AuthenticationTypes.None;
+        _connectionOptionsOverride = connectionOptions;
+    }
+
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
     public string Path
     {
@@ -77,6 +92,7 @@ public class DirectoryEntry : Component
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            _connectionOptionsOverride = null;
             ResetBinding(string.IsNullOrWhiteSpace(value)
                 ? new LdapPath(null, null, string.Empty)
                 : LdapPath.Parse(value));
@@ -92,6 +108,7 @@ public class DirectoryEntry : Component
             if (_authenticationType != value)
             {
                 _authenticationType = value;
+                _connectionOptionsOverride = null;
                 ResetConnection();
             }
         }
@@ -106,6 +123,7 @@ public class DirectoryEntry : Component
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
                 _username = value;
+                _connectionOptionsOverride = null;
                 ResetConnection();
             }
         }
@@ -120,6 +138,7 @@ public class DirectoryEntry : Component
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
                 _password = value;
+                _connectionOptionsOverride = null;
                 ResetConnection();
             }
         }
@@ -689,7 +708,9 @@ public class DirectoryEntry : Component
     internal DirectoryEntry CreateEntryForDn(string distinguishedName)
     {
         var path = new LdapPath(_path.Host, _path.Port, distinguishedName).ToString();
-        return new DirectoryEntry(path, _username, _password, _authenticationType);
+        return _connectionOptionsOverride is null
+            ? new DirectoryEntry(path, _username, _password, _authenticationType)
+            : new DirectoryEntry(path, _connectionOptionsOverride);
     }
 
     /// <summary>Builds the LDAP path for a DN on this entry's server.</summary>
@@ -698,6 +719,11 @@ public class DirectoryEntry : Component
 
     internal LdapConnectionOptions BuildOptions()
     {
+        if (_connectionOptionsOverride is not null)
+        {
+            return _connectionOptionsOverride;
+        }
+
         if (!_path.HasHost)
         {
             throw new NotSupportedException(

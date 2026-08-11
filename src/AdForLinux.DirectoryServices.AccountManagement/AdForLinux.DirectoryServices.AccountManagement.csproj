@@ -11,4 +11,8 @@
     <ProjectReference Include="..\AdForLinux.DirectoryServices\AdForLinux.DirectoryServices.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
+  </ItemGroup>
+
 </Project>

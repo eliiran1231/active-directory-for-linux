@@ -130,6 +130,53 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
+    public void PrincipalSearcher_rejects_persisted_query_filters()
+    {
+        var groupName = NewName();
+        var groupDn = DnFor(groupName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using var persisted = new GroupPrincipal(context, groupName);
+            persisted.Save();
+
+            Assert.Throws<ArgumentException>(() => new PrincipalSearcher(persisted));
+            using var searcher = new PrincipalSearcher();
+            Assert.Throws<ArgumentException>(() => searcher.QueryFilter = persisted);
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+        }
+    }
+
+    [Fact]
+    public void PrincipalSearcher_rechecks_filter_persistence_before_searching()
+    {
+        var groupName = NewName();
+        var groupDn = DnFor(groupName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using var filter = new GroupPrincipal(context, groupName);
+            using var searcher = new PrincipalSearcher(filter);
+            filter.Save();
+
+            Assert.Equal(typeof(DirectorySearcher), searcher.GetUnderlyingSearcherType());
+            Assert.Throws<InvalidOperationException>(() => searcher.GetLdapFilter());
+            Assert.Throws<InvalidOperationException>(() => searcher.GetUnderlyingSearcher());
+            Assert.Throws<InvalidOperationException>(() => searcher.FindOne());
+            Assert.Throws<InvalidOperationException>(() => searcher.FindAll());
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+        }
+    }
+
+    [Fact]
     public void Principal_identity_sid_extensions_groups_and_membership_round_trip()
     {
         var userName = NewName();

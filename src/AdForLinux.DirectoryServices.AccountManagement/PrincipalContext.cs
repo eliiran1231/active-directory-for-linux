@@ -1,6 +1,7 @@
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 using System.ComponentModel;
+using System.DirectoryServices.Protocols;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -9,7 +10,8 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// Microsoft's <c>PrincipalContext</c>.
 ///
 /// Linux notes: there is no serverless binding, so you must pass the domain
-/// controller name. Binding is a simple bind over TLS.
+/// controller name. Simple and negotiate LDAP authentication are selected with
+/// <see cref="ContextOptions"/>.
 /// </summary>
 public class PrincipalContext : IDisposable
 {
@@ -55,7 +57,7 @@ public class PrincipalContext : IDisposable
     {
     }
 
-    /// <summary>Authenticated context (simple bind) scoped to a container.</summary>
+    /// <summary>Authenticated context scoped to a container.</summary>
     public PrincipalContext(ContextType contextType, string? name, string? container, string? userName, string? password)
         : this(contextType, name, container, DefaultOptions, userName, password)
     {
@@ -162,13 +164,31 @@ public class PrincipalContext : IDisposable
         string password,
         ContextOptions options)
     {
+        if ((userName is null) != (password is null))
+        {
+            throw new ArgumentException(
+                "The userName and password parameters must either both be null or both contain a value.");
+        }
+
+        ValidateOptions(options);
+
+        if (userName is { Length: 0 })
+        {
+            return false;
+        }
+
         try
         {
             using var connection = LdapConnectionFactory.CreateBound(
                 BuildOptions(userName, password, options));
             return true;
         }
-        catch (System.DirectoryServices.Protocols.LdapException)
+        catch (LdapException ex) when (IsAuthenticationFailure(ex))
+        {
+            return false;
+        }
+        catch (DirectoryOperationException ex)
+            when ((int)ex.Response.ResultCode == 49)
         {
             return false;
         }
@@ -185,11 +205,17 @@ public class PrincipalContext : IDisposable
         ContextOptions options)
     {
         var useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
+        var authenticationType = options.HasFlag(ContextOptions.SimpleBind)
+            ? AuthType.Basic
+            : AuthType.Negotiate;
         return new LdapConnectionOptions
         {
             Host = Name,
             Port = _hasExplicitPort ? Port : useSsl ? 636 : 389,
             UseSsl = useSsl,
+            AuthenticationType = authenticationType,
+            Signing = options.HasFlag(ContextOptions.Signing),
+            Sealing = options.HasFlag(ContextOptions.Sealing),
             BindDn = bindUser,
             BindPassword = bindPassword,
         };
@@ -207,8 +233,7 @@ public class PrincipalContext : IDisposable
     /// <summary>Opens a DirectoryEntry for a DN, using this context's credentials.</summary>
     internal DirectoryEntry CreateDirectoryEntry(string distinguishedName)
     {
-        var auth = UseSsl ? AuthenticationTypes.SecureSocketsLayer : AuthenticationTypes.None;
-        return new DirectoryEntry(PathFor(distinguishedName), UserName, _password, auth);
+        return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
     private string DiscoverDefaultNamingContext()
@@ -257,6 +282,9 @@ public class PrincipalContext : IDisposable
             "Domain contexts require exactly one of ContextOptions.Negotiate or ContextOptions.SimpleBind.",
             nameof(options));
     }
+
+    private static bool IsAuthenticationFailure(LdapException exception) =>
+        exception.ErrorCode is 49 or 1326;
 
     public void Dispose() => GC.SuppressFinalize(this);
 }

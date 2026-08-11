@@ -25,6 +25,9 @@ public abstract class Principal : IDisposable
     /// <summary>The underlying directory object, or null before it is saved.</summary>
     private protected DirectoryEntry? Entry;
 
+    /// <summary>Whether this principal currently wraps a directory object.</summary>
+    internal bool IsPersisted => Entry is not null;
+
     /// <summary>Sets up a found principal that wraps an existing entry.</summary>
     private protected void AttachExisting(PrincipalContext context, DirectoryEntry entry)
     {

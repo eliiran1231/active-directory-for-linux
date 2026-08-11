@@ -284,6 +284,55 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Assert();
     }
 
+    [Fact]
+    public void ValidateCredentials_with_negotiate_signing_and_sealing_agrees()
+    {
+        using var msContext = new Ms.PrincipalContext(
+            Ms.ContextType.Domain,
+            DifferentialSettings.Host,
+            DifferentialSettings.UsersContainer,
+            Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var ourContext = new Ours.PrincipalContext(
+            Ours.ContextType.Domain,
+            DifferentialSettings.Host,
+            DifferentialSettings.UsersContainer,
+            Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        var upn = $"{_data.UserName}@{DomainSuffix()}";
+
+        new Comparison("ValidateCredentials with negotiate, signing, and sealing")
+            .Check("correct password",
+                msContext.ValidateCredentials(
+                    upn,
+                    _data.UserPassword,
+                    Ms.ContextOptions.Negotiate |
+                    Ms.ContextOptions.Signing |
+                    Ms.ContextOptions.Sealing),
+                ourContext.ValidateCredentials(
+                    upn,
+                    _data.UserPassword,
+                    Ours.ContextOptions.Negotiate |
+                    Ours.ContextOptions.Signing |
+                    Ours.ContextOptions.Sealing))
+            .Check("wrong password",
+                msContext.ValidateCredentials(
+                    upn,
+                    "definitely-wrong",
+                    Ms.ContextOptions.Negotiate |
+                    Ms.ContextOptions.Signing |
+                    Ms.ContextOptions.Sealing),
+                ourContext.ValidateCredentials(
+                    upn,
+                    "definitely-wrong",
+                    Ours.ContextOptions.Negotiate |
+                    Ours.ContextOptions.Signing |
+                    Ours.ContextOptions.Sealing))
+            .Assert();
+    }
+
     private static string DomainSuffix() =>
         string.Join(".", DifferentialSettings.BaseDn
             .Split(',')
