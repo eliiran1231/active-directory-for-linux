@@ -68,7 +68,7 @@ public class GroupPrincipal : Principal
         var groupDn = RequireEntry().DistinguishedName;
         // Recursive results contain only leaves. Groups are traversal nodes,
         // whereas GetMembers(false) may return direct group members.
-        var filter = $"(&(memberOf:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(groupDn)})(!(objectClass=group)))";
+        var filter = $"(&(memberOf:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(groupDn)})(!(objectClass=group)))";
         // GetMembers is not constrained by PrincipalContext.Container: group
         // members in other containers must still be returned.
         var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
@@ -166,11 +166,11 @@ public class GroupPrincipal : Principal
     }
 
     /// <summary>Finds a group by a value across the common identity attributes.</summary>
-    public static GroupPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
+    public static new GroupPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
         Find(context, null, identityValue);
 
     /// <summary>Finds a group by a specific identity type.</summary>
-    public static GroupPrincipal? FindByIdentity(
+    public static new GroupPrincipal? FindByIdentity(
         PrincipalContext context, IdentityType identityType, string identityValue) =>
         Find(context, identityType, identityValue);
 

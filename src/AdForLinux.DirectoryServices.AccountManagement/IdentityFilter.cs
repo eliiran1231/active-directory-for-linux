@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
@@ -8,7 +10,7 @@ internal static class IdentityFilter
 {
     public static string Build(IdentityType? identityType, string identityValue)
     {
-        var value = Escape(identityValue);
+        var value = LdapFilter.EscapeValue(identityValue);
 
         if (identityType is null)
         {
@@ -22,15 +24,15 @@ internal static class IdentityFilter
             IdentityType.Name => $"(cn={value})",
             IdentityType.UserPrincipalName => $"(userPrincipalName={value})",
             IdentityType.DistinguishedName => $"(distinguishedName={value})",
-            _ => throw new NotSupportedException(
-                $"FindByIdentity by {identityType} is not supported yet."),
+            IdentityType.Guid => $"(objectGUID={LdapFilter.EscapeBytes(ParseGuid(identityValue))})",
+            IdentityType.Sid => $"(objectSid={LdapFilter.EscapeBytes(SidCodec.Parse(identityValue))})",
+            _ => throw new InvalidEnumArgumentException(
+                nameof(identityType), (int)identityType.Value, typeof(IdentityType)),
         };
     }
 
-    public static string Escape(string value) => value
-        .Replace("\\", "\\5c")
-        .Replace("*", "\\2a")
-        .Replace("(", "\\28")
-        .Replace(")", "\\29")
-        .Replace("\0", "\\00");
+    private static byte[] ParseGuid(string value) =>
+        System.Guid.TryParse(value, out var guid)
+            ? guid.ToByteArray()
+            : throw new ArgumentException("The identity value is not a valid GUID.", nameof(value));
 }

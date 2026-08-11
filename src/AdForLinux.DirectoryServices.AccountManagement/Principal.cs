@@ -1,3 +1,6 @@
+using System.Collections;
+using System.ComponentModel;
+using System.Security.Principal;
 using AdForLinux.DirectoryServices;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
@@ -49,6 +52,38 @@ public abstract class Principal : IDisposable
             return guid == System.Guid.Empty ? null : guid;
         }
     }
+
+    /// <summary>The security identifier assigned by the directory.</summary>
+    public SecurityIdentifier? Sid
+    {
+        get
+        {
+            if (Entry?.Properties["objectSid"].Value is not byte[] bytes)
+            {
+                return null;
+            }
+
+#pragma warning disable CA1416 // Guarded by the runtime platform check below.
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException(
+                    "System.Security.Principal.SecurityIdentifier is not implemented by .NET on Linux. " +
+                    "Use SidValue for the portable SID string.");
+            }
+
+            return new SecurityIdentifier(bytes, 0);
+#pragma warning restore CA1416
+        }
+    }
+
+    /// <summary>
+    /// The portable SDDL-form SID string. Unlike <see cref="Sid"/>, this works
+    /// on Linux where .NET's <see cref="SecurityIdentifier"/> is a platform stub.
+    /// </summary>
+    public string? SidValue =>
+        Entry?.Properties["objectSid"].Value is byte[] bytes
+            ? SidCodec.Format(bytes)
+            : null;
 
     /// <summary>The object name (<c>cn</c>).</summary>
     public string? Name
@@ -104,20 +139,34 @@ public abstract class Principal : IDisposable
     /// The groups this principal is a direct member of. Nested groups are not
     /// followed — use <see cref="GetAuthorizationGroups"/> for that.
     /// </summary>
-    public PrincipalSearchResult<Principal> GetGroups() =>
-        FindGroups($"(member={IdentityFilter.Escape(RequireDistinguishedName())})");
+    public PrincipalSearchResult<Principal> GetGroups() => GetGroups(ContextRef);
+
+    /// <summary>
+    /// The direct groups this principal belongs to in the supplied context.
+    /// </summary>
+    public PrincipalSearchResult<Principal> GetGroups(PrincipalContext contextToQuery)
+    {
+        ArgumentNullException.ThrowIfNull(contextToQuery);
+        return FindGroups(
+            contextToQuery,
+            $"(member={LdapFilter.EscapeValue(RequireDistinguishedName())})");
+    }
 
     /// <summary>
     /// Every group this principal belongs to, directly or through nesting. Uses
     /// the AD matching rule LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941).
     /// </summary>
     public PrincipalSearchResult<Principal> GetAuthorizationGroups() =>
-        FindGroups($"(member:1.2.840.113556.1.4.1941:={IdentityFilter.Escape(RequireDistinguishedName())})");
+        FindGroups(
+            ContextRef,
+            $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(RequireDistinguishedName())})");
 
-    private PrincipalSearchResult<Principal> FindGroups(string membershipFilter)
+    private PrincipalSearchResult<Principal> FindGroups(
+        PrincipalContext contextToQuery,
+        string membershipFilter)
     {
         var filter = $"(&(objectCategory=group){membershipFilter})";
-        var root = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.Container);
         try
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
@@ -125,7 +174,7 @@ public abstract class Principal : IDisposable
             using var results = searcher.FindAll();
             foreach (var result in results.Cast<SearchResult>())
             {
-                groups.Add(new GroupPrincipal(ContextRef, result.GetDirectoryEntry()));
+                groups.Add(new GroupPrincipal(contextToQuery, result.GetDirectoryEntry()));
             }
 
             return new PrincipalSearchResult<Principal>(groups);
@@ -139,6 +188,176 @@ public abstract class Principal : IDisposable
     private string RequireDistinguishedName() =>
         DistinguishedName ?? throw new InvalidOperationException(
             "The principal must be saved before its groups can be read.");
+
+    /// <summary>Returns whether this principal is a direct member of a group.</summary>
+    public bool IsMemberOf(GroupPrincipal group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        return group.Members.Contains(this);
+    }
+
+    /// <summary>
+    /// Returns whether this principal is a direct member of the group selected
+    /// by the supplied identity.
+    /// </summary>
+    public bool IsMemberOf(
+        PrincipalContext context,
+        IdentityType identityType,
+        string identityValue)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(identityValue);
+
+        using var group = GroupPrincipal.FindByIdentity(context, identityType, identityValue)
+            ?? throw new NoMatchingPrincipalException(
+                "No group matched the supplied identity.");
+        return IsMemberOf(group);
+    }
+
+    /// <summary>Finds any supported principal by a common identity value.</summary>
+    public static Principal? FindByIdentity(PrincipalContext context, string identityValue) =>
+        FindByIdentityWithType(context, typeof(Principal), identityValue);
+
+    /// <summary>Finds any supported principal by a specific identity type.</summary>
+    public static Principal? FindByIdentity(
+        PrincipalContext context,
+        IdentityType identityType,
+        string identityValue) =>
+        FindByIdentityWithType(context, typeof(Principal), identityType, identityValue);
+
+    /// <summary>Typed identity lookup for custom principal subclasses.</summary>
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected static Principal? FindByIdentityWithType(
+        PrincipalContext context,
+        Type principalType,
+        string identityValue) =>
+        FindByIdentityWithTypeCore(context, principalType, null, identityValue);
+
+    /// <summary>Typed identity lookup for custom principal subclasses.</summary>
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected static Principal? FindByIdentityWithType(
+        PrincipalContext context,
+        Type principalType,
+        IdentityType identityType,
+        string identityValue) =>
+        FindByIdentityWithTypeCore(context, principalType, identityType, identityValue);
+
+    private static Principal? FindByIdentityWithTypeCore(
+        PrincipalContext context,
+        Type principalType,
+        IdentityType? identityType,
+        string identityValue)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(principalType);
+        ArgumentNullException.ThrowIfNull(identityValue);
+
+        if (!typeof(Principal).IsAssignableFrom(principalType))
+        {
+            throw new ArgumentException("The requested type must derive from Principal.", nameof(principalType));
+        }
+
+        if (identityType is < IdentityType.SamAccountName or > IdentityType.Guid)
+        {
+            throw new InvalidEnumArgumentException(
+                nameof(identityType), (int)identityType.Value, typeof(IdentityType));
+        }
+
+        var typeFilter = PrincipalTypeFilter(principalType);
+        var filter = $"(&{typeFilter}{IdentityFilter.Build(identityType, identityValue)})";
+        using var root = context.CreateDirectoryEntry(context.Container);
+        using var searcher = new DirectorySearcher(root, filter);
+        using var results = searcher.FindAll();
+
+        Principal? match = null;
+        foreach (var result in results.Cast<SearchResult>())
+        {
+            var entry = result.GetDirectoryEntry();
+            var candidate = Materialize(context, principalType, entry);
+            if (candidate is null)
+            {
+                entry.Dispose();
+                continue;
+            }
+
+            if (match is not null)
+            {
+                candidate.Dispose();
+                match.Dispose();
+                throw new MultipleMatchesException(
+                    "Multiple principal objects matched the supplied identity.");
+            }
+
+            match = candidate;
+        }
+
+        return match;
+    }
+
+    private static string PrincipalTypeFilter(Type principalType)
+    {
+        if (principalType == typeof(Principal))
+        {
+            return "(|(objectCategory=person)(objectCategory=group)(objectCategory=computer))";
+        }
+
+        if (typeof(GroupPrincipal).IsAssignableFrom(principalType))
+        {
+            return "(objectCategory=group)";
+        }
+
+        if (typeof(ComputerPrincipal).IsAssignableFrom(principalType))
+        {
+            return "(objectCategory=computer)";
+        }
+
+        if (typeof(UserPrincipal).IsAssignableFrom(principalType))
+        {
+            return "(&(objectCategory=person)(objectClass=user))";
+        }
+
+        if (typeof(AuthenticablePrincipal).IsAssignableFrom(principalType))
+        {
+            return "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
+        }
+
+        throw new NotSupportedException($"Principal type {principalType.FullName} is not supported.");
+    }
+
+    private static Principal? Materialize(
+        PrincipalContext context,
+        Type principalType,
+        DirectoryEntry entry)
+    {
+        if (principalType == typeof(Principal))
+        {
+            return PrincipalFactory.FromEntry(context, entry);
+        }
+
+        if (principalType == typeof(UserPrincipal))
+        {
+            return new UserPrincipal(context, entry);
+        }
+
+        if (principalType == typeof(GroupPrincipal))
+        {
+            return new GroupPrincipal(context, entry);
+        }
+
+        if (principalType == typeof(ComputerPrincipal))
+        {
+            return new ComputerPrincipal(context, entry);
+        }
+
+        if (Activator.CreateInstance(principalType, context) is not Principal principal)
+        {
+            throw new NotSupportedException(
+                $"Principal type {principalType.FullName} must have a public constructor that accepts PrincipalContext.");
+        }
+
+        principal.AttachExisting(context, entry);
+        return principal;
+    }
 
     /// <summary>Runs just before a new object is created, to fill in defaults.</summary>
     private protected virtual void OnBeforeCreate()
@@ -195,6 +414,53 @@ public abstract class Principal : IDisposable
         }
     }
 
+    /// <summary>
+    /// Saves a new principal in, or moves an existing principal to, another
+    /// domain context.
+    /// </summary>
+    public void Save(PrincipalContext context)
+    {
+        if (context is null)
+        {
+            throw new InvalidOperationException("The target context cannot be null.");
+        }
+
+        if (ReferenceEquals(context, ContextRef))
+        {
+            Save();
+            return;
+        }
+
+        if (Entry is null)
+        {
+            ContextRef = context;
+            Save();
+            return;
+        }
+
+        if (!string.Equals(context.Name, ContextRef.Name, StringComparison.OrdinalIgnoreCase)
+            || context.Port != ContextRef.Port)
+        {
+            throw new PlatformNotSupportedException(
+                "LDAP cannot move an existing principal between different directory servers.");
+        }
+
+        Entry.CommitChanges();
+        var currentDn = Entry.DistinguishedName;
+        var currentParent = ParentDistinguishedName(currentDn);
+        if (!string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase))
+        {
+            using var target = context.CreateDirectoryEntry(context.Container);
+            Entry.MoveTo(target);
+            currentDn = Entry.DistinguishedName;
+        }
+
+        Entry.Dispose();
+        Entry = context.CreateDirectoryEntry(currentDn);
+        ContextRef = context;
+        OnAfterSave();
+    }
+
     /// <summary>Deletes this principal from the directory.</summary>
     public void Delete()
     {
@@ -219,11 +485,135 @@ public abstract class Principal : IDisposable
         .Replace(";", "\\;")
         .Replace("=", "\\=");
 
+    private static string? ParentDistinguishedName(string distinguishedName)
+    {
+        for (var index = 0; index < distinguishedName.Length; index++)
+        {
+            if (distinguishedName[index] == ',' && (index == 0 || distinguishedName[index - 1] != '\\'))
+            {
+                return distinguishedName[(index + 1)..];
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>The underlying <see cref="DirectoryEntry"/>.</summary>
     public object? GetUnderlyingObject() => Entry;
 
     /// <summary>The type behind <see cref="GetUnderlyingObject"/>.</summary>
     public Type GetUnderlyingObjectType() => typeof(DirectoryEntry);
+
+    /// <summary>Reads an arbitrary directory attribute for an extension class.</summary>
+    protected object?[] ExtensionGet(string attribute)
+    {
+        if (attribute is null)
+        {
+            throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
+        }
+
+        if (Entry is not null)
+        {
+            return Entry.Properties[attribute].Cast<object?>().ToArray();
+        }
+
+        if (!_pending.TryGetValue(attribute, out var value))
+        {
+            return Array.Empty<object?>();
+        }
+
+        return value switch
+        {
+            object?[] values => values.ToArray(),
+            null => new object?[] { null },
+            _ => new object?[] { value },
+        };
+    }
+
+    /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
+    protected void ExtensionSet(string attribute, object? value)
+    {
+        if (attribute is null)
+        {
+            throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
+        }
+
+        ValidateExtensionValue(value);
+        var values = value switch
+        {
+            object?[] array => array.ToArray(),
+            byte[] bytes => new object?[] { bytes },
+            ICollection collection => collection.Cast<object?>().ToArray(),
+            _ => new object?[] { value },
+        };
+
+        if (Entry is not null)
+        {
+            if (values.Length == 1 && values[0] is null)
+            {
+                Entry.Properties[attribute].Clear();
+            }
+            else
+            {
+                Entry.Properties[attribute].Value = values;
+            }
+        }
+        else
+        {
+            _pending[attribute] = value is null ? null : values;
+        }
+    }
+
+    private static void ValidateExtensionValue(object? value)
+    {
+        if (value is byte[] bytes)
+        {
+            if (bytes.Length == 0)
+            {
+                throw new ArgumentException("An extension collection cannot be empty.", nameof(value));
+            }
+
+            return;
+        }
+
+        if (value is not ICollection collection)
+        {
+            return;
+        }
+
+        if (collection.Count == 0)
+        {
+            throw new ArgumentException("An extension collection cannot be empty.", nameof(value));
+        }
+
+        foreach (var item in collection)
+        {
+            if (item is ICollection)
+            {
+                throw new ArgumentException("Nested extension collections are not supported.", nameof(value));
+            }
+        }
+    }
+
+    /// <summary>Returns true when both objects represent the same stored principal.</summary>
+    public override bool Equals(object? obj)
+    {
+        if (obj is not Principal other)
+        {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        var guid = Guid;
+        return guid is not null && other.Guid is not null && guid == other.Guid;
+    }
+
+    /// <summary>Matches Microsoft's instance-based hash behavior.</summary>
+    public override int GetHashCode() => base.GetHashCode();
 
     /// <summary>Reads a single string attribute, from the entry or a pending value.</summary>
     private protected string? GetString(string attributeName)

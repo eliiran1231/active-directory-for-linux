@@ -1,0 +1,185 @@
+using System.ComponentModel;
+using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.AccountManagement;
+using Xunit;
+
+namespace AdForLinux.FunctionalTests;
+
+public class PrincipalCompatibilityTests
+{
+    public sealed class ExtendedUserPrincipal : UserPrincipal
+    {
+        public ExtendedUserPrincipal(PrincipalContext context)
+            : base(context)
+        {
+        }
+
+        public object?[] ReadExtension(string attribute) => ExtensionGet(attribute);
+
+        public void WriteExtension(string attribute, object? value) => ExtensionSet(attribute, value);
+
+        public static ExtendedUserPrincipal? Find(PrincipalContext context, string identity) =>
+            (ExtendedUserPrincipal?)FindByIdentityWithType(
+                context, typeof(ExtendedUserPrincipal), identity);
+    }
+
+    private static PrincipalContext Context(string? container = null) =>
+        new(ContextType.Domain, TestSettings.ServerName, container ?? TestDirectory.UsersContainer,
+            TestSettings.BindDn, TestSettings.BindPassword);
+
+    private static PrincipalContext OfflineContext() =>
+        new(ContextType.Domain, "dc.example.test", "DC=example,DC=test");
+
+    private static string NewName() => $"adfl-p-{Guid.NewGuid():N}"[..18];
+
+    private static string DnFor(string cn, string container) => $"CN={cn},{container}";
+
+    private static string CreateOrganizationalUnit(string name)
+    {
+        var dn = $"OU={name},{TestSettings.BaseDn}";
+        using var domain = new DirectoryEntry(
+            TestSettings.PathFor(TestSettings.BaseDn), TestSettings.BindDn, TestSettings.BindPassword,
+            AuthenticationTypes.SecureSocketsLayer);
+        using var organizationalUnit = domain.Children.Add($"OU={name}", "organizationalUnit");
+        organizationalUnit.CommitChanges();
+        return dn;
+    }
+
+    [Fact]
+    public void Extension_members_stage_values_and_validate_collections()
+    {
+        using var context = OfflineContext();
+        using var user = new ExtendedUserPrincipal(context);
+
+        Assert.Empty(user.ReadExtension("telephoneNumber"));
+        user.WriteExtension("telephoneNumber", new object[] { "one", "two" });
+
+        Assert.Equal(new object[] { "one", "two" }, user.ReadExtension("telephoneNumber"));
+        Assert.Throws<ArgumentException>(() => user.WriteExtension("telephoneNumber", Array.Empty<object>()));
+        Assert.Throws<ArgumentException>(() => user.WriteExtension(null!, "value"));
+    }
+
+    [Fact]
+    public void Principal_surface_validates_arguments_before_connecting()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+
+        Assert.Throws<InvalidOperationException>(() => user.Save(null!));
+        Assert.Throws<ArgumentNullException>(() => Principal.FindByIdentity(null!, "user"));
+        Assert.Throws<ArgumentNullException>(() => Principal.FindByIdentity(context, null!));
+        Assert.Throws<InvalidEnumArgumentException>(() =>
+            Principal.FindByIdentity(context, (IdentityType)99, "user"));
+        Assert.Throws<ArgumentNullException>(() => user.GetGroups(null!));
+        Assert.Throws<ArgumentNullException>(() => user.IsMemberOf((GroupPrincipal)null!));
+    }
+
+    [Fact]
+    public void Principal_identity_sid_extensions_groups_and_membership_round_trip()
+    {
+        var userName = NewName();
+        var groupName = NewName();
+        var userDn = DnFor(userName, TestDirectory.UsersContainer);
+        var groupDn = DnFor(groupName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using (var user = new ExtendedUserPrincipal(context)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            })
+            {
+                user.WriteExtension("telephoneNumber", "12345");
+                user.Save();
+            }
+
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var found = ExtendedUserPrincipal.Find(context, userName);
+            Assert.NotNull(found);
+            Assert.Equal(new object[] { "12345" }, found!.ReadExtension("telephoneNumber"));
+
+            group.Members.Add(found);
+            group.Save();
+
+            Assert.True(found.IsMemberOf(group));
+            Assert.True(found.IsMemberOf(context, IdentityType.SamAccountName, groupName));
+            using var groups = found.GetGroups(context);
+            Assert.Contains(groupName, groups.Select(item => item.SamAccountName));
+
+            using var untyped = Principal.FindByIdentity(context, userName);
+            Assert.IsType<UserPrincipal>(untyped);
+            Assert.NotNull(untyped!.SidValue);
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.NotNull(untyped.Sid);
+            }
+            else
+            {
+                Assert.Throws<PlatformNotSupportedException>(() => untyped.Sid);
+            }
+
+            Assert.Equal(found, untyped);
+
+            using var byGuid = Principal.FindByIdentity(
+                context, IdentityType.Guid, found.Guid!.Value.ToString());
+            Assert.Equal(found, byGuid);
+
+            using var bySid = Principal.FindByIdentity(
+                context, IdentityType.Sid, found.SidValue!);
+            Assert.Equal(found, bySid);
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Save_with_context_creates_and_moves_principals_to_the_target_container()
+    {
+        var sourceName = NewName();
+        var newName = NewName();
+        var targetOuName = NewName();
+        var targetOuDn = CreateOrganizationalUnit(targetOuName);
+        var sourceDn = DnFor(sourceName, TestDirectory.UsersContainer);
+        var movedDn = DnFor(sourceName, targetOuDn);
+        var newDn = DnFor(newName, targetOuDn);
+
+        try
+        {
+            using var sourceContext = Context();
+            using var targetContext = Context(targetOuDn);
+            using (var group = new GroupPrincipal(sourceContext, sourceName))
+            {
+                group.Save();
+                group.Save(targetContext);
+                Assert.Same(targetContext, group.Context);
+                Assert.Equal(movedDn, group.DistinguishedName);
+            }
+
+            using (var group = new GroupPrincipal(sourceContext, newName))
+            {
+                group.Save(targetContext);
+                Assert.Same(targetContext, group.Context);
+                Assert.Equal(newDn, group.DistinguishedName);
+            }
+
+            Assert.Null(GroupPrincipal.FindByIdentity(sourceContext, sourceName));
+            using var moved = GroupPrincipal.FindByIdentity(targetContext, sourceName);
+            using var created = GroupPrincipal.FindByIdentity(targetContext, newName);
+            Assert.NotNull(moved);
+            Assert.NotNull(created);
+        }
+        finally
+        {
+            TestDirectory.Delete(sourceDn);
+            TestDirectory.Delete(movedDn);
+            TestDirectory.Delete(newDn);
+            TestDirectory.Delete(targetOuDn);
+        }
+    }
+}

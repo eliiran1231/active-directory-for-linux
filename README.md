@@ -55,10 +55,12 @@ SID/ACL object model is not.
 
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
-(`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
+(`FindByIdentity`, typed extension lookup, `Save`, context-aware save/move,
+`Delete`, `Sid` (`SidValue` on Linux), extension attributes, identity equality,
+properties), `SetPassword`,
 `UnlockAccount`, `ExpirePasswordNow`, `Enabled`, account dates and flags,
 `GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
-recursive), `GetGroups`, `GetAuthorizationGroups` (recursive, via
+recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (recursive, via
 `LDAP_MATCHING_RULE_IN_CHAIN`), `ComputerPrincipal` with mutable service
 principal names, and `PrincipalSearcher` query-by-example with wildcards and
 advanced date/count comparisons.
