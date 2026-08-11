@@ -13,7 +13,7 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
     private IReadOnlyList<SearchResult>? _results;
     private readonly IEnumerable<SearchResult>? _streamingResults;
     private readonly ReplayableSearchResults? _replayableResults;
-    private int _streamingEnumeratorClaimed;
+    private readonly ForwardOnlySearchResults? _forwardOnlyResults;
     private bool _disposed;
 
     internal SearchResultCollection(IReadOnlyList<SearchResult> results, string[]? propertiesLoaded = null)
@@ -29,6 +29,7 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
     {
         _streamingResults = results;
         _replayableResults = cacheResults ? new ReplayableSearchResults(results) : null;
+        _forwardOnlyResults = cacheResults ? null : new ForwardOnlySearchResults(results);
         PropertiesLoaded = propertiesLoaded?.ToArray() ?? Array.Empty<string>();
     }
 
@@ -81,6 +82,7 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
         }
 
         (_streamingResults as IDisposable)?.Dispose();
+        _forwardOnlyResults?.Dispose();
         _disposed = true;
     }
 
@@ -104,9 +106,7 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
             return _replayableResults.GetEnumerator();
         }
 
-        return Interlocked.Exchange(ref _streamingEnumeratorClaimed, 1) == 0
-            ? _streamingResults!.GetEnumerator()
-            : Enumerable.Empty<SearchResult>().GetEnumerator();
+        return _forwardOnlyResults!.ClaimEnumerator();
     }
 
     bool ICollection.IsSynchronized => false;
@@ -135,12 +135,130 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
             return _results = _replayableResults.Materialize();
         }
 
-        if (Interlocked.Exchange(ref _streamingEnumeratorClaimed, 1) != 0)
+        return _results = _forwardOnlyResults!.MaterializeRemaining();
+    }
+
+    private sealed class ForwardOnlySearchResults : IDisposable
+    {
+        private readonly object _gate = new();
+        private readonly IEnumerator<SearchResult> _source;
+        private IReadOnlyList<SearchResult>? _materializedRemaining;
+        private bool _claimed;
+        private bool _complete;
+
+        internal ForwardOnlySearchResults(IEnumerable<SearchResult> source) =>
+            _source = source.GetEnumerator();
+
+        internal IEnumerator<SearchResult> ClaimEnumerator()
         {
-            return _results = Array.Empty<SearchResult>();
+            lock (_gate)
+            {
+                if (_claimed)
+                {
+                    return Enumerable.Empty<SearchResult>().GetEnumerator();
+                }
+
+                _claimed = true;
+                return new Enumerator(this);
+            }
         }
 
-        return _results = _streamingResults!.ToList();
+        internal IReadOnlyList<SearchResult> MaterializeRemaining()
+        {
+            lock (_gate)
+            {
+                if (_materializedRemaining is not null)
+                {
+                    return _materializedRemaining;
+                }
+
+                var remaining = new List<SearchResult>();
+                try
+                {
+                    while (!_complete && _source.MoveNext())
+                    {
+                        remaining.Add(_source.Current);
+                    }
+
+                    Complete();
+                    return _materializedRemaining = remaining;
+                }
+                catch
+                {
+                    Complete();
+                    throw;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                Complete();
+            }
+        }
+
+        private bool TryMoveNext(out SearchResult result)
+        {
+            lock (_gate)
+            {
+                if (_complete)
+                {
+                    result = null!;
+                    return false;
+                }
+
+                try
+                {
+                    if (_source.MoveNext())
+                    {
+                        result = _source.Current;
+                        return true;
+                    }
+
+                    Complete();
+                    result = null!;
+                    return false;
+                }
+                catch
+                {
+                    Complete();
+                    throw;
+                }
+            }
+        }
+
+        private void Complete()
+        {
+            if (_complete)
+            {
+                return;
+            }
+
+            _complete = true;
+            _source.Dispose();
+        }
+
+        private sealed class Enumerator(ForwardOnlySearchResults owner) : IEnumerator<SearchResult>
+        {
+            private SearchResult? _current;
+
+            public SearchResult Current => _current!;
+
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext() => owner.TryMoveNext(out _current!);
+
+            public void Reset() => throw new NotSupportedException();
+
+            public void Dispose()
+            {
+                // The collection owns the shared cursor. Disposing a claimed
+                // enumerator must not discard results that can still be
+                // materialized by collection operations.
+            }
+        }
     }
 
     private sealed class ReplayableSearchResults : IEnumerable<SearchResult>

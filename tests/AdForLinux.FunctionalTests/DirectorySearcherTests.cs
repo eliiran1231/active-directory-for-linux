@@ -308,6 +308,38 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void FindAll_with_cache_results_false_materializes_the_unconsumed_tail()
+    {
+        using var root = Root();
+        using var searcher = new DirectorySearcher(
+            root, "(|(sAMAccountName=Administrator)(sAMAccountName=Guest))")
+        {
+            CacheResults = false,
+        };
+        using var results = searcher.FindAll();
+        using var enumerator = results.Cast<SearchResult>().GetEnumerator();
+
+        Assert.True(enumerator.MoveNext());
+        var consumed = enumerator.Current;
+
+        Assert.True(results.Count == 1, $"expected one unconsumed result, got {results.Count}");
+        var remaining = results[0];
+        Assert.NotSame(consumed, remaining);
+        Assert.True(results.Contains(remaining));
+        Assert.Equal(0, results.IndexOf(remaining));
+
+        var copied = new SearchResult[1];
+        results.CopyTo(copied, 0);
+        Assert.Same(remaining, copied[0]);
+
+        var nonGenericCopy = new SearchResult[1];
+        ((System.Collections.ICollection)results).CopyTo(nonGenericCopy, 0);
+        Assert.Same(remaining, nonGenericCopy[0]);
+        Assert.False(enumerator.MoveNext());
+        Assert.Same(remaining, Assert.Single(results.Cast<SearchResult>()));
+    }
+
+    [Fact]
     public void FindAll_asynchronous_searches_are_repeatable_when_cached()
     {
         using var root = Root();
