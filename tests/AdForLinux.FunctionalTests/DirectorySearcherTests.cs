@@ -279,6 +279,53 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void FindAll_with_cache_results_false_is_forward_only()
+    {
+        using var root = Root();
+        using var searcher = new DirectorySearcher(root, "(sAMAccountName=Administrator)")
+        {
+            CacheResults = false,
+        };
+        using var results = searcher.FindAll();
+
+        Assert.Single(results.Cast<SearchResult>());
+        Assert.Empty(results.Cast<SearchResult>());
+    }
+
+    [Fact]
+    public void FindAll_with_cache_results_false_can_be_explicitly_materialized()
+    {
+        using var root = Root();
+        using var searcher = new DirectorySearcher(root, "(sAMAccountName=Administrator)")
+        {
+            CacheResults = false,
+        };
+        using var results = searcher.FindAll();
+
+        _ = results.Count;
+        Assert.Single(results.Cast<SearchResult>());
+        Assert.Single(results.Cast<SearchResult>());
+    }
+
+    [Fact]
+    public void FindAll_asynchronous_searches_are_repeatable_when_cached()
+    {
+        using var root = Root();
+        using var searcher = new DirectorySearcher(
+            root, "(|(objectClass=user)(objectClass=group))")
+        {
+            Asynchronous = true,
+        };
+        using var results = searcher.FindAll();
+
+        var firstEnumeration = results.Select(result => result.Path).ToArray();
+        var secondEnumeration = results.Select(result => result.Path).ToArray();
+
+        Assert.NotEmpty(firstEnumeration);
+        Assert.Equal(firstEnumeration, secondEnumeration);
+    }
+
+    [Fact]
     public void Directory_entries_find_and_schema_filter_work_for_protocol_children()
     {
         var name = $"adfl-c-{Guid.NewGuid():N}"[..18];

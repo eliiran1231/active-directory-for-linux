@@ -160,8 +160,8 @@ public class DirectorySearcher : IDisposable
     }
 
     /// <summary>
-    /// Gets or sets the ADSI asynchronous-search preference. The value is retained for API
-    /// compatibility; <see cref="FindOne"/> and <see cref="FindAll"/> complete synchronously.
+    /// Gets or sets whether <see cref="FindAll"/> streams LDAP results as they arrive.
+    /// <see cref="FindOne"/> remains synchronous because its public contract returns one value.
     /// </summary>
     public bool Asynchronous { get; set; }
 
@@ -189,8 +189,9 @@ public class DirectorySearcher : IDisposable
     }
 
     /// <summary>
-    /// Gets or sets the ADSI result-caching preference. The value is retained for API
-    /// compatibility; LDAP results are materialized before <see cref="FindAll"/> returns.
+    /// Gets or sets whether <see cref="FindAll"/> retains results for repeated enumeration.
+    /// When false, direct enumeration is forward-only; collection operations such as
+    /// <see cref="SearchResultCollection.Count"/> explicitly materialize the remaining results.
     /// </summary>
     public bool CacheResults
     {
@@ -355,7 +356,13 @@ public class DirectorySearcher : IDisposable
         if (HasAttributeScopeQuery)
         {
             var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
-            return new SearchResultCollection(FindAttributeScoped(root, maximumResults), GetPropertiesLoaded());
+            return new SearchResultCollection(
+                FindAttributeScoped(root, maximumResults), CacheResults, GetPropertiesLoaded());
+        }
+
+        if (Asynchronous || !CacheResults)
+        {
+            return FindAllStreaming(root);
         }
 
         var connection = root.GetConnection();
@@ -400,6 +407,121 @@ public class DirectorySearcher : IDisposable
         }
 
         return new SearchResultCollection(results, GetPropertiesLoaded());
+    }
+
+    private SearchResultCollection FindAllStreaming(DirectoryEntry root)
+    {
+        // Use a separate connection because a result collection can outlive the searcher/root,
+        // and an in-flight request must not share mutable timeout/referral state with callers.
+        var resultRoot = root.CreateEntryForDn(root.DistinguishedName);
+        var connection = resultRoot.GetConnection();
+        ConfigureConnection(connection);
+        var request = BuildRequest();
+        var pageControl = PageSize > 0 ? new PageResultRequestControl(PageSize) : null;
+        if (pageControl is not null)
+        {
+            request.Controls.Add(pageControl);
+        }
+
+        var returnPartialResults = Asynchronous;
+        var timeout = ClientTimeout;
+        var source = new StreamingSearchResultSource((add, cancellationToken) =>
+        {
+            try
+            {
+                while (true)
+                {
+                    var response = SendSearchAsynchronously(
+                        connection, request, resultRoot, returnPartialResults, timeout, add, cancellationToken);
+                    UpdateControlState(response);
+
+                    if (pageControl is null)
+                    {
+                        break;
+                    }
+
+                    var cookie = response.Controls
+                        .OfType<PageResultResponseControl>()
+                        .FirstOrDefault()?.Cookie;
+                    if (cookie is null || cookie.Length == 0)
+                    {
+                        break;
+                    }
+
+                    pageControl.Cookie = cookie;
+                }
+            }
+            finally
+            {
+                resultRoot.Dispose();
+            }
+        });
+
+        return new SearchResultCollection(source, CacheResults, GetPropertiesLoaded());
+    }
+
+    private static SearchResponse SendSearchAsynchronously(
+        LdapConnection connection,
+        SearchRequest request,
+        DirectoryEntry resultRoot,
+        bool returnPartialResults,
+        TimeSpan timeout,
+        Action<SearchResult> add,
+        CancellationToken cancellationToken)
+    {
+        var partialMode = returnPartialResults
+            ? PartialResultProcessing.ReturnPartialResults
+            : PartialResultProcessing.NoPartialResultSupport;
+        var asyncResult = timeout >= TimeSpan.Zero
+            ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
+            : connection.BeginSendRequest(request, partialMode, null, null);
+        var returnedDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddEntries(System.Collections.IEnumerable entries)
+        {
+            foreach (var item in entries)
+            {
+                if (item is SearchResultEntry entry && returnedDns.Add(entry.DistinguishedName))
+                {
+                    add(new SearchResult(entry, resultRoot));
+                }
+            }
+        }
+
+        try
+        {
+            while (!asyncResult.IsCompleted)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    connection.Abort(asyncResult);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                if (returnPartialResults)
+                {
+                    AddEntries(connection.GetPartialResults(asyncResult));
+                }
+
+                asyncResult.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(50));
+            }
+
+            if (returnPartialResults)
+            {
+                AddEntries(connection.GetPartialResults(asyncResult));
+            }
+
+            var response = (SearchResponse)connection.EndSendRequest(asyncResult);
+            AddEntries(response.Entries);
+            return response;
+        }
+        catch (DirectoryOperationException ex)
+            when (ex.Response is SearchResponse partial &&
+                  partial.ResultCode == ResultCode.SizeLimitExceeded)
+        {
+            AddEntries(partial.Entries);
+            return partial;
+        }
     }
 
     private string[] GetPropertiesLoaded() => PropertiesToLoad.Cast<string>().ToArray();
