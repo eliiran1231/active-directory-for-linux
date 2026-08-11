@@ -223,6 +223,7 @@ public class GroupMembershipSearchTests
 
         using var groups = user.GetGroups();
         Assert.Empty(groups);
+        Assert.Throws<InvalidOperationException>(() => user.GetGroups(context));
     }
 
     [Fact]

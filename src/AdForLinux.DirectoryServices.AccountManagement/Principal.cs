@@ -157,11 +157,6 @@ public abstract class Principal : IDisposable
     {
         ArgumentNullException.ThrowIfNull(contextToQuery);
         CheckDisposedOrDeleted();
-        if (Entry is null)
-        {
-            return new PrincipalSearchResult<Principal>(Array.Empty<Principal>());
-        }
-
         var memberFilter = $"(member={LdapFilter.EscapeValue(RequireDistinguishedName())})";
         var primaryGroupSid = TryGetPrimaryGroupSid();
         var membershipFilter = primaryGroupSid is null

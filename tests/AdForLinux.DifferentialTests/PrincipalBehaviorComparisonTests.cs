@@ -87,4 +87,32 @@ public class PrincipalBehaviorComparisonTests
         Assert.IsType<ObjectDisposedException>(
             Record.Exception(() => ourUser.IsMemberOf((Ours.GroupPrincipal)null!)));
     }
+
+    [Fact]
+    public void GetGroups_with_context_matches_for_unsaved_principals()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msUser = new Ms.UserPrincipal(msContext);
+        using var ourUser = new Ours.UserPrincipal(ourContext);
+        string?[]? msGroupDns = null;
+        string?[]? ourGroupDns = null;
+
+        var msException = Record.Exception(() =>
+        {
+            using var groups = msUser.GetGroups(msContext);
+            msGroupDns = groups.Select(group => group.DistinguishedName).ToArray();
+        });
+        var ourException = Record.Exception(() =>
+        {
+            using var groups = ourUser.GetGroups(ourContext);
+            ourGroupDns = groups.Select(group => group.DistinguishedName).ToArray();
+        });
+
+        Assert.Equal(msException?.GetType(), ourException?.GetType());
+        if (msException is null)
+        {
+            Assert.Equal(msGroupDns, ourGroupDns);
+        }
+    }
 }
