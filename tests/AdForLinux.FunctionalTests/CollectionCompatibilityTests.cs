@@ -116,4 +116,21 @@ public class CollectionCompatibilityTests
         results.Dispose();
         Assert.Throws<ObjectDisposedException>(() => results.Handle);
     }
+
+    [Fact]
+    public void Uncached_search_result_collection_is_forward_only_until_materialized()
+    {
+        var enumerations = 0;
+        IEnumerable<SearchResult> Stream()
+        {
+            enumerations++;
+            yield break;
+        }
+
+        using var results = new SearchResultCollection(Stream(), cacheResults: false);
+
+        Assert.Empty(results.Cast<SearchResult>());
+        Assert.Empty(results.Cast<SearchResult>());
+        Assert.Equal(1, enumerations);
+    }
 }

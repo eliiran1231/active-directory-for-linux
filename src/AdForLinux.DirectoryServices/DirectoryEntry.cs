@@ -614,11 +614,22 @@ public class DirectoryEntry : Component
         }
 
         var connection = GetConnection();
+        var loadDefaultProperties = propertyNames is not { Length: > 0 };
+        var requestedProperties = loadDefaultProperties
+            ? new[] { "*", "nTSecurityDescriptor" }
+            : propertyNames!;
         var request = new SearchRequest(
             _path.DistinguishedName,
             "(objectClass=*)",
             ProtocolScope.Base,
-            propertyNames is { Length: > 0 } ? propertyNames : new[] { "*" });
+            requestedProperties);
+
+        if (loadDefaultProperties || requestedProperties.Contains(
+                "nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
+        {
+            request.Controls.Add(new SecurityDescriptorFlagControl(
+                (System.DirectoryServices.Protocols.SecurityMasks)(int)EffectiveSecurityMasks()));
+        }
 
         var response = (SearchResponse)connection.SendRequest(request);
         var properties = new PropertyCollection(OnPropertyChanged);

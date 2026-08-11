@@ -38,8 +38,13 @@ The broader `DirectorySearcher` constructor and option surface maps timeouts,
 alias/referral behavior, sorting, DirSync, virtual-list-view, tombstone,
 extended-DN, property-names-only, and security-mask requests to LDAP protocol
 settings and controls. ADSI's `Asynchronous` and `CacheResults` flags are kept
-for source compatibility, but searches complete synchronously and results are
-materialized before they are returned.
+as observable execution options: ordinary asynchronous `FindAll` searches use
+Protocols partial results so enumeration can expose entries while the server is
+still searching, and `CacheResults=false` makes direct enumeration forward-only.
+Indexing, `Count`, `Contains`, and copy operations explicitly materialize the
+remaining results, matching the shape of Microsoft's collection operations.
+`FindOne` remains synchronous, and attribute-scoped queries are materialized
+because their portable fallback can require multiple dependent LDAP requests.
 
 The remaining modern `System.DirectoryServices` low-level public surface is
 also present: schema-name collections, `DirectoryEntryConfiguration`, the

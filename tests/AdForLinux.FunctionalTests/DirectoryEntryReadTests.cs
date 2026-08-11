@@ -96,6 +96,17 @@ public class DirectoryEntryReadTests
     }
 
     [Fact]
+    public void Default_properties_include_the_security_descriptor()
+    {
+        using var entry = Open(TestSettings.AdministratorDn);
+
+        var descriptor = entry.Properties["nTSecurityDescriptor"];
+
+        Assert.NotEmpty(descriptor);
+        Assert.IsType<byte[]>(descriptor.Value);
+    }
+
+    [Fact]
     public void Missing_property_returns_empty_without_throwing()
     {
         using var entry = Open(TestSettings.AdministratorDn);
