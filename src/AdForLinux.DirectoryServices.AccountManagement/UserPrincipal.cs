@@ -102,11 +102,11 @@ public class UserPrincipal : AuthenticablePrincipal
     }
 
     /// <summary>Finds a user by a value across the common identity attributes.</summary>
-    public static UserPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
+    public static new UserPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
         Find(context, null, identityValue);
 
     /// <summary>Finds a user by a specific identity type.</summary>
-    public static UserPrincipal? FindByIdentity(
+    public static new UserPrincipal? FindByIdentity(
         PrincipalContext context, IdentityType identityType, string identityValue) =>
         Find(context, identityType, identityValue);
 

@@ -32,10 +32,10 @@ public class ComputerPrincipal : AuthenticablePrincipal
             GetValues("servicePrincipalName"),
             values => SetValues("servicePrincipalName", values));
 
-    public static ComputerPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
+    public static new ComputerPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
         Find(context, null, identityValue);
 
-    public static ComputerPrincipal? FindByIdentity(PrincipalContext context, IdentityType identityType, string identityValue) =>
+    public static new ComputerPrincipal? FindByIdentity(PrincipalContext context, IdentityType identityType, string identityValue) =>
         Find(context, identityType, identityValue);
 
     public static new PrincipalSearchResult<ComputerPrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>

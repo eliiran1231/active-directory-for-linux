@@ -55,10 +55,12 @@ SID/ACL object model is not.
 
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
-(`FindByIdentity`, `Save`, `Delete`, properties), `SetPassword`,
+(`FindByIdentity`, typed extension lookup, `Save`, context-aware save/move,
+`Delete`, `Sid` (`SidValue` on Linux), extension attributes, identity equality,
+properties), `SetPassword`,
 `UnlockAccount`, `ExpirePasswordNow`, `Enabled`, account dates and flags,
 `GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
-recursive), `GetGroups`, `GetAuthorizationGroups` (recursive, via
+recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (recursive, via
 `LDAP_MATCHING_RULE_IN_CHAIN`), `ComputerPrincipal` with mutable service
 principal names, and `PrincipalSearcher` query-by-example with wildcards and
 advanced date/count comparisons.
@@ -69,6 +71,11 @@ advanced date/count comparisons.
   domain auto-discovery on Linux.
 - **Kerberos / Negotiate.** Simple bind over TLS only.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
+- **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
+  within one AD naming context, including when the source and destination
+  contexts name different domain controllers for that domain. Moving an
+  existing object between AD domains requires ADSI cross-store behavior and
+  currently throws `PlatformNotSupportedException` in this Linux port.
 - Certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required

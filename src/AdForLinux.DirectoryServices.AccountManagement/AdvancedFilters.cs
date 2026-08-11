@@ -55,7 +55,7 @@ public class AdvancedFilters
 
     internal static string ToLdapCondition(string attribute, string value, MatchType match)
     {
-        var escaped = IdentityFilter.Escape(value);
+        var escaped = LdapFilter.EscapeValue(value);
         return match switch
         {
             MatchType.Equals => $"({attribute}={escaped})",
