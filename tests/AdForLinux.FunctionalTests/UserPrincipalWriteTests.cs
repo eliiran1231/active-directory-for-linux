@@ -355,6 +355,74 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void ChangePassword_wrong_old_password_throws_PasswordException()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+        try
+        {
+            using var context = Context();
+            using var user = new UserPrincipal(
+                context, name, "Str0ng!OldPass#2026", enabled: true);
+            user.UserPrincipalName = $"{name}@samdom.example.com";
+            user.Save();
+            user.ExpirePasswordNow();
+
+            var exception = Assert.Throws<PasswordException>(
+                () => user.ChangePassword("Wr0ng!OldPass#2026", "Str0ng!NewPass#2026"));
+            Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(
+                exception.InnerException);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void ChangePassword_policy_rejection_throws_PasswordException()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+        try
+        {
+            using var context = Context();
+            using var user = new UserPrincipal(
+                context, name, "Str0ng!OldPass#2026", enabled: true);
+            user.UserPrincipalName = $"{name}@samdom.example.com";
+            user.Save();
+            user.ExpirePasswordNow();
+
+            Assert.Throws<PasswordException>(
+                () => user.ChangePassword("Str0ng!OldPass#2026", "short"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void SetPassword_policy_rejection_throws_PasswordException()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+        try
+        {
+            using var context = Context();
+            using var user = new UserPrincipal(
+                context, name, "Str0ng!OldPass#2026", enabled: true);
+            user.Save();
+
+            Assert.Throws<PasswordException>(() => user.SetPassword("short"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void UserCannotChangePassword_round_trips_through_the_change_password_acl()
     {
         var name = NewName();

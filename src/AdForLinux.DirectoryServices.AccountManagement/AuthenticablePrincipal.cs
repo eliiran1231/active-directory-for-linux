@@ -298,7 +298,8 @@ public abstract class AuthenticablePrincipal : Principal
         }
 
         // AD wants the password quoted and encoded as little-endian UTF-16.
-        Entry.ReplaceAttributeImmediate("unicodePwd", EncodePassword(newPassword));
+        ExecutePasswordOperation(
+            () => Entry.ReplaceAttributeImmediate("unicodePwd", EncodePassword(newPassword)));
     }
 
     public void ChangePassword(string oldPassword, string newPassword)
@@ -306,12 +307,13 @@ public abstract class AuthenticablePrincipal : Principal
         ArgumentNullException.ThrowIfNull(oldPassword);
         ArgumentNullException.ThrowIfNull(newPassword);
         var entry = RequireSaved();
-        if (this is ComputerPrincipal)
+        if (this is not UserPrincipal)
         {
-            throw new NotSupportedException("Changing a computer account password is not supported.");
+            throw new NotSupportedException("Changing a password is supported only for user principals.");
         }
 
-        entry.ChangePasswordImmediate(EncodePassword(oldPassword), EncodePassword(newPassword));
+        ExecutePasswordOperation(
+            () => entry.ChangePasswordImmediate(EncodePassword(oldPassword), EncodePassword(newPassword)));
     }
 
     /// <summary>Unlocks a locked-out account. Takes effect immediately.</summary>
@@ -360,6 +362,18 @@ public abstract class AuthenticablePrincipal : Principal
     private DirectoryEntry RequireSaved() =>
         Entry ?? throw new InvalidOperationException(
             "The account must be saved before this operation.");
+
+    private static void ExecutePasswordOperation(Action operation)
+    {
+        try
+        {
+            operation();
+        }
+        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        {
+            throw new PasswordException(exception.Message, exception);
+        }
+    }
 
     private protected override void OnAfterSave()
     {

@@ -69,6 +69,18 @@ public class AccountManagementPublicTypesTests
     }
 
     [Fact]
+    public void Computer_principal_password_members_match_microsoft_offline_behavior()
+    {
+        using var context = OfflineContext();
+        using var computer = new ComputerPrincipal(context);
+
+        Assert.False(computer.UserCannotChangePassword);
+        computer.UserCannotChangePassword = true;
+        Assert.True(computer.UserCannotChangePassword);
+        Assert.Throws<InvalidOperationException>(() => computer.ChangePassword("old", "new"));
+    }
+
+    [Fact]
     public void Advanced_filters_are_included_in_query_by_example_ldap()
     {
         using var context = OfflineContext();
