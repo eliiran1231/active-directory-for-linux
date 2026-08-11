@@ -1,4 +1,6 @@
 using System.DirectoryServices;
+using System.DirectoryServices.Protocols;
+using System.Net;
 
 namespace AdForLinux.DifferentialTests;
 
@@ -19,22 +21,35 @@ public sealed class TestDataFixture : IDisposable
         var suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         UserName = $"adfl-d-u-{suffix}";
+        UnsetUserName = $"adfl-d-z-{suffix}";
         ComputerName = $"adfl-d-c-{suffix}";
         GroupName = $"adfl-d-g-{suffix}";
         NestedGroupName = $"adfl-d-n-{suffix}";
 
         UserDn = $"CN={UserName},{DifferentialSettings.UsersContainer}";
+        UnsetUserDn = $"CN={UnsetUserName},{DifferentialSettings.UsersContainer}";
         ComputerDn = $"CN={ComputerName},{DifferentialSettings.UsersContainer}";
         GroupDn = $"CN={GroupName},{DifferentialSettings.UsersContainer}";
         NestedGroupDn = $"CN={NestedGroupName},{DifferentialSettings.UsersContainer}";
 
-        CreateUser();
-        CreateComputer();
-        CreateGroups();
-        AddMembership();
+        try
+        {
+            CreateUser();
+            CreateUnsetUser();
+            CreateComputer();
+            CreateGroups();
+            AddMembership();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public string UserName { get; }
+
+    public string UnsetUserName { get; }
 
     public string ComputerName { get; }
 
@@ -44,11 +59,16 @@ public sealed class TestDataFixture : IDisposable
 
     public string UserDn { get; }
 
+    public string UnsetUserDn { get; }
+
     public string ComputerDn { get; }
 
     public string GroupDn { get; }
 
     public string NestedGroupDn { get; }
+
+    public DateTime UserExpirationTime { get; } =
+        new(2030, 6, 1, 12, 0, 0, DateTimeKind.Utc);
 
     /// <summary>The password set on the seeded user.</summary>
     public string UserPassword => "Str0ng!Passw0rd#2026";
@@ -78,6 +98,7 @@ public sealed class TestDataFixture : IDisposable
         user.Properties["homeDrive"].Value = "H:";
         user.Properties["scriptPath"].Value = "logon.bat";
         user.CommitChanges();
+        _created.Add(UserDn);
 
         // Give it a password and enable it, so the account-state members have
         // something real to report.
@@ -85,7 +106,50 @@ public sealed class TestDataFixture : IDisposable
         user.Properties["userAccountControl"].Value = 0x200; // normal, enabled
         user.CommitChanges();
 
-        _created.Add(UserDn);
+        SetUserExpiration();
+        RecordSuccessfulUserLogon();
+    }
+
+    private void CreateUnsetUser()
+    {
+        using var container = Open(DifferentialSettings.UsersContainer);
+        using var user = container.Children.Add($"CN={UnsetUserName}", "user");
+        user.Properties["sAMAccountName"].Value = UnsetUserName;
+        user.CommitChanges();
+        _created.Add(UnsetUserDn);
+    }
+
+    private void SetUserExpiration()
+    {
+        using var context = new System.DirectoryServices.AccountManagement.PrincipalContext(
+            System.DirectoryServices.AccountManagement.ContextType.Domain,
+            DifferentialSettings.ServerName,
+            DifferentialSettings.UsersContainer,
+            System.DirectoryServices.AccountManagement.ContextOptions.SimpleBind |
+            System.DirectoryServices.AccountManagement.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var user = System.DirectoryServices.AccountManagement.UserPrincipal.FindByIdentity(
+            context, UserName)
+            ?? throw new InvalidOperationException($"Could not reload seeded user {UserName}.");
+        user.AccountExpirationDate = UserExpirationTime;
+        user.Save();
+    }
+
+    private void RecordSuccessfulUserLogon()
+    {
+        var identifier = new LdapDirectoryIdentifier(
+            DifferentialSettings.Host,
+            DifferentialSettings.Port,
+            fullyQualifiedDnsHostName: false,
+            connectionless: false);
+        var upn = $"{UserName}@{DomainSuffix()}";
+        using var connection = new LdapConnection(
+            identifier,
+            new NetworkCredential(upn, UserPassword),
+            AuthType.Basic);
+        connection.SessionOptions.SecureSocketLayer = DifferentialSettings.UseTls;
+        connection.Bind();
     }
 
     private void CreateGroups()

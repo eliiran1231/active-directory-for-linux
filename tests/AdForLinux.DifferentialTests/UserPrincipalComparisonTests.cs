@@ -136,6 +136,107 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Assert();
     }
 
+    public enum DateFinder
+    {
+        BadPasswordAttempt,
+        Expiration,
+        Lockout,
+        Logon,
+        PasswordSet,
+    }
+
+    public enum DateBoundary
+    {
+        ExactExpiration,
+        Past,
+        Future,
+    }
+
+    public static IEnumerable<object[]> DateFinderCases()
+    {
+        foreach (var finder in Enum.GetValues<DateFinder>())
+        {
+            foreach (var match in Enum.GetValues<Ms.MatchType>())
+            {
+                var boundary = match switch
+                {
+                    Ms.MatchType.Equals or Ms.MatchType.NotEquals when finder == DateFinder.Expiration =>
+                        DateBoundary.ExactExpiration,
+                    Ms.MatchType.LessThan or Ms.MatchType.LessThanOrEquals => DateBoundary.Future,
+                    _ => DateBoundary.Past,
+                };
+                yield return [finder, match, boundary];
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(DateFinderCases))]
+    public void Date_finders_match_microsoft_for_ranges_and_zero_or_unset_values(
+        DateFinder finder,
+        Ms.MatchType match,
+        DateBoundary boundary)
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        var time = boundary switch
+        {
+            DateBoundary.ExactExpiration => _data.UserExpirationTime,
+            DateBoundary.Past => new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            DateBoundary.Future => new DateTime(2040, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            _ => throw new ArgumentOutOfRangeException(nameof(boundary)),
+        };
+        var oursMatch = (Ours.MatchType)(int)match;
+
+        using var microsoft = FindMicrosoft(finder, msContext, time, match);
+        using var ours = FindOurs(finder, ourContext, time, oursMatch);
+        var microsoftNames = microsoft.Select(principal => principal.SamAccountName).ToArray();
+        var ourNames = ours.Select(principal => principal.SamAccountName).ToArray();
+
+        new Comparison($"UserPrincipal.FindBy{finder}Time({match}, {boundary})")
+            .CheckSet(
+                "SamAccountName",
+                microsoftNames,
+                ourNames)
+            .Check(
+                "seeded nonzero user membership",
+                microsoftNames.Contains(_data.UserName, StringComparer.OrdinalIgnoreCase),
+                ourNames.Contains(_data.UserName, StringComparer.OrdinalIgnoreCase))
+            .Check(
+                "zero/unset user membership",
+                microsoftNames.Contains(_data.UnsetUserName, StringComparer.OrdinalIgnoreCase),
+                ourNames.Contains(_data.UnsetUserName, StringComparer.OrdinalIgnoreCase))
+            .Assert();
+    }
+
+    private static Ms.PrincipalSearchResult<Ms.UserPrincipal> FindMicrosoft(
+        DateFinder finder,
+        Ms.PrincipalContext context,
+        DateTime time,
+        Ms.MatchType match) => finder switch
+        {
+            DateFinder.BadPasswordAttempt => Ms.UserPrincipal.FindByBadPasswordAttempt(context, time, match),
+            DateFinder.Expiration => Ms.UserPrincipal.FindByExpirationTime(context, time, match),
+            DateFinder.Lockout => Ms.UserPrincipal.FindByLockoutTime(context, time, match),
+            DateFinder.Logon => Ms.UserPrincipal.FindByLogonTime(context, time, match),
+            DateFinder.PasswordSet => Ms.UserPrincipal.FindByPasswordSetTime(context, time, match),
+            _ => throw new ArgumentOutOfRangeException(nameof(finder)),
+        };
+
+    private static Ours.PrincipalSearchResult<Ours.UserPrincipal> FindOurs(
+        DateFinder finder,
+        Ours.PrincipalContext context,
+        DateTime time,
+        Ours.MatchType match) => finder switch
+        {
+            DateFinder.BadPasswordAttempt => Ours.UserPrincipal.FindByBadPasswordAttempt(context, time, match),
+            DateFinder.Expiration => Ours.UserPrincipal.FindByExpirationTime(context, time, match),
+            DateFinder.Lockout => Ours.UserPrincipal.FindByLockoutTime(context, time, match),
+            DateFinder.Logon => Ours.UserPrincipal.FindByLogonTime(context, time, match),
+            DateFinder.PasswordSet => Ours.UserPrincipal.FindByPasswordSetTime(context, time, match),
+            _ => throw new ArgumentOutOfRangeException(nameof(finder)),
+        };
+
     [Fact]
     public void ValidateCredentials_agrees()
     {

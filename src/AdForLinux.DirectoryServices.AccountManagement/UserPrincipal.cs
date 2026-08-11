@@ -21,6 +21,15 @@ public class UserPrincipal : AuthenticablePrincipal
     {
     }
 
+    /// <summary>
+    /// Gets the operating-system user under which the current thread runs.
+    /// This requires Windows SID lookup and serverless domain discovery, which
+    /// are not available in this Linux LDAP port.
+    /// </summary>
+    public static UserPrincipal Current => throw new InvalidOperationException(
+        "UserPrincipal.Current requires Windows SID lookup and serverless domain discovery. " +
+        "On Linux, create a PrincipalContext with an explicit domain controller and call FindByIdentity instead.");
+
     public static new PrincipalSearchResult<UserPrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>
         FindByLockoutTime<UserPrincipal>(context, time, type);
     public static new PrincipalSearchResult<UserPrincipal> FindByLogonTime(PrincipalContext context, DateTime time, MatchType type) =>
