@@ -47,6 +47,37 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void FindByExpirationTime_returns_the_matching_saved_user()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+        var expiration = new DateTime(2030, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+
+        try
+        {
+            using var context = Context();
+            using (var user = new UserPrincipal(context)
+            {
+                Name = name,
+                SamAccountName = name,
+                AccountExpirationDate = expiration,
+            })
+            {
+                user.Save();
+            }
+
+            using var found = UserPrincipal.FindByExpirationTime(
+                context, expiration,
+                AdForLinux.DirectoryServices.AccountManagement.MatchType.Equals);
+            Assert.Contains(found, principal => principal.SamAccountName == name);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Save_creates_a_new_user()
     {
         var name = NewName();

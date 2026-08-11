@@ -823,6 +823,9 @@ public abstract class Principal : IDisposable
     internal void SetAdvancedFilter(string attribute, string value, MatchType match) =>
         _advancedFilters[attribute] = AdvancedFilters.ToLdapCondition(attribute, value, match);
 
+    internal void SetAdvancedFilter(string key, string condition) =>
+        _advancedFilters[key] = condition;
+
     internal IEnumerable<string> AdvancedFilterConditions => _advancedFilters.Values;
 
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>

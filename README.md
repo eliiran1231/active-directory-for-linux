@@ -70,7 +70,9 @@ advanced date/count comparisons.
 ### Not supported
 
 - **Serverless binding.** Always pass the domain controller name; there is no
-  domain auto-discovery on Linux.
+  domain auto-discovery on Linux. For the same reason, `UserPrincipal.Current`
+  is present for source compatibility but throws `PlatformNotSupportedException`;
+  use an explicit `PrincipalContext` and `FindByIdentity` instead.
 - **Kerberos / Negotiate.** Simple bind over TLS only.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
@@ -132,7 +134,7 @@ docker compose up --build --abort-on-container-exit
 ```
 
 This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 109 tests run on each target, including live coverage against a
+tests on each. 139 tests run on each target, including live coverage against a
 real Samba AD domain controller.
 
 The tests create and delete their own objects under `CN=Users`.

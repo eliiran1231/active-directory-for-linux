@@ -137,6 +137,24 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void FindByExpirationTime_matches_microsoft()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var microsoft = Ms.UserPrincipal.FindByExpirationTime(
+            msContext, _data.UserExpirationTime, Ms.MatchType.Equals);
+        using var ours = Ours.UserPrincipal.FindByExpirationTime(
+            ourContext, _data.UserExpirationTime, Ours.MatchType.Equals);
+
+        new Comparison("UserPrincipal.FindByExpirationTime")
+            .CheckSet(
+                "SamAccountName",
+                microsoft.Select(principal => principal.SamAccountName),
+                ours.Select(principal => principal.SamAccountName))
+            .Assert();
+    }
+
+    [Fact]
     public void ValidateCredentials_agrees()
     {
         using var msContext = MicrosoftContext();

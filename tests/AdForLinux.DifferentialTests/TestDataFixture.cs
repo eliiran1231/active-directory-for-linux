@@ -28,10 +28,18 @@ public sealed class TestDataFixture : IDisposable
         GroupDn = $"CN={GroupName},{DifferentialSettings.UsersContainer}";
         NestedGroupDn = $"CN={NestedGroupName},{DifferentialSettings.UsersContainer}";
 
-        CreateUser();
-        CreateComputer();
-        CreateGroups();
-        AddMembership();
+        try
+        {
+            CreateUser();
+            CreateComputer();
+            CreateGroups();
+            AddMembership();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public string UserName { get; }
@@ -49,6 +57,9 @@ public sealed class TestDataFixture : IDisposable
     public string GroupDn { get; }
 
     public string NestedGroupDn { get; }
+
+    public DateTime UserExpirationTime { get; } =
+        new(2030, 6, 1, 12, 0, 0, DateTimeKind.Utc);
 
     /// <summary>The password set on the seeded user.</summary>
     public string UserPassword => "Str0ng!Passw0rd#2026";
@@ -78,6 +89,7 @@ public sealed class TestDataFixture : IDisposable
         user.Properties["homeDrive"].Value = "H:";
         user.Properties["scriptPath"].Value = "logon.bat";
         user.CommitChanges();
+        _created.Add(UserDn);
 
         // Give it a password and enable it, so the account-state members have
         // something real to report.
@@ -85,7 +97,25 @@ public sealed class TestDataFixture : IDisposable
         user.Properties["userAccountControl"].Value = 0x200; // normal, enabled
         user.CommitChanges();
 
-        _created.Add(UserDn);
+        SetUserExpiration();
+
+    }
+
+    private void SetUserExpiration()
+    {
+        using var context = new System.DirectoryServices.AccountManagement.PrincipalContext(
+            System.DirectoryServices.AccountManagement.ContextType.Domain,
+            DifferentialSettings.ServerName,
+            DifferentialSettings.UsersContainer,
+            System.DirectoryServices.AccountManagement.ContextOptions.SimpleBind |
+            System.DirectoryServices.AccountManagement.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var user = System.DirectoryServices.AccountManagement.UserPrincipal.FindByIdentity(
+            context, UserName)
+            ?? throw new InvalidOperationException($"Could not reload seeded user {UserName}.");
+        user.AccountExpirationDate = UserExpirationTime;
+        user.Save();
     }
 
     private void CreateGroups()

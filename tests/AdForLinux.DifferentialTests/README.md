@@ -28,7 +28,7 @@ property that disagreed, not just the first.
 
 | File | Compares |
 | --- | --- |
-| `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, `ValidateCredentials` |
+| `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, date-based finders, `ValidateCredentials` |
 | `GroupPrincipalComparisonTests` | group properties, `Members`, `GetMembers`, `GetGroups`, `GetAuthorizationGroups` |
 | `DirectoryEntryComparisonTests` | `DirectoryEntry` properties, `DirectorySearcher` `FindOne`/`FindAll` |
 | `ObjectSecurityComparisonTests` | live DACL round trips, partial `SecurityMasks`, and cached versus immediate `ObjectSecurity` writes |

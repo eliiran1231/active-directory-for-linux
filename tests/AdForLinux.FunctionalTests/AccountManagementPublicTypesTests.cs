@@ -92,8 +92,77 @@ public class AccountManagementPublicTypesTests
         var ticks = when.ToFileTimeUtc();
 
         Assert.Equal(
-            $"(&(objectCategory=computer)(sAMAccountName=server$)(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))))",
+            $"(&(objectCategory=computer)(sAMAccountName=server$)(|(&(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(!(lastLogon=0)))(&(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))(!(lastLogonTimestamp=0)))))",
             searcher.GetLdapFilter());
+    }
+
+    [Fact]
+    public void User_principal_issue_9_surface_is_complete()
+    {
+        var type = typeof(UserPrincipal);
+        var expectedFinderNames = new[]
+        {
+            nameof(UserPrincipal.FindByBadPasswordAttempt),
+            nameof(UserPrincipal.FindByExpirationTime),
+            nameof(UserPrincipal.FindByLockoutTime),
+            nameof(UserPrincipal.FindByLogonTime),
+            nameof(UserPrincipal.FindByPasswordSetTime),
+        };
+
+        Assert.NotNull(type.GetConstructor(new[]
+        {
+            typeof(PrincipalContext), typeof(string), typeof(string), typeof(bool),
+        }));
+        Assert.Equal(type, type.GetProperty(nameof(UserPrincipal.Current))!.PropertyType);
+
+        foreach (var methodName in expectedFinderNames)
+        {
+            var method = type.GetMethod(methodName, new[]
+            {
+                typeof(PrincipalContext), typeof(DateTime), typeof(AccountMatchType),
+            });
+            Assert.NotNull(method);
+            Assert.Equal(typeof(PrincipalSearchResult<UserPrincipal>), method!.ReturnType);
+        }
+    }
+
+    [Fact]
+    public void Current_fails_explicitly_when_linux_cannot_discover_a_domain_identity()
+    {
+        var exception = Assert.Throws<PlatformNotSupportedException>(() => UserPrincipal.Current);
+        Assert.Contains("FindByIdentity", exception.Message);
+    }
+
+    [Fact]
+    public void Date_filters_match_microsoft_default_and_last_logon_semantics()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        var when = new DateTime(2030, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        var ticks = when.ToFileTimeUtc();
+
+        user.AdvancedSearchFilter.LastBadPasswordAttempt(when, AccountMatchType.LessThan);
+        user.AdvancedSearchFilter.LastLogonTime(when, AccountMatchType.NotEquals);
+        user.AdvancedSearchFilter.LastPasswordSetTime(when, AccountMatchType.GreaterThanOrEquals);
+
+        using var searcher = new PrincipalSearcher(user);
+        Assert.Equal(
+            $"(&(objectCategory=person)(objectClass=user)(&(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(!(badPasswordTime=0)))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(&(pwdLastSet>={ticks})(!(pwdLastSet=0))))",
+            searcher.GetLdapFilter());
+    }
+
+    [Fact]
+    public void Date_finders_validate_context_before_match_type()
+    {
+        var invalid = (AccountMatchType)int.MaxValue;
+        var when = DateTime.UtcNow;
+
+        Assert.Throws<ArgumentNullException>(
+            () => UserPrincipal.FindByLogonTime(null!, when, invalid));
+
+        using var context = OfflineContext();
+        Assert.Throws<System.ComponentModel.InvalidEnumArgumentException>(
+            () => UserPrincipal.FindByLogonTime(context, when, invalid));
     }
 
     [Fact]

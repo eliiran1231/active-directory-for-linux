@@ -18,32 +18,45 @@ public class AdvancedFilters
     }
 
     public void LastBadPasswordAttempt(DateTime lastAttempt, MatchType match) =>
-        AdvancedFilterSet("badPasswordTime", lastAttempt, typeof(DateTime), match);
+        AdvancedDateFilterSet("badPasswordTime", lastAttempt, match, excludeDefaultValue: true);
 
     public void AccountExpirationDate(DateTime expirationTime, MatchType match) =>
-        AdvancedFilterSet("accountExpires", expirationTime, typeof(DateTime), match);
+        AdvancedDateFilterSet("accountExpires", expirationTime, match);
 
     public void AccountLockoutTime(DateTime lockoutTime, MatchType match) =>
-        AdvancedFilterSet("lockoutTime", lockoutTime, typeof(DateTime), match);
+        AdvancedDateFilterSet("lockoutTime", lockoutTime, match);
 
     public void BadLogonCount(int badLogonCount, MatchType match) =>
         AdvancedFilterSet("badPwdCount", badLogonCount, typeof(int), match);
 
-    public void LastLogonTime(DateTime logonTime, MatchType match) =>
-        AdvancedFilterSet("lastLogonTimestamp", logonTime, typeof(DateTime), match);
+    public void LastLogonTime(DateTime logonTime, MatchType match)
+    {
+        ValidateMatchType(match);
+        _principal.SetAdvancedFilter(
+            "lastLogon",
+            $"(|{ToLdapDateCondition("lastLogon", logonTime, match, excludeDefaultValue: true)}" +
+            $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, excludeDefaultValue: true, requirePresenceForNotEquals: true)})");
+    }
 
     public void LastPasswordSetTime(DateTime passwordSetTime, MatchType match) =>
-        AdvancedFilterSet("pwdLastSet", passwordSetTime, typeof(DateTime), match);
+        AdvancedDateFilterSet("pwdLastSet", passwordSetTime, match, excludeDefaultValue: true);
+
+    private void AdvancedDateFilterSet(
+        string attribute,
+        DateTime value,
+        MatchType match,
+        bool excludeDefaultValue = false)
+    {
+        ValidateMatchType(match);
+        _principal.SetAdvancedFilter(attribute, ToLdapDateCondition(attribute, value, match, excludeDefaultValue));
+    }
 
     protected void AdvancedFilterSet(string attribute, object value, Type objectType, MatchType mt)
     {
         ArgumentException.ThrowIfNullOrEmpty(attribute);
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(objectType);
-        if (!Enum.IsDefined(mt))
-        {
-            throw new InvalidEnumArgumentException(nameof(mt), (int)mt, typeof(MatchType));
-        }
+        ValidateMatchType(mt);
 
         var text = objectType == typeof(DateTime) && value is DateTime date
             ? date.ToUniversalTime().ToFileTimeUtc().ToString(CultureInfo.InvariantCulture)
@@ -53,16 +66,46 @@ public class AdvancedFilters
         _principal.SetAdvancedFilter(attribute, text, mt);
     }
 
-    internal static string ToLdapCondition(string attribute, string value, MatchType match)
+    private static void ValidateMatchType(MatchType match)
+    {
+        if (!Enum.IsDefined(match))
+        {
+            throw new InvalidEnumArgumentException(nameof(match), (int)match, typeof(MatchType));
+        }
+    }
+
+    internal static string ToLdapDateCondition(
+        string attribute,
+        DateTime value,
+        MatchType match,
+        bool excludeDefaultValue = false,
+        bool requirePresenceForNotEquals = false)
+    {
+        var fileTime = value.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture);
+        var condition = ToLdapCondition(attribute, fileTime, match, requirePresenceForNotEquals);
+        return excludeDefaultValue && match is not MatchType.Equals and not MatchType.NotEquals
+            ? $"(&{condition}(!({attribute}=0)))"
+            : condition;
+    }
+
+    internal static string ToLdapCondition(
+        string attribute,
+        string value,
+        MatchType match,
+        bool requirePresenceForNotEquals = false)
     {
         var escaped = LdapFilter.EscapeValue(value);
         return match switch
         {
             MatchType.Equals => $"({attribute}={escaped})",
+            MatchType.NotEquals when requirePresenceForNotEquals =>
+                $"(&(!({attribute}={escaped}))({attribute}=*))",
             MatchType.NotEquals => $"(!({attribute}={escaped}))",
-            MatchType.GreaterThan => $"(&({attribute}>={escaped})(!({attribute}={escaped})))",
+            MatchType.GreaterThan =>
+                $"(&({attribute}>={escaped})(!({attribute}={escaped}))({attribute}=*))",
             MatchType.GreaterThanOrEquals => $"({attribute}>={escaped})",
-            MatchType.LessThan => $"(&({attribute}<={escaped})(!({attribute}={escaped})))",
+            MatchType.LessThan =>
+                $"(&({attribute}<={escaped})(!({attribute}={escaped}))({attribute}=*))",
             MatchType.LessThanOrEquals => $"({attribute}<={escaped})",
             _ => throw new InvalidEnumArgumentException(nameof(match), (int)match, typeof(MatchType)),
         };
