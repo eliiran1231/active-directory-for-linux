@@ -92,7 +92,7 @@ public class AccountManagementPublicTypesTests
         var ticks = when.ToFileTimeUtc();
 
         Assert.Equal(
-            $"(&(objectCategory=computer)(sAMAccountName=server$)(|(&(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(!(lastLogon=0)))(&(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))(!(lastLogonTimestamp=0)))))",
+            $"(&(objectCategory=computer)(sAMAccountName=server$)(|(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))))",
             searcher.GetLdapFilter());
     }
 

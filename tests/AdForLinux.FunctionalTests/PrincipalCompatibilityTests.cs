@@ -24,8 +24,7 @@ public class PrincipalCompatibilityTests
     }
 
     private static PrincipalContext Context(string? container = null) =>
-        new(ContextType.Domain, TestSettings.ServerName, container ?? TestDirectory.UsersContainer,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(container ?? TestDirectory.UsersContainer);
 
     private static PrincipalContext OfflineContext() =>
         new(ContextType.Domain, "dc.example.test", "DC=example,DC=test");
@@ -92,6 +91,88 @@ public class PrincipalCompatibilityTests
             Principal.FindByIdentity(context, (IdentityType)99, "user"));
         Assert.Throws<ArgumentNullException>(() => user.GetGroups(null!));
         Assert.Throws<ArgumentNullException>(() => user.IsMemberOf((GroupPrincipal)null!));
+    }
+
+    [Fact]
+    public void PrincipalSearcher_exposes_and_reuses_the_underlying_directory_searcher()
+    {
+        using var context = OfflineContext();
+        using var filter = new UserPrincipal(context) { SamAccountName = "user*" };
+        using var searcher = new PrincipalSearcher(filter);
+
+        Assert.Equal(typeof(DirectorySearcher), searcher.GetUnderlyingSearcherType());
+        var underlying = Assert.IsType<DirectorySearcher>(searcher.GetUnderlyingSearcher());
+        Assert.Equal(256, underlying.PageSize);
+        Assert.Equal(TimeSpan.FromSeconds(30), underlying.ServerTimeLimit);
+        Assert.Equal(searcher.GetLdapFilter(), underlying.Filter);
+
+        underlying.PageSize = 17;
+        Assert.Same(underlying, searcher.GetUnderlyingSearcher());
+        Assert.Equal(17, underlying.PageSize);
+    }
+
+    [Fact]
+    public void PrincipalSearcher_uses_caller_changes_to_the_underlying_searcher()
+    {
+        using var context = Context();
+        using var filter = new UserPrincipal(context) { SamAccountName = "Administrator" };
+        using var searcher = new PrincipalSearcher(filter);
+        var underlying = Assert.IsType<DirectorySearcher>(searcher.GetUnderlyingSearcher());
+        underlying.PageSize = 1;
+        underlying.SizeLimit = 1;
+
+        using var results = searcher.FindAll();
+
+        Assert.Single(results);
+        Assert.Equal(1, underlying.PageSize);
+        Assert.Equal(1, underlying.SizeLimit);
+    }
+
+    [Fact]
+    public void PrincipalSearcher_rejects_persisted_query_filters()
+    {
+        var groupName = NewName();
+        var groupDn = DnFor(groupName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using var persisted = new GroupPrincipal(context, groupName);
+            persisted.Save();
+
+            Assert.Throws<ArgumentException>(() => new PrincipalSearcher(persisted));
+            using var searcher = new PrincipalSearcher();
+            Assert.Throws<ArgumentException>(() => searcher.QueryFilter = persisted);
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+        }
+    }
+
+    [Fact]
+    public void PrincipalSearcher_rechecks_filter_persistence_before_searching()
+    {
+        var groupName = NewName();
+        var groupDn = DnFor(groupName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using var filter = new GroupPrincipal(context, groupName);
+            using var searcher = new PrincipalSearcher(filter);
+            filter.Save();
+
+            Assert.Equal(typeof(DirectorySearcher), searcher.GetUnderlyingSearcherType());
+            Assert.Throws<InvalidOperationException>(() => searcher.GetLdapFilter());
+            Assert.Throws<InvalidOperationException>(() => searcher.GetUnderlyingSearcher());
+            Assert.Throws<InvalidOperationException>(() => searcher.FindOne());
+            Assert.Throws<InvalidOperationException>(() => searcher.FindAll());
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+        }
     }
 
     [Fact]

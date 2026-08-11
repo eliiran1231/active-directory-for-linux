@@ -11,8 +11,7 @@ namespace AdForLinux.FunctionalTests;
 public class GroupMembershipSearchTests
 {
     private static PrincipalContext Context() =>
-        new(ContextType.Domain, TestSettings.ServerName, TestDirectory.UsersContainer,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(TestDirectory.UsersContainer);
 
     private static string NewName() => $"adfl-m-{Guid.NewGuid():N}".Substring(0, 18);
 
@@ -166,12 +165,8 @@ public class GroupMembershipSearchTests
 
         try
         {
-            using var specialContext = new PrincipalContext(
-                ContextType.Domain, TestSettings.ServerName, specialOuDn,
-                TestSettings.BindDn, TestSettings.BindPassword);
-            using var normalContext = new PrincipalContext(
-                ContextType.Domain, TestSettings.ServerName, normalOuDn,
-                TestSettings.BindDn, TestSettings.BindPassword);
+            using var specialContext = TestSettings.CreatePrincipalContext(specialOuDn);
+            using var normalContext = TestSettings.CreatePrincipalContext(normalOuDn);
             using var outer = new GroupPrincipal(specialContext, outerName);
             using var inner = new GroupPrincipal(normalContext, innerName);
             using var user = new UserPrincipal(normalContext)
@@ -204,9 +199,7 @@ public class GroupMembershipSearchTests
     [Fact]
     public void Administrator_is_in_domain_admins()
     {
-        using var context = new PrincipalContext(
-            ContextType.Domain, TestSettings.ServerName, null,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        using var context = TestSettings.CreatePrincipalContext();
 
         var admin = UserPrincipal.FindByIdentity(context, "Administrator")!;
         using var groups = admin.GetGroups();

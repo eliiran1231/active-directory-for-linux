@@ -8,6 +8,57 @@ namespace AdForLinux.DifferentialTests;
 public class PrincipalSurfaceComparisonTests
 {
     [Fact]
+    public void PrincipalContext_and_searcher_issue_11_surface_matches_microsoft()
+    {
+        foreach (var optionName in Enum.GetNames<Ms.ContextOptions>())
+        {
+            Assert.True(Enum.TryParse<Ours.ContextOptions>(optionName, out var ourOption));
+            Assert.Equal(
+                (int)Enum.Parse<Ms.ContextOptions>(optionName),
+                (int)ourOption);
+        }
+
+        Assert.NotNull(typeof(Ours.PrincipalContext).GetConstructor(new[]
+        {
+            typeof(Ours.ContextType), typeof(string), typeof(string), typeof(string),
+        }));
+        Assert.NotNull(typeof(Ours.PrincipalContext).GetConstructor(new[]
+        {
+            typeof(Ours.ContextType), typeof(string), typeof(string), typeof(Ours.ContextOptions),
+        }));
+        Assert.NotNull(typeof(Ours.PrincipalContext).GetMethod(
+            nameof(Ours.PrincipalContext.ValidateCredentials),
+            new[] { typeof(string), typeof(string), typeof(Ours.ContextOptions) }));
+
+        var microsoftOptions = typeof(Ms.PrincipalContext).GetProperty(nameof(Ms.PrincipalContext.Options));
+        var ourOptions = typeof(Ours.PrincipalContext).GetProperty(nameof(Ours.PrincipalContext.Options));
+        Assert.NotNull(microsoftOptions);
+        Assert.NotNull(ourOptions);
+        Assert.Equal(microsoftOptions!.CanWrite, ourOptions!.CanWrite);
+
+        var microsoftContext = typeof(Ms.PrincipalSearcher).GetProperty(
+            nameof(Ms.PrincipalSearcher.Context));
+        var ourContext = typeof(Ours.PrincipalSearcher).GetProperty(
+            nameof(Ours.PrincipalSearcher.Context));
+        Assert.NotNull(microsoftContext);
+        Assert.NotNull(ourContext);
+        Assert.Equal(microsoftContext!.CanRead, ourContext!.CanRead);
+        Assert.Equal(microsoftContext.CanWrite, ourContext.CanWrite);
+
+        var microsoftUnderlying = typeof(Ms.PrincipalSearcher).GetMethod(
+            nameof(Ms.PrincipalSearcher.GetUnderlyingSearcher), Type.EmptyTypes);
+        var ourUnderlying = typeof(Ours.PrincipalSearcher).GetMethod(
+            nameof(Ours.PrincipalSearcher.GetUnderlyingSearcher), Type.EmptyTypes);
+        Assert.Equal(microsoftUnderlying!.ReturnType, ourUnderlying!.ReturnType);
+
+        var microsoftType = typeof(Ms.PrincipalSearcher).GetMethod(
+            nameof(Ms.PrincipalSearcher.GetUnderlyingSearcherType), Type.EmptyTypes);
+        var ourType = typeof(Ours.PrincipalSearcher).GetMethod(
+            nameof(Ours.PrincipalSearcher.GetUnderlyingSearcherType), Type.EmptyTypes);
+        Assert.Equal(microsoftType!.ReturnType, ourType!.ReturnType);
+    }
+
+    [Fact]
     public void AuthenticablePrincipal_issue_8_surface_matches_microsoft()
     {
         var propertyNames = new[]

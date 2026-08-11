@@ -1,3 +1,5 @@
+using AdForLinux.DirectoryServices.AccountManagement;
+
 namespace AdForLinux.FunctionalTests;
 
 /// <summary>
@@ -27,6 +29,21 @@ public static class TestSettings
 
     /// <summary>Server name in <c>host:port</c> form, for PrincipalContext.</summary>
     public static string ServerName => $"{Host}:{Port}";
+
+    /// <summary>Explicit bind options used by the Samba-backed fixtures.</summary>
+    public static ContextOptions PrincipalContextOptions =>
+        ContextOptions.SimpleBind |
+        (UseTls ? ContextOptions.SecureSocketLayer : 0);
+
+    /// <summary>Creates a live test context without relying on public defaults.</summary>
+    public static PrincipalContext CreatePrincipalContext(string? container = null) =>
+        new(
+            ContextType.Domain,
+            ServerName,
+            container,
+            PrincipalContextOptions,
+            BindDn,
+            BindPassword);
 
     /// <summary>Well-known DN of the built-in Administrator account.</summary>
     public static string AdministratorDn => $"CN=Administrator,CN=Users,{BaseDn}";

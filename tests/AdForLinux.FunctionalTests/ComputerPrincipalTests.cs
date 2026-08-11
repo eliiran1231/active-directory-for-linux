@@ -7,8 +7,7 @@ namespace AdForLinux.FunctionalTests;
 public class ComputerPrincipalTests
 {
     private static PrincipalContext Context() =>
-        new(ContextType.Domain, TestSettings.ServerName, TestDirectory.UsersContainer,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(TestDirectory.UsersContainer);
 
     [Fact]
     public void Constructor_and_save_create_a_computer_account()
