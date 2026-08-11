@@ -10,8 +10,7 @@ namespace AdForLinux.FunctionalTests;
 public class GroupPrincipalTests
 {
     private static PrincipalContext Context() =>
-        new(ContextType.Domain, TestSettings.ServerName, TestDirectory.UsersContainer,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(TestDirectory.UsersContainer);
 
     private static string NewName() => $"adfl-g-{Guid.NewGuid():N}".Substring(0, 18);
 

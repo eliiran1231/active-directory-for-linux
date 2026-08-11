@@ -24,8 +24,7 @@ public class PrincipalCompatibilityTests
     }
 
     private static PrincipalContext Context(string? container = null) =>
-        new(ContextType.Domain, TestSettings.ServerName, container ?? TestDirectory.UsersContainer,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(container ?? TestDirectory.UsersContainer);
 
     private static PrincipalContext OfflineContext() =>
         new(ContextType.Domain, "dc.example.test", "DC=example,DC=test");

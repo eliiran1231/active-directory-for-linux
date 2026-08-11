@@ -10,8 +10,7 @@ namespace AdForLinux.FunctionalTests;
 public class UserPrincipalReadTests
 {
     private static PrincipalContext Context() =>
-        new(ContextType.Domain, TestSettings.ServerName, null,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext();
 
     private static (string Dn, string Sam, string Upn) SeedUser()
     {

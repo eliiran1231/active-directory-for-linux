@@ -10,6 +10,14 @@ public class PrincipalSurfaceComparisonTests
     [Fact]
     public void PrincipalContext_and_searcher_issue_11_surface_matches_microsoft()
     {
+        foreach (var optionName in Enum.GetNames<Ms.ContextOptions>())
+        {
+            Assert.True(Enum.TryParse<Ours.ContextOptions>(optionName, out var ourOption));
+            Assert.Equal(
+                (int)Enum.Parse<Ms.ContextOptions>(optionName),
+                (int)ourOption);
+        }
+
         Assert.NotNull(typeof(Ours.PrincipalContext).GetConstructor(new[]
         {
             typeof(Ours.ContextType), typeof(string), typeof(string), typeof(string),

@@ -10,8 +10,7 @@ namespace AdForLinux.FunctionalTests;
 public class PrincipalContextTests
 {
     private static PrincipalContext Authenticated(string? container = null) =>
-        new(ContextType.Domain, TestSettings.ServerName, container,
-            TestSettings.BindDn, TestSettings.BindPassword);
+        TestSettings.CreatePrincipalContext(container);
 
     [Fact]
     public void Container_defaults_to_the_default_naming_context()
@@ -53,7 +52,10 @@ public class PrincipalContextTests
     {
         using var context = Authenticated();
 
-        Assert.False(context.ValidateCredentials(TestSettings.BindDn, "definitely-wrong-password"));
+        Assert.False(context.ValidateCredentials(
+            TestSettings.BindDn,
+            "definitely-wrong-password",
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer));
     }
 
     [Fact]
@@ -66,8 +68,10 @@ public class PrincipalContextTests
             "bind-password");
         Assert.Equal("bind-user", credentialContext.UserName);
         Assert.Equal(
-            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer,
+            ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing,
             credentialContext.Options);
+        Assert.False(credentialContext.UseSsl);
+        Assert.Equal(389, credentialContext.Port);
 
         using var optionsContext = new PrincipalContext(
             ContextType.Domain,
@@ -134,25 +138,45 @@ public class PrincipalContextTests
             "user", null!, ContextOptions.SimpleBind));
     }
 
-    [Fact]
-    public void ValidateCredentials_rejects_invalid_context_options()
+    [Theory]
+    [InlineData(0)]
+    [InlineData((int)(ContextOptions.Negotiate | ContextOptions.SimpleBind))]
+    public void ValidateCredentials_does_not_apply_constructor_option_validation(int rawOptions)
     {
         using var context = new PrincipalContext(
-            ContextType.Domain, "dc.example.test", "DC=example,DC=test");
+            ContextType.Domain, "127.0.0.1:1", "DC=example,DC=test");
 
-        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
-            "user", "password", ContextOptions.Negotiate | ContextOptions.SimpleBind));
-        Assert.Throws<ArgumentException>(() => context.ValidateCredentials(
-            "user", "password", 0));
+        var exception = Record.Exception(() => context.ValidateCredentials(
+            "user", "password", (ContextOptions)rawOptions));
+        Assert.False(exception is ArgumentException);
+        Assert.False(exception is System.ComponentModel.InvalidEnumArgumentException);
+    }
+
+    [Fact]
+    public void ValidateCredentials_without_options_is_independent_of_context_options()
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain,
+            TestSettings.ServerName,
+            TestDirectory.UsersContainer,
+            ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing,
+            TestSettings.BindDn,
+            TestSettings.BindPassword);
+
+        Assert.Equal(
+            ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing,
+            context.Options);
+        Assert.True(context.ValidateCredentials(
+            TestSettings.BindDn, TestSettings.BindPassword));
     }
 
     [Fact]
     public void ValidateCredentials_propagates_non_authentication_ldap_failures()
     {
         using var context = new PrincipalContext(
-            ContextType.Domain, "127.0.0.1:1", "DC=example,DC=test");
+            ContextType.Domain, "127.0.0.2", "DC=example,DC=test");
 
-        Assert.Throws<LdapException>(() => context.ValidateCredentials(
+        Assert.ThrowsAny<DirectoryException>(() => context.ValidateCredentials(
             "user", "password", ContextOptions.SimpleBind));
     }
 

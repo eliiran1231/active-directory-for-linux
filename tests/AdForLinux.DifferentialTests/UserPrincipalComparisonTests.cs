@@ -20,7 +20,7 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
 
     private static Ms.PrincipalContext MicrosoftContext() =>
         new(Ms.ContextType.Domain,
-            DifferentialSettings.ServerName,
+            DifferentialSettings.Host,
             DifferentialSettings.UsersContainer,
             Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
             DifferentialSettings.BindDn,
@@ -28,7 +28,7 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
 
     private static Ours.PrincipalContext OurContext() =>
         new(Ours.ContextType.Domain,
-            DifferentialSettings.ServerName,
+            DifferentialSettings.Host,
             DifferentialSettings.UsersContainer,
             Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
             DifferentialSettings.BindDn,
@@ -331,6 +331,58 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
                     Ours.ContextOptions.Signing |
                     Ours.ContextOptions.Sealing))
             .Assert();
+    }
+
+    [Fact]
+    public void PrincipalContext_default_domain_options_agree()
+    {
+        using var msContext = new Ms.PrincipalContext(
+            Ms.ContextType.Domain,
+            DifferentialSettings.Host,
+            DifferentialSettings.UsersContainer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var ourContext = new Ours.PrincipalContext(
+            Ours.ContextType.Domain,
+            DifferentialSettings.Host,
+            DifferentialSettings.UsersContainer,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+
+        Assert.Equal((int)msContext.Options, (int)ourContext.Options);
+        Assert.Equal(
+            Ms.ContextOptions.Negotiate |
+            Ms.ContextOptions.Signing |
+            Ms.ContextOptions.Sealing,
+            msContext.Options);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData((int)(Ms.ContextOptions.Negotiate | Ms.ContextOptions.SimpleBind))]
+    public void ValidateCredentials_explicit_edge_options_agree(int rawOptions)
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        var upn = $"{_data.UserName}@{DomainSuffix()}";
+
+        Assert.Equal(
+            CredentialValidationOutcome(() => msContext.ValidateCredentials(
+                upn, _data.UserPassword, (Ms.ContextOptions)rawOptions)),
+            CredentialValidationOutcome(() => ourContext.ValidateCredentials(
+                upn, _data.UserPassword, (Ours.ContextOptions)rawOptions)));
+    }
+
+    private static string CredentialValidationOutcome(Func<bool> validation)
+    {
+        try
+        {
+            return $"Result:{validation()}";
+        }
+        catch (Exception exception)
+        {
+            return $"Exception:{exception.GetType().Name}";
+        }
     }
 
     private static string DomainSuffix() =>

@@ -14,14 +14,14 @@ public enum ContextOptions
     SimpleBind = 2,
 
     /// <summary>Request LDAP signing for negotiate authentication.</summary>
-    Signing = 16,
+    Signing = 8,
 
     /// <summary>Request LDAP sealing for negotiate authentication.</summary>
-    Sealing = 32,
+    Sealing = 16,
 
     /// <summary>Use TLS (LDAPS).</summary>
     SecureSocketLayer = 4,
 
     /// <summary>Bind to a specific server. Always true here.</summary>
-    ServerBind = 512,
+    ServerBind = 32,
 }

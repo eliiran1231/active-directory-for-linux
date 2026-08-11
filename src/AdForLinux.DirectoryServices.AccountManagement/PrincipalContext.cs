@@ -17,7 +17,16 @@ public class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
     private readonly bool _hasExplicitPort;
+    private readonly object _credentialValidationLock = new();
+    private CredentialValidationMethod _lastCredentialValidationMethod =
+        CredentialValidationMethod.SimpleBindOverSsl;
     private string? _container;
+
+    private enum CredentialValidationMethod
+    {
+        SimpleBindOverSsl,
+        Negotiate,
+    }
 
     /// <summary>Current-domain context. Not supported on Linux — pass a server name.</summary>
     public PrincipalContext(ContextType contextType)
@@ -112,7 +121,13 @@ public class PrincipalContext : IDisposable
     private readonly string? _password;
 
     private const ContextOptions DefaultOptions =
+        ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing;
+
+    private const ContextOptions CredentialValidationSimpleOptions =
         ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer;
+
+    private const ContextOptions CredentialValidationNegotiateOptions =
+        ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing;
 
     /// <summary>The store type. Always Domain here.</summary>
     public ContextType ContextType { get; }
@@ -154,7 +169,50 @@ public class PrincipalContext : IDisposable
     /// succeeds, false if the credentials are rejected.
     /// </summary>
     public bool ValidateCredentials(string userName, string password)
-        => ValidateCredentials(userName, password, _options);
+    {
+        ValidateCredentialPair(userName, password);
+        if (userName is { Length: 0 })
+        {
+            return false;
+        }
+
+        lock (_credentialValidationLock)
+        {
+            var first = _lastCredentialValidationMethod;
+            var second = first == CredentialValidationMethod.SimpleBindOverSsl
+                ? CredentialValidationMethod.Negotiate
+                : CredentialValidationMethod.SimpleBindOverSsl;
+
+            try
+            {
+                BindCredentials(userName, password, OptionsFor(first));
+                _lastCredentialValidationMethod = first;
+                return true;
+            }
+            catch (LdapException)
+            {
+                // Microsoft tries the other credential-validation method even
+                // when the first failure looks like invalid credentials.
+            }
+            catch (DirectoryOperationException)
+                when (first == CredentialValidationMethod.SimpleBindOverSsl)
+            {
+                // Microsoft's Simple+SSL first attempt also falls back for
+                // DirectoryOperationException; its Negotiate-first path does not.
+            }
+
+            try
+            {
+                BindCredentials(userName, password, OptionsFor(second));
+                _lastCredentialValidationMethod = second;
+                return true;
+            }
+            catch (LdapException ex) when (IsAuthenticationFailure(ex))
+            {
+                return false;
+            }
+        }
+    }
 
     /// <summary>
     /// Checks a username and password using the requested bind options.
@@ -164,13 +222,7 @@ public class PrincipalContext : IDisposable
         string password,
         ContextOptions options)
     {
-        if ((userName is null) != (password is null))
-        {
-            throw new ArgumentException(
-                "The userName and password parameters must either both be null or both contain a value.");
-        }
-
-        ValidateOptions(options);
+        ValidateCredentialPair(userName, password);
 
         if (userName is { Length: 0 })
         {
@@ -179,16 +231,10 @@ public class PrincipalContext : IDisposable
 
         try
         {
-            using var connection = LdapConnectionFactory.CreateBound(
-                BuildOptions(userName, password, options));
+            BindCredentials(userName, password, options);
             return true;
         }
         catch (LdapException ex) when (IsAuthenticationFailure(ex))
-        {
-            return false;
-        }
-        catch (DirectoryOperationException ex)
-            when ((int)ex.Response.ResultCode == 49)
         {
             return false;
         }
@@ -202,7 +248,8 @@ public class PrincipalContext : IDisposable
     private LdapConnectionOptions BuildOptions(
         string? bindUser,
         string? bindPassword,
-        ContextOptions options)
+        ContextOptions options,
+        bool useContextPort = true)
     {
         var useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
         var authenticationType = options.HasFlag(ContextOptions.SimpleBind)
@@ -211,7 +258,7 @@ public class PrincipalContext : IDisposable
         return new LdapConnectionOptions
         {
             Host = Name,
-            Port = _hasExplicitPort ? Port : useSsl ? 636 : 389,
+            Port = useContextPort && _hasExplicitPort ? Port : useSsl ? 636 : 389,
             UseSsl = useSsl,
             AuthenticationType = authenticationType,
             Signing = options.HasFlag(ContextOptions.Signing),
@@ -285,6 +332,29 @@ public class PrincipalContext : IDisposable
 
     private static bool IsAuthenticationFailure(LdapException exception) =>
         exception.ErrorCode is 49 or 1326;
+
+    private static void ValidateCredentialPair(string? userName, string? password)
+    {
+        if ((userName is null) != (password is null))
+        {
+            throw new ArgumentException(
+                "The userName and password parameters must either both be null or both contain a value.");
+        }
+    }
+
+    private static ContextOptions OptionsFor(CredentialValidationMethod method) =>
+        method == CredentialValidationMethod.SimpleBindOverSsl
+            ? CredentialValidationSimpleOptions
+            : CredentialValidationNegotiateOptions;
+
+    private void BindCredentials(
+        string? userName,
+        string? password,
+        ContextOptions options)
+    {
+        using var connection = LdapConnectionFactory.CreateBound(
+            BuildOptions(userName, password, options, useContextPort: false));
+    }
 
     public void Dispose() => GC.SuppressFinalize(this);
 }
