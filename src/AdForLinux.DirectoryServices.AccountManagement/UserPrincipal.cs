@@ -26,7 +26,7 @@ public class UserPrincipal : AuthenticablePrincipal
     /// This requires Windows SID lookup and serverless domain discovery, which
     /// are not available in this Linux LDAP port.
     /// </summary>
-    public static UserPrincipal Current => throw new PlatformNotSupportedException(
+    public static UserPrincipal Current => throw new InvalidOperationException(
         "UserPrincipal.Current requires Windows SID lookup and serverless domain discovery. " +
         "On Linux, create a PrincipalContext with an explicit domain controller and call FindByIdentity instead.");
 

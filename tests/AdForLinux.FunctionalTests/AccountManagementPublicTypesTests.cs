@@ -129,7 +129,7 @@ public class AccountManagementPublicTypesTests
     [Fact]
     public void Current_fails_explicitly_when_linux_cannot_discover_a_domain_identity()
     {
-        var exception = Assert.Throws<PlatformNotSupportedException>(() => UserPrincipal.Current);
+        var exception = Assert.Throws<InvalidOperationException>(() => UserPrincipal.Current);
         Assert.Contains("FindByIdentity", exception.Message);
     }
 
@@ -147,7 +147,7 @@ public class AccountManagementPublicTypesTests
 
         using var searcher = new PrincipalSearcher(user);
         Assert.Equal(
-            $"(&(objectCategory=person)(objectClass=user)(&(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(!(badPasswordTime=0)))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(&(pwdLastSet>={ticks})(!(pwdLastSet=0))))",
+            $"(&(objectCategory=person)(objectClass=user)(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(pwdLastSet>={ticks}))",
             searcher.GetLdapFilter());
     }
 

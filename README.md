@@ -71,7 +71,7 @@ advanced date/count comparisons.
 
 - **Serverless binding.** Always pass the domain controller name; there is no
   domain auto-discovery on Linux. For the same reason, `UserPrincipal.Current`
-  is present for source compatibility but throws `PlatformNotSupportedException`;
+  is present for source compatibility but throws `InvalidOperationException`;
   use an explicit `PrincipalContext` and `FindByIdentity` instead.
 - **Kerberos / Negotiate.** Simple bind over TLS only.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.

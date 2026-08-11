@@ -473,9 +473,9 @@ public abstract class AuthenticablePrincipal : Principal
     public static PrincipalSearchResult<AuthenticablePrincipal> FindByExpirationTime(PrincipalContext context, DateTime time, MatchType type) =>
         FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "accountExpires", time, type));
     public static PrincipalSearchResult<AuthenticablePrincipal> FindByBadPasswordAttempt(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "badPasswordTime", time, type, excludeDefaultValue: true));
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "badPasswordTime", time, type));
     public static PrincipalSearchResult<AuthenticablePrincipal> FindByPasswordSetTime(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "pwdLastSet", time, type, excludeDefaultValue: true));
+        FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "pwdLastSet", time, type));
 
     protected static PrincipalSearchResult<T> FindByLockoutTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
         FindByAdvancedFilter<T>(context, BuildDateCondition(context, "lockoutTime", time, type));
@@ -484,9 +484,9 @@ public abstract class AuthenticablePrincipal : Principal
     protected static PrincipalSearchResult<T> FindByExpirationTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
         FindByAdvancedFilter<T>(context, BuildDateCondition(context, "accountExpires", time, type));
     protected static PrincipalSearchResult<T> FindByBadPasswordAttempt<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "badPasswordTime", time, type, excludeDefaultValue: true));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "badPasswordTime", time, type));
     protected static PrincipalSearchResult<T> FindByPasswordSetTime<T>(PrincipalContext context, DateTime time, MatchType type) where T : AuthenticablePrincipal =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "pwdLastSet", time, type, excludeDefaultValue: true));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "pwdLastSet", time, type));
 
     private static string BuildDateCondition(
         PrincipalContext context,
@@ -502,8 +502,8 @@ public abstract class AuthenticablePrincipal : Principal
     private static string BuildLastLogonCondition(PrincipalContext context, DateTime time, MatchType type)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return $"(|{AdvancedFilters.ToLdapDateCondition("lastLogon", time, type, excludeDefaultValue: true)}" +
-            $"{AdvancedFilters.ToLdapDateCondition("lastLogonTimestamp", time, type, excludeDefaultValue: true, requirePresenceForNotEquals: true)})";
+        return $"(|{AdvancedFilters.ToLdapDateCondition("lastLogon", time, type)}" +
+            $"{AdvancedFilters.ToLdapDateCondition("lastLogonTimestamp", time, type, requirePresenceForNotEquals: true)})";
     }
 
     private static PrincipalSearchResult<T> FindByAdvancedFilter<T>(PrincipalContext context, string condition)

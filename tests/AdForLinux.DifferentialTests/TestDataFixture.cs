@@ -1,4 +1,6 @@
 using System.DirectoryServices;
+using System.DirectoryServices.Protocols;
+using System.Net;
 
 namespace AdForLinux.DifferentialTests;
 
@@ -19,11 +21,13 @@ public sealed class TestDataFixture : IDisposable
         var suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         UserName = $"adfl-d-u-{suffix}";
+        UnsetUserName = $"adfl-d-z-{suffix}";
         ComputerName = $"adfl-d-c-{suffix}";
         GroupName = $"adfl-d-g-{suffix}";
         NestedGroupName = $"adfl-d-n-{suffix}";
 
         UserDn = $"CN={UserName},{DifferentialSettings.UsersContainer}";
+        UnsetUserDn = $"CN={UnsetUserName},{DifferentialSettings.UsersContainer}";
         ComputerDn = $"CN={ComputerName},{DifferentialSettings.UsersContainer}";
         GroupDn = $"CN={GroupName},{DifferentialSettings.UsersContainer}";
         NestedGroupDn = $"CN={NestedGroupName},{DifferentialSettings.UsersContainer}";
@@ -31,6 +35,7 @@ public sealed class TestDataFixture : IDisposable
         try
         {
             CreateUser();
+            CreateUnsetUser();
             CreateComputer();
             CreateGroups();
             AddMembership();
@@ -44,6 +49,8 @@ public sealed class TestDataFixture : IDisposable
 
     public string UserName { get; }
 
+    public string UnsetUserName { get; }
+
     public string ComputerName { get; }
 
     public string GroupName { get; }
@@ -51,6 +58,8 @@ public sealed class TestDataFixture : IDisposable
     public string NestedGroupName { get; }
 
     public string UserDn { get; }
+
+    public string UnsetUserDn { get; }
 
     public string ComputerDn { get; }
 
@@ -98,7 +107,16 @@ public sealed class TestDataFixture : IDisposable
         user.CommitChanges();
 
         SetUserExpiration();
+        RecordSuccessfulUserLogon();
+    }
 
+    private void CreateUnsetUser()
+    {
+        using var container = Open(DifferentialSettings.UsersContainer);
+        using var user = container.Children.Add($"CN={UnsetUserName}", "user");
+        user.Properties["sAMAccountName"].Value = UnsetUserName;
+        user.CommitChanges();
+        _created.Add(UnsetUserDn);
     }
 
     private void SetUserExpiration()
@@ -116,6 +134,22 @@ public sealed class TestDataFixture : IDisposable
             ?? throw new InvalidOperationException($"Could not reload seeded user {UserName}.");
         user.AccountExpirationDate = UserExpirationTime;
         user.Save();
+    }
+
+    private void RecordSuccessfulUserLogon()
+    {
+        var identifier = new LdapDirectoryIdentifier(
+            DifferentialSettings.Host,
+            DifferentialSettings.Port,
+            fullyQualifiedDnsHostName: false,
+            connectionless: false);
+        var upn = $"{UserName}@{DomainSuffix()}";
+        using var connection = new LdapConnection(
+            identifier,
+            new NetworkCredential(upn, UserPassword),
+            AuthType.Basic);
+        connection.SessionOptions.SecureSocketLayer = DifferentialSettings.UseTls;
+        connection.Bind();
     }
 
     private void CreateGroups()

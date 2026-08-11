@@ -18,7 +18,7 @@ public class AdvancedFilters
     }
 
     public void LastBadPasswordAttempt(DateTime lastAttempt, MatchType match) =>
-        AdvancedDateFilterSet("badPasswordTime", lastAttempt, match, excludeDefaultValue: true);
+        AdvancedDateFilterSet("badPasswordTime", lastAttempt, match);
 
     public void AccountExpirationDate(DateTime expirationTime, MatchType match) =>
         AdvancedDateFilterSet("accountExpires", expirationTime, match);
@@ -34,12 +34,12 @@ public class AdvancedFilters
         ValidateMatchType(match);
         _principal.SetAdvancedFilter(
             "lastLogon",
-            $"(|{ToLdapDateCondition("lastLogon", logonTime, match, excludeDefaultValue: true)}" +
-            $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, excludeDefaultValue: true, requirePresenceForNotEquals: true)})");
+            $"(|{ToLdapDateCondition("lastLogon", logonTime, match)}" +
+            $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, requirePresenceForNotEquals: true)})");
     }
 
     public void LastPasswordSetTime(DateTime passwordSetTime, MatchType match) =>
-        AdvancedDateFilterSet("pwdLastSet", passwordSetTime, match, excludeDefaultValue: true);
+        AdvancedDateFilterSet("pwdLastSet", passwordSetTime, match);
 
     private void AdvancedDateFilterSet(
         string attribute,
