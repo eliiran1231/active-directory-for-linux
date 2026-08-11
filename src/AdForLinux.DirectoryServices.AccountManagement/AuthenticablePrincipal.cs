@@ -1,4 +1,6 @@
 using System.Text;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using AdForLinux.DirectoryServices;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
@@ -14,12 +16,19 @@ public abstract class AuthenticablePrincipal : Principal
     // userAccountControl bits.
     private const int AccountDisabled = 0x2;
     private const int PasswordNotRequiredFlag = 0x20;
+    private const int ReversiblePasswordEncryption = 0x80;
     private const int NormalAccount = 0x200;
     private const int NotDelegated = 0x100000;
     private const int PasswordDoesNotExpire = 0x10000;
+    private const int SmartcardRequired = 0x40000;
     private AdvancedFilters? _advancedSearchFilter;
+    private X509Certificate2Collection? _certificates;
+    private string[] _certificateThumbprints = Array.Empty<string>();
+    private PrincipalValueCollection<string>? _permittedWorkstations;
     private string? _passwordToSet;
     private bool? _enabledAfterPassword;
+    private bool _expirePasswordAfterSave;
+    private bool? _userCannotChangePassword;
 
     protected internal AuthenticablePrincipal(PrincipalContext context)
     {
@@ -139,6 +148,77 @@ public abstract class AuthenticablePrincipal : Principal
         set => SetUserAccountControlBit(NotDelegated, !value);
     }
 
+    public bool AllowReversiblePasswordEncryption
+    {
+        get => HasUserAccountControlBit(ReversiblePasswordEncryption);
+        set => SetUserAccountControlBit(ReversiblePasswordEncryption, value);
+    }
+
+    public bool SmartcardLogonRequired
+    {
+        get => HasUserAccountControlBit(SmartcardRequired);
+        set => SetUserAccountControlBit(SmartcardRequired, value);
+    }
+
+    public byte[]? PermittedLogonTimes
+    {
+        get => GetValue("logonHours") as byte[];
+        set => SetValue("logonHours", value);
+    }
+
+    public PrincipalValueCollection<string> PermittedWorkstations =>
+        _permittedWorkstations ??= new PrincipalValueCollection<string>(
+            ReadPermittedWorkstations(),
+            values => SetString("userWorkstations", values.Count == 0 ? null : string.Join(',', values)));
+
+    public X509Certificate2Collection Certificates
+    {
+        get
+        {
+            if (_certificates is not null)
+            {
+                return _certificates;
+            }
+
+            _certificates = new X509Certificate2Collection();
+            foreach (var raw in GetRawValues("userCertificate").OfType<byte[]>())
+            {
+                try
+                {
+                    _certificates.Add(LoadCertificate(raw));
+                }
+                catch (CryptographicException)
+                {
+                    // Microsoft skips malformed values rather than making the
+                    // whole collection unreadable.
+                }
+            }
+
+            _certificateThumbprints = CertificateThumbprints(_certificates);
+            return _certificates;
+        }
+    }
+
+    public bool UserCannotChangePassword
+    {
+        get
+        {
+            if (_userCannotChangePassword is not null)
+            {
+                return _userCannotChangePassword.Value;
+            }
+
+            if (Entry is null)
+            {
+                return false;
+            }
+
+            var descriptor = Entry.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
+            return ChangePasswordAcl.IsDenied(descriptor);
+        }
+        set => _userCannotChangePassword = value;
+    }
+
     /// <summary>The home directory path.</summary>
     public string? HomeDirectory
     {
@@ -204,12 +284,34 @@ public abstract class AuthenticablePrincipal : Principal
     /// </summary>
     public void SetPassword(string newPassword)
     {
-        var entry = RequireSaved();
+        ArgumentNullException.ThrowIfNull(newPassword);
+        if (Entry is null)
+        {
+            _passwordToSet = newPassword;
+            var requestedEnabled = Enabled;
+            if (requestedEnabled is not null)
+            {
+                _enabledAfterPassword = requestedEnabled.Value;
+                SetUserAccountControlBit(AccountDisabled, on: true);
+            }
+            return;
+        }
 
         // AD wants the password quoted and encoded as little-endian UTF-16.
-        var quoted = "\"" + newPassword + "\"";
-        var bytes = Encoding.Unicode.GetBytes(quoted);
-        entry.ReplaceAttributeImmediate("unicodePwd", bytes);
+        Entry.ReplaceAttributeImmediate("unicodePwd", EncodePassword(newPassword));
+    }
+
+    public void ChangePassword(string oldPassword, string newPassword)
+    {
+        ArgumentNullException.ThrowIfNull(oldPassword);
+        ArgumentNullException.ThrowIfNull(newPassword);
+        var entry = RequireSaved();
+        if (this is ComputerPrincipal)
+        {
+            throw new NotSupportedException("Changing a computer account password is not supported.");
+        }
+
+        entry.ChangePasswordImmediate(EncodePassword(oldPassword), EncodePassword(newPassword));
     }
 
     /// <summary>Unlocks a locked-out account. Takes effect immediately.</summary>
@@ -222,8 +324,24 @@ public abstract class AuthenticablePrincipal : Principal
     /// <summary>Forces the password to be changed at next logon. Immediate.</summary>
     public void ExpirePasswordNow()
     {
-        var entry = RequireSaved();
-        entry.ReplaceAttributeImmediate("pwdLastSet", "0");
+        if (Entry is null)
+        {
+            _expirePasswordAfterSave = true;
+            return;
+        }
+
+        Entry.ReplaceAttributeImmediate("pwdLastSet", "0");
+    }
+
+    public void RefreshExpiredPassword()
+    {
+        if (Entry is null)
+        {
+            _expirePasswordAfterSave = false;
+            return;
+        }
+
+        Entry.ReplaceAttributeImmediate("pwdLastSet", "-1");
     }
 
     private protected int? ReadUserAccountControl()
@@ -252,12 +370,69 @@ public abstract class AuthenticablePrincipal : Principal
             _passwordToSet = null;
         }
 
+        if (_expirePasswordAfterSave)
+        {
+            Entry!.ReplaceAttributeImmediate("pwdLastSet", "0");
+            _expirePasswordAfterSave = false;
+        }
+
         if (_enabledAfterPassword is not null)
         {
             Enabled = _enabledAfterPassword.Value;
             Entry!.CommitChanges();
             _enabledAfterPassword = null;
         }
+
+        if (_userCannotChangePassword is not null)
+        {
+            var descriptor = Entry!.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
+            var changed = ChangePasswordAcl.SetDenied(descriptor, _userCannotChangePassword.Value);
+            Entry.ReplaceSecurityDescriptorImmediate(changed, SecurityMasks.Dacl);
+            _userCannotChangePassword = null;
+        }
+
+        if (_certificates is not null)
+        {
+            _certificateThumbprints = CertificateThumbprints(_certificates);
+        }
+    }
+
+    private protected override void OnBeforeSave()
+    {
+        base.OnBeforeSave();
+        if (_certificates is not null
+            && !_certificateThumbprints.SequenceEqual(CertificateThumbprints(_certificates), StringComparer.OrdinalIgnoreCase))
+        {
+            SetValues("userCertificate", _certificates.Cast<X509Certificate2>()
+                .Select(certificate => certificate.RawData)
+                .ToArray());
+        }
+    }
+
+    private IEnumerable<string> ReadPermittedWorkstations()
+    {
+        var value = GetString("userWorkstations");
+        return string.IsNullOrEmpty(value) ? Array.Empty<string>() : value.Split(',');
+    }
+
+    private static byte[] EncodePassword(string password) =>
+        Encoding.Unicode.GetBytes('"' + password + '"');
+
+    private static string[] CertificateThumbprints(X509Certificate2Collection certificates) =>
+        certificates.Cast<X509Certificate2>()
+            .Select(certificate => certificate.Thumbprint)
+            .OrderBy(thumbprint => thumbprint, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static X509Certificate2 LoadCertificate(byte[] raw)
+    {
+#if NET9_0_OR_GREATER
+        return X509CertificateLoader.LoadCertificate(raw);
+#else
+#pragma warning disable SYSLIB0057
+        return new X509Certificate2(raw);
+#pragma warning restore SYSLIB0057
+#endif
     }
 
     public static PrincipalSearchResult<AuthenticablePrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>

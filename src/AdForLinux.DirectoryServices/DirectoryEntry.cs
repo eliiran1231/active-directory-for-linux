@@ -319,6 +319,69 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>
+    /// Changes an AD password with the atomic delete-old/add-new unicodePwd
+    /// operation required for a user-initiated password change.
+    /// </summary>
+    internal void ChangePasswordImmediate(byte[] oldPassword, byte[] newPassword)
+    {
+        var deletion = new DirectoryAttributeModification
+        {
+            Name = "unicodePwd",
+            Operation = DirectoryAttributeOperation.Delete,
+        };
+        deletion.Add(oldPassword);
+
+        var addition = new DirectoryAttributeModification
+        {
+            Name = "unicodePwd",
+            Operation = DirectoryAttributeOperation.Add,
+        };
+        addition.Add(newPassword);
+
+        var request = new ModifyRequest(_path.DistinguishedName);
+        request.Modifications.Add(deletion);
+        request.Modifications.Add(addition);
+        GetConnection().SendRequest(request);
+    }
+
+    internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
+    {
+        var request = new SearchRequest(
+            _path.DistinguishedName,
+            "(objectClass=*)",
+            ProtocolScope.Base,
+            "nTSecurityDescriptor");
+        request.Controls.Add(new SecurityDescriptorFlagControl(
+            (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
+
+        var response = (SearchResponse)GetConnection().SendRequest(request);
+        if (response.Entries.Count == 0
+            || response.Entries[0].Attributes["nTSecurityDescriptor"] is not { Count: > 0 } attribute
+            || attribute[0] is not byte[] binaryForm)
+        {
+            throw new InvalidOperationException("The directory entry did not return a binary security descriptor.");
+        }
+
+        return binaryForm;
+    }
+
+    internal void ReplaceSecurityDescriptorImmediate(byte[] binaryForm, SecurityMasks masks)
+    {
+        var replacement = new DirectoryAttributeModification
+        {
+            Name = "nTSecurityDescriptor",
+            Operation = DirectoryAttributeOperation.Replace,
+        };
+        replacement.Add(binaryForm);
+
+        var request = new ModifyRequest(_path.DistinguishedName);
+        request.Modifications.Add(replacement);
+        request.Controls.Add(new SecurityDescriptorFlagControl(
+            (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
+        GetConnection().SendRequest(request);
+    }
+
+    /// <summary>
     /// Adds and removes individual values of one attribute in a single request,
     /// without rewriting the values that are already there. Used for group
     /// membership, where replacing the whole list would be unsafe.
@@ -552,27 +615,7 @@ public class DirectoryEntry : Component
     private ActiveDirectorySecurity ReadObjectSecurity()
     {
         var masks = EffectiveSecurityMasks();
-        var request = new SearchRequest(
-            _path.DistinguishedName,
-            "(objectClass=*)",
-            ProtocolScope.Base,
-            "nTSecurityDescriptor");
-        request.Controls.Add(new SecurityDescriptorFlagControl(
-            (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
-
-        var response = (SearchResponse)GetConnection().SendRequest(request);
-        if (response.Entries.Count == 0)
-        {
-            throw new InvalidOperationException("The directory entry did not return a security descriptor.");
-        }
-
-        var attribute = response.Entries[0].Attributes["nTSecurityDescriptor"];
-        if (attribute is null || attribute.Count == 0 || attribute[0] is not byte[] binaryForm)
-        {
-            throw new InvalidOperationException("The directory entry did not return a binary security descriptor.");
-        }
-
-        return new ActiveDirectorySecurity(binaryForm, masks);
+        return new ActiveDirectorySecurity(ReadSecurityDescriptorImmediate(masks), masks);
     }
 
     private static void EnsureAccessControlSupported()

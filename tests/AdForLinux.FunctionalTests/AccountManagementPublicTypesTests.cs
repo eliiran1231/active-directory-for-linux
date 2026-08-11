@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using AdForLinux.DirectoryServices.AccountManagement;
 using Xunit;
 using AccountMatchType = AdForLinux.DirectoryServices.AccountManagement.MatchType;
@@ -30,6 +32,40 @@ public class AccountManagementPublicTypesTests
         Assert.False(values.IsReadOnly);
         Assert.False(values.IsSynchronized);
         Assert.Same(values, values.SyncRoot);
+    }
+
+    [Fact]
+    public void Authenticable_principal_issue_8_values_can_be_staged_offline()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        var hours = Enumerable.Range(0, 21).Select(value => (byte)value).ToArray();
+
+        user.AllowReversiblePasswordEncryption = true;
+        user.SmartcardLogonRequired = true;
+        user.PermittedLogonTimes = hours;
+        user.PermittedWorkstations.Add("DESK01");
+        user.PermittedWorkstations.Add("DESK02");
+        user.UserCannotChangePassword = true;
+        user.SetPassword("Str0ng!Passw0rd#2026");
+        user.ExpirePasswordNow();
+        user.RefreshExpiredPassword();
+
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest("CN=offline-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+        user.Certificates.Add(certificate);
+
+        Assert.True(user.AllowReversiblePasswordEncryption);
+        Assert.True(user.SmartcardLogonRequired);
+        Assert.Same(hours, user.PermittedLogonTimes);
+        Assert.Equal(new[] { "DESK01", "DESK02" }, user.PermittedWorkstations);
+        Assert.True(user.UserCannotChangePassword);
+        Assert.Single(user.Certificates);
+        Assert.Throws<InvalidOperationException>(() => user.ChangePassword("old", "new"));
+        Assert.Throws<ArgumentNullException>(() => user.SetPassword(null!));
+        Assert.Throws<ArgumentNullException>(() => user.ChangePassword(null!, "new"));
+        Assert.Throws<ArgumentNullException>(() => user.ChangePassword("old", null!));
     }
 
     [Fact]

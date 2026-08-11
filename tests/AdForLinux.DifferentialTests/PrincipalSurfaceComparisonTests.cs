@@ -8,6 +8,48 @@ namespace AdForLinux.DifferentialTests;
 public class PrincipalSurfaceComparisonTests
 {
     [Fact]
+    public void AuthenticablePrincipal_issue_8_surface_matches_microsoft()
+    {
+        var propertyNames = new[]
+        {
+            nameof(Ms.AuthenticablePrincipal.AllowReversiblePasswordEncryption),
+            nameof(Ms.AuthenticablePrincipal.Certificates),
+            nameof(Ms.AuthenticablePrincipal.PermittedLogonTimes),
+            nameof(Ms.AuthenticablePrincipal.PermittedWorkstations),
+            nameof(Ms.AuthenticablePrincipal.SmartcardLogonRequired),
+            nameof(Ms.AuthenticablePrincipal.UserCannotChangePassword),
+        };
+        foreach (var propertyName in propertyNames)
+        {
+            var microsoft = typeof(Ms.AuthenticablePrincipal).GetProperty(propertyName)!;
+            var ours = typeof(Ours.AuthenticablePrincipal).GetProperty(propertyName)!;
+            Assert.NotNull(microsoft);
+            Assert.NotNull(ours);
+            Assert.Equal(microsoft.CanRead, ours.CanRead);
+            Assert.Equal(microsoft.CanWrite, ours.CanWrite);
+            Assert.Equal(microsoft.PropertyType.IsArray, ours.PropertyType.IsArray);
+            Assert.Equal(microsoft.PropertyType.IsGenericType, ours.PropertyType.IsGenericType);
+            Assert.Equal(typeof(Ms.AuthenticablePrincipal), microsoft.DeclaringType);
+            Assert.Equal(typeof(Ours.AuthenticablePrincipal), ours.DeclaringType);
+        }
+
+        Assert.Equal(typeof(byte[]), typeof(Ours.AuthenticablePrincipal)
+            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedLogonTimes))!.PropertyType);
+        Assert.Equal(typeof(System.Security.Cryptography.X509Certificates.X509Certificate2Collection),
+            typeof(Ours.AuthenticablePrincipal)
+                .GetProperty(nameof(Ours.AuthenticablePrincipal.Certificates))!.PropertyType);
+        Assert.Equal(typeof(Ours.PrincipalValueCollection<string>), typeof(Ours.AuthenticablePrincipal)
+            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedWorkstations))!.PropertyType);
+
+        Assert.NotNull(typeof(Ours.AuthenticablePrincipal).GetMethod(
+            nameof(Ms.AuthenticablePrincipal.ChangePassword),
+            new[] { typeof(string), typeof(string) }));
+        Assert.NotNull(typeof(Ours.AuthenticablePrincipal).GetMethod(
+            nameof(Ms.AuthenticablePrincipal.RefreshExpiredPassword),
+            Type.EmptyTypes));
+    }
+
+    [Fact]
     public void Principal_issue_7_surface_matches_microsoft()
     {
         AssertPublicMethodPair(
