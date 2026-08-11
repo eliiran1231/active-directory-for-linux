@@ -120,4 +120,43 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
             .Check("found", msSearcher.FindOne() is not null, ourSearcher.FindOne() is not null)
             .Assert();
     }
+
+    [Fact]
+    public void Underlying_searcher_customization_matches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msSearcher = new Ms.PrincipalSearcher(
+            new Ms.UserPrincipal(msContext) { SamAccountName = _data.UserName });
+        using var ourSearcher = new Ours.PrincipalSearcher(
+            new Ours.UserPrincipal(ourContext) { SamAccountName = _data.UserName });
+
+        var msUnderlying = Assert.IsType<System.DirectoryServices.DirectorySearcher>(
+            msSearcher.GetUnderlyingSearcher());
+        var ourUnderlying = Assert.IsType<AdForLinux.DirectoryServices.DirectorySearcher>(
+            ourSearcher.GetUnderlyingSearcher());
+
+        new Comparison("PrincipalSearcher underlying searcher defaults")
+            .Check("type name",
+                msSearcher.GetUnderlyingSearcherType().Name,
+                ourSearcher.GetUnderlyingSearcherType().Name)
+            .Check("PageSize", msUnderlying.PageSize, ourUnderlying.PageSize)
+            .Check("ServerTimeLimit", msUnderlying.ServerTimeLimit, ourUnderlying.ServerTimeLimit)
+            .Assert();
+
+        msUnderlying.PageSize = 1;
+        msUnderlying.SizeLimit = 1;
+        ourUnderlying.PageSize = 1;
+        ourUnderlying.SizeLimit = 1;
+
+        using var msResults = msSearcher.FindAll();
+        using var ourResults = ourSearcher.FindAll();
+        new Comparison("PrincipalSearcher caller customization")
+            .CheckSet("DNs",
+                msResults.Select(principal => principal.DistinguishedName),
+                ourResults.Select(principal => principal.DistinguishedName))
+            .Check("retained PageSize", msUnderlying.PageSize, ourUnderlying.PageSize)
+            .Check("retained SizeLimit", msUnderlying.SizeLimit, ourUnderlying.SizeLimit)
+            .Assert();
+    }
 }

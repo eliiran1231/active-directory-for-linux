@@ -1,5 +1,6 @@
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
+using System.ComponentModel;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -13,6 +14,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
+    private readonly bool _hasExplicitPort;
     private string? _container;
 
     /// <summary>Current-domain context. Not supported on Linux — pass a server name.</summary>
@@ -33,6 +35,26 @@ public class PrincipalContext : IDisposable
     {
     }
 
+    /// <summary>Context for a named server using explicit bind credentials.</summary>
+    public PrincipalContext(
+        ContextType contextType,
+        string? name,
+        string? userName,
+        string? password)
+        : this(contextType, name, null, DefaultOptions, userName, password)
+    {
+    }
+
+    /// <summary>Context scoped to a container with explicit bind options.</summary>
+    public PrincipalContext(
+        ContextType contextType,
+        string? name,
+        string? container,
+        ContextOptions options)
+        : this(contextType, name, container, options, null, null)
+    {
+    }
+
     /// <summary>Authenticated context (simple bind) scoped to a container.</summary>
     public PrincipalContext(ContextType contextType, string? name, string? container, string? userName, string? password)
         : this(contextType, name, container, DefaultOptions, userName, password)
@@ -48,6 +70,12 @@ public class PrincipalContext : IDisposable
         string? userName,
         string? password)
     {
+        if (!Enum.IsDefined(contextType))
+        {
+            throw new InvalidEnumArgumentException(
+                nameof(contextType), (int)contextType, typeof(ContextType));
+        }
+
         if (contextType != ContextType.Domain)
         {
             throw new NotSupportedException(
@@ -61,13 +89,21 @@ public class PrincipalContext : IDisposable
                 "name, e.g. new PrincipalContext(ContextType.Domain, \"dc1.example.com\").");
         }
 
+        if ((userName is null) != (password is null))
+        {
+            throw new ArgumentException(
+                "The userName and password parameters must either both be null or both contain a value.");
+        }
+
+        ValidateOptions(options);
+
         ContextType = contextType;
         _options = options;
         UserName = userName;
         _password = password;
 
         UseSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
-        (Name, Port) = ParseServer(name, UseSsl);
+        (Name, Port, _hasExplicitPort) = ParseServer(name, UseSsl);
         _container = container;
     }
 
@@ -91,6 +127,9 @@ public class PrincipalContext : IDisposable
     /// <summary>The bind user, or null for an anonymous context.</summary>
     public string? UserName { get; }
 
+    /// <summary>The options used to bind this context.</summary>
+    public ContextOptions Options => _options;
+
     /// <summary>The server this context is connected to.</summary>
     public string ConnectedServer => Name;
 
@@ -113,10 +152,20 @@ public class PrincipalContext : IDisposable
     /// succeeds, false if the credentials are rejected.
     /// </summary>
     public bool ValidateCredentials(string userName, string password)
+        => ValidateCredentials(userName, password, _options);
+
+    /// <summary>
+    /// Checks a username and password using the requested bind options.
+    /// </summary>
+    public bool ValidateCredentials(
+        string userName,
+        string password,
+        ContextOptions options)
     {
         try
         {
-            using var connection = LdapConnectionFactory.CreateBound(BuildOptions(userName, password));
+            using var connection = LdapConnectionFactory.CreateBound(
+                BuildOptions(userName, password, options));
             return true;
         }
         catch (System.DirectoryServices.Protocols.LdapException)
@@ -127,14 +176,24 @@ public class PrincipalContext : IDisposable
 
     internal LdapConnectionOptions BuildOptions() => BuildOptions(UserName, _password);
 
-    internal LdapConnectionOptions BuildOptions(string? bindUser, string? bindPassword) => new()
+    internal LdapConnectionOptions BuildOptions(string? bindUser, string? bindPassword) =>
+        BuildOptions(bindUser, bindPassword, _options);
+
+    private LdapConnectionOptions BuildOptions(
+        string? bindUser,
+        string? bindPassword,
+        ContextOptions options)
     {
-        Host = Name,
-        Port = Port,
-        UseSsl = UseSsl,
-        BindDn = bindUser,
-        BindPassword = bindPassword,
-    };
+        var useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
+        return new LdapConnectionOptions
+        {
+            Host = Name,
+            Port = _hasExplicitPort ? Port : useSsl ? 636 : 389,
+            UseSsl = useSsl,
+            BindDn = bindUser,
+            BindPassword = bindPassword,
+        };
+    }
 
     /// <summary>The LDAP path for a DN on this context's server.</summary>
     internal string PathFor(string distinguishedName)
@@ -159,15 +218,44 @@ public class PrincipalContext : IDisposable
             ?? throw new InvalidOperationException("The server did not report a default naming context.");
     }
 
-    private static (string Host, int Port) ParseServer(string name, bool useSsl)
+    private static (string Host, int Port, bool HasExplicitPort) ParseServer(
+        string name,
+        bool useSsl)
     {
         var colon = name.LastIndexOf(':');
         if (colon > 0 && int.TryParse(name.Substring(colon + 1), out var port))
         {
-            return (name.Substring(0, colon), port);
+            return (name.Substring(0, colon), port, true);
         }
 
-        return (name, useSsl ? 636 : 389);
+        return (name, useSsl ? 636 : 389, false);
+    }
+
+    private static void ValidateOptions(ContextOptions options)
+    {
+        const ContextOptions validOptions =
+            ContextOptions.Negotiate |
+            ContextOptions.SimpleBind |
+            ContextOptions.SecureSocketLayer |
+            ContextOptions.Signing |
+            ContextOptions.Sealing |
+            ContextOptions.ServerBind;
+
+        if ((options & ~validOptions) != 0)
+        {
+            throw new InvalidEnumArgumentException(
+                nameof(options), (int)options, typeof(ContextOptions));
+        }
+
+        var bindOptions = options & (ContextOptions.Negotiate | ContextOptions.SimpleBind);
+        if (bindOptions is ContextOptions.Negotiate or ContextOptions.SimpleBind)
+        {
+            return;
+        }
+
+        throw new ArgumentException(
+            "Domain contexts require exactly one of ContextOptions.Negotiate or ContextOptions.SimpleBind.",
+            nameof(options));
     }
 
     public void Dispose() => GC.SuppressFinalize(this);

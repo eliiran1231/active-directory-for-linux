@@ -56,6 +56,44 @@ public class PrincipalContextTests
     }
 
     [Fact]
+    public void Issue_11_constructor_overloads_and_options_are_available()
+    {
+        using var credentialContext = new PrincipalContext(
+            ContextType.Domain,
+            "dc.example.test",
+            "bind-user",
+            "bind-password");
+        Assert.Equal("bind-user", credentialContext.UserName);
+        Assert.Equal(
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer,
+            credentialContext.Options);
+
+        using var optionsContext = new PrincipalContext(
+            ContextType.Domain,
+            "dc.example.test",
+            "DC=example,DC=test",
+            ContextOptions.SimpleBind);
+        Assert.Equal(ContextOptions.SimpleBind, optionsContext.Options);
+        Assert.False(optionsContext.UseSsl);
+        Assert.Equal(389, optionsContext.Port);
+    }
+
+    [Fact]
+    public void ValidateCredentials_honors_explicit_context_options()
+    {
+        using var context = Authenticated();
+
+        Assert.True(context.ValidateCredentials(
+            TestSettings.BindDn,
+            TestSettings.BindPassword,
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer));
+        Assert.False(context.ValidateCredentials(
+            TestSettings.BindDn,
+            "definitely-wrong-password",
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer));
+    }
+
+    [Fact]
     public void Serverless_context_is_not_supported_on_linux()
     {
         Assert.Throws<NotSupportedException>(() => new PrincipalContext(ContextType.Domain));

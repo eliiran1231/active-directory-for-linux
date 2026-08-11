@@ -95,6 +95,41 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
+    public void PrincipalSearcher_exposes_and_reuses_the_underlying_directory_searcher()
+    {
+        using var context = OfflineContext();
+        using var filter = new UserPrincipal(context) { SamAccountName = "user*" };
+        using var searcher = new PrincipalSearcher(filter);
+
+        Assert.Equal(typeof(DirectorySearcher), searcher.GetUnderlyingSearcherType());
+        var underlying = Assert.IsType<DirectorySearcher>(searcher.GetUnderlyingSearcher());
+        Assert.Equal(256, underlying.PageSize);
+        Assert.Equal(TimeSpan.FromSeconds(30), underlying.ServerTimeLimit);
+        Assert.Equal(searcher.GetLdapFilter(), underlying.Filter);
+
+        underlying.PageSize = 17;
+        Assert.Same(underlying, searcher.GetUnderlyingSearcher());
+        Assert.Equal(17, underlying.PageSize);
+    }
+
+    [Fact]
+    public void PrincipalSearcher_uses_caller_changes_to_the_underlying_searcher()
+    {
+        using var context = Context();
+        using var filter = new UserPrincipal(context) { SamAccountName = "Administrator" };
+        using var searcher = new PrincipalSearcher(filter);
+        var underlying = Assert.IsType<DirectorySearcher>(searcher.GetUnderlyingSearcher());
+        underlying.PageSize = 1;
+        underlying.SizeLimit = 1;
+
+        using var results = searcher.FindAll();
+
+        Assert.Single(results);
+        Assert.Equal(1, underlying.PageSize);
+        Assert.Equal(1, underlying.SizeLimit);
+    }
+
+    [Fact]
     public void Principal_identity_sid_extensions_groups_and_membership_round_trip()
     {
         var userName = NewName();

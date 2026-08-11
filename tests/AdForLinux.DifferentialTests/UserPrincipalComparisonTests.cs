@@ -255,6 +255,35 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Assert();
     }
 
+    [Fact]
+    public void ValidateCredentials_with_explicit_options_agrees()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        var upn = $"{_data.UserName}@{DomainSuffix()}";
+
+        new Comparison("ValidateCredentials with explicit ContextOptions")
+            .Check("correct password",
+                msContext.ValidateCredentials(
+                    upn,
+                    _data.UserPassword,
+                    Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer),
+                ourContext.ValidateCredentials(
+                    upn,
+                    _data.UserPassword,
+                    Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer))
+            .Check("wrong password",
+                msContext.ValidateCredentials(
+                    upn,
+                    "definitely-wrong",
+                    Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer),
+                ourContext.ValidateCredentials(
+                    upn,
+                    "definitely-wrong",
+                    Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer))
+            .Assert();
+    }
+
     private static string DomainSuffix() =>
         string.Join(".", DifferentialSettings.BaseDn
             .Split(',')
