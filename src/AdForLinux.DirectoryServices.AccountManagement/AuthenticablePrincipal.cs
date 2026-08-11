@@ -298,8 +298,7 @@ public abstract class AuthenticablePrincipal : Principal
         }
 
         // AD wants the password quoted and encoded as little-endian UTF-16.
-        ExecutePasswordOperation(
-            () => Entry.ReplaceAttributeImmediate("unicodePwd", EncodePassword(newPassword)));
+        ExecutePasswordOperation(() => SetPasswordImmediate(newPassword));
     }
 
     public void ChangePassword(string oldPassword, string newPassword)
@@ -375,12 +374,30 @@ public abstract class AuthenticablePrincipal : Principal
         }
     }
 
+    private void SetPasswordImmediate(string password) =>
+        Entry!.ReplaceAttributeImmediate("unicodePwd", EncodePassword(password));
+
+    private static void ExecuteDeferredPasswordOperation(Action operation)
+    {
+        try
+        {
+            operation();
+        }
+        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        {
+            // Microsoft surfaces a password rejected during the initial Save()
+            // as InvalidOperationException, even though the same rejection from
+            // an immediate SetPassword() call is a PasswordException.
+            throw new InvalidOperationException(exception.Message, exception);
+        }
+    }
+
     private protected override void OnAfterSave()
     {
         base.OnAfterSave();
         if (_passwordToSet is not null)
         {
-            SetPassword(_passwordToSet);
+            ExecuteDeferredPasswordOperation(() => SetPasswordImmediate(_passwordToSet));
             _passwordToSet = null;
         }
 

@@ -423,6 +423,32 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void Save_with_a_rejected_deferred_password_throws_InvalidOperationException()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+        try
+        {
+            using var context = Context();
+            using var user = new UserPrincipal(context)
+            {
+                Name = name,
+                SamAccountName = name,
+                Enabled = false,
+            };
+            user.SetPassword("short");
+
+            var exception = Assert.Throws<InvalidOperationException>(user.Save);
+            Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(
+                exception.InnerException);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void UserCannotChangePassword_round_trips_through_the_change_password_acl()
     {
         var name = NewName();
