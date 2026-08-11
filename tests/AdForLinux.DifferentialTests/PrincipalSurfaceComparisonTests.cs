@@ -51,6 +51,10 @@ public class PrincipalSurfaceComparisonTests
             "ExtensionSet",
             new[] { typeof(string), typeof(object) },
             new[] { typeof(string), typeof(object) });
+        AssertProtectedMethodPair(
+            "CheckDisposedOrDeleted",
+            Type.EmptyTypes,
+            Type.EmptyTypes);
 
         Assert.Equal(
             typeof(Ms.Principal).GetProperty(nameof(Ms.Principal.Sid))!.PropertyType,

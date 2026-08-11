@@ -15,7 +15,10 @@ public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
+    private bool _disposed;
+    private bool _deleted;
 
     private protected PrincipalContext ContextRef = null!;
 
@@ -139,7 +142,13 @@ public abstract class Principal : IDisposable
     /// The groups this principal is a direct member of. Nested groups are not
     /// followed — use <see cref="GetAuthorizationGroups"/> for that.
     /// </summary>
-    public PrincipalSearchResult<Principal> GetGroups() => GetGroups(ContextRef);
+    public PrincipalSearchResult<Principal> GetGroups()
+    {
+        CheckDisposedOrDeleted();
+        return Entry is null
+            ? new PrincipalSearchResult<Principal>(Array.Empty<Principal>())
+            : GetGroups(ContextRef);
+    }
 
     /// <summary>
     /// The direct groups this principal belongs to in the supplied context.
@@ -147,26 +156,40 @@ public abstract class Principal : IDisposable
     public PrincipalSearchResult<Principal> GetGroups(PrincipalContext contextToQuery)
     {
         ArgumentNullException.ThrowIfNull(contextToQuery);
+        CheckDisposedOrDeleted();
+        if (Entry is null)
+        {
+            return new PrincipalSearchResult<Principal>(Array.Empty<Principal>());
+        }
+
+        var memberFilter = $"(member={LdapFilter.EscapeValue(RequireDistinguishedName())})";
+        var primaryGroupSid = TryGetPrimaryGroupSid();
+        var membershipFilter = primaryGroupSid is null
+            ? memberFilter
+            : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
         return FindGroups(
             contextToQuery,
-            $"(member={LdapFilter.EscapeValue(RequireDistinguishedName())})");
+            membershipFilter);
     }
 
     /// <summary>
     /// Every group this principal belongs to, directly or through nesting. Uses
     /// the AD matching rule LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941).
     /// </summary>
-    public PrincipalSearchResult<Principal> GetAuthorizationGroups() =>
-        FindGroups(
+    public PrincipalSearchResult<Principal> GetAuthorizationGroups()
+    {
+        CheckDisposedOrDeleted();
+        return FindGroups(
             ContextRef,
             $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(RequireDistinguishedName())})");
+    }
 
     private PrincipalSearchResult<Principal> FindGroups(
         PrincipalContext contextToQuery,
         string membershipFilter)
     {
         var filter = $"(&(objectCategory=group){membershipFilter})";
-        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.Container);
+        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.DefaultNamingContext);
         try
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
@@ -192,8 +215,9 @@ public abstract class Principal : IDisposable
     /// <summary>Returns whether this principal is a direct member of a group.</summary>
     public bool IsMemberOf(GroupPrincipal group)
     {
+        CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(group);
-        return group.Members.Contains(this);
+        return group.Members.Contains(this) || IsPrimaryGroup(group);
     }
 
     /// <summary>
@@ -205,6 +229,7 @@ public abstract class Principal : IDisposable
         IdentityType identityType,
         string identityValue)
     {
+        CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(identityValue);
 
@@ -212,6 +237,35 @@ public abstract class Principal : IDisposable
             ?? throw new NoMatchingPrincipalException(
                 "No group matched the supplied identity.");
         return IsMemberOf(group);
+    }
+
+    private bool IsPrimaryGroup(GroupPrincipal group)
+    {
+        var primaryGroupSid = TryGetPrimaryGroupSid();
+        var groupSid = group.RequireEntry().Properties["objectSid"].Value as byte[];
+        return primaryGroupSid is not null
+            && groupSid is not null
+            && primaryGroupSid.AsSpan().SequenceEqual(groupSid);
+    }
+
+    private byte[]? TryGetPrimaryGroupSid()
+    {
+        if (Entry?.Properties["objectSid"].Value is not byte[] objectSid)
+        {
+            return null;
+        }
+
+        var rawRid = Entry.Properties["primaryGroupID"].Value;
+        if (!uint.TryParse(
+                Convert.ToString(rawRid, System.Globalization.CultureInfo.InvariantCulture),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var rid))
+        {
+            return null;
+        }
+
+        return SidCodec.ReplaceRid(objectSid, rid);
     }
 
     /// <summary>Finds any supported principal by a common identity value.</summary>
@@ -376,9 +430,12 @@ public abstract class Principal : IDisposable
     /// </summary>
     public void Save()
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
+            ApplyExtensionChanges(Entry);
             Entry.CommitChanges();
+            _extensionCache.Clear();
             OnAfterSave();
             return;
         }
@@ -403,9 +460,11 @@ public abstract class Principal : IDisposable
                 child.Properties[name].Value = value;
             }
 
+            ApplyExtensionChanges(child);
             child.CommitChanges();
             Entry = child;
             _pending.Clear();
+            _extensionCache.Clear();
             OnAfterSave();
         }
         finally
@@ -420,6 +479,7 @@ public abstract class Principal : IDisposable
     /// </summary>
     public void Save(PrincipalContext context)
     {
+        CheckDisposedOrDeleted();
         if (context is null)
         {
             throw new InvalidOperationException("The target context cannot be null.");
@@ -431,6 +491,12 @@ public abstract class Principal : IDisposable
             return;
         }
 
+        if (context.ContextType != ContextRef.ContextType)
+        {
+            throw new InvalidOperationException(
+                "The destination context must have the same ContextType as the principal context.");
+        }
+
         if (Entry is null)
         {
             ContextRef = context;
@@ -438,32 +504,79 @@ public abstract class Principal : IDisposable
             return;
         }
 
-        if (!string.Equals(context.Name, ContextRef.Name, StringComparison.OrdinalIgnoreCase)
-            || context.Port != ContextRef.Port)
+        if (!string.Equals(
+                context.DefaultNamingContext,
+                ContextRef.DefaultNamingContext,
+                StringComparison.OrdinalIgnoreCase))
         {
             throw new PlatformNotSupportedException(
-                "LDAP cannot move an existing principal between different directory servers.");
+                "Moving a persisted principal between AD domains requires ADSI's cross-store move " +
+                "support and is not available through this LDAP port. Different domain controllers " +
+                "for the same AD domain are supported.");
         }
 
-        Entry.CommitChanges();
+        var originalContext = ContextRef;
+        var originalEntry = Entry;
         var currentDn = Entry.DistinguishedName;
         var currentParent = ParentDistinguishedName(currentDn);
-        if (!string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase))
-        {
-            using var target = context.CreateDirectoryEntry(context.Container);
-            Entry.MoveTo(target);
-            currentDn = Entry.DistinguishedName;
-        }
+        var moved = !string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase);
 
-        Entry.Dispose();
-        Entry = context.CreateDirectoryEntry(currentDn);
-        ContextRef = context;
-        OnAfterSave();
+        try
+        {
+            if (moved)
+            {
+                using var target = context.CreateDirectoryEntry(context.Container);
+                originalEntry.MoveTo(target);
+                currentDn = originalEntry.DistinguishedName;
+            }
+
+            ApplyExtensionChanges(originalEntry);
+            originalEntry.CommitChanges();
+            _extensionCache.Clear();
+
+            var destinationEntry = context.CreateDirectoryEntry(currentDn);
+            Entry = destinationEntry;
+            ContextRef = context;
+            try
+            {
+                OnAfterSave();
+            }
+            catch
+            {
+                destinationEntry.Dispose();
+                Entry = originalEntry;
+                ContextRef = originalContext;
+                throw;
+            }
+
+            originalEntry.Dispose();
+        }
+        catch
+        {
+            Entry = originalEntry;
+            ContextRef = originalContext;
+            if (moved)
+            {
+                try
+                {
+                    using var originalParent = originalContext.CreateDirectoryEntry(currentParent!);
+                    originalEntry.MoveTo(originalParent);
+                }
+                catch
+                {
+                    // Preserve the original failure. The server may already have
+                    // rolled back the move, or the rollback may require admin repair.
+                }
+            }
+
+            throw;
+        }
     }
 
     /// <summary>Deletes this principal from the directory.</summary>
     public void Delete()
     {
+        CheckDisposedOrDeleted();
         if (Entry is null)
         {
             throw new InvalidOperationException("Cannot delete a principal that has not been saved.");
@@ -472,6 +585,7 @@ public abstract class Principal : IDisposable
         Entry.DeleteTree();
         Entry.Dispose();
         Entry = null;
+        _deleted = true;
     }
 
     /// <summary>Escapes a value for use as an RDN (RFC 4514).</summary>
@@ -499,17 +613,32 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>The underlying <see cref="DirectoryEntry"/>.</summary>
-    public object? GetUnderlyingObject() => Entry;
+    public object? GetUnderlyingObject()
+    {
+        CheckDisposedOrDeleted();
+        return Entry ?? throw new InvalidOperationException(
+            "The principal must be saved before its underlying object can be read.");
+    }
 
     /// <summary>The type behind <see cref="GetUnderlyingObject"/>.</summary>
-    public Type GetUnderlyingObjectType() => typeof(DirectoryEntry);
+    public Type GetUnderlyingObjectType()
+    {
+        CheckDisposedOrDeleted();
+        return typeof(DirectoryEntry);
+    }
 
     /// <summary>Reads an arbitrary directory attribute for an extension class.</summary>
     protected object?[] ExtensionGet(string attribute)
     {
+        CheckDisposedOrDeleted();
         if (attribute is null)
         {
             throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
+        }
+
+        if (_extensionCache.TryGetValue(attribute, out var staged))
+        {
+            return staged.ToArray();
         }
 
         if (Entry is not null)
@@ -533,34 +662,30 @@ public abstract class Principal : IDisposable
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
     protected void ExtensionSet(string attribute, object? value)
     {
+        CheckDisposedOrDeleted();
         if (attribute is null)
         {
             throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
         }
 
         ValidateExtensionValue(value);
-        var values = value switch
-        {
-            object?[] array => array.ToArray(),
-            byte[] bytes => new object?[] { bytes },
-            ICollection collection => collection.Cast<object?>().ToArray(),
-            _ => new object?[] { value },
-        };
+        _extensionCache[attribute] = value is object?[] array
+            ? array.ToArray()
+            : new object?[] { value };
+    }
 
-        if (Entry is not null)
+    private void ApplyExtensionChanges(DirectoryEntry entry)
+    {
+        foreach (var (attribute, values) in _extensionCache)
         {
             if (values.Length == 1 && values[0] is null)
             {
-                Entry.Properties[attribute].Clear();
+                entry.Properties[attribute].Clear();
             }
             else
             {
-                Entry.Properties[attribute].Value = values;
+                entry.Properties[attribute].Value = values;
             }
-        }
-        else
-        {
-            _pending[attribute] = value is null ? null : values;
         }
     }
 
@@ -681,7 +806,28 @@ public abstract class Principal : IDisposable
 
     public virtual void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         Entry?.Dispose();
+        _disposed = true;
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Throws when this principal can no longer be used.</summary>
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected void CheckDisposedOrDeleted()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(GetType().ToString());
+        }
+
+        if (_deleted)
+        {
+            throw new InvalidOperationException("The principal has been deleted.");
+        }
     }
 }

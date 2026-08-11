@@ -57,6 +57,26 @@ public class PrincipalCompatibilityTests
         Assert.Equal(new object[] { "one", "two" }, user.ReadExtension("telephoneNumber"));
         Assert.Throws<ArgumentException>(() => user.WriteExtension("telephoneNumber", Array.Empty<object>()));
         Assert.Throws<ArgumentException>(() => user.WriteExtension(null!, "value"));
+
+        var collection = new List<string> { "one", "two" };
+        user.WriteExtension("otherTelephone", collection);
+        var staged = user.ReadExtension("otherTelephone");
+        Assert.Single(staged);
+        Assert.Same(collection, staged[0]);
+    }
+
+    [Fact]
+    public void Disposed_principals_reject_new_operations_before_argument_validation()
+    {
+        using var context = OfflineContext();
+        var user = new UserPrincipal(context);
+        user.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => user.Save());
+        Assert.Throws<ObjectDisposedException>(() => user.Save(null!));
+        Assert.Throws<ObjectDisposedException>(() => user.GetGroups());
+        Assert.Throws<ObjectDisposedException>(() => user.IsMemberOf((GroupPrincipal)null!));
+        Assert.Throws<ObjectDisposedException>(() => user.GetUnderlyingObject());
     }
 
     [Fact]
@@ -134,6 +154,82 @@ public class PrincipalCompatibilityTests
         finally
         {
             TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Primary_group_counts_for_groups_and_membership()
+    {
+        var userName = NewName();
+        var userDn = DnFor(userName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using (var user = new UserPrincipal(context)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            })
+            {
+                user.Save();
+            }
+
+            using var found = UserPrincipal.FindByIdentity(context, userName);
+            using var domainUsers = GroupPrincipal.FindByIdentity(
+                context, IdentityType.SamAccountName, "Domain Users");
+            Assert.NotNull(found);
+            Assert.NotNull(domainUsers);
+
+            using var groups = found!.GetGroups();
+            Assert.Contains(
+                domainUsers!.DistinguishedName,
+                groups.Select(group => group.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+            Assert.True(found.IsMemberOf(domainUsers));
+            Assert.True(found.IsMemberOf(
+                context, IdentityType.SamAccountName, "Domain Users"));
+        }
+        finally
+        {
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Extension_changes_are_cached_until_save_and_deleted_principals_are_rejected()
+    {
+        var userName = NewName();
+        var userDn = DnFor(userName, TestDirectory.UsersContainer);
+
+        try
+        {
+            using var context = Context();
+            using var user = new ExtendedUserPrincipal(context)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            };
+            user.Save();
+
+            var entry = Assert.IsType<DirectoryEntry>(user.GetUnderlyingObject());
+            Assert.Null(entry.Properties["telephoneNumber"].Value);
+
+            user.WriteExtension("telephoneNumber", "staged");
+            Assert.Null(entry.Properties["telephoneNumber"].Value);
+            Assert.Equal(new object[] { "staged" }, user.ReadExtension("telephoneNumber"));
+
+            user.Save();
+            Assert.Equal("staged", entry.Properties["telephoneNumber"].Value);
+
+            user.Delete();
+            Assert.Throws<InvalidOperationException>(() => user.Save());
+            Assert.Throws<InvalidOperationException>(() => user.GetGroups());
+            Assert.Throws<InvalidOperationException>(() => user.GetUnderlyingObject());
+        }
+        finally
+        {
             TestDirectory.Delete(userDn);
         }
     }

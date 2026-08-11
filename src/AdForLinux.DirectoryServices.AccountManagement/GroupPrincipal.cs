@@ -46,7 +46,14 @@ public class GroupPrincipal : Principal
     internal override string CategoryFilter => "(objectCategory=group)";
 
     /// <summary>The members of this group. Changes need a <see cref="Principal.Save"/>.</summary>
-    public PrincipalCollection Members => _members ??= new PrincipalCollection(this);
+    public PrincipalCollection Members
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _members ??= new PrincipalCollection(this);
+        }
+    }
 
     /// <summary>Returns this group's direct members.</summary>
     public PrincipalSearchResult<Principal> GetMembers() => GetMembers(recursive: false);
@@ -199,8 +206,14 @@ public class GroupPrincipal : Principal
 
     /// <summary>The underlying entry, or an error if the group is not saved yet.</summary>
     internal DirectoryEntry RequireEntry() =>
-        Entry ?? throw new InvalidOperationException(
+        GetUsableEntry();
+
+    private DirectoryEntry GetUsableEntry()
+    {
+        CheckDisposedOrDeleted();
+        return Entry ?? throw new InvalidOperationException(
             "The group must be saved before its members can be used.");
+    }
 
     private int? ReadGroupType()
     {

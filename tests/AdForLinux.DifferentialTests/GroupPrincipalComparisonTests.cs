@@ -205,6 +205,40 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetGroups_is_empty_for_unsaved_principals()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msUser = new Ms.UserPrincipal(msContext);
+        using var ourUser = new Ours.UserPrincipal(ourContext);
+        using var msGroups = msUser.GetGroups();
+        using var ourGroups = ourUser.GetGroups();
+
+        Assert.Empty(msGroups);
+        Assert.Empty(ourGroups);
+    }
+
+    [Fact]
+    public void Primary_group_membership_matches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+        using var msDomainUsers = Ms.GroupPrincipal.FindByIdentity(
+            msContext, Ms.IdentityType.SamAccountName, "Domain Users");
+        using var ourDomainUsers = Ours.GroupPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, "Domain Users");
+
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+        Assert.NotNull(msDomainUsers);
+        Assert.NotNull(ourDomainUsers);
+        Assert.Equal(msUser!.IsMemberOf(msDomainUsers!), ourUser!.IsMemberOf(ourDomainUsers!));
+        Assert.True(ourUser.IsMemberOf(ourDomainUsers));
+    }
+
+    [Fact]
     public void GetAuthorizationGroups_matches_for_the_user()
     {
         // The nested group is only reachable by following the group chain, so

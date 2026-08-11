@@ -91,4 +91,21 @@ internal static class SidCodec
 
         return string.Join('-', parts);
     }
+
+    public static byte[] ReplaceRid(byte[] value, uint rid)
+    {
+        if (value.Length < 12 || value[0] != 1 || value[1] is 0 or > 15
+            || value.Length < 8 + (value[1] * 4))
+        {
+            throw new ArgumentException("The directory value is not a valid account SID.", nameof(value));
+        }
+
+        var result = value.ToArray();
+        var offset = 8 + ((result[1] - 1) * 4);
+        result[offset] = (byte)rid;
+        result[offset + 1] = (byte)(rid >> 8);
+        result[offset + 2] = (byte)(rid >> 16);
+        result[offset + 3] = (byte)(rid >> 24);
+        return result;
+    }
 }

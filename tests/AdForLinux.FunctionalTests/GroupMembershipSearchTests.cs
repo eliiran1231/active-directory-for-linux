@@ -216,12 +216,13 @@ public class GroupMembershipSearchTests
     }
 
     [Fact]
-    public void GetGroups_on_an_unsaved_principal_throws()
+    public void GetGroups_on_an_unsaved_principal_is_empty()
     {
         using var context = Context();
         using var user = new UserPrincipal(context) { Name = NewName() };
 
-        Assert.Throws<InvalidOperationException>(() => user.GetGroups());
+        using var groups = user.GetGroups();
+        Assert.Empty(groups);
     }
 
     [Fact]
