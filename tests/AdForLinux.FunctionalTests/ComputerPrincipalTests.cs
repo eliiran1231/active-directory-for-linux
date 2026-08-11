@@ -66,6 +66,32 @@ public class ComputerPrincipalTests
     }
 
     [Fact]
+    public void Saved_computer_allows_change_password_acl_but_not_ChangePassword()
+    {
+        var name = $"adfl-pw-{Guid.NewGuid():N}"[..18];
+        var accountName = $"{name}$";
+        var dn = $"CN={accountName},{TestDirectory.UsersContainer}";
+
+        try
+        {
+            using var context = Context();
+            using var computer = new ComputerPrincipal(
+                context, accountName, "Str0ng!ComputerPass#2026", enabled: false);
+            computer.Save();
+
+            Assert.False(computer.UserCannotChangePassword);
+            computer.UserCannotChangePassword = true;
+            computer.Save();
+            Assert.True(computer.UserCannotChangePassword);
+            Assert.Throws<NotSupportedException>(() => computer.ChangePassword("old", "new"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Computer_can_be_found_materialized_and_updated()
     {
         var name = $"adfl-c-{Guid.NewGuid():N}"[..18];

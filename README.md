@@ -57,8 +57,10 @@ SID/ACL object model is not.
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, typed extension lookup, `Save`, context-aware save/move,
 `Delete`, `Sid` (`SidValue` on Linux), extension attributes, identity equality,
-properties), `SetPassword`,
-`UnlockAccount`, `ExpirePasswordNow`, `Enabled`, account dates and flags,
+properties), `SetPassword`, `ChangePassword`, `UnlockAccount`,
+`ExpirePasswordNow`, `RefreshExpiredPassword`, `Enabled`, account dates and
+flags, permitted logon times/workstations, X.509 account certificates, and the
+portable `UserCannotChangePassword` change-password DACL mapping,
 `GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
 recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (recursive, via
 `LDAP_MATCHING_RULE_IN_CHAIN`), `ComputerPrincipal` with mutable service
@@ -76,7 +78,7 @@ advanced date/count comparisons.
   contexts name different domain controllers for that domain. Moving an
   existing object between AD domains requires ADSI cross-store behavior and
   currently throws `PlatformNotSupportedException` in this Linux port.
-- Certificate members and the COM/event surface.
+- `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
   `System.Security.AccessControl` base classes are Windows-only in modern .NET.

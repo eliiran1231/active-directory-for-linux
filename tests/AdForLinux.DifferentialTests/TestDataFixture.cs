@@ -19,25 +19,32 @@ public sealed class TestDataFixture : IDisposable
         var suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         UserName = $"adfl-d-u-{suffix}";
+        ComputerName = $"adfl-d-c-{suffix}";
         GroupName = $"adfl-d-g-{suffix}";
         NestedGroupName = $"adfl-d-n-{suffix}";
 
         UserDn = $"CN={UserName},{DifferentialSettings.UsersContainer}";
+        ComputerDn = $"CN={ComputerName},{DifferentialSettings.UsersContainer}";
         GroupDn = $"CN={GroupName},{DifferentialSettings.UsersContainer}";
         NestedGroupDn = $"CN={NestedGroupName},{DifferentialSettings.UsersContainer}";
 
         CreateUser();
+        CreateComputer();
         CreateGroups();
         AddMembership();
     }
 
     public string UserName { get; }
 
+    public string ComputerName { get; }
+
     public string GroupName { get; }
 
     public string NestedGroupName { get; }
 
     public string UserDn { get; }
+
+    public string ComputerDn { get; }
 
     public string GroupDn { get; }
 
@@ -101,6 +108,15 @@ public sealed class TestDataFixture : IDisposable
             nested.CommitChanges();
             _created.Add(NestedGroupDn);
         }
+    }
+
+    private void CreateComputer()
+    {
+        using var container = Open(DifferentialSettings.UsersContainer);
+        using var computer = container.Children.Add($"CN={ComputerName}", "computer");
+        computer.Properties["sAMAccountName"].Value = $"{ComputerName}$";
+        computer.CommitChanges();
+        _created.Add(ComputerDn);
     }
 
     private void AddMembership()

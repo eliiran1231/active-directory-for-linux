@@ -413,6 +413,11 @@ public abstract class Principal : IDisposable
     {
     }
 
+    /// <summary>Runs immediately before pending property changes are committed.</summary>
+    private protected virtual void OnBeforeSave()
+    {
+    }
+
     /// <summary>Runs after a successful save, for extra work like membership.</summary>
     private protected virtual void OnAfterSave()
     {
@@ -428,6 +433,7 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (Entry is not null)
         {
+            OnBeforeSave();
             ApplyExtensionChanges(Entry);
             Entry.CommitChanges();
             _extensionCache.Clear();
@@ -436,6 +442,7 @@ public abstract class Principal : IDisposable
         }
 
         OnBeforeCreate();
+        OnBeforeSave();
 
         var cn = GetString("cn")
             ?? throw new InvalidOperationException("Name must be set before saving a new principal.");
@@ -525,6 +532,7 @@ public abstract class Principal : IDisposable
                 currentDn = originalEntry.DistinguishedName;
             }
 
+            OnBeforeSave();
             ApplyExtensionChanges(originalEntry);
             originalEntry.CommitChanges();
             _extensionCache.Clear();
@@ -768,6 +776,47 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = array;
+        }
+    }
+
+    private protected object? GetValue(string attributeName)
+    {
+        if (Entry is not null)
+        {
+            return Entry.Properties[attributeName].Value;
+        }
+
+        return _pending.TryGetValue(attributeName, out var value) ? value : null;
+    }
+
+    private protected IEnumerable<object> GetRawValues(string attributeName)
+    {
+        if (Entry is not null)
+        {
+            return Entry.Properties[attributeName].Cast<object>().ToArray();
+        }
+
+        return _pending.TryGetValue(attributeName, out var value) && value is IEnumerable<object> many
+            ? many.ToArray()
+            : Array.Empty<object>();
+    }
+
+    private protected void SetValue(string attributeName, object? value)
+    {
+        if (Entry is not null)
+        {
+            if (value is null)
+            {
+                Entry.Properties[attributeName].Clear();
+            }
+            else
+            {
+                Entry.Properties[attributeName].Value = value;
+            }
+        }
+        else
+        {
+            _pending[attributeName] = value;
         }
     }
 

@@ -1,4 +1,6 @@
 using AdForLinux.DirectoryServices.AccountManagement;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -227,6 +229,85 @@ public class AccountPropertyTests
             Assert.Equal("H:", found.HomeDrive);
             Assert.Equal("logon.bat", found.ScriptPath);
             found.Dispose();
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void Remaining_authenticable_properties_round_trip()
+    {
+        var name = NewName();
+        var dn = SeedUser(name);
+        var hours = Enumerable.Range(0, 21).Select(value => (byte)(value + 1)).ToArray();
+        try
+        {
+            using var context = Context();
+            using (var user = UserPrincipal.FindByIdentity(context, name)!)
+            {
+                user.AllowReversiblePasswordEncryption = true;
+                user.PermittedLogonTimes = hours;
+                user.PermittedWorkstations.Add("DESK01");
+                user.PermittedWorkstations.Add("DESK02");
+                user.Save();
+            }
+
+            using var found = UserPrincipal.FindByIdentity(context, name)!;
+            Assert.True(found.AllowReversiblePasswordEncryption);
+            Assert.Equal(hours, found.PermittedLogonTimes);
+            Assert.Equal(new[] { "DESK01", "DESK02" }, found.PermittedWorkstations);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void Certificate_collection_round_trips()
+    {
+        var name = NewName();
+        var dn = SeedUser(name);
+        try
+        {
+            using var rsa = RSA.Create(2048);
+            var request = new CertificateRequest($"CN={name}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+            using var context = Context();
+            using (var user = UserPrincipal.FindByIdentity(context, name)!)
+            {
+                user.Certificates.Add(certificate);
+                user.Save();
+            }
+
+            using var found = UserPrincipal.FindByIdentity(context, name)!;
+            Assert.Single(found.Certificates);
+            Assert.Equal(certificate.Thumbprint, found.Certificates[0].Thumbprint);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void RefreshExpiredPassword_sets_pwd_last_set_back_to_current()
+    {
+        var name = NewName();
+        var dn = SeedUser(name);
+        try
+        {
+            using var context = Context();
+            using (var user = UserPrincipal.FindByIdentity(context, name)!)
+            {
+                user.ExpirePasswordNow();
+                user.RefreshExpiredPassword();
+            }
+
+            using var found = UserPrincipal.FindByIdentity(context, name)!;
+            Assert.NotNull(found.LastPasswordSet);
         }
         finally
         {
