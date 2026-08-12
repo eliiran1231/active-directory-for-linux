@@ -92,8 +92,36 @@ public class AccountManagementPublicTypesTests
         var ticks = when.ToFileTimeUtc();
 
         Assert.Equal(
-            $"(&(objectCategory=computer)(sAMAccountName=server$)(|(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))))",
+            $"(&(objectClass=computer)(sAMAccountName=server$)(|(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))))",
             searcher.GetLdapFilter());
+    }
+
+    [Fact]
+    public void Property_specific_query_converters_preserve_microsoft_edge_behavior()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        using var group = new GroupPrincipal(context);
+
+        Assert.Throws<ArgumentNullException>(() => user.Enabled = null);
+        Assert.Throws<ArgumentNullException>(() => group.GroupScope = null);
+        Assert.Throws<ArgumentNullException>(() => group.IsSecurityGroup = null);
+
+        user.PermittedLogonTimes = null;
+        using (var searcher = new PrincipalSearcher(user))
+        {
+            Assert.Equal(
+                "(&(objectCategory=user)(objectClass=user)(!(logonHours=*))))",
+                searcher.GetLdapFilter());
+        }
+
+        group.GroupScope = (GroupScope)int.MaxValue;
+        using (var searcher = new PrincipalSearcher(group))
+        {
+            Assert.Equal(
+                "(&(objectClass=group)(groupType:1.2.840.113556.1.4.803:=8))",
+                searcher.GetLdapFilter());
+        }
     }
 
     [Fact]
@@ -147,7 +175,7 @@ public class AccountManagementPublicTypesTests
 
         using var searcher = new PrincipalSearcher(user);
         Assert.Equal(
-            $"(&(objectCategory=person)(objectClass=user)(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(pwdLastSet>={ticks}))",
+            $"(&(objectCategory=user)(objectClass=user)(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(pwdLastSet>={ticks}))",
             searcher.GetLdapFilter());
     }
 

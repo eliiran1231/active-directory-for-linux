@@ -43,7 +43,7 @@ public class GroupPrincipal : Principal
 
     private protected override string CreateObjectClass => "group";
 
-    internal override string CategoryFilter => "(objectCategory=group)";
+    internal override string CategoryFilter => "(objectClass=group)";
 
     /// <summary>The members of this group. Changes need a <see cref="Principal.Save"/>.</summary>
     public PrincipalCollection Members
@@ -151,14 +151,15 @@ public class GroupPrincipal : Principal
         {
             if (value is null)
             {
-                return;
+                throw new ArgumentNullException(nameof(value));
             }
 
             var bit = value switch
             {
                 AccountManagement.GroupScope.Local => ScopeLocal,
                 AccountManagement.GroupScope.Universal => ScopeUniversal,
-                _ => ScopeGlobal,
+                AccountManagement.GroupScope.Global => ScopeGlobal,
+                _ => ScopeUniversal,
             };
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
@@ -188,7 +189,7 @@ public class GroupPrincipal : Principal
         {
             if (value is null)
             {
-                return;
+                throw new ArgumentNullException(nameof(value));
             }
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
@@ -207,35 +208,12 @@ public class GroupPrincipal : Principal
 
     /// <summary>Finds a group by a value across the common identity attributes.</summary>
     public static new GroupPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
-        Find(context, null, identityValue);
+        (GroupPrincipal?)FindByIdentityWithType(context, typeof(GroupPrincipal), identityValue);
 
     /// <summary>Finds a group by a specific identity type.</summary>
     public static new GroupPrincipal? FindByIdentity(
         PrincipalContext context, IdentityType identityType, string identityValue) =>
-        Find(context, identityType, identityValue);
-
-    private static GroupPrincipal? Find(PrincipalContext context, IdentityType? identityType, string identityValue)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrEmpty(identityValue);
-
-        var idFilter = IdentityFilter.Build(identityType, identityValue);
-        var filter = $"(&(objectCategory=group){idFilter})";
-
-        var root = context.CreateDirectoryEntry(context.Container);
-        try
-        {
-            using var searcher = new DirectorySearcher(root, filter);
-            var result = searcher.FindOne();
-            return result is null
-                ? null
-                : new GroupPrincipal(context, result.GetDirectoryEntry());
-        }
-        finally
-        {
-            root.Dispose();
-        }
-    }
+        (GroupPrincipal?)FindByIdentityWithType(context, typeof(GroupPrincipal), identityType, identityValue);
 
     /// <summary>The underlying entry, or an error if the group is not saved yet.</summary>
     internal DirectoryEntry RequireEntry() =>
@@ -244,6 +222,31 @@ public class GroupPrincipal : Principal
     internal void EnsureMembersUsable() => CheckDisposedOrDeleted();
 
     internal bool HasPrimaryGroupMembers() => PrimaryGroupMemberDns().Any();
+
+    internal override IEnumerable<PrincipalQueryFilter> QueryFilters
+    {
+        get
+        {
+            var filters = base.QueryFilters.ToList();
+            foreach (var filter in filters.Where(filter =>
+                         filter.Key is not nameof(IsSecurityGroup) and not nameof(GroupScope)))
+            {
+                yield return filter;
+            }
+
+            var security = filters.FirstOrDefault(filter => filter.Key == nameof(IsSecurityGroup));
+            if (security is not null)
+            {
+                yield return security;
+            }
+
+            var scope = filters.FirstOrDefault(filter => filter.Key == nameof(GroupScope));
+            if (scope is not null)
+            {
+                yield return scope;
+            }
+        }
+    }
 
     internal IEnumerable<string> PrimaryGroupMemberDns()
     {

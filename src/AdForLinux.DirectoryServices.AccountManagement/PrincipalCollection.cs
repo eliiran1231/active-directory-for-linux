@@ -289,8 +289,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private List<string> CurrentDirectMemberDns() =>
         !_group.IsPersisted
             ? new List<string>()
-            : _group.RequireEntry().Properties["member"]
-                .Cast<object>()
+            : RangedAttributeReader.Read(_group.RequireEntry(), "member")
                 .Select(value => value.ToString()!)
                 .ToList();
 

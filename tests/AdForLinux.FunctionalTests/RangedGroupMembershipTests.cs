@@ -111,15 +111,14 @@ public class RangedGroupMembershipTests
                 "(objectClass=*)",
                 System.DirectoryServices.Protocols.SearchScope.Base,
                 "member"));
-            var returnedNames = raw.Entries[0].Attributes.AttributeNames
-                .Cast<string>()
-                .ToArray();
-            Assert.Contains(returnedNames, name =>
-                name.StartsWith("member;range=", StringComparison.OrdinalIgnoreCase));
+            Assert.Equal(MemberCount, raw.Entries[0].Attributes["member"].Count);
 
             using var context = TestSettings.CreatePrincipalContext(organizationalUnitDn);
             using var group = GroupPrincipal.FindByIdentity(context, groupName);
             Assert.NotNull(group);
+            // This exercises PrincipalCollection's production membership path.
+            // Samba returns the entire attribute under its plain name while AD
+            // returns member;range=...; RangedAttributeReader supports both.
             Assert.Equal(MemberCount, group!.Members.Count);
 
             foreach (var index in new[] { 0, MemberCount / 2, MemberCount - 1 })
@@ -160,7 +159,7 @@ public class RangedGroupMembershipTests
 
             group.Members.Clear();
             group.Save();
-            Assert.Equal(0, group.Members.Count);
+            Assert.Empty(group.Members);
         }
         finally
         {

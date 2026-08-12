@@ -24,7 +24,7 @@ public class ComputerPrincipal : AuthenticablePrincipal
     }
 
     private protected override string CreateObjectClass => "computer";
-    internal override string CategoryFilter => "(objectCategory=computer)";
+    internal override string CategoryFilter => "(objectClass=computer)";
     private protected override int DefaultUserAccountControl => 0x1000;
 
     public PrincipalValueCollection<string> ServicePrincipalNames =>
@@ -33,10 +33,10 @@ public class ComputerPrincipal : AuthenticablePrincipal
             values => SetValues("servicePrincipalName", values));
 
     public static new ComputerPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
-        Find(context, null, identityValue);
+        (ComputerPrincipal?)FindByIdentityWithType(context, typeof(ComputerPrincipal), identityValue);
 
     public static new ComputerPrincipal? FindByIdentity(PrincipalContext context, IdentityType identityType, string identityValue) =>
-        Find(context, identityType, identityValue);
+        (ComputerPrincipal?)FindByIdentityWithType(context, typeof(ComputerPrincipal), identityType, identityValue);
 
     public static new PrincipalSearchResult<ComputerPrincipal> FindByLockoutTime(PrincipalContext context, DateTime time, MatchType type) =>
         FindByLockoutTime<ComputerPrincipal>(context, time, type);
@@ -48,16 +48,5 @@ public class ComputerPrincipal : AuthenticablePrincipal
         FindByBadPasswordAttempt<ComputerPrincipal>(context, time, type);
     public static new PrincipalSearchResult<ComputerPrincipal> FindByPasswordSetTime(PrincipalContext context, DateTime time, MatchType type) =>
         FindByPasswordSetTime<ComputerPrincipal>(context, time, type);
-
-    private static ComputerPrincipal? Find(PrincipalContext context, IdentityType? identityType, string identityValue)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrEmpty(identityValue);
-        var filter = $"(&(objectCategory=computer){IdentityFilter.Build(identityType, identityValue)})";
-        using var root = context.CreateDirectoryEntry(context.Container);
-        using var searcher = new DirectorySearcher(root, filter);
-        var result = searcher.FindOne();
-        return result is null ? null : new ComputerPrincipal(context, result.GetDirectoryEntry());
-    }
 
 }

@@ -268,7 +268,7 @@ public abstract class Principal : IDisposable
     {
         CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(identityValue);
+        ArgumentException.ThrowIfNullOrEmpty(identityValue);
 
         using var group = GroupPrincipal.FindByIdentity(context, identityType, identityValue)
             ?? throw new NoMatchingPrincipalException(
@@ -366,10 +366,29 @@ public abstract class Principal : IDisposable
                 nameof(identityType), (int)identityType.Value, typeof(IdentityType));
         }
 
-        var typeFilter = PrincipalTypeFilter(principalType);
-        var filter = $"(&{typeFilter}{IdentityFilter.Build(identityType, identityValue)})";
+        var identityFilters = identityType is null
+            ? IdentityFilter.BuildValueOnlyCandidates(identityValue)
+            : new[] { IdentityFilter.Build(identityType, identityValue) };
+        foreach (var identityFilter in identityFilters)
+        {
+            var match = FindByIdentityFilter(context, principalType, identityFilter);
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static Principal? FindByIdentityFilter(
+        PrincipalContext context,
+        Type principalType,
+        string identityFilter)
+    {
+        var filter = $"(&{PrincipalTypeFilter(principalType)}{identityFilter})";
         using var root = context.CreateDirectoryEntry(context.Container);
-        using var searcher = new DirectorySearcher(root, filter);
+        using var searcher = new DirectorySearcher(root, filter) { SizeLimit = 2 };
         using var results = searcher.FindAll();
 
         Principal? match = null;
@@ -718,7 +737,7 @@ public abstract class Principal : IDisposable
             : new object?[] { value };
         SetQueryFilter(
             $"extension:{attribute}",
-            PrincipalQueryFilterKind.Attribute,
+            PrincipalQueryFilterKind.Extension,
             attribute,
             _extensionCache[attribute]);
     }
@@ -822,7 +841,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = array;
-            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, array);
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.StringCollection, attributeName, array);
         }
     }
 
@@ -864,7 +883,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
-            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Binary, attributeName, value);
         }
     }
 
@@ -903,7 +922,11 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
-            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
+            SetQueryFilter(
+                attributeName,
+                PrincipalQueryFilterKind.String,
+                attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
+                value);
         }
     }
 

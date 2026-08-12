@@ -184,6 +184,42 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
                 ms.Properties["mail"].Value,
                 ours.Properties["mail"].Value)
             .Assert();
+
+        new Comparison("DirectoryEntry.RefreshCache argument validation")
+            .Check("null array exception",
+                Record.Exception(() => ms.RefreshCache(null!))?.GetType().Name,
+                Record.Exception(() => ours.RefreshCache(null!))?.GetType().Name)
+            .Check("null element exception",
+                Record.Exception(() => ms.RefreshCache(new string[] { null! }))?.GetType().Name,
+                Record.Exception(() => ours.RefreshCache(new string[] { null! }))?.GetType().Name)
+            .Assert();
+    }
+
+    [Fact]
+    public void Partial_refresh_with_a_ranged_property_name_matches()
+    {
+        using var ms = MicrosoftEntry(_data.GroupDn);
+        using var ours = OurEntry(_data.GroupDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msUnrelated = msProperties["objectClass"];
+        var ourUnrelated = ourProperties["objectClass"];
+        const string rangedName = "member;range=0-0";
+
+        var msError = Record.Exception(() => ms.RefreshCache(new[] { rangedName }));
+        var ourError = Record.Exception(() => ours.RefreshCache(new[] { rangedName }));
+        new Comparison("DirectoryEntry.RefreshCache(ranged property)")
+            .Check("exception", msError?.GetType().Name, ourError?.GetType().Name)
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["objectClass"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["objectClass"]))
+            .Check("requested range count",
+                ms.Properties[rangedName].Count,
+                ours.Properties[rangedName].Count)
+            .Assert();
     }
 
     [Fact]

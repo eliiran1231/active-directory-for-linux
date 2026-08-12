@@ -31,8 +31,6 @@ internal static class LdapConnectionFactory
     /// <summary>Creates and configures a connection without binding it.</summary>
     internal static LdapConnection Create(LdapConnectionOptions options)
     {
-        EnsureAuthenticationSupported(options, OperatingSystem.IsWindows());
-
         var identifier = new LdapDirectoryIdentifier(options.Host, options.Port);
         var connection = new LdapConnection(identifier)
         {
@@ -81,19 +79,6 @@ internal static class LdapConnectionFactory
         }
 
         return connection;
-    }
-
-    internal static void EnsureAuthenticationSupported(LdapConnectionOptions options, bool isWindows)
-    {
-        if (!isWindows
-            && options.AuthenticationType == AuthType.Negotiate
-            && options.ToCredential() is not null)
-        {
-            throw new PlatformNotSupportedException(
-                "Secure LDAP authentication with an explicit username and password is not supported " +
-                "by System.DirectoryServices.Protocols on Linux or macOS. Use a domain-joined " +
-                "account with default credentials, or explicitly request a simple bind over TLS.");
-        }
     }
 
     /// <summary>

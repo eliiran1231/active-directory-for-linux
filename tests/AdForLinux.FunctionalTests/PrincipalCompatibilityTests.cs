@@ -190,6 +190,7 @@ public class PrincipalCompatibilityTests
             {
                 Name = userName,
                 SamAccountName = userName,
+                UserPrincipalName = $"{userName}@samdom.example.com",
             })
             {
                 user.WriteExtension("telephoneNumber", "12345");
@@ -231,11 +232,70 @@ public class PrincipalCompatibilityTests
             using var bySid = Principal.FindByIdentity(
                 context, IdentityType.Sid, found.SidValue!);
             Assert.Equal(found, bySid);
+
+            using var valueOnlyGuid = UserPrincipal.FindByIdentity(
+                context, found.Guid.Value.ToString());
+            using var valueOnlySid = UserPrincipal.FindByIdentity(context, found.SidValue!);
+            using var valueOnlyUpn = UserPrincipal.FindByIdentity(
+                context, $"{userName}@samdom.example.com");
+            using var valueOnlyDn = UserPrincipal.FindByIdentity(context, userDn);
+            using var valueOnlyName = UserPrincipal.FindByIdentity(context, userName);
+            Assert.Equal(found, valueOnlyGuid);
+            Assert.Equal(found, valueOnlySid);
+            Assert.Equal(found, valueOnlyUpn);
+            Assert.Equal(found, valueOnlyDn);
+            Assert.Equal(found, valueOnlyName);
+            Assert.Null(UserPrincipal.FindByIdentity(context, "S-not-a-valid-sid"));
+            Assert.Null(UserPrincipal.FindByIdentity(context, "not-a-valid-guid"));
         }
         finally
         {
             TestDirectory.Delete(groupDn);
             TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Value_only_identity_lookup_throws_when_name_matches_multiple_users()
+    {
+        var duplicateName = NewName();
+        var firstOuDn = CreateOrganizationalUnit(NewName());
+        var secondOuDn = CreateOrganizationalUnit(NewName());
+        var firstDn = DnFor(duplicateName, firstOuDn);
+        var secondDn = DnFor(duplicateName, secondOuDn);
+
+        try
+        {
+            using (var firstContext = Context(firstOuDn))
+            using (var first = new UserPrincipal(firstContext)
+                   {
+                       Name = duplicateName,
+                       SamAccountName = $"{duplicateName}-1",
+                   })
+            {
+                first.Save();
+            }
+
+            using (var secondContext = Context(secondOuDn))
+            using (var second = new UserPrincipal(secondContext)
+                   {
+                       Name = duplicateName,
+                       SamAccountName = $"{duplicateName}-2",
+                   })
+            {
+                second.Save();
+            }
+
+            using var searchContext = Context(TestSettings.BaseDn);
+            Assert.Throws<MultipleMatchesException>(() =>
+                UserPrincipal.FindByIdentity(searchContext, duplicateName));
+        }
+        finally
+        {
+            TestDirectory.Delete(firstDn);
+            TestDirectory.Delete(secondDn);
+            TestDirectory.Delete(firstOuDn);
+            TestDirectory.Delete(secondOuDn);
         }
     }
 

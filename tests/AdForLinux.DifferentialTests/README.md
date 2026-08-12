@@ -68,11 +68,12 @@ delete them at the end.
   `CN=Users`, to set a password, and to read the SACL for the disposable ACL
   test object. The SACL read is required to prove that a DACL-only update does not
   replace security-descriptor sections that were not requested.
-- **`GetAuthorizationGroups` is not compared one-for-one.** Microsoft also
-  returns computed groups (like *Domain Users* and well-known SIDs) that a plain
-  LDAP query cannot see. So the test checks that our answer is a *subset* of
-  Microsoft's, plus that the nested group is found by both. This is a known and
-  accepted difference, not a bug.
+- **`GetAuthorizationGroups` has two independent checks.** The differential
+  comparison verifies that every directory-backed group we return also appears
+  in Microsoft's answer. The Linux functional suite separately compares the
+  result exactly with every `tokenGroups` SID that resolves to a group object;
+  well-known SIDs without directory objects are intentionally outside that LDAP
+  result.
 - **Times.** We return `DateTime` values in UTC (`Kind = Utc`), which is what
   `DateTime.FromFileTimeUtc` gives, matching Microsoft's own conversion. The
   comparison compares the instant rather than the `Kind`, so a difference here

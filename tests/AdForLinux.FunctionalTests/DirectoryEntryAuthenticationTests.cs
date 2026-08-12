@@ -77,35 +77,25 @@ public class DirectoryEntryAuthenticationTests
     }
 
     [Fact]
-    public void Linux_negotiate_with_explicit_credentials_fails_before_connection_creation()
+    public void Linux_negotiate_with_explicit_credentials_is_decided_by_the_runtime_bind()
     {
-        var options = new LdapConnectionOptions
+        using var entry = new DirectoryEntry(
+            TestSettings.PathFor(TestSettings.BaseDn),
+            TestSettings.BindDn,
+            TestSettings.BindPassword,
+            AuthenticationTypes.Secure);
+
+        if (OperatingSystem.IsLinux())
         {
-            Host = "dc.example.test",
-            Port = 389,
-            UseSsl = false,
-            AuthenticationType = AuthType.Negotiate,
-            BindDn = "user@example.test",
-            BindPassword = "password",
-        };
+            // The Linux S.DS.Protocols implementation currently rejects an
+            // explicit credential at Negotiate BindHelper even when GSSAPI's
+            // NTLM mechanism is installed. Do not reject it before Bind(): a
+            // future/runtime-specific implementation may support it.
+            var error = Assert.Throws<LdapException>(() => entry.SchemaClassName);
+            Assert.Contains("not supported", error.Message, StringComparison.OrdinalIgnoreCase);
+            return;
+        }
 
-        var exception = Assert.Throws<PlatformNotSupportedException>(
-            () => LdapConnectionFactory.EnsureAuthenticationSupported(options, isWindows: false));
-
-        Assert.Contains("explicit username and password", exception.Message);
-    }
-
-    [Fact]
-    public void Linux_negotiate_with_default_credentials_remains_supported()
-    {
-        var options = new LdapConnectionOptions
-        {
-            Host = "dc.example.test",
-            Port = 389,
-            UseSsl = false,
-            AuthenticationType = AuthType.Negotiate,
-        };
-
-        LdapConnectionFactory.EnsureAuthenticationSupported(options, isWindows: false);
+        Assert.Equal("domainDNS", entry.SchemaClassName);
     }
 }

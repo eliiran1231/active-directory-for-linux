@@ -176,7 +176,27 @@ public class PrincipalSearcher : IDisposable
 
         conditions += string.Concat(example.AdvancedFilterConditions);
 
-        return (context, $"(&{example.CategoryFilter}{conditions})");
+        return (context, $"(&{CategoryFilterFor(example)}{conditions})");
+    }
+
+    private static string CategoryFilterFor(Principal example)
+    {
+        var type = example.GetType();
+        if (type == typeof(UserPrincipal)
+            || type == typeof(GroupPrincipal)
+            || type == typeof(ComputerPrincipal))
+        {
+            return example.CategoryFilter;
+        }
+
+        var objectClass = type.GetCustomAttributes(
+                typeof(DirectoryObjectClassAttribute), inherit: true)
+            .Cast<DirectoryObjectClassAttribute>()
+            .Select(attribute => attribute.ObjectClass)
+            .FirstOrDefault();
+        return objectClass is null
+            ? example.CategoryFilter
+            : $"(objectClass={LdapFilter.EscapeValue(objectClass)})";
     }
 
     private void ResetUnderlyingSearcher()

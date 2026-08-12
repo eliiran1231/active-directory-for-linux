@@ -73,23 +73,25 @@ public abstract class AuthenticablePrincipal : Principal
         }
         set
         {
-            if (value is not null)
+            if (value is null)
             {
-                if (_passwordToSet is not null && Entry is null)
-                {
-                    // AD requires the password to be established before the
-                    // account is enabled. Remember the requested final state,
-                    // but always create a constructor-initialized account disabled.
-                    _enabledAfterPassword = value.Value;
-                    SetUserAccountControlBit(AccountDisabled, on: true);
-                }
-                else
-                {
-                    SetUserAccountControlBit(AccountDisabled, on: !value.Value);
-                }
-
-                SetUserAccountControlQuery(nameof(Enabled), AccountDisabled, bitMustBeSet: !value.Value);
+                throw new ArgumentNullException(nameof(value));
             }
+
+            if (_passwordToSet is not null && Entry is null)
+            {
+                // AD requires the password to be established before the
+                // account is enabled. Remember the requested final state,
+                // but always create a constructor-initialized account disabled.
+                _enabledAfterPassword = value.Value;
+                SetUserAccountControlBit(AccountDisabled, on: true);
+            }
+            else
+            {
+                SetUserAccountControlBit(AccountDisabled, on: !value.Value);
+            }
+
+            SetUserAccountControlQuery(nameof(Enabled), AccountDisabled, bitMustBeSet: !value.Value);
         }
     }
 
@@ -106,7 +108,7 @@ public abstract class AuthenticablePrincipal : Principal
             RemoveQueryFilter("accountExpires");
             SetQueryFilter(
                 nameof(AccountExpirationDate),
-                PrincipalQueryFilterKind.Attribute,
+                PrincipalQueryFilterKind.AccountExpiration,
                 "accountExpires",
                 value);
         }
@@ -200,7 +202,7 @@ public abstract class AuthenticablePrincipal : Principal
     public PrincipalValueCollection<string> PermittedWorkstations =>
         _permittedWorkstations ??= new PrincipalValueCollection<string>(
             ReadPermittedWorkstations(),
-            values => SetString("userWorkstations", values.Count == 0 ? null : string.Join(',', values)));
+            values => SetPermittedWorkstations(values));
 
     public X509Certificate2Collection Certificates
     {
@@ -421,7 +423,7 @@ public abstract class AuthenticablePrincipal : Principal
             {
                 yield return new PrincipalQueryFilter(
                     nameof(Certificates),
-                    PrincipalQueryFilterKind.Attribute,
+                    PrincipalQueryFilterKind.CertificateCollection,
                     "userCertificate",
                     _certificates.Cast<X509Certificate2>().ToArray());
             }
@@ -514,6 +516,17 @@ public abstract class AuthenticablePrincipal : Principal
     {
         var value = GetString("userWorkstations");
         return string.IsNullOrEmpty(value) ? Array.Empty<string>() : value.Split(',');
+    }
+
+    private void SetPermittedWorkstations(IReadOnlyList<string> values)
+    {
+        var value = values.Count == 0 ? null : string.Join(',', values);
+        SetString("userWorkstations", value);
+        SetQueryFilter(
+            "userWorkstations",
+            PrincipalQueryFilterKind.Workstations,
+            "userWorkstations",
+            value);
     }
 
     private static byte[] EncodePassword(string password) =>

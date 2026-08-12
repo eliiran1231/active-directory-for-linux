@@ -23,7 +23,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(Ms.ContextType.Domain,
             DifferentialSettings.ServerName,
             container ?? DifferentialSettings.UsersContainer,
-            Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.MicrosoftContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
@@ -31,7 +31,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(Ours.ContextType.Domain,
             DifferentialSettings.ServerName,
             container ?? DifferentialSettings.UsersContainer,
-            Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.OurContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
@@ -132,6 +132,15 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Check("negative CopyTo exception",
                 Record.Exception(() => msNongeneric.CopyTo(Array.Empty<Ms.Principal>(), -1))?.GetType().Name,
                 Record.Exception(() => ourNongeneric.CopyTo(Array.Empty<Ours.Principal>(), -1))?.GetType().Name)
+            .Check("null CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(null!, 0))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(null!, 0))?.GetType().Name)
+            .Check("multidimensional CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[1, 1], 0))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[1, 1], 0))?.GetType().Name)
+            .Check("index at length CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[msGroup.Members.Count], msGroup.Members.Count))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[ourGroup.Members.Count], ourGroup.Members.Count))?.GetType().Name)
             .Check("duplicate Add exception",
                 Record.Exception(() => msGroup.Members.Add(msUser!))?.GetType().Name,
                 Record.Exception(() => ourGroup.Members.Add(ourUser!))?.GetType().Name)
@@ -160,6 +169,109 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         {
             principal.Dispose();
         }
+    }
+
+    [Fact]
+    public void Members_mutation_state_machine_matches_across_saves()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msName = $"adfl-ms-state-{suffix}";
+        var ourName = $"adfl-our-state-{suffix}";
+        var msDn = $"CN={msName},{DifferentialSettings.UsersContainer}";
+        var ourDn = $"CN={ourName},{DifferentialSettings.UsersContainer}";
+
+        try
+        {
+            using var msContext = MicrosoftContext();
+            using var ourContext = OurContext();
+            using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName)!;
+            using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName)!;
+            using var msOther = Ms.UserPrincipal.FindByIdentity(msContext, _data.UnsetUserName)!;
+            using var ourOther = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UnsetUserName)!;
+            using var msGroup = new Ms.GroupPrincipal(msContext, msName);
+            using var ourGroup = new Ours.GroupPrincipal(ourContext, ourName);
+            msGroup.Save();
+            ourGroup.Save();
+
+            var msState = ExerciseMembershipState(msGroup, msUser, msOther);
+            var ourState = ExerciseMembershipState(ourGroup, ourUser, ourOther);
+            Assert.Equal(msState, ourState);
+
+            using var msUnsaved = new Ms.GroupPrincipal(msContext, $"unsaved-{suffix}");
+            using var ourUnsaved = new Ours.GroupPrincipal(ourContext, $"unsaved-{suffix}");
+            msUnsaved.Members.Add(msUser);
+            ourUnsaved.Members.Add(ourUser);
+            new Comparison("unsaved PrincipalCollection state")
+                .Check("Count after Add", msUnsaved.Members.Count, ourUnsaved.Members.Count)
+                .Check("Remove", msUnsaved.Members.Remove(msUser), ourUnsaved.Members.Remove(ourUser))
+                .Check("Count after Remove", msUnsaved.Members.Count, ourUnsaved.Members.Count)
+                .Assert();
+
+            var msMembers = msUnsaved.Members;
+            var ourMembers = ourUnsaved.Members;
+            msUnsaved.Dispose();
+            ourUnsaved.Dispose();
+            Assert.Equal(
+                Record.Exception(() => _ = msMembers.Count)?.GetType().Name,
+                Record.Exception(() => _ = ourMembers.Count)?.GetType().Name);
+        }
+        finally
+        {
+            Delete(msDn);
+            Delete(ourDn);
+        }
+    }
+
+    private static string[] ExerciseMembershipState<TGroup, TPrincipal>(
+        TGroup group,
+        TPrincipal member,
+        TPrincipal nonMember)
+        where TGroup : IDisposable
+        where TPrincipal : IDisposable
+    {
+        if (group is Ms.GroupPrincipal msGroup && member is Ms.Principal msMember && nonMember is Ms.Principal msOther)
+        {
+            msGroup.Members.Add(msMember);
+            var addRemove = msGroup.Members.Remove(msMember);
+            msGroup.Save();
+            msGroup.Save();
+            msGroup.Members.Add(msMember);
+            msGroup.Save();
+            var duplicate = Record.Exception(() => msGroup.Members.Add(msMember))?.GetType().Name;
+            var removeAdd = msGroup.Members.Remove(msMember);
+            msGroup.Members.Add(msMember);
+            msGroup.Save();
+            var nonMemberResult = msGroup.Members.Remove(msOther);
+            msGroup.Members.Clear();
+            msGroup.Save();
+            return new[]
+            {
+                addRemove.ToString(), duplicate ?? "", removeAdd.ToString(),
+                nonMemberResult.ToString(), msGroup.Members.Count.ToString(),
+            };
+        }
+
+        var ourGroup = (Ours.GroupPrincipal)(object)group;
+        var ourMember = (Ours.Principal)(object)member;
+        var ourOther = (Ours.Principal)(object)nonMember;
+        ourGroup.Members.Add(ourMember);
+        var ourAddRemove = ourGroup.Members.Remove(ourMember);
+        ourGroup.Save();
+        ourGroup.Save();
+        ourGroup.Members.Add(ourMember);
+        ourGroup.Save();
+        var ourDuplicate = Record.Exception(() => ourGroup.Members.Add(ourMember))?.GetType().Name;
+        var ourRemoveAdd = ourGroup.Members.Remove(ourMember);
+        ourGroup.Members.Add(ourMember);
+        ourGroup.Save();
+        var ourNonMemberResult = ourGroup.Members.Remove(ourOther);
+        ourGroup.Members.Clear();
+        ourGroup.Save();
+        return new[]
+        {
+            ourAddRemove.ToString(), ourDuplicate ?? "", ourRemoveAdd.ToString(),
+            ourNonMemberResult.ToString(), ourGroup.Members.Count.ToString(),
+        };
     }
 
     [Fact]
@@ -433,7 +545,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(DifferentialSettings.PathFor(distinguishedName),
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword,
-            System.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+            DifferentialSettings.MicrosoftAuthenticationTypes);
 
     private static void Delete(string distinguishedName)
     {
