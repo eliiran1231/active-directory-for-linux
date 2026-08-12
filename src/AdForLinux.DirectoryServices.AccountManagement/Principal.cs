@@ -178,9 +178,44 @@ public abstract class Principal : IDisposable
     public PrincipalSearchResult<Principal> GetAuthorizationGroups()
     {
         CheckDisposedOrDeleted();
-        return FindGroups(
-            ContextRef,
-            $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(RequireDistinguishedName())})");
+        var distinguishedName = RequireDistinguishedName();
+        var root = ContextRef.CreateDirectoryEntry(distinguishedName);
+        try
+        {
+            using var tokenSearcher = new DirectorySearcher(
+                root,
+                "(objectClass=*)",
+                new[] { "tokenGroups" },
+                SearchScope.Base);
+            var tokenResult = tokenSearcher.FindOne();
+            var tokenSids = tokenResult?.Properties["tokenGroups"]
+                .Cast<object>()
+                .OfType<byte[]>()
+                .ToList() ?? new List<byte[]>();
+
+            if (tokenSids.Count == 0)
+            {
+                // Some LDAP servers do not expose tokenGroups. Keep the normal
+                // transitive membership behavior, but explicitly include the
+                // principal's primary group so it is never silently omitted.
+                var memberFilter =
+                    $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(distinguishedName)})";
+                var primaryGroupSid = TryGetPrimaryGroupSid();
+                return FindGroups(
+                    ContextRef,
+                    primaryGroupSid is null
+                        ? memberFilter
+                        : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))");
+            }
+
+            var sidFilter = string.Concat(tokenSids.Select(
+                sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"));
+            return FindGroups(ContextRef, $"(|{sidFilter})");
+        }
+        finally
+        {
+            root.Dispose();
+        }
     }
 
     private PrincipalSearchResult<Principal> FindGroups(
@@ -265,6 +300,18 @@ public abstract class Principal : IDisposable
         }
 
         return SidCodec.ReplaceRid(objectSid, rid);
+    }
+
+    internal uint? GetPrimaryGroupRid()
+    {
+        var rawRid = Entry?.Properties["primaryGroupID"].Value;
+        return uint.TryParse(
+            Convert.ToString(rawRid, System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var rid)
+            ? rid
+            : null;
     }
 
     /// <summary>Finds any supported principal by a common identity value.</summary>
