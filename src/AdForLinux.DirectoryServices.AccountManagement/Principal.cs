@@ -18,6 +18,7 @@ public abstract class Principal : IDisposable
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
 
@@ -142,6 +143,8 @@ public abstract class Principal : IDisposable
     /// <summary>The values staged before the object is saved, by LDAP attribute.</summary>
     internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
 
+    internal virtual IEnumerable<PrincipalQueryFilter> QueryFilters => _queryFilters.Values;
+
     /// <summary>
     /// The groups this principal is a direct member of. Nested groups are not
     /// followed — use <see cref="GetAuthorizationGroups"/> for that.
@@ -178,9 +181,44 @@ public abstract class Principal : IDisposable
     public PrincipalSearchResult<Principal> GetAuthorizationGroups()
     {
         CheckDisposedOrDeleted();
-        return FindGroups(
-            ContextRef,
-            $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(RequireDistinguishedName())})");
+        var distinguishedName = RequireDistinguishedName();
+        var root = ContextRef.CreateDirectoryEntry(distinguishedName);
+        try
+        {
+            using var tokenSearcher = new DirectorySearcher(
+                root,
+                "(objectClass=*)",
+                new[] { "tokenGroups" },
+                SearchScope.Base);
+            var tokenResult = tokenSearcher.FindOne();
+            var tokenSids = tokenResult?.Properties["tokenGroups"]
+                .Cast<object>()
+                .OfType<byte[]>()
+                .ToList() ?? new List<byte[]>();
+
+            if (tokenSids.Count == 0)
+            {
+                // Some LDAP servers do not expose tokenGroups. Keep the normal
+                // transitive membership behavior, but explicitly include the
+                // principal's primary group so it is never silently omitted.
+                var memberFilter =
+                    $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(distinguishedName)})";
+                var primaryGroupSid = TryGetPrimaryGroupSid();
+                return FindGroups(
+                    ContextRef,
+                    primaryGroupSid is null
+                        ? memberFilter
+                        : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))");
+            }
+
+            var sidFilter = string.Concat(tokenSids.Select(
+                sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"));
+            return FindGroups(ContextRef, $"(|{sidFilter})");
+        }
+        finally
+        {
+            root.Dispose();
+        }
     }
 
     private PrincipalSearchResult<Principal> FindGroups(
@@ -238,7 +276,7 @@ public abstract class Principal : IDisposable
         return IsMemberOf(group);
     }
 
-    private bool IsPrimaryGroup(GroupPrincipal group)
+    internal bool IsPrimaryGroup(GroupPrincipal group)
     {
         var primaryGroupSid = TryGetPrimaryGroupSid();
         var groupSid = group.RequireEntry().Properties["objectSid"].Value as byte[];
@@ -265,6 +303,18 @@ public abstract class Principal : IDisposable
         }
 
         return SidCodec.ReplaceRid(objectSid, rid);
+    }
+
+    internal uint? GetPrimaryGroupRid()
+    {
+        var rawRid = Entry?.Properties["primaryGroupID"].Value;
+        return uint.TryParse(
+            Convert.ToString(rawRid, System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var rid)
+            ? rid
+            : null;
     }
 
     /// <summary>Finds any supported principal by a common identity value.</summary>
@@ -666,6 +716,11 @@ public abstract class Principal : IDisposable
         _extensionCache[attribute] = value is object?[] array
             ? array.ToArray()
             : new object?[] { value };
+        SetQueryFilter(
+            $"extension:{attribute}",
+            PrincipalQueryFilterKind.Attribute,
+            attribute,
+            _extensionCache[attribute]);
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
@@ -767,6 +822,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = array;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, array);
         }
     }
 
@@ -808,6 +864,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
         }
     }
 
@@ -818,6 +875,16 @@ public abstract class Principal : IDisposable
         _advancedFilters[key] = condition;
 
     internal IEnumerable<string> AdvancedFilterConditions => _advancedFilters.Values;
+
+    private protected void SetQueryFilter(
+        string key,
+        PrincipalQueryFilterKind kind,
+        string attribute,
+        object? value,
+        uint bit = 0) =>
+        _queryFilters[key] = new PrincipalQueryFilter(key, kind, attribute, value, bit);
+
+    private protected void RemoveQueryFilter(string key) => _queryFilters.Remove(key);
 
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)
@@ -836,6 +903,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
         }
     }
 

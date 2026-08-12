@@ -55,9 +55,9 @@ public class DirectoryEntry : Component
     {
     }
 
-    /// <summary>Opens an entry with a user and password (simple bind).</summary>
+    /// <summary>Opens an entry with a user and password using secure authentication.</summary>
     public DirectoryEntry(string path, string? username, string? password)
-        : this(path, username, password, AuthenticationTypes.None)
+        : this(path, username, password, AuthenticationTypes.Secure)
     {
     }
 
@@ -816,6 +816,38 @@ public class DirectoryEntry : Component
                 "path, e.g. LDAP://dc1.example.com/DC=example,DC=com.");
         }
 
+        const AuthenticationTypes supportedAuthenticationTypes =
+            AuthenticationTypes.Secure |
+            AuthenticationTypes.SecureSocketsLayer |
+            AuthenticationTypes.Anonymous |
+            AuthenticationTypes.ServerBind |
+            AuthenticationTypes.Signing |
+            AuthenticationTypes.Sealing;
+        var unsupportedAuthenticationTypes = _authenticationType & ~supportedAuthenticationTypes;
+        if (unsupportedAuthenticationTypes != 0)
+        {
+            throw new PlatformNotSupportedException(
+                $"AuthenticationTypes value '{unsupportedAuthenticationTypes}' has no faithful " +
+                "System.DirectoryServices.Protocols equivalent.");
+        }
+
+        var secure = _authenticationType.HasFlag(AuthenticationTypes.Secure);
+        var anonymous = _authenticationType.HasFlag(AuthenticationTypes.Anonymous);
+        var signing = _authenticationType.HasFlag(AuthenticationTypes.Signing);
+        var sealing = _authenticationType.HasFlag(AuthenticationTypes.Sealing);
+
+        if (anonymous && secure)
+        {
+            throw new PlatformNotSupportedException(
+                "AuthenticationTypes.Anonymous cannot be combined with AuthenticationTypes.Secure.");
+        }
+
+        if ((signing || sealing) && !secure)
+        {
+            throw new PlatformNotSupportedException(
+                "AuthenticationTypes.Signing and AuthenticationTypes.Sealing require AuthenticationTypes.Secure.");
+        }
+
         var useSsl = _authenticationType.HasFlag(AuthenticationTypes.SecureSocketsLayer)
                      || _path.Port == 636;
         var port = _path.Port ?? (useSsl ? 636 : 389);
@@ -825,6 +857,11 @@ public class DirectoryEntry : Component
             Host = _path.Host!,
             Port = port,
             UseSsl = useSsl,
+            AuthenticationType = anonymous
+                ? AuthType.Anonymous
+                : secure ? AuthType.Negotiate : AuthType.Basic,
+            Signing = signing,
+            Sealing = sealing,
             BindDn = _username,
             BindPassword = _password,
         };

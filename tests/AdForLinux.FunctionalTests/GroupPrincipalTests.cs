@@ -1,3 +1,4 @@
+using System.Collections;
 using AdForLinux.DirectoryServices.AccountManagement;
 using Xunit;
 
@@ -217,6 +218,220 @@ public class GroupPrincipalTests
     }
 
     [Fact]
+    public void Members_exposes_collection_surface_and_copy_validation()
+    {
+        using var context = Context();
+        using var group = new GroupPrincipal(context, NewName());
+        ICollection<Principal> generic = group.Members;
+        ICollection nongeneric = group.Members;
+
+        Assert.False(generic.IsReadOnly);
+        Assert.False(nongeneric.IsSynchronized);
+        Assert.Same(group.Members, nongeneric.SyncRoot);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            nongeneric.CopyTo(Array.Empty<Principal>(), -1));
+        Assert.Throws<ArgumentNullException>(() =>
+            nongeneric.CopyTo(null!, 0));
+        Assert.Throws<ArgumentException>(() =>
+            nongeneric.CopyTo(new Principal[1, 1], 0));
+        Assert.Throws<ArgumentException>(() =>
+            nongeneric.CopyTo(Array.Empty<Principal>(), 0));
+
+        var destination = new Principal[1];
+        generic.CopyTo(destination, 0);
+        Assert.Null(destination[0]);
+    }
+
+    [Fact]
+    public void Members_duplicate_add_throws_and_remove_non_member_returns_false()
+    {
+        var groupName = NewName();
+        var memberName = NewName();
+        var otherName = NewName();
+        var memberDn = SeedUser(memberName);
+        var otherDn = SeedUser(otherName);
+
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var member = UserPrincipal.FindByIdentity(context, memberName)!;
+            using var other = UserPrincipal.FindByIdentity(context, otherName)!;
+
+            group.Members.Add(member);
+            Assert.Throws<PrincipalExistsException>(() => group.Members.Add(member));
+            group.Save();
+            Assert.Throws<PrincipalExistsException>(() => group.Members.Add(member));
+
+            Assert.False(group.Members.Remove(other));
+            Assert.False(group.Members.Contains(other));
+            group.Save();
+            Assert.True(group.Members.Contains(member));
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(memberDn);
+            TestDirectory.Delete(otherDn);
+        }
+    }
+
+    [Fact]
+    public void Members_add_and_remove_cancel_before_save()
+    {
+        var groupName = NewName();
+        var userName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+
+            group.Members.Add(user);
+            Assert.True(group.Members.Remove(user));
+            Assert.False(group.Members.Contains(user));
+            group.Save();
+
+            using var reread = GroupPrincipal.FindByIdentity(context, groupName)!;
+            Assert.False(reread.Members.Contains(user));
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Members_remove_and_add_cancel_before_save()
+    {
+        var groupName = NewName();
+        var userName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+            group.Members.Add(user);
+            group.Save();
+
+            Assert.True(group.Members.Remove(user));
+            group.Members.Add(user);
+            group.Save();
+
+            using var reread = GroupPrincipal.FindByIdentity(context, groupName)!;
+            Assert.True(reread.Members.Contains(user));
+            Assert.Single(reread.Members);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Members_multi_save_state_remains_consistent()
+    {
+        var groupName = NewName();
+        var userName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+
+            group.Members.Add(user);
+            group.Save();
+            Assert.True(group.Members.Remove(user));
+            group.Members.Add(user);
+            group.Save();
+            Assert.True(group.Members.Contains(user));
+
+            Assert.True(group.Members.Remove(user));
+            group.Save();
+            Assert.False(group.Members.Contains(user));
+
+            group.Members.Add(user);
+            group.Save();
+            Assert.True(group.Members.Contains(user));
+            Assert.Single(group.Members);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Members_identity_overloads_match_lookup_behavior()
+    {
+        var groupName = NewName();
+        var userName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+
+            Assert.False(group.Members.Contains(
+                context, IdentityType.SamAccountName, "no-such-principal-xyz"));
+            Assert.Throws<NoMatchingPrincipalException>(() => group.Members.Add(
+                context, IdentityType.SamAccountName, "no-such-principal-xyz"));
+            Assert.Throws<NoMatchingPrincipalException>(() => group.Members.Remove(
+                context, IdentityType.SamAccountName, "no-such-principal-xyz"));
+
+            group.Members.Add(context, IdentityType.SamAccountName, userName);
+            Assert.True(group.Members.Contains(
+                context, IdentityType.SamAccountName, userName));
+            Assert.True(group.Members.Remove(
+                context, IdentityType.SamAccountName, userName));
+            Assert.False(group.Members.Contains(
+                context, IdentityType.SamAccountName, userName));
+
+            Assert.Throws<ArgumentNullException>(() => group.Members.Contains(
+                null!, IdentityType.Name, userName));
+            Assert.Throws<ArgumentNullException>(() => group.Members.Add(
+                context, IdentityType.Name, null!));
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Primary_group_member_cannot_be_removed_or_cleared()
+    {
+        using var context = Context();
+        using var group = GroupPrincipal.FindByIdentity(
+            context, IdentityType.SamAccountName, "Domain Users");
+        using var user = UserPrincipal.FindByIdentity(
+            context, IdentityType.SamAccountName, "Administrator");
+
+        Assert.NotNull(group);
+        Assert.NotNull(user);
+        Assert.True(group!.Members.Contains(user!));
+        Assert.Throws<InvalidOperationException>(() => group.Members.Remove(user!));
+        Assert.Throws<InvalidOperationException>(() => group.Members.Clear());
+    }
+
+    [Fact]
     public void Delete_removes_the_group()
     {
         var name = NewName();
@@ -239,11 +454,11 @@ public class GroupPrincipalTests
     }
 
     [Fact]
-    public void Members_on_an_unsaved_group_throws()
+    public void Members_on_an_unsaved_group_is_empty()
     {
         using var context = Context();
         using var group = new GroupPrincipal(context, NewName());
 
-        Assert.Throws<InvalidOperationException>(() => group.Members.Count);
+        Assert.Empty(group.Members);
     }
 }

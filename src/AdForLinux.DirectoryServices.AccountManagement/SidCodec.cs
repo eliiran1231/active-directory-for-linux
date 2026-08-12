@@ -108,4 +108,19 @@ internal static class SidCodec
         result[offset + 3] = (byte)(rid >> 24);
         return result;
     }
+
+    public static uint GetRid(byte[] value)
+    {
+        if (value.Length < 12 || value[0] != 1 || value[1] is 0 or > 15
+            || value.Length < 8 + (value[1] * 4))
+        {
+            throw new ArgumentException("The directory value is not a valid account SID.", nameof(value));
+        }
+
+        var offset = 8 + ((value[1] - 1) * 4);
+        return (uint)(value[offset]
+            | (value[offset + 1] << 8)
+            | (value[offset + 2] << 16)
+            | (value[offset + 3] << 24));
+    }
 }

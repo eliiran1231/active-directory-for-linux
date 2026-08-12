@@ -1,85 +1,218 @@
 using System.Collections;
+using AdForLinux.DirectoryServices.Ldap;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
 /// The members of a <see cref="GroupPrincipal"/>, like Microsoft's
-/// <c>PrincipalCollection</c>. <see cref="Add"/> and <see cref="Remove"/> stage
-/// a change; call <c>group.Save()</c> to write it.
+/// <c>PrincipalCollection</c>. Changes are staged until the owning group is saved.
 /// </summary>
-public sealed class PrincipalCollection : IEnumerable<Principal>
+public class PrincipalCollection : ICollection<Principal>, ICollection
 {
     private readonly GroupPrincipal _group;
-
-    // DNs staged since the last save.
-    private readonly List<string> _toAdd = new();
-    private readonly List<string> _toRemove = new();
+    private readonly List<string> _insertedValuesCompleted = new();
+    private readonly List<string> _insertedValuesPending = new();
+    private readonly List<string> _removedValuesCompleted = new();
+    private readonly List<string> _removedValuesPending = new();
+    private bool _clearCompleted;
+    private bool _clearPending;
+    private List<string>? _primaryGroupMemberDns;
 
     internal PrincipalCollection(GroupPrincipal group)
     {
         _group = group;
     }
 
-    /// <summary>True if there are staged changes not yet saved.</summary>
-    internal bool HasPendingChanges => _toAdd.Count > 0 || _toRemove.Count > 0;
+    internal bool HasPendingChanges =>
+        _insertedValuesPending.Count > 0
+        || _removedValuesPending.Count > 0
+        || _clearPending;
 
-    /// <summary>Adds a principal to the group. Save the group to apply it.</summary>
+    public bool IsReadOnly => false;
+
+    public bool IsSynchronized => false;
+
+    public object SyncRoot => this;
+
+    public int Count
+    {
+        get
+        {
+            _group.EnsureMembersUsable();
+            return EffectiveMemberDns().Count;
+        }
+    }
+
+    public void Add(UserPrincipal user) => Add((Principal)user);
+
+    public void Add(GroupPrincipal group) => Add((Principal)group);
+
+    public void Add(ComputerPrincipal computer) => Add((Principal)computer);
+
     public void Add(Principal principal)
     {
+        _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
-        _toRemove.Remove(dn);
-        if (!_toAdd.Contains(dn, StringComparer.OrdinalIgnoreCase))
+        if (principal.IsPrimaryGroup(_group) || ContainsDn(dn))
         {
-            _toAdd.Add(dn);
+            throw new PrincipalExistsException(
+                "The principal already exists in the collection.");
+        }
+
+        if (RemoveDn(_removedValuesPending, dn))
+        {
+            AddDn(_insertedValuesCompleted, dn);
+        }
+        else
+        {
+            AddDn(_insertedValuesPending, dn);
+            RemoveDn(_removedValuesCompleted, dn);
         }
     }
 
-    /// <summary>Removes a principal from the group. Save the group to apply it.</summary>
+    public void Add(
+        PrincipalContext context,
+        IdentityType identityType,
+        string identityValue)
+    {
+        _group.EnsureMembersUsable();
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(identityValue);
+
+        using var principal = Principal.FindByIdentity(context, identityType, identityValue)
+            ?? throw new NoMatchingPrincipalException(
+                "No principal matched the supplied identity.");
+        Add(principal);
+    }
+
+    public bool Remove(UserPrincipal user) => Remove((Principal)user);
+
+    public bool Remove(GroupPrincipal group) => Remove((Principal)group);
+
+    public bool Remove(ComputerPrincipal computer) => Remove((Principal)computer);
+
     public bool Remove(Principal principal)
     {
+        _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
-        _toAdd.Remove(dn);
-        if (!_toRemove.Contains(dn, StringComparer.OrdinalIgnoreCase))
+        if (principal.IsPrimaryGroup(_group))
         {
-            _toRemove.Add(dn);
+            throw new InvalidOperationException(
+                "The principal cannot be removed because this is its primary group.");
         }
 
-        return true;
-    }
-
-    /// <summary>
-    /// True if the principal is a direct member, counting staged changes.
-    /// Only direct members — nested groups are not searched.
-    /// </summary>
-    public bool Contains(Principal principal)
-    {
-        var dn = RequireDn(principal);
-
-        if (_toAdd.Contains(dn, StringComparer.OrdinalIgnoreCase))
+        if (RemoveDn(_insertedValuesPending, dn))
         {
+            AddDn(_removedValuesCompleted, dn);
             return true;
         }
 
-        if (_toRemove.Contains(dn, StringComparer.OrdinalIgnoreCase))
+        if (!ContainsDn(dn))
         {
             return false;
         }
 
-        return CurrentMemberDns().Contains(dn, StringComparer.OrdinalIgnoreCase);
+        AddDn(_removedValuesPending, dn);
+        RemoveDn(_insertedValuesCompleted, dn);
+        return true;
     }
 
-    /// <summary>Removes every member. Save the group to apply it.</summary>
+    public bool Remove(
+        PrincipalContext context,
+        IdentityType identityType,
+        string identityValue)
+    {
+        _group.EnsureMembersUsable();
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(identityValue);
+
+        using var principal = Principal.FindByIdentity(context, identityType, identityValue)
+            ?? throw new NoMatchingPrincipalException(
+                "No principal matched the supplied identity.");
+        return Remove(principal);
+    }
+
+    public bool Contains(UserPrincipal user) => Contains((Principal)user);
+
+    public bool Contains(GroupPrincipal group) => Contains((Principal)group);
+
+    public bool Contains(ComputerPrincipal computer) => Contains((Principal)computer);
+
+    public bool Contains(Principal principal)
+    {
+        _group.EnsureMembersUsable();
+        var dn = RequireDn(principal);
+        return principal.IsPrimaryGroup(_group) || ContainsDn(dn);
+    }
+
+    public bool Contains(
+        PrincipalContext context,
+        IdentityType identityType,
+        string identityValue)
+    {
+        _group.EnsureMembersUsable();
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(identityValue);
+
+        using var principal = Principal.FindByIdentity(context, identityType, identityValue);
+        return principal is not null && Contains(principal);
+    }
+
     public void Clear()
     {
-        _toAdd.Clear();
-        _toRemove.Clear();
-        _toRemove.AddRange(CurrentMemberDns());
+        _group.EnsureMembersUsable();
+        if (_group.HasPrimaryGroupMembers())
+        {
+            throw new InvalidOperationException(
+                "The group cannot be cleared because one or more principals use it as their primary group.");
+        }
+
+        _insertedValuesPending.Clear();
+        _removedValuesPending.Clear();
+        _insertedValuesCompleted.Clear();
+        _removedValuesCompleted.Clear();
+        _clearPending = true;
     }
 
-    /// <summary>Number of members, counting staged changes.</summary>
-    public int Count => EffectiveMemberDns().Count;
+    public void CopyTo(Principal[] array, int index) =>
+        ((ICollection)this).CopyTo(array, index);
 
-    /// <summary>Writes the staged changes and forgets them.</summary>
+    void ICollection.CopyTo(Array array, int index)
+    {
+        _group.EnsureMembersUsable();
+        if (index < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        ArgumentNullException.ThrowIfNull(array);
+        if (array.Rank != 1)
+        {
+            throw new ArgumentException("The array must be one-dimensional.", nameof(array));
+        }
+
+        if (index >= array.GetLength(0))
+        {
+            throw new ArgumentException("The index is outside the array.", nameof(index));
+        }
+
+        var values = new List<Principal>();
+        foreach (var value in this)
+        {
+            values.Add(value);
+        }
+
+        if (array.GetLength(0) - index < values.Count)
+        {
+            throw new ArgumentException("The destination array is too small.", nameof(array));
+        }
+
+        foreach (var value in values)
+        {
+            array.SetValue(value, index++);
+        }
+    }
+
     internal void ApplyChanges()
     {
         if (!HasPendingChanges)
@@ -87,14 +220,36 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
             return;
         }
 
-        _group.RequireEntry().ApplyValueChanges("member", _toAdd, _toRemove);
-        _toAdd.Clear();
-        _toRemove.Clear();
+        var toRemove = _clearPending
+            ? CurrentDirectMemberDns()
+            : _removedValuesPending.ToList();
+        _group.RequireEntry().ApplyValueChanges(
+            "member", _insertedValuesPending, toRemove);
+
+        foreach (var dn in _removedValuesPending)
+        {
+            AddDn(_removedValuesCompleted, dn);
+        }
+
+        _removedValuesPending.Clear();
+        foreach (var dn in _insertedValuesPending)
+        {
+            AddDn(_insertedValuesCompleted, dn);
+        }
+
+        _insertedValuesPending.Clear();
+        if (_clearPending)
+        {
+            _clearCompleted = true;
+            _clearPending = false;
+        }
+
         _group.RequireEntry().RefreshCache();
     }
 
     public IEnumerator<Principal> GetEnumerator()
     {
+        _group.EnsureMembersUsable();
         var context = _group.Context;
         foreach (var dn in EffectiveMemberDns())
         {
@@ -112,24 +267,62 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    /// <summary>Member DNs as stored on the server right now.</summary>
-    private List<string> CurrentMemberDns() =>
-        _group.RequireEntry().Properties["member"]
-            .Cast<object>()
-            .Select(value => value.ToString()!)
-            .ToList();
+    private bool ContainsDn(string dn)
+    {
+        if (ContainsDn(_insertedValuesCompleted, dn)
+            || ContainsDn(_insertedValuesPending, dn))
+        {
+            return true;
+        }
+
+        if (ContainsDn(_removedValuesCompleted, dn)
+            || ContainsDn(_removedValuesPending, dn)
+            || _clearPending
+            || _clearCompleted)
+        {
+            return false;
+        }
+
+        return CurrentDirectMemberDns().Contains(dn, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private List<string> CurrentDirectMemberDns() =>
+        !_group.IsPersisted
+            ? new List<string>()
+            : _group.RequireEntry().Properties["member"]
+                .Cast<object>()
+                .Select(value => value.ToString()!)
+                .ToList();
+
+    private List<string> CurrentMemberDns()
+    {
+        var dns = CurrentDirectMemberDns();
+        _primaryGroupMemberDns ??= _group.PrimaryGroupMemberDns().ToList();
+        foreach (var dn in _primaryGroupMemberDns)
+        {
+            AddDn(dns, dn);
+        }
+
+        return dns;
+    }
 
     /// <summary>Member DNs with the staged changes applied.</summary>
     private List<string> EffectiveMemberDns()
     {
-        var dns = CurrentMemberDns();
-        dns.RemoveAll(dn => _toRemove.Contains(dn, StringComparer.OrdinalIgnoreCase));
-        foreach (var dn in _toAdd)
+        var dns = _clearPending || _clearCompleted
+            ? new List<string>()
+            : CurrentMemberDns();
+        dns.RemoveAll(dn =>
+            ContainsDn(_removedValuesCompleted, dn)
+            || ContainsDn(_removedValuesPending, dn));
+        foreach (var dn in _insertedValuesCompleted)
         {
-            if (!dns.Contains(dn, StringComparer.OrdinalIgnoreCase))
-            {
-                dns.Add(dn);
-            }
+            AddDn(dns, dn);
+        }
+
+        foreach (var dn in _insertedValuesPending)
+        {
+            AddDn(dns, dn);
         }
 
         return dns;
@@ -141,5 +334,23 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
         return principal.DistinguishedName
             ?? throw new InvalidOperationException(
                 "The principal must be saved before it can be used as a group member.");
+    }
+
+    private static bool ContainsDn(IEnumerable<string> values, string dn) =>
+        values.Contains(dn, StringComparer.OrdinalIgnoreCase);
+
+    private static void AddDn(ICollection<string> values, string dn)
+    {
+        if (!ContainsDn(values, dn))
+        {
+            values.Add(dn);
+        }
+    }
+
+    private static bool RemoveDn(ICollection<string> values, string dn)
+    {
+        var match = values.FirstOrDefault(value =>
+            value.Equals(dn, StringComparison.OrdinalIgnoreCase));
+        return match is not null && values.Remove(match);
     }
 }

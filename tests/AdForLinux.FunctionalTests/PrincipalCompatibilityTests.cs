@@ -271,6 +271,52 @@ public class PrincipalCompatibilityTests
             Assert.True(found.IsMemberOf(domainUsers));
             Assert.True(found.IsMemberOf(
                 context, IdentityType.SamAccountName, "Domain Users"));
+
+            using (var entry = new DirectoryEntry(
+                       TestSettings.PathFor(domainUsers.DistinguishedName!),
+                       TestSettings.BindDn,
+                       TestSettings.BindPassword,
+                       AuthenticationTypes.SecureSocketsLayer))
+            {
+                Assert.DoesNotContain(
+                    userDn,
+                    entry.Properties["member"].Cast<object>().Select(value => value.ToString()),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+
+            Assert.True(domainUsers.Members.Contains(found));
+            var enumeratedMemberDns = new List<string?>();
+            foreach (var member in domainUsers.Members)
+            {
+                using (member)
+                {
+                    enumeratedMemberDns.Add(member.DistinguishedName);
+                }
+            }
+
+            Assert.Equal(domainUsers.Members.Count, enumeratedMemberDns.Count);
+            Assert.Contains(userDn, enumeratedMemberDns, StringComparer.OrdinalIgnoreCase);
+
+            using var directMembers = domainUsers.GetMembers(recursive: false);
+            Assert.Contains(
+                userDn,
+                directMembers.Select(member => member.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            using var recursiveMembers = domainUsers.GetMembers(recursive: true);
+            Assert.Contains(
+                userDn,
+                recursiveMembers.Select(member => member.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            using var authorizationGroups = found.GetAuthorizationGroups();
+            Assert.Contains(
+                domainUsers.DistinguishedName,
+                authorizationGroups.Select(group => group.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            Assert.Throws<InvalidOperationException>(() => domainUsers.Members.Remove(found));
+            Assert.Throws<InvalidOperationException>(() => domainUsers.Members.Clear());
         }
         finally
         {
