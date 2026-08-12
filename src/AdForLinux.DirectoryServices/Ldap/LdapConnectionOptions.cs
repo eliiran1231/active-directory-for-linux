@@ -6,7 +6,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 /// <summary>
 /// Everything needed to open one LDAP connection to a directory server.
 /// Shared by the low layer (DirectoryEntry) and the high layer
-/// (PrincipalContext). Simple bind over TLS only, for now.
+/// (PrincipalContext).
 /// </summary>
 internal sealed class LdapConnectionOptions
 {
@@ -53,5 +53,7 @@ internal sealed class LdapConnectionOptions
 
     /// <summary>Builds the explicit credential, or null to use anonymous/default credentials.</summary>
     public NetworkCredential? ToCredential() =>
-        string.IsNullOrEmpty(BindDn) ? null : new NetworkCredential(BindDn, BindPassword);
+        IsAnonymous || string.IsNullOrEmpty(BindDn)
+            ? null
+            : new NetworkCredential(BindDn, BindPassword);
 }

@@ -39,6 +39,12 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
     public bool Remove(Principal principal)
     {
         var dn = RequireDn(principal);
+        if (_group.IsPrimaryGroupMember(principal))
+        {
+            throw new InvalidOperationException(
+                "The principal cannot be removed because this group is its primary group.");
+        }
+
         _toAdd.Remove(dn);
         if (!_toRemove.Contains(dn, StringComparer.OrdinalIgnoreCase))
         {
@@ -72,6 +78,12 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
     /// <summary>Removes every member. Save the group to apply it.</summary>
     public void Clear()
     {
+        if (_group.GetPrimaryGroupMemberDns().Count > 0)
+        {
+            throw new InvalidOperationException(
+                "The group cannot be cleared because it has primary-group members.");
+        }
+
         _toAdd.Clear();
         _toRemove.Clear();
         _toRemove.AddRange(CurrentMemberDns());
@@ -114,10 +126,23 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>Member DNs as stored on the server right now.</summary>
-    private List<string> CurrentMemberDns() =>
-        RangedAttributeReader.Read(_group.RequireEntry(), "member")
+    private List<string> CurrentMemberDns()
+    {
+        var dns = RangedAttributeReader
+            .Read(_group.RequireEntry(), "member")
             .Select(value => value.ToString()!)
             .ToList();
+
+        foreach (var dn in _group.GetPrimaryGroupMemberDns())
+        {
+            if (!dns.Contains(dn, StringComparer.OrdinalIgnoreCase))
+            {
+                dns.Add(dn);
+            }
+        }
+
+        return dns;
+    }
 
     /// <summary>Member DNs with the staged changes applied.</summary>
     private List<string> EffectiveMemberDns()
