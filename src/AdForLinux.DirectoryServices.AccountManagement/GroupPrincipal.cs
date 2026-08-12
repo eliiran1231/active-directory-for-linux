@@ -208,6 +208,36 @@ public class GroupPrincipal : Principal
     internal DirectoryEntry RequireEntry() =>
         GetUsableEntry();
 
+    internal void EnsureMembersUsable() => CheckDisposedOrDeleted();
+
+    internal bool HasPrimaryGroupMembers() => PrimaryGroupMemberDns().Any();
+
+    internal IEnumerable<string> PrimaryGroupMemberDns()
+    {
+        EnsureMembersUsable();
+        if (!IsPersisted
+            || RequireEntry().Properties["objectSid"].Value is not byte[] sid)
+        {
+            yield break;
+        }
+
+        var rid = SidCodec.GetRid(sid).ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        using var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
+        using var searcher = new DirectorySearcher(
+            root,
+            $"(&(|(objectCategory=person)(objectCategory=computer))(primaryGroupID={rid}))")
+        {
+            PageSize = 500,
+        };
+        using var results = searcher.FindAll();
+        foreach (var result in results.Cast<SearchResult>())
+        {
+            using var entry = result.GetDirectoryEntry();
+            yield return entry.DistinguishedName;
+        }
+    }
+
     private DirectoryEntry GetUsableEntry()
     {
         CheckDisposedOrDeleted();

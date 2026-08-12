@@ -238,7 +238,7 @@ public abstract class Principal : IDisposable
         return IsMemberOf(group);
     }
 
-    private bool IsPrimaryGroup(GroupPrincipal group)
+    internal bool IsPrimaryGroup(GroupPrincipal group)
     {
         var primaryGroupSid = TryGetPrimaryGroupSid();
         var groupSid = group.RequireEntry().Properties["objectSid"].Value as byte[];

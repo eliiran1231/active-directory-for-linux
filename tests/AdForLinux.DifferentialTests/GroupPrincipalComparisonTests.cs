@@ -1,3 +1,4 @@
+using System.Collections;
 using Xunit;
 using Ms = System.DirectoryServices.AccountManagement;
 using Ours = AdForLinux.DirectoryServices.AccountManagement;
@@ -99,6 +100,97 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Check("user is a member",
                 msGroup!.Members.Contains(msUser),
                 ourGroup!.Members.Contains(ourUser!))
+            .Assert();
+    }
+
+    [Fact]
+    public void Members_collection_contract_matches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msGroup = Ms.GroupPrincipal.FindByIdentity(msContext, _data.GroupName);
+        using var ourGroup = Ours.GroupPrincipal.FindByIdentity(ourContext, _data.GroupName);
+        using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+
+        Assert.NotNull(msGroup);
+        Assert.NotNull(ourGroup);
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        ICollection<Ms.Principal> msGeneric = msGroup!.Members;
+        ICollection<Ours.Principal> ourGeneric = ourGroup!.Members;
+        ICollection msNongeneric = msGroup.Members;
+        ICollection ourNongeneric = ourGroup.Members;
+
+        new Comparison("PrincipalCollection surface")
+            .Check("IsReadOnly", msGeneric.IsReadOnly, ourGeneric.IsReadOnly)
+            .Check("IsSynchronized", msNongeneric.IsSynchronized, ourNongeneric.IsSynchronized)
+            .Check("SyncRoot is collection",
+                ReferenceEquals(msGroup.Members, msNongeneric.SyncRoot),
+                ReferenceEquals(ourGroup.Members, ourNongeneric.SyncRoot))
+            .Check("negative CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(Array.Empty<Ms.Principal>(), -1))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(Array.Empty<Ours.Principal>(), -1))?.GetType().Name)
+            .Check("duplicate Add exception",
+                Record.Exception(() => msGroup.Members.Add(msUser!))?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Add(ourUser!))?.GetType().Name)
+            .Check("missing identity Contains",
+                msGroup.Members.Contains(
+                    msContext, Ms.IdentityType.SamAccountName, "no-such-principal-xyz"),
+                ourGroup.Members.Contains(
+                    ourContext, Ours.IdentityType.SamAccountName, "no-such-principal-xyz"))
+            .Assert();
+
+        var msCopy = new Ms.Principal[msGroup.Members.Count];
+        var ourCopy = new Ours.Principal[ourGroup.Members.Count];
+        msGroup.Members.CopyTo(msCopy, 0);
+        ourGroup.Members.CopyTo(ourCopy, 0);
+        new Comparison("PrincipalCollection CopyTo")
+            .CheckSet("member DNs",
+                msCopy.Select(principal => principal.DistinguishedName),
+                ourCopy.Select(principal => principal.DistinguishedName))
+            .Assert();
+        foreach (var principal in msCopy)
+        {
+            principal.Dispose();
+        }
+
+        foreach (var principal in ourCopy)
+        {
+            principal.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Primary_group_mutation_guards_match()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msGroup = Ms.GroupPrincipal.FindByIdentity(
+            msContext, Ms.IdentityType.SamAccountName, "Domain Users");
+        using var ourGroup = Ours.GroupPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, "Domain Users");
+        using var msUser = Ms.UserPrincipal.FindByIdentity(
+            msContext, Ms.IdentityType.SamAccountName, "Administrator");
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, "Administrator");
+
+        Assert.NotNull(msGroup);
+        Assert.NotNull(ourGroup);
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        new Comparison("primary-group membership guards")
+            .Check("Contains",
+                msGroup!.Members.Contains(msUser!),
+                ourGroup!.Members.Contains(ourUser!))
+            .Check("Remove exception",
+                Record.Exception(() => msGroup.Members.Remove(msUser))?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Remove(ourUser))?.GetType().Name)
+            .Check("Clear exception",
+                Record.Exception(() => msGroup.Members.Clear())?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Clear())?.GetType().Name)
             .Assert();
     }
 
