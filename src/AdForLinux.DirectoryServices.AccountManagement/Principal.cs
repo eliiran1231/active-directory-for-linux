@@ -2,6 +2,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Security.Principal;
 using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.Ldap;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -523,7 +524,7 @@ public abstract class Principal : IDisposable
         var originalContext = ContextRef;
         var originalEntry = Entry;
         var currentDn = Entry.DistinguishedName;
-        var currentParent = ParentDistinguishedName(currentDn);
+        var currentParent = LdapDistinguishedName.Parent(currentDn);
         var moved = !string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase);
 
         try
@@ -604,19 +605,6 @@ public abstract class Principal : IDisposable
         .Replace(">", "\\>")
         .Replace(";", "\\;")
         .Replace("=", "\\=");
-
-    private static string? ParentDistinguishedName(string distinguishedName)
-    {
-        for (var index = 0; index < distinguishedName.Length; index++)
-        {
-            if (distinguishedName[index] == ',' && (index == 0 || distinguishedName[index - 1] != '\\'))
-            {
-                return distinguishedName[(index + 1)..];
-            }
-        }
-
-        return null;
-    }
 
     /// <summary>The underlying <see cref="DirectoryEntry"/>.</summary>
     public object? GetUnderlyingObject()

@@ -121,6 +121,155 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void Directory_entries_remove_is_non_recursive_and_delete_tree_remains_recursive()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var msEmptyDn = $"OU=adfl-ms-empty-{suffix},{DifferentialSettings.BaseDn}";
+        var msParentDn = $"OU=adfl-ms-remove-{suffix},{DifferentialSettings.BaseDn}";
+        var msChildDn = $"OU=child,{msParentDn}";
+        var ourEmptyDn = $"OU=adfl-our-empty-{suffix},{DifferentialSettings.BaseDn}";
+        var ourParentDn = $"OU=adfl-our-remove-{suffix},{DifferentialSettings.BaseDn}";
+        var ourChildDn = $"OU=child,{ourParentDn}";
+
+        try
+        {
+            CreateMicrosoftOrganizationalUnit(msEmptyDn);
+            CreateMicrosoftOrganizationalUnit(msParentDn);
+            CreateMicrosoftOrganizationalUnit(msChildDn);
+            CreateOurOrganizationalUnit(ourEmptyDn);
+            CreateOurOrganizationalUnit(ourParentDn);
+            CreateOurOrganizationalUnit(ourChildDn);
+
+            using var msDomain = MicrosoftEntry(DifferentialSettings.BaseDn);
+            using var msEmpty = MicrosoftEntry(msEmptyDn);
+            using var msParent = MicrosoftEntry(msParentDn);
+            using var ourDomain = OurEntry(DifferentialSettings.BaseDn);
+            using var ourEmpty = OurEntry(ourEmptyDn);
+            using var ourParent = OurEntry(ourParentDn);
+
+            msDomain.Children.Remove(msEmpty);
+            ourDomain.Children.Remove(ourEmpty);
+
+            Assert.False(MicrosoftEntryExists(msEmptyDn));
+            Assert.False(OurEntryExists(ourEmptyDn));
+
+            var msError = Record.Exception(() => msDomain.Children.Remove(msParent));
+            var ourError = Record.Exception(() => ourDomain.Children.Remove(ourParent));
+
+            var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
+            Assert.Equal(unchecked((int)0x80072015), msComError.HResult);
+            var ourProtocolError = Assert.IsType<
+                System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
+            Assert.Equal(
+                System.DirectoryServices.Protocols.ResultCode.NotAllowedOnNonLeaf,
+                ourProtocolError.Response.ResultCode);
+            Assert.True(MicrosoftEntryExists(msParentDn));
+            Assert.True(MicrosoftEntryExists(msChildDn));
+            Assert.True(OurEntryExists(ourParentDn));
+            Assert.True(OurEntryExists(ourChildDn));
+
+            msParent.DeleteTree();
+            ourParent.DeleteTree();
+
+            Assert.False(MicrosoftEntryExists(msParentDn));
+            Assert.False(MicrosoftEntryExists(msChildDn));
+            Assert.False(OurEntryExists(ourParentDn));
+            Assert.False(OurEntryExists(ourChildDn));
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msEmptyDn);
+            SafeDeleteMicrosoft(msParentDn);
+            SafeDeleteOur(ourEmptyDn);
+            SafeDeleteOur(ourParentDn);
+        }
+    }
+
+    [Fact]
+    public void Directory_entries_remove_uses_the_collections_parent()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var msFirstDn = $"OU=adfl-ms-first-{suffix},{DifferentialSettings.BaseDn}";
+        var msSecondDn = $"OU=adfl-ms-second-{suffix},{DifferentialSettings.BaseDn}";
+        var msChildDn = $"OU=child,{msSecondDn}";
+        var ourFirstDn = $"OU=adfl-our-first-{suffix},{DifferentialSettings.BaseDn}";
+        var ourSecondDn = $"OU=adfl-our-second-{suffix},{DifferentialSettings.BaseDn}";
+        var ourChildDn = $"OU=child,{ourSecondDn}";
+
+        try
+        {
+            CreateMicrosoftOrganizationalUnit(msFirstDn);
+            CreateMicrosoftOrganizationalUnit(msSecondDn);
+            CreateMicrosoftOrganizationalUnit(msChildDn);
+            CreateOurOrganizationalUnit(ourFirstDn);
+            CreateOurOrganizationalUnit(ourSecondDn);
+            CreateOurOrganizationalUnit(ourChildDn);
+
+            using var msFirst = MicrosoftEntry(msFirstDn);
+            using var msChild = MicrosoftEntry(msChildDn);
+            using var ourFirst = OurEntry(ourFirstDn);
+            using var ourChild = OurEntry(ourChildDn);
+
+            var msError = Record.Exception(() => msFirst.Children.Remove(msChild));
+            var ourError = Record.Exception(() => ourFirst.Children.Remove(ourChild));
+
+            var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
+            Assert.Equal(unchecked((int)0x80072030), msComError.HResult);
+            var ourProtocolError = Assert.IsType<
+                System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
+            Assert.Equal(
+                System.DirectoryServices.Protocols.ResultCode.NoSuchObject,
+                ourProtocolError.Response.ResultCode);
+            Assert.True(MicrosoftEntryExists(msChildDn));
+            Assert.True(OurEntryExists(ourChildDn));
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msFirstDn);
+            SafeDeleteMicrosoft(msSecondDn);
+            SafeDeleteOur(ourFirstDn);
+            SafeDeleteOur(ourSecondDn);
+        }
+    }
+
+    [Fact]
+    public void Directory_entries_remove_handles_an_rdn_ending_in_a_literal_backslash()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var msRelativeName = $@"OU=adfl-ms-slash-{suffix}\\";
+        var ourRelativeName = $@"OU=adfl-our-slash-{suffix}\\";
+        var msDn = $"{msRelativeName},{DifferentialSettings.BaseDn}";
+        var ourDn = $"{ourRelativeName},{DifferentialSettings.BaseDn}";
+
+        try
+        {
+            CreateMicrosoftOrganizationalUnit(msDn);
+            CreateOurOrganizationalUnit(ourDn);
+
+            using var msDomain = MicrosoftEntry(DifferentialSettings.BaseDn);
+            using var msChild = MicrosoftEntry(msDn);
+            using var ourDomain = OurEntry(DifferentialSettings.BaseDn);
+            using var ourChild = OurEntry(ourDn);
+
+            new Comparison("DirectoryEntries.Remove literal trailing backslash RDN")
+                .Check("Microsoft Name", msRelativeName, msChild.Name)
+                .Check("AdForLinux Name", ourRelativeName, ourChild.Name)
+                .Assert();
+
+            msDomain.Children.Remove(msChild);
+            ourDomain.Children.Remove(ourChild);
+
+            Assert.False(MicrosoftEntryExists(msDn));
+            Assert.False(OurEntryExists(ourDn));
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msDn);
+            SafeDeleteOur(ourDn);
+        }
+    }
+
+    [Fact]
     public void Multi_valued_object_class_matches()
     {
         using var ms = MicrosoftEntry(_data.UserDn);
@@ -289,5 +438,76 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(msError);
         Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
         Assert.Contains("InvalidAttributeSyntax (21)", ourError!.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void CreateMicrosoftOrganizationalUnit(string distinguishedName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        using var parent = MicrosoftEntry(distinguishedName[(separator + 1)..]);
+        using var child = parent.Children.Add(distinguishedName[..separator], "organizationalUnit");
+        child.CommitChanges();
+    }
+
+    private static void CreateOurOrganizationalUnit(string distinguishedName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        using var parent = OurEntry(distinguishedName[(separator + 1)..]);
+        using var child = parent.Children.Add(distinguishedName[..separator], "organizationalUnit");
+        child.CommitChanges();
+    }
+
+    private static bool MicrosoftEntryExists(string distinguishedName)
+    {
+        try
+        {
+            using var entry = MicrosoftEntry(distinguishedName);
+            entry.RefreshCache();
+            return true;
+        }
+        catch (Ms.DirectoryServicesCOMException)
+        {
+            return false;
+        }
+    }
+
+    private static bool OurEntryExists(string distinguishedName)
+    {
+        try
+        {
+            using var entry = OurEntry(distinguishedName);
+            entry.RefreshCache();
+            return true;
+        }
+        catch (System.DirectoryServices.Protocols.DirectoryOperationException error)
+            when (error.Response.ResultCode == System.DirectoryServices.Protocols.ResultCode.NoSuchObject)
+        {
+            return false;
+        }
+    }
+
+    private static void SafeDeleteMicrosoft(string distinguishedName)
+    {
+        try
+        {
+            using var entry = MicrosoftEntry(distinguishedName);
+            entry.DeleteTree();
+        }
+        catch
+        {
+            // Best effort cleanup for a failed differential assertion.
+        }
+    }
+
+    private static void SafeDeleteOur(string distinguishedName)
+    {
+        try
+        {
+            using var entry = OurEntry(distinguishedName);
+            entry.DeleteTree();
+        }
+        catch
+        {
+            // Best effort cleanup for a failed differential assertion.
+        }
     }
 }

@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices;
+using System.DirectoryServices.Protocols;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -86,6 +87,141 @@ public class DirectoryEntryWriteTests
     }
 
     [Fact]
+    public void Children_remove_deletes_an_empty_child()
+    {
+        var name = $"adfl-ou-{Guid.NewGuid():N}";
+        var dn = $"OU={name},{TestSettings.BaseDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var child = domain.Children.Add($"OU={name}", "organizationalUnit");
+            child.CommitChanges();
+
+            domain.Children.Remove(child);
+
+            AssertMissing(dn);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
+    public void Children_remove_handles_an_rdn_ending_in_a_literal_backslash()
+    {
+        var value = $"adfl-ou-{Guid.NewGuid():N}";
+        var relativeName = $@"OU={value}\\";
+        var dn = $"{relativeName},{TestSettings.BaseDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var child = domain.Children.Add(relativeName, "organizationalUnit");
+            child.CommitChanges();
+
+            Assert.Equal(relativeName, child.Name);
+            domain.Children.Remove(child);
+
+            AssertMissing(dn);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
+    public void Children_remove_does_not_recursively_delete_a_populated_child()
+    {
+        var parentName = $"adfl-ou-{Guid.NewGuid():N}";
+        var childName = $"adfl-ou-{Guid.NewGuid():N}";
+        var parentDn = $"OU={parentName},{TestSettings.BaseDn}";
+        var childDn = $"OU={childName},{parentDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var parent = domain.Children.Add($"OU={parentName}", "organizationalUnit");
+            parent.CommitChanges();
+            using var child = parent.Children.Add($"OU={childName}", "organizationalUnit");
+            child.CommitChanges();
+
+            var error = Assert.Throws<DirectoryOperationException>(
+                () => domain.Children.Remove(parent));
+
+            Assert.Equal(ResultCode.NotAllowedOnNonLeaf, error.Response.ResultCode);
+            AssertExists(parentDn);
+            AssertExists(childDn);
+        }
+        finally
+        {
+            SafeDelete(parentDn);
+        }
+    }
+
+    [Fact]
+    public void DeleteTree_remains_recursive_for_a_populated_child()
+    {
+        var parentName = $"adfl-ou-{Guid.NewGuid():N}";
+        var childName = $"adfl-ou-{Guid.NewGuid():N}";
+        var parentDn = $"OU={parentName},{TestSettings.BaseDn}";
+        var childDn = $"OU={childName},{parentDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var parent = domain.Children.Add($"OU={parentName}", "organizationalUnit");
+            parent.CommitChanges();
+            using var child = parent.Children.Add($"OU={childName}", "organizationalUnit");
+            child.CommitChanges();
+
+            parent.DeleteTree();
+
+            AssertMissing(parentDn);
+            AssertMissing(childDn);
+        }
+        finally
+        {
+            SafeDelete(parentDn);
+        }
+    }
+
+    [Fact]
+    public void Children_remove_uses_the_collections_parent()
+    {
+        var firstName = $"adfl-ou-{Guid.NewGuid():N}";
+        var secondName = $"adfl-ou-{Guid.NewGuid():N}";
+        var childName = $"adfl-ou-{Guid.NewGuid():N}";
+        var firstDn = $"OU={firstName},{TestSettings.BaseDn}";
+        var secondDn = $"OU={secondName},{TestSettings.BaseDn}";
+        var childDn = $"OU={childName},{secondDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var first = domain.Children.Add($"OU={firstName}", "organizationalUnit");
+            first.CommitChanges();
+            using var second = domain.Children.Add($"OU={secondName}", "organizationalUnit");
+            second.CommitChanges();
+            using var child = second.Children.Add($"OU={childName}", "organizationalUnit");
+            child.CommitChanges();
+
+            var error = Assert.Throws<DirectoryOperationException>(
+                () => first.Children.Remove(child));
+
+            Assert.Equal(ResultCode.NoSuchObject, error.Response.ResultCode);
+            AssertExists(childDn);
+        }
+        finally
+        {
+            SafeDelete(firstDn);
+            SafeDelete(secondDn);
+        }
+    }
+
+    [Fact]
     public void Rename_updates_the_entry_path_and_preserves_properties()
     {
         var oldName = $"adfl-grp-{Guid.NewGuid():N}";
@@ -149,5 +285,18 @@ public class DirectoryEntryWriteTests
         {
             // Best effort cleanup.
         }
+    }
+
+    private static void AssertExists(string dn)
+    {
+        using var entry = Open(dn);
+        entry.RefreshCache();
+    }
+
+    private static void AssertMissing(string dn)
+    {
+        using var entry = Open(dn);
+        var error = Assert.Throws<DirectoryOperationException>(() => entry.RefreshCache());
+        Assert.Equal(ResultCode.NoSuchObject, error.Response.ResultCode);
     }
 }
