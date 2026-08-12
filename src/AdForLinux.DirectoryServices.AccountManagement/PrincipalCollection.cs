@@ -1,4 +1,5 @@
 using System.Collections;
+using AdForLinux.DirectoryServices.Ldap;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -305,6 +306,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         return dns;
     }
 
+    /// <summary>Member DNs with the staged changes applied.</summary>
     private List<string> EffectiveMemberDns()
     {
         var dns = _clearPending || _clearCompleted

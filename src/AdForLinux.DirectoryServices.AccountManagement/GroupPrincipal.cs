@@ -72,37 +72,56 @@ public class GroupPrincipal : Principal
             return new PrincipalSearchResult<Principal>(Members.ToList());
         }
 
-        var groupDn = RequireEntry().DistinguishedName;
-        // Recursive results contain only leaves. Groups are traversal nodes,
-        // whereas GetMembers(false) may return direct group members.
-        var filter = $"(&(memberOf:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(groupDn)})(!(objectClass=group)))";
-        // GetMembers is not constrained by PrincipalContext.Container: group
-        // members in other containers must still be returned.
-        var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
-        try
+        // Walk each group's merged direct membership so primary-group-only
+        // members are included at every level. Groups are traversal nodes;
+        // recursive results contain leaves only.
+        _ = RequireEntry();
+        var members = new List<Principal>();
+        var memberDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visitedGroupDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Queue<(GroupPrincipal Group, bool Dispose)>();
+        groups.Enqueue((this, false));
+
+        while (groups.Count > 0)
         {
-            using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
-            var members = new List<Principal>();
-            using var results = searcher.FindAll();
-            foreach (var result in results.Cast<SearchResult>())
+            var (group, dispose) = groups.Dequeue();
+            try
             {
-                var entry = result.GetDirectoryEntry();
-                var principal = PrincipalFactory.FromEntry(ContextRef, entry);
-                if (principal is null)
+                var groupDn = group.DistinguishedName!;
+                if (!visitedGroupDns.Add(groupDn))
                 {
-                    entry.Dispose();
                     continue;
                 }
 
-                members.Add(principal);
-            }
+                foreach (var principal in group.Members)
+                {
+                    if (principal is GroupPrincipal nestedGroup)
+                    {
+                        groups.Enqueue((nestedGroup, true));
+                        continue;
+                    }
 
-            return new PrincipalSearchResult<Principal>(members);
+                    var principalDn = principal.DistinguishedName;
+                    if (principalDn is not null && memberDns.Add(principalDn))
+                    {
+                        members.Add(principal);
+                    }
+                    else
+                    {
+                        principal.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (dispose)
+                {
+                    group.Dispose();
+                }
+            }
         }
-        finally
-        {
-            root.Dispose();
-        }
+
+        return new PrincipalSearchResult<Principal>(members);
     }
 
     /// <summary>
@@ -144,6 +163,13 @@ public class GroupPrincipal : Principal
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType((groupType & ~ScopeMask) | bit);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(GroupScope),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                true,
+                (uint)bit);
         }
     }
 
@@ -169,6 +195,13 @@ public class GroupPrincipal : Principal
             WriteGroupType(value.Value
                 ? groupType | SecurityEnabled
                 : groupType & ~SecurityEnabled);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(IsSecurityGroup),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                value.Value,
+                0x80000000);
         }
     }
 

@@ -328,6 +328,47 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(ourDomainUsers);
         Assert.Equal(msUser!.IsMemberOf(msDomainUsers!), ourUser!.IsMemberOf(ourDomainUsers!));
         Assert.True(ourUser.IsMemberOf(ourDomainUsers));
+
+        using (var rawGroup = Open(msDomainUsers.DistinguishedName))
+        {
+            Assert.DoesNotContain(
+                _data.UserDn,
+                rawGroup.Properties["member"].Cast<object>().Select(value => value.ToString()),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        new Comparison("primary-group-only Members")
+            .Check("Count", msDomainUsers.Members.Count, ourDomainUsers.Members.Count)
+            .Check("Contains", msDomainUsers.Members.Contains(msUser), ourDomainUsers.Members.Contains(ourUser))
+            .CheckSet(
+                "member DNs",
+                msDomainUsers.Members.Select(member => member.DistinguishedName),
+                ourDomainUsers.Members.Select(member => member.DistinguishedName))
+            .Assert();
+
+        using var msDirect = msDomainUsers.GetMembers(recursive: false);
+        using var ourDirect = ourDomainUsers.GetMembers(recursive: false);
+        using var msRecursive = msDomainUsers.GetMembers(recursive: true);
+        using var ourRecursive = ourDomainUsers.GetMembers(recursive: true);
+        new Comparison("primary-group-only GetMembers")
+            .CheckSet(
+                "direct member DNs",
+                msDirect.Select(member => member.DistinguishedName),
+                ourDirect.Select(member => member.DistinguishedName))
+            .CheckSet(
+                "recursive member DNs",
+                msRecursive.Select(member => member.DistinguishedName),
+                ourRecursive.Select(member => member.DistinguishedName))
+            .Assert();
+
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => msDomainUsers.Members.Remove(msUser)));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => ourDomainUsers.Members.Remove(ourUser)));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => msDomainUsers.Members.Clear()));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => ourDomainUsers.Members.Clear()));
     }
 
     [Fact]
@@ -361,6 +402,10 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.Contains(_data.GroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, msDns, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(
+            ourGroups.Single(group => group.SamAccountName == "Domain Users").DistinguishedName,
+            msDns,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static void CreateOrganizationalUnit(string distinguishedName)

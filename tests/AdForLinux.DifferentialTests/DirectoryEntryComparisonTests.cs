@@ -18,6 +18,19 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         _data = data;
     }
 
+    [Fact]
+    public void Credential_constructor_authentication_default_matches()
+    {
+        using var ms = new Ms.DirectoryEntry(
+            "LDAP://dc.example.test/DC=example,DC=test", "user@example.test", "password");
+        using var ours = new Ours.DirectoryEntry(
+            "LDAP://dc.example.test/DC=example,DC=test", "user@example.test", "password");
+
+        new Comparison("DirectoryEntry credential constructor authentication default")
+            .Check("AuthenticationType", ms.AuthenticationType.ToString(), ours.AuthenticationType.ToString())
+            .Assert();
+    }
+
     private static Ms.DirectoryEntry MicrosoftEntry(string dn) =>
         new(DifferentialSettings.PathFor(dn),
             DifferentialSettings.BindDn,
