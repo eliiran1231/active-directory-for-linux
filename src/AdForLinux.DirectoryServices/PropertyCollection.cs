@@ -54,6 +54,26 @@ public sealed class PropertyCollection : IDictionary, IEnumerable<PropertyValueC
 
     internal PropertyValueCollection GetOrAdd(string propertyName) => this[propertyName];
 
+    /// <summary>
+    /// Removes one managed property-cache entry. Existing callers that hold the
+    /// removed value collection keep that snapshot, while the next lookup gets
+    /// a newly loaded collection, matching DirectoryEntry's partial-refresh
+    /// behavior.
+    /// </summary>
+    internal void RemoveCached(string propertyName) => _byName.Remove(propertyName);
+
+    /// <summary>Replaces one managed property-cache entry with server values.</summary>
+    internal void ReplaceLoaded(string propertyName, IEnumerable<object> values)
+    {
+        var replacement = new PropertyValueCollection(propertyName, _onChanged);
+        foreach (var value in values)
+        {
+            replacement.AddLoaded(value);
+        }
+
+        _byName[propertyName] = replacement;
+    }
+
     public IDictionaryEnumerator GetEnumerator() => new PropertyEnumerator(_byName.GetEnumerator());
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

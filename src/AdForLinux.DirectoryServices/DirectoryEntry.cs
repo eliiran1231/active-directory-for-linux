@@ -544,10 +544,60 @@ public class DirectoryEntry : Component
     public void RefreshCache(string[] propertyNames)
     {
         ArgumentNullException.ThrowIfNull(propertyNames);
-        _properties = null;
-        _objectSecurity = null;
-        _objectSecurityChanged = false;
-        EnsureLoaded(propertyNames);
+
+        // LDAP treats an empty attribute list as "all user attributes", while
+        // ADSI GetInfoEx with no names does not turn a partial refresh into a
+        // full managed-cache replacement. Request LDAP's explicit no-attributes
+        // selector so the call still validates/binds the entry without changing
+        // any cached property.
+        if (propertyNames.Length == 0)
+        {
+            _ = ReadProperties(new[] { "1.1" });
+            return;
+        }
+
+        var refreshed = ReadProperties(propertyNames);
+        var properties = _properties ?? new PropertyCollection(OnPropertyChanged);
+        foreach (var propertyName in propertyNames)
+        {
+            if (propertyName is null)
+            {
+                continue;
+            }
+
+            properties.RemoveCached(propertyName);
+
+            var unrangedName = WithoutRangeSpecifier(propertyName);
+            if (!string.Equals(unrangedName, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                properties.RemoveCached(unrangedName);
+            }
+        }
+
+        foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
+        {
+            // Active Directory can answer a ranged request with a different
+            // upper bound (including '*'). Cache it under the requested name
+            // so the caller can retrieve the returned chunk.
+            var cacheName = propertyNames.FirstOrDefault(requested =>
+                requested is not null
+                && HasRangeSpecifier(requested)
+                && string.Equals(
+                    WithoutRangeSpecifier(requested),
+                    WithoutRangeSpecifier(property.PropertyName),
+                    StringComparison.OrdinalIgnoreCase))
+                ?? property.PropertyName;
+
+            properties.ReplaceLoaded(cacheName, property);
+        }
+
+        _properties = properties;
+
+        if (propertyNames.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
+        {
+            _objectSecurity = null;
+            _objectSecurityChanged = false;
+        }
     }
 
     /// <summary>Closes this entry and releases its LDAP connection.</summary>
@@ -622,11 +672,18 @@ public class DirectoryEntry : Component
             return;
         }
 
-        var connection = GetConnection();
         var loadDefaultProperties = propertyNames is not { Length: > 0 };
         var requestedProperties = loadDefaultProperties
             ? new[] { "*", "nTSecurityDescriptor" }
             : propertyNames!;
+        _properties = ReadProperties(requestedProperties, loadDefaultProperties);
+    }
+
+    private PropertyCollection ReadProperties(
+        string[] requestedProperties,
+        bool loadDefaultProperties = false)
+    {
+        var connection = GetConnection();
         var request = new SearchRequest(
             _path.DistinguishedName,
             "(objectClass=*)",
@@ -648,8 +705,16 @@ public class DirectoryEntry : Component
             LoadEntry(response.Entries[0], properties);
         }
 
-        _properties = properties;
+        return properties;
     }
+
+    private static bool HasRangeSpecifier(string propertyName) =>
+        !string.Equals(WithoutRangeSpecifier(propertyName), propertyName, StringComparison.Ordinal);
+
+    private static string WithoutRangeSpecifier(string propertyName) => string.Join(
+        ";",
+        propertyName.Split(';').Where(part =>
+            !part.StartsWith("range=", StringComparison.OrdinalIgnoreCase)));
 
     private ActiveDirectorySecurity ReadObjectSecurity()
     {

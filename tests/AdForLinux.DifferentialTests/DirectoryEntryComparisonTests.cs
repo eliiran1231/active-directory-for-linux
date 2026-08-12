@@ -85,6 +85,95 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void Partial_refresh_cache_and_pending_change_semantics_match()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msRequestedBefore = msProperties["displayName"];
+        var ourRequestedBefore = ourProperties["displayName"];
+        var msUnrelatedBefore = msProperties["mail"];
+        var ourUnrelatedBefore = ourProperties["mail"];
+
+        msRequestedBefore.Value = "staged display name";
+        ourRequestedBefore.Value = "staged display name";
+        msUnrelatedBefore.Value = "staged mail";
+        ourUnrelatedBefore.Value = "staged mail";
+
+        ms.RefreshCache(new[] { "displayName" });
+        ours.RefreshCache(new[] { "displayName" });
+
+        new Comparison("DirectoryEntry.RefreshCache(string[]) partial cache")
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("requested collection invalidated",
+                ReferenceEquals(msRequestedBefore, ms.Properties["displayName"]),
+                ReferenceEquals(ourRequestedBefore, ours.Properties["displayName"]))
+            .Check("requested value refreshed",
+                ms.Properties["displayName"].Value,
+                ours.Properties["displayName"].Value)
+            .Check("held requested snapshot",
+                msRequestedBefore.Value,
+                ourRequestedBefore.Value)
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelatedBefore, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelatedBefore, ours.Properties["mail"]))
+            .Check("unrelated pending value retained",
+                ms.Properties["mail"].Value,
+                ours.Properties["mail"].Value)
+            .Assert();
+    }
+
+    [Fact]
+    public void Partial_refresh_edge_cases_match()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msUnrelated = msProperties["mail"];
+        var ourUnrelated = ourProperties["mail"];
+        var msMissingBefore = msProperties["noSuchAttributeHere"];
+        var ourMissingBefore = ourProperties["noSuchAttributeHere"];
+
+        ms.RefreshCache(new[] { "DISPLAYNAME", "displayName", "noSuchAttributeHere" });
+        ours.RefreshCache(new[] { "DISPLAYNAME", "displayName", "noSuchAttributeHere" });
+
+        new Comparison("DirectoryEntry.RefreshCache(string[]) edge cases")
+            .Check("case-varied duplicate value",
+                ms.Properties["displayName"].Value,
+                ours.Properties["displayName"].Value)
+            .Check("missing collection invalidated",
+                ReferenceEquals(msMissingBefore, ms.Properties["noSuchAttributeHere"]),
+                ReferenceEquals(ourMissingBefore, ours.Properties["noSuchAttributeHere"]))
+            .Check("missing value",
+                ms.Properties["noSuchAttributeHere"].Value,
+                ours.Properties["noSuchAttributeHere"].Value)
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["mail"]))
+            .Assert();
+
+        var msEmptyError = Record.Exception(() => ms.RefreshCache(Array.Empty<string>()));
+        var ourEmptyError = Record.Exception(() => ours.RefreshCache(Array.Empty<string>()));
+
+        new Comparison("DirectoryEntry.RefreshCache(empty)")
+            .Check("throws", msEmptyError is not null, ourEmptyError is not null)
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["mail"]))
+            .Check("unrelated value",
+                ms.Properties["mail"].Value,
+                ours.Properties["mail"].Value)
+            .Assert();
+    }
+
+    [Fact]
     public void Property_collection_non_generic_copy_copies_property_values()
     {
         using var ms = MicrosoftEntry(_data.UserDn);
