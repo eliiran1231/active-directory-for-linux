@@ -163,6 +163,13 @@ public class GroupPrincipal : Principal
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType((groupType & ~ScopeMask) | bit);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(GroupScope),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                true,
+                (uint)bit);
         }
     }
 
@@ -188,6 +195,13 @@ public class GroupPrincipal : Principal
             WriteGroupType(value.Value
                 ? groupType | SecurityEnabled
                 : groupType & ~SecurityEnabled);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(IsSecurityGroup),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                value.Value,
+                0x80000000);
         }
     }
 

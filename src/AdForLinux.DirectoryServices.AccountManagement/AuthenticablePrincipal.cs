@@ -87,6 +87,8 @@ public abstract class AuthenticablePrincipal : Principal
                 {
                     SetUserAccountControlBit(AccountDisabled, on: !value.Value);
                 }
+
+                SetUserAccountControlQuery(nameof(Enabled), AccountDisabled, bitMustBeSet: !value.Value);
             }
         }
     }
@@ -98,7 +100,16 @@ public abstract class AuthenticablePrincipal : Principal
     public DateTime? AccountExpirationDate
     {
         get => AdFileTime.ToDateTime(GetString("accountExpires"));
-        set => SetString("accountExpires", AdFileTime.FromDateTime(value));
+        set
+        {
+            SetString("accountExpires", AdFileTime.FromDateTime(value));
+            RemoveQueryFilter("accountExpires");
+            SetQueryFilter(
+                nameof(AccountExpirationDate),
+                PrincipalQueryFilterKind.Attribute,
+                "accountExpires",
+                value);
+        }
     }
 
     /// <summary>When the account was locked out, or null if it is not locked.</summary>
@@ -130,14 +141,22 @@ public abstract class AuthenticablePrincipal : Principal
     public bool PasswordNeverExpires
     {
         get => HasUserAccountControlBit(PasswordDoesNotExpire);
-        set => SetUserAccountControlBit(PasswordDoesNotExpire, value);
+        set
+        {
+            SetUserAccountControlBit(PasswordDoesNotExpire, value);
+            SetUserAccountControlQuery(nameof(PasswordNeverExpires), PasswordDoesNotExpire, value);
+        }
     }
 
     /// <summary>Whether the account may have no password. Needs a Save.</summary>
     public bool PasswordNotRequired
     {
         get => HasUserAccountControlBit(PasswordNotRequiredFlag);
-        set => SetUserAccountControlBit(PasswordNotRequiredFlag, value);
+        set
+        {
+            SetUserAccountControlBit(PasswordNotRequiredFlag, value);
+            SetUserAccountControlQuery(nameof(PasswordNotRequired), PasswordNotRequiredFlag, value);
+        }
     }
 
     /// <summary>Whether the account may be delegated. Needs a Save.</summary>
@@ -145,19 +164,31 @@ public abstract class AuthenticablePrincipal : Principal
     {
         // Stored inverted: the NOT_DELEGATED bit means delegation is blocked.
         get => !HasUserAccountControlBit(NotDelegated);
-        set => SetUserAccountControlBit(NotDelegated, !value);
+        set
+        {
+            SetUserAccountControlBit(NotDelegated, !value);
+            SetUserAccountControlQuery(nameof(DelegationPermitted), NotDelegated, !value);
+        }
     }
 
     public bool AllowReversiblePasswordEncryption
     {
         get => HasUserAccountControlBit(ReversiblePasswordEncryption);
-        set => SetUserAccountControlBit(ReversiblePasswordEncryption, value);
+        set
+        {
+            SetUserAccountControlBit(ReversiblePasswordEncryption, value);
+            SetUserAccountControlQuery(nameof(AllowReversiblePasswordEncryption), ReversiblePasswordEncryption, value);
+        }
     }
 
     public bool SmartcardLogonRequired
     {
         get => HasUserAccountControlBit(SmartcardRequired);
-        set => SetUserAccountControlBit(SmartcardRequired, value);
+        set
+        {
+            SetUserAccountControlBit(SmartcardRequired, value);
+            SetUserAccountControlQuery(nameof(SmartcardLogonRequired), SmartcardRequired, value);
+        }
     }
 
     public byte[]? PermittedLogonTimes
@@ -216,7 +247,15 @@ public abstract class AuthenticablePrincipal : Principal
             var descriptor = Entry.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
             return ChangePasswordAcl.IsDenied(descriptor);
         }
-        set => _userCannotChangePassword = value;
+        set
+        {
+            _userCannotChangePassword = value;
+            SetQueryFilter(
+                nameof(UserCannotChangePassword),
+                PrincipalQueryFilterKind.Unsupported,
+                string.Empty,
+                value);
+        }
     }
 
     /// <summary>The home directory path.</summary>
@@ -356,6 +395,37 @@ public abstract class AuthenticablePrincipal : Principal
         var flags = ReadUserAccountControl() ?? DefaultUserAccountControl;
         flags = on ? flags | bit : flags & ~bit;
         SetString("userAccountControl", flags.ToString());
+    }
+
+    private void SetUserAccountControlQuery(string property, uint bit, bool bitMustBeSet)
+    {
+        RemoveQueryFilter("userAccountControl");
+        SetQueryFilter(
+            property,
+            PrincipalQueryFilterKind.UserAccountControlBit,
+            "userAccountControl",
+            bitMustBeSet,
+            bit);
+    }
+
+    internal override IEnumerable<PrincipalQueryFilter> QueryFilters
+    {
+        get
+        {
+            foreach (var filter in base.QueryFilters)
+            {
+                yield return filter;
+            }
+
+            if (_certificates is { Count: > 0 })
+            {
+                yield return new PrincipalQueryFilter(
+                    nameof(Certificates),
+                    PrincipalQueryFilterKind.Attribute,
+                    "userCertificate",
+                    _certificates.Cast<X509Certificate2>().ToArray());
+            }
+        }
     }
 
     private DirectoryEntry RequireSaved() =>

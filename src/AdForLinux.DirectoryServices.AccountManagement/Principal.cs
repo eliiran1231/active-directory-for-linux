@@ -18,6 +18,7 @@ public abstract class Principal : IDisposable
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
 
@@ -141,6 +142,8 @@ public abstract class Principal : IDisposable
 
     /// <summary>The values staged before the object is saved, by LDAP attribute.</summary>
     internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
+
+    internal virtual IEnumerable<PrincipalQueryFilter> QueryFilters => _queryFilters.Values;
 
     /// <summary>
     /// The groups this principal is a direct member of. Nested groups are not
@@ -713,6 +716,11 @@ public abstract class Principal : IDisposable
         _extensionCache[attribute] = value is object?[] array
             ? array.ToArray()
             : new object?[] { value };
+        SetQueryFilter(
+            $"extension:{attribute}",
+            PrincipalQueryFilterKind.Attribute,
+            attribute,
+            _extensionCache[attribute]);
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
@@ -814,6 +822,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = array;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, array);
         }
     }
 
@@ -855,6 +864,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
         }
     }
 
@@ -865,6 +875,16 @@ public abstract class Principal : IDisposable
         _advancedFilters[key] = condition;
 
     internal IEnumerable<string> AdvancedFilterConditions => _advancedFilters.Values;
+
+    private protected void SetQueryFilter(
+        string key,
+        PrincipalQueryFilterKind kind,
+        string attribute,
+        object? value,
+        uint bit = 0) =>
+        _queryFilters[key] = new PrincipalQueryFilter(key, kind, attribute, value, bit);
+
+    private protected void RemoveQueryFilter(string key) => _queryFilters.Remove(key);
 
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)
@@ -883,6 +903,7 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
+            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Attribute, attributeName, value);
         }
     }
 
