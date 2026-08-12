@@ -58,6 +58,30 @@ public class DirectoryEntryReadTests
         Assert.Equal("CN=Administrator", entry.Name);
     }
 
+    [Theory]
+    [InlineData(@"CN=hello\,world,OU=Users,DC=example,DC=com", @"CN=hello\,world")]
+    [InlineData(@"CN=hello\\,OU=Users,DC=example,DC=com", @"CN=hello\\")]
+    [InlineData(@"CN=hello\\\,world,OU=Users,DC=example,DC=com", @"CN=hello\\\,world")]
+    public void Name_honors_odd_and_even_backslash_runs(string distinguishedName, string expectedName)
+    {
+        using var entry = new DirectoryEntry($"LDAP://server/{distinguishedName}");
+
+        Assert.Equal(expectedName, entry.Name);
+    }
+
+    [Theory]
+    [InlineData(@"CN=hello\,world,OU=Users,DC=example,DC=com")]
+    [InlineData(@"CN=hello\\,OU=Users,DC=example,DC=com")]
+    [InlineData(@"CN=hello\\\,world,OU=Users,DC=example,DC=com")]
+    public void Parent_honors_odd_and_even_backslash_runs(string distinguishedName)
+    {
+        using var entry = new DirectoryEntry($"LDAP://server/{distinguishedName}");
+        using var parent = entry.Parent;
+
+        Assert.NotNull(parent);
+        Assert.Equal("OU=Users,DC=example,DC=com", parent.DistinguishedName);
+    }
+
     [Fact]
     public void Path_round_trips()
     {

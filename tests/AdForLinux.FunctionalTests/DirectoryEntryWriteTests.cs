@@ -109,6 +109,30 @@ public class DirectoryEntryWriteTests
     }
 
     [Fact]
+    public void Children_remove_handles_an_rdn_ending_in_a_literal_backslash()
+    {
+        var value = $"adfl-ou-{Guid.NewGuid():N}";
+        var relativeName = $@"OU={value}\\";
+        var dn = $"{relativeName},{TestSettings.BaseDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using var child = domain.Children.Add(relativeName, "organizationalUnit");
+            child.CommitChanges();
+
+            Assert.Equal(relativeName, child.Name);
+            domain.Children.Remove(child);
+
+            AssertMissing(dn);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
     public void Children_remove_does_not_recursively_delete_a_populated_child()
     {
         var parentName = $"adfl-ou-{Guid.NewGuid():N}";

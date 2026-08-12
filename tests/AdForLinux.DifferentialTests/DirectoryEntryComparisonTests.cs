@@ -233,6 +233,43 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void Directory_entries_remove_handles_an_rdn_ending_in_a_literal_backslash()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var msRelativeName = $@"OU=adfl-ms-slash-{suffix}\\";
+        var ourRelativeName = $@"OU=adfl-our-slash-{suffix}\\";
+        var msDn = $"{msRelativeName},{DifferentialSettings.BaseDn}";
+        var ourDn = $"{ourRelativeName},{DifferentialSettings.BaseDn}";
+
+        try
+        {
+            CreateMicrosoftOrganizationalUnit(msDn);
+            CreateOurOrganizationalUnit(ourDn);
+
+            using var msDomain = MicrosoftEntry(DifferentialSettings.BaseDn);
+            using var msChild = MicrosoftEntry(msDn);
+            using var ourDomain = OurEntry(DifferentialSettings.BaseDn);
+            using var ourChild = OurEntry(ourDn);
+
+            new Comparison("DirectoryEntries.Remove literal trailing backslash RDN")
+                .Check("Microsoft Name", msRelativeName, msChild.Name)
+                .Check("AdForLinux Name", ourRelativeName, ourChild.Name)
+                .Assert();
+
+            msDomain.Children.Remove(msChild);
+            ourDomain.Children.Remove(ourChild);
+
+            Assert.False(MicrosoftEntryExists(msDn));
+            Assert.False(OurEntryExists(ourDn));
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msDn);
+            SafeDeleteOur(ourDn);
+        }
+    }
+
+    [Fact]
     public void Multi_valued_object_class_matches()
     {
         using var ms = MicrosoftEntry(_data.UserDn);

@@ -173,7 +173,7 @@ public class DirectoryEntry : Component
     /// The relative name of this object, e.g. <c>CN=Jeff Smith</c> — the first
     /// component of the DN, including its attribute type, like Microsoft.
     /// </summary>
-    public string Name => RelativeName(_path.DistinguishedName);
+    public string Name => LdapDistinguishedName.RelativeName(_path.DistinguishedName);
 
     /// <summary>
     /// The most specific structural class, e.g. <c>user</c> or <c>group</c> —
@@ -231,7 +231,7 @@ public class DirectoryEntry : Component
     {
         get
         {
-            var parentDn = ParentDistinguishedName(_path.DistinguishedName);
+            var parentDn = LdapDistinguishedName.Parent(_path.DistinguishedName);
             return parentDn is null ? null : CreateEntryForDn(parentDn);
         }
     }
@@ -574,14 +574,14 @@ public class DirectoryEntry : Component
     public void Rename(string newName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
-        MoveOrRename(ParentDistinguishedName(_path.DistinguishedName), newName);
+        MoveOrRename(LdapDistinguishedName.Parent(_path.DistinguishedName), newName);
     }
 
     /// <summary>Moves this entry beneath <paramref name="newParent"/>.</summary>
     public void MoveTo(DirectoryEntry newParent)
     {
         ArgumentNullException.ThrowIfNull(newParent);
-        MoveOrRename(newParent.DistinguishedName, RelativeName(_path.DistinguishedName));
+        MoveOrRename(newParent.DistinguishedName, LdapDistinguishedName.RelativeName(_path.DistinguishedName));
     }
 
     /// <summary>Moves this entry beneath <paramref name="newParent"/> and renames it.</summary>
@@ -765,26 +765,6 @@ public class DirectoryEntry : Component
         };
     }
 
-    /// <summary>First RDN component of a DN, e.g. "CN=Jeff" from "CN=Jeff,DC=x".</summary>
-    private static string RelativeName(string distinguishedName)
-    {
-        if (string.IsNullOrEmpty(distinguishedName))
-        {
-            return string.Empty;
-        }
-
-        // Split on the first comma that is not escaped with a backslash.
-        for (var i = 0; i < distinguishedName.Length; i++)
-        {
-            if (distinguishedName[i] == ',' && (i == 0 || distinguishedName[i - 1] != '\\'))
-            {
-                return distinguishedName.Substring(0, i);
-            }
-        }
-
-        return distinguishedName;
-    }
-
     private void OnPropertyChanged(PropertyValueCollection property)
     {
         if (_usePropertyCache || _isNew)
@@ -811,19 +791,6 @@ public class DirectoryEntry : Component
         };
         GetConnection().SendRequest(request);
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
-    }
-
-    private static string? ParentDistinguishedName(string distinguishedName)
-    {
-        for (var i = 0; i < distinguishedName.Length; i++)
-        {
-            if (distinguishedName[i] == ',' && (i == 0 || distinguishedName[i - 1] != '\\'))
-            {
-                return distinguishedName[(i + 1)..];
-            }
-        }
-
-        return null;
     }
 
     private void ResetBinding(LdapPath path)
