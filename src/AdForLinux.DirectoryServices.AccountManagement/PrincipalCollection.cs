@@ -1,4 +1,5 @@
 using System.Collections;
+using AdForLinux.DirectoryServices.Ldap;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -114,8 +115,7 @@ public sealed class PrincipalCollection : IEnumerable<Principal>
 
     /// <summary>Member DNs as stored on the server right now.</summary>
     private List<string> CurrentMemberDns() =>
-        _group.RequireEntry().Properties["member"]
-            .Cast<object>()
+        RangedAttributeReader.Read(_group.RequireEntry(), "member")
             .Select(value => value.ToString()!)
             .ToList();
 
