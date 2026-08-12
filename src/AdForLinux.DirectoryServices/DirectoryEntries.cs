@@ -58,8 +58,16 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
         }
     }
 
-    /// <summary>Deletes a child object and its subtree.</summary>
-    public void Remove(DirectoryEntry child) => child.DeleteTree();
+    /// <summary>Deletes a child object without recursively deleting its descendants.</summary>
+    public void Remove(DirectoryEntry child)
+    {
+        // Microsoft asks this collection's parent container to delete the
+        // entry by schema class and relative name. Reading SchemaClassName
+        // preserves the observable bind/error behavior even though LDAP's
+        // DeleteRequest does not carry the schema class.
+        _ = child.SchemaClassName;
+        _parent.DeleteChild(child.Name);
+    }
 
     public IEnumerator GetEnumerator() => Enumerate().GetEnumerator();
 

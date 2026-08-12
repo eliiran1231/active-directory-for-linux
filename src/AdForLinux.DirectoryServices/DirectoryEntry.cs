@@ -460,6 +460,15 @@ public class DirectoryEntry : Component
         connection.SendRequest(delete);
     }
 
+    /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
+    internal void DeleteChild(string relativeName)
+    {
+        var distinguishedName = string.IsNullOrEmpty(_path.DistinguishedName)
+            ? relativeName
+            : $"{relativeName},{_path.DistinguishedName}";
+        GetConnection().SendRequest(new DeleteRequest(distinguishedName));
+    }
+
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
     internal static DirectoryEntry NewChild(DirectoryEntry parent, string relativeName, string schemaClassName)
     {
