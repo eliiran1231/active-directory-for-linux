@@ -328,8 +328,8 @@ public class PrincipalCompatibilityTests
                 domainUsers!.DistinguishedName,
                 groups.Select(group => group.DistinguishedName),
                 StringComparer.OrdinalIgnoreCase);
-            Assert.True(found.IsMemberOf(domainUsers));
-            Assert.True(found.IsMemberOf(
+            Assert.False(found.IsMemberOf(domainUsers));
+            Assert.False(found.IsMemberOf(
                 context, IdentityType.SamAccountName, "Domain Users"));
 
             using (var entry = new DirectoryEntry(
@@ -344,7 +344,7 @@ public class PrincipalCompatibilityTests
                     StringComparer.OrdinalIgnoreCase);
             }
 
-            Assert.True(domainUsers.Members.Contains(found));
+            Assert.False(domainUsers.Members.Contains(found));
             var enumeratedMemberDns = new List<string?>();
             foreach (var member in domainUsers.Members)
             {

@@ -28,8 +28,14 @@ public static class DifferentialSettings
     /// <summary>Where the tests create their temporary objects.</summary>
     public static string UsersContainer => $"CN=Users,{BaseDn}";
 
-    /// <summary>Server in <c>host:port</c> form, for PrincipalContext.</summary>
-    public static string ServerName => $"{Host}:{Port}";
+    /// <summary>
+    /// Server name for PrincipalContext. Microsoft credential validation and
+    /// forest discovery handle the standard LDAP ports more faithfully when
+    /// they receive the DNS host name rather than a redundant host:port pair.
+    /// </summary>
+    public static string ServerName => Port == (UseTls ? 636 : 389)
+        ? Host
+        : $"{Host}:{Port}";
 
     public static System.DirectoryServices.AccountManagement.ContextOptions MicrosoftContextOptions =>
         UseTls

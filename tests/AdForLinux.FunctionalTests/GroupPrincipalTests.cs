@@ -426,7 +426,7 @@ public class GroupPrincipalTests
 
         Assert.NotNull(group);
         Assert.NotNull(user);
-        Assert.True(group!.Members.Contains(user!));
+        Assert.False(group!.Members.Contains(user!));
         Assert.Throws<InvalidOperationException>(() => group.Members.Remove(user!));
         Assert.Throws<InvalidOperationException>(() => group.Members.Clear());
     }

@@ -53,7 +53,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
-        if (principal.IsPrimaryGroup(_group) || ContainsDn(dn))
+        if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsDn(dn))
         {
             throw new PrincipalExistsException(
                 "The principal already exists in the collection.");
@@ -95,7 +95,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
-        if (principal.IsPrimaryGroup(_group))
+        if (_group.IsPersisted && principal.IsPrimaryGroup(_group))
         {
             throw new InvalidOperationException(
                 "The principal cannot be removed because this is its primary group.");
@@ -142,7 +142,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
-        return principal.IsPrimaryGroup(_group) || ContainsDn(dn);
+        return ContainsDn(dn);
     }
 
     public bool Contains(
@@ -161,7 +161,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     public void Clear()
     {
         _group.EnsureMembersUsable();
-        if (_group.HasPrimaryGroupMembers())
+        if (_group.IsPersisted && _group.HasPrimaryGroupMembers())
         {
             throw new InvalidOperationException(
                 "The group cannot be cleared because one or more principals use it as their primary group.");

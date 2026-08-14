@@ -110,9 +110,7 @@ public class AccountManagementPublicTypesTests
         user.PermittedLogonTimes = null;
         using (var searcher = new PrincipalSearcher(user))
         {
-            Assert.Equal(
-                "(&(objectCategory=user)(objectClass=user)(!(logonHours=*))))",
-                searcher.GetLdapFilter());
+            Assert.Equal("(&(objectCategory=user)(objectClass=user))", searcher.GetLdapFilter());
         }
 
         group.GroupScope = (GroupScope)int.MaxValue;

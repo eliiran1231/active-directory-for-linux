@@ -254,7 +254,7 @@ public abstract class Principal : IDisposable
     {
         CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(group);
-        return group.Members.Contains(this) || IsPrimaryGroup(group);
+        return group.Members.Contains(this);
     }
 
     /// <summary>
@@ -883,7 +883,14 @@ public abstract class Principal : IDisposable
         else
         {
             _pending[attributeName] = value;
-            SetQueryFilter(attributeName, PrincipalQueryFilterKind.Binary, attributeName, value);
+            if (value is null)
+            {
+                RemoveQueryFilter(attributeName);
+            }
+            else
+            {
+                SetQueryFilter(attributeName, PrincipalQueryFilterKind.Binary, attributeName, value);
+            }
         }
     }
 

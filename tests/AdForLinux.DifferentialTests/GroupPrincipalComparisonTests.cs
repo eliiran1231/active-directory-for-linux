@@ -409,6 +409,28 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetGroups_with_context_matches_for_the_user()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+
+        using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        using var msGroups = msUser!.GetGroups(msContext);
+        using var ourGroups = ourUser!.GetGroups(ourContext);
+
+        new Comparison($"GetGroups(context) for {_data.UserName}")
+            .CheckSet("group DNs",
+                msGroups.Select(g => g.DistinguishedName),
+                ourGroups.Select(g => g.DistinguishedName))
+            .Assert();
+    }
+
+    [Fact]
     public void GetGroups_is_empty_for_unsaved_principals()
     {
         using var msContext = MicrosoftContext();
@@ -439,7 +461,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(msDomainUsers);
         Assert.NotNull(ourDomainUsers);
         Assert.Equal(msUser!.IsMemberOf(msDomainUsers!), ourUser!.IsMemberOf(ourDomainUsers!));
-        Assert.True(ourUser.IsMemberOf(ourDomainUsers));
+        Assert.False(ourUser.IsMemberOf(ourDomainUsers));
 
         using (var rawGroup = Open(msDomainUsers.DistinguishedName))
         {

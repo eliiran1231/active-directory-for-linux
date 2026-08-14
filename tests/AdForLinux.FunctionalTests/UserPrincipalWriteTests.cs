@@ -433,7 +433,7 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
-    public void SetPassword_policy_rejection_throws_PasswordException()
+    public void SetPassword_policy_rejection_throws_InvalidOperationException()
     {
         var name = NewName();
         var dn = DnFor(name);
@@ -444,7 +444,7 @@ public class UserPrincipalWriteTests
                 context, name, "Str0ng!OldPass#2026", enabled: true);
             user.Save();
 
-            Assert.Throws<PasswordException>(() => user.SetPassword("short"));
+            Assert.Throws<InvalidOperationException>(() => user.SetPassword("short"));
         }
         finally
         {

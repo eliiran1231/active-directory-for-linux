@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.DirectoryServices.Protocols;
+using System.Runtime.InteropServices;
 using AdForLinux.DirectoryServices.Ldap;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
@@ -543,7 +544,12 @@ public class DirectoryEntry : Component
     /// <summary>Re-reads the specified attributes into the local property cache.</summary>
     public void RefreshCache(string[] propertyNames)
     {
-        ArgumentNullException.ThrowIfNull(propertyNames);
+        // ADSI dereferences the array before validating it.
+        _ = propertyNames.Length;
+        if (propertyNames.Any(propertyName => propertyName is null))
+        {
+            throw new COMException("The requested property name is invalid.");
+        }
 
         // LDAP treats an empty attribute list as "all user attributes", while
         // ADSI GetInfoEx with no names does not turn a partial refresh into a
@@ -567,28 +573,19 @@ public class DirectoryEntry : Component
 
             properties.RemoveCached(propertyName);
 
-            var unrangedName = WithoutRangeSpecifier(propertyName);
-            if (!string.Equals(unrangedName, propertyName, StringComparison.OrdinalIgnoreCase))
-            {
-                properties.RemoveCached(unrangedName);
-            }
         }
 
         foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
         {
-            // Active Directory can answer a ranged request with a different
-            // upper bound (including '*'). Cache it under the requested name
-            // so the caller can retrieve the returned chunk.
-            var cacheName = propertyNames.FirstOrDefault(requested =>
-                requested is not null
-                && HasRangeSpecifier(requested)
-                && string.Equals(
-                    WithoutRangeSpecifier(requested),
-                    WithoutRangeSpecifier(property.PropertyName),
-                    StringComparison.OrdinalIgnoreCase))
-                ?? property.PropertyName;
+            // ADSI does not expose a literal ranged request through its managed
+            // PropertyCollection. Keep an already cached base property intact.
+            if (HasRangeSpecifier(property.PropertyName)
+                && propertyNames.Any(HasRangeSpecifier))
+            {
+                continue;
+            }
 
-            properties.ReplaceLoaded(cacheName, property);
+            properties.ReplaceLoaded(property.PropertyName, property);
         }
 
         _properties = properties;

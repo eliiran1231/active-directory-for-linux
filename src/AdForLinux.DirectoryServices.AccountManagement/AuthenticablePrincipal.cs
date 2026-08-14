@@ -339,7 +339,7 @@ public abstract class AuthenticablePrincipal : Principal
         }
 
         // AD wants the password quoted and encoded as little-endian UTF-16.
-        ExecutePasswordOperation(() => SetPasswordImmediate(newPassword));
+        ExecuteSetPasswordOperation(() => SetPasswordImmediate(newPassword));
     }
 
     public void ChangePassword(string oldPassword, string newPassword)
@@ -446,6 +446,18 @@ public abstract class AuthenticablePrincipal : Principal
         }
     }
 
+    private static void ExecuteSetPasswordOperation(Action operation)
+    {
+        try
+        {
+            operation();
+        }
+        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        {
+            throw new InvalidOperationException(exception.Message, exception);
+        }
+    }
+
     private void SetPasswordImmediate(string password) =>
         Entry!.ReplaceAttributeImmediate("unicodePwd", EncodePassword(password));
 
@@ -457,9 +469,8 @@ public abstract class AuthenticablePrincipal : Principal
         }
         catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
         {
-            // Microsoft surfaces a password rejected during the initial Save()
-            // as InvalidOperationException, even though the same rejection from
-            // an immediate SetPassword() call is a PasswordException.
+            // Microsoft surfaces a password rejected by SetPassword as an
+            // InvalidOperationException, both immediately and during Save().
             throw new InvalidOperationException(exception.Message, exception);
         }
     }
@@ -522,11 +533,17 @@ public abstract class AuthenticablePrincipal : Principal
     {
         var value = values.Count == 0 ? null : string.Join(',', values);
         SetString("userWorkstations", value);
+        if (values.Count == 0)
+        {
+            RemoveQueryFilter("userWorkstations");
+            return;
+        }
+
         SetQueryFilter(
             "userWorkstations",
             PrincipalQueryFilterKind.Workstations,
             "userWorkstations",
-            value);
+            values.ToArray());
     }
 
     private static byte[] EncodePassword(string password) =>

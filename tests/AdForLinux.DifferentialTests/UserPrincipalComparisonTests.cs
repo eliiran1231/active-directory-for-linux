@@ -179,8 +179,8 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
         {
             CreateOrganizationalUnit(firstOuDn);
             CreateOrganizationalUnit(secondOuDn);
-            CreateUser($"CN={name},{firstOuDn}", $"{name}-1");
-            CreateUser($"CN={name},{secondOuDn}", $"{name}-2");
+            CreateUser($"CN={name},{firstOuDn}", $"dup-{suffix}-1");
+            CreateUser($"CN={name},{secondOuDn}", $"dup-{suffix}-2");
 
             using var msContext = MicrosoftContext(DifferentialSettings.BaseDn);
             using var ourContext = OurContext(DifferentialSettings.BaseDn);

@@ -81,10 +81,7 @@ internal static class PrincipalQueryFilterTranslator
     {
         if (value is null)
         {
-            // Microsoft BinaryConverter includes this extra closing parenthesis.
-            // It is observable through GetUnderlyingSearcher().Filter and can
-            // make a null binary QBE fail when executed, so preserve it.
-            return $"(!({attribute}=*)))";
+            return string.Empty;
         }
 
         if (value is not byte[] bytes)
@@ -122,13 +119,16 @@ internal static class PrincipalQueryFilterTranslator
             return $"(!({attribute}=*))";
         }
 
-        if (value is not string workstations)
+        if (value is not IEnumerable workstations || value is string)
         {
-            throw new InvalidOperationException(
-                "PermittedWorkstations is not a string query value.");
+            throw new InvalidOperationException("PermittedWorkstations is not a collection query value.");
         }
 
-        return $"({attribute}=*{EscapeKeepingWildcards(workstations)}*)";
+        return string.Concat(workstations.Cast<object?>().Select(workstation =>
+            workstation is string text
+                ? $"({attribute}=*{EscapeKeepingWildcards(text)}*)"
+                : throw new InvalidOperationException(
+                    "PermittedWorkstations contains a non-string query value.")));
     }
 
     private static string CollectionAssertions(
@@ -147,7 +147,7 @@ internal static class PrincipalQueryFilterTranslator
 
     private static string ExtensionAssertions(string attribute, object? value)
     {
-        if (value is IEnumerable values and not string)
+        if (value is IEnumerable values and not string and not byte[])
         {
             return string.Concat(values.Cast<object?>().Select(item => ExtensionAssertions(attribute, item)));
         }
