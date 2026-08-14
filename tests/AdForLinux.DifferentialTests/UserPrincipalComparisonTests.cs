@@ -18,19 +18,19 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
         _data = data;
     }
 
-    private static Ms.PrincipalContext MicrosoftContext() =>
+    private static Ms.PrincipalContext MicrosoftContext(string? container = null) =>
         new(Ms.ContextType.Domain,
-            DifferentialSettings.Host,
-            DifferentialSettings.UsersContainer,
-            Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.ServerName,
+            container ?? DifferentialSettings.UsersContainer,
+            DifferentialSettings.MicrosoftContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
-    private static Ours.PrincipalContext OurContext() =>
+    private static Ours.PrincipalContext OurContext(string? container = null) =>
         new(Ours.ContextType.Domain,
-            DifferentialSettings.Host,
-            DifferentialSettings.UsersContainer,
-            Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.ServerName,
+            container ?? DifferentialSettings.UsersContainer,
+            DifferentialSettings.OurContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
@@ -134,6 +134,72 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new Comparison("missing user")
             .Check("found", ms is not null, ours is not null)
             .Assert();
+    }
+
+    [Fact]
+    public void Value_only_FindByIdentity_probes_every_Microsoft_identity_scheme()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var seeded = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        Assert.NotNull(seeded);
+
+        var values = new[]
+        {
+            ("SAM", _data.UserName),
+            ("UPN", seeded!.UserPrincipalName!),
+            ("DN", _data.UserDn),
+            ("Name", seeded.Name!),
+            ("SID", seeded.Sid!.Value),
+            ("GUID", seeded.Guid!.Value.ToString()),
+            ("invalid SID", "S-not-a-valid-sid"),
+            ("invalid GUID", "not-a-valid-guid"),
+        };
+
+        foreach (var (kind, value) in values)
+        {
+            using var ms = Ms.UserPrincipal.FindByIdentity(msContext, value);
+            using var ours = Ours.UserPrincipal.FindByIdentity(ourContext, value);
+            new Comparison($"value-only FindByIdentity by {kind}")
+                .Check("found", ms is not null, ours is not null)
+                .Check("DN", ms?.DistinguishedName, ours?.DistinguishedName)
+                .Assert();
+        }
+    }
+
+    [Fact]
+    public void Value_only_FindByIdentity_multiple_match_exception_matches()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var name = $"adfl-duplicate-{suffix}";
+        var firstOuDn = $"OU=adfl-first-{suffix},{DifferentialSettings.BaseDn}";
+        var secondOuDn = $"OU=adfl-second-{suffix},{DifferentialSettings.BaseDn}";
+
+        try
+        {
+            CreateOrganizationalUnit(firstOuDn);
+            CreateOrganizationalUnit(secondOuDn);
+            CreateUser($"CN={name},{firstOuDn}", $"dup-{suffix}-1");
+            CreateUser($"CN={name},{secondOuDn}", $"dup-{suffix}-2");
+
+            using var msContext = MicrosoftContext(DifferentialSettings.BaseDn);
+            using var ourContext = OurContext(DifferentialSettings.BaseDn);
+            var msError = Record.Exception(() =>
+                Ms.UserPrincipal.FindByIdentity(msContext, name));
+            var ourError = Record.Exception(() =>
+                Ours.UserPrincipal.FindByIdentity(ourContext, name));
+
+            new Comparison("value-only FindByIdentity multiple matches")
+                .Check("exception", msError?.GetType().Name, ourError?.GetType().Name)
+                .Assert();
+            Assert.IsType<Ms.MultipleMatchesException>(msError);
+            Assert.IsType<Ours.MultipleMatchesException>(ourError);
+        }
+        finally
+        {
+            Delete(firstOuDn);
+            Delete(secondOuDn);
+        }
     }
 
     public enum DateFinder
@@ -382,6 +448,43 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
         catch (Exception exception)
         {
             return $"Exception:{exception.GetType().Name}";
+        }
+    }
+
+    private static void CreateOrganizationalUnit(string distinguishedName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        using var parent = Open(distinguishedName[(separator + 1)..]);
+        using var organizationalUnit = parent.Children.Add(
+            distinguishedName[..separator], "organizationalUnit");
+        organizationalUnit.CommitChanges();
+    }
+
+    private static void CreateUser(string distinguishedName, string samAccountName)
+    {
+        var separator = distinguishedName.IndexOf(',');
+        using var parent = Open(distinguishedName[(separator + 1)..]);
+        using var user = parent.Children.Add(distinguishedName[..separator], "user");
+        user.Properties["sAMAccountName"].Value = samAccountName;
+        user.CommitChanges();
+    }
+
+    private static System.DirectoryServices.DirectoryEntry Open(string distinguishedName) =>
+        new(
+            DifferentialSettings.PathFor(distinguishedName),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.MicrosoftAuthenticationTypes);
+
+    private static void Delete(string distinguishedName)
+    {
+        try
+        {
+            using var entry = Open(distinguishedName);
+            entry.DeleteTree();
+        }
+        catch
+        {
         }
     }
 

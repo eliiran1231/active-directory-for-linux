@@ -18,6 +18,19 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         _data = data;
     }
 
+    [Fact]
+    public void Credential_constructor_authentication_default_matches()
+    {
+        using var ms = new Ms.DirectoryEntry(
+            "LDAP://dc.example.test/DC=example,DC=test", "user@example.test", "password");
+        using var ours = new Ours.DirectoryEntry(
+            "LDAP://dc.example.test/DC=example,DC=test", "user@example.test", "password");
+
+        new Comparison("DirectoryEntry credential constructor authentication default")
+            .Check("AuthenticationType", ms.AuthenticationType.ToString(), ours.AuthenticationType.ToString())
+            .Assert();
+    }
+
     private static Ms.DirectoryEntry MicrosoftEntry(string dn) =>
         new(DifferentialSettings.PathFor(dn),
             DifferentialSettings.BindDn,
@@ -81,6 +94,131 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
                             ours.Properties["noSuchAttributeHere"].Value)
             .Check("Count", ms.Properties["noSuchAttributeHere"].Count,
                             ours.Properties["noSuchAttributeHere"].Count)
+            .Assert();
+    }
+
+    [Fact]
+    public void Partial_refresh_cache_and_pending_change_semantics_match()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msRequestedBefore = msProperties["displayName"];
+        var ourRequestedBefore = ourProperties["displayName"];
+        var msUnrelatedBefore = msProperties["mail"];
+        var ourUnrelatedBefore = ourProperties["mail"];
+
+        msRequestedBefore.Value = "staged display name";
+        ourRequestedBefore.Value = "staged display name";
+        msUnrelatedBefore.Value = "staged mail";
+        ourUnrelatedBefore.Value = "staged mail";
+
+        ms.RefreshCache(new[] { "displayName" });
+        ours.RefreshCache(new[] { "displayName" });
+
+        new Comparison("DirectoryEntry.RefreshCache(string[]) partial cache")
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("requested collection invalidated",
+                ReferenceEquals(msRequestedBefore, ms.Properties["displayName"]),
+                ReferenceEquals(ourRequestedBefore, ours.Properties["displayName"]))
+            .Check("requested value refreshed",
+                ms.Properties["displayName"].Value,
+                ours.Properties["displayName"].Value)
+            .Check("held requested snapshot",
+                msRequestedBefore.Value,
+                ourRequestedBefore.Value)
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelatedBefore, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelatedBefore, ours.Properties["mail"]))
+            .Check("unrelated pending value retained",
+                ms.Properties["mail"].Value,
+                ours.Properties["mail"].Value)
+            .Assert();
+    }
+
+    [Fact]
+    public void Partial_refresh_edge_cases_match()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msUnrelated = msProperties["mail"];
+        var ourUnrelated = ourProperties["mail"];
+        var msMissingBefore = msProperties["noSuchAttributeHere"];
+        var ourMissingBefore = ourProperties["noSuchAttributeHere"];
+
+        ms.RefreshCache(new[] { "DISPLAYNAME", "displayName", "noSuchAttributeHere" });
+        ours.RefreshCache(new[] { "DISPLAYNAME", "displayName", "noSuchAttributeHere" });
+
+        new Comparison("DirectoryEntry.RefreshCache(string[]) edge cases")
+            .Check("case-varied duplicate value",
+                ms.Properties["displayName"].Value,
+                ours.Properties["displayName"].Value)
+            .Check("missing collection invalidated",
+                ReferenceEquals(msMissingBefore, ms.Properties["noSuchAttributeHere"]),
+                ReferenceEquals(ourMissingBefore, ours.Properties["noSuchAttributeHere"]))
+            .Check("missing value",
+                ms.Properties["noSuchAttributeHere"].Value,
+                ours.Properties["noSuchAttributeHere"].Value)
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["mail"]))
+            .Assert();
+
+        var msEmptyError = Record.Exception(() => ms.RefreshCache(Array.Empty<string>()));
+        var ourEmptyError = Record.Exception(() => ours.RefreshCache(Array.Empty<string>()));
+
+        new Comparison("DirectoryEntry.RefreshCache(empty)")
+            .Check("throws", msEmptyError is not null, ourEmptyError is not null)
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["mail"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["mail"]))
+            .Check("unrelated value",
+                ms.Properties["mail"].Value,
+                ours.Properties["mail"].Value)
+            .Assert();
+
+        new Comparison("DirectoryEntry.RefreshCache argument validation")
+            .Check("null array exception",
+                Record.Exception(() => ms.RefreshCache(null!))?.GetType().Name,
+                Record.Exception(() => ours.RefreshCache(null!))?.GetType().Name)
+            .Check("null element exception",
+                Record.Exception(() => ms.RefreshCache(new string[] { null! }))?.GetType().Name,
+                Record.Exception(() => ours.RefreshCache(new string[] { null! }))?.GetType().Name)
+            .Assert();
+    }
+
+    [Fact]
+    public void Partial_refresh_with_a_ranged_property_name_matches()
+    {
+        using var ms = MicrosoftEntry(_data.GroupDn);
+        using var ours = OurEntry(_data.GroupDn);
+        var msProperties = ms.Properties;
+        var ourProperties = ours.Properties;
+        var msUnrelated = msProperties["objectClass"];
+        var ourUnrelated = ourProperties["objectClass"];
+        const string rangedName = "member;range=0-0";
+
+        var msError = Record.Exception(() => ms.RefreshCache(new[] { rangedName }));
+        var ourError = Record.Exception(() => ours.RefreshCache(new[] { rangedName }));
+        new Comparison("DirectoryEntry.RefreshCache(ranged property)")
+            .Check("exception", msError?.GetType().Name, ourError?.GetType().Name)
+            .Check("PropertyCollection retained",
+                ReferenceEquals(msProperties, ms.Properties),
+                ReferenceEquals(ourProperties, ours.Properties))
+            .Check("unrelated collection retained",
+                ReferenceEquals(msUnrelated, ms.Properties["objectClass"]),
+                ReferenceEquals(ourUnrelated, ours.Properties["objectClass"]))
+            .Check("requested range count",
+                ms.Properties[rangedName].Count,
+                ours.Properties[rangedName].Count)
             .Assert();
     }
 

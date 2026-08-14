@@ -142,6 +142,37 @@ public class DirectoryEntryReadTests
     }
 
     [Fact]
+    public void Partial_refresh_replaces_only_requested_cached_properties()
+    {
+        using var entry = Open(TestSettings.AdministratorDn);
+        var properties = entry.Properties;
+        var requestedBefore = properties["sAMAccountName"];
+        var unrelatedBefore = properties["objectClass"];
+        var missingBefore = properties["thisAttributeDoesNotExist"];
+        var requestedValueFromServer = requestedBefore.Value;
+
+        requestedBefore.Value = "staged account name";
+        unrelatedBefore.Value = "staged object class";
+
+        entry.RefreshCache(new[] { "SAMACCOUNTNAME", "sAMAccountName", "thisAttributeDoesNotExist" });
+
+        Assert.Same(properties, entry.Properties);
+        Assert.NotSame(requestedBefore, entry.Properties["sAMAccountName"]);
+        Assert.Equal(requestedValueFromServer, entry.Properties["sAMAccountName"].Value);
+        Assert.Equal("staged account name", requestedBefore.Value);
+        Assert.Same(unrelatedBefore, entry.Properties["objectClass"]);
+        Assert.Equal("staged object class", entry.Properties["objectClass"].Value);
+        Assert.NotSame(missingBefore, entry.Properties["thisAttributeDoesNotExist"]);
+        Assert.Null(entry.Properties["thisAttributeDoesNotExist"].Value);
+
+        entry.RefreshCache(Array.Empty<string>());
+
+        Assert.Same(properties, entry.Properties);
+        Assert.Same(unrelatedBefore, entry.Properties["objectClass"]);
+        Assert.Equal("staged object class", entry.Properties["objectClass"].Value);
+    }
+
+    [Fact]
     public void Domain_root_reads_its_object_class()
     {
         using var entry = Open(TestSettings.BaseDn);

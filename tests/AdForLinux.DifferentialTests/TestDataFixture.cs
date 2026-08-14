@@ -77,7 +77,7 @@ public sealed class TestDataFixture : IDisposable
         new(DifferentialSettings.PathFor(dn),
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword,
-            AuthenticationTypes.SecureSocketsLayer);
+            DifferentialSettings.MicrosoftAuthenticationTypes);
 
     private void CreateUser()
     {

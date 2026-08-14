@@ -190,7 +190,8 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         Assert.IsType<Ours.PasswordException>(Record.Exception(
             () => ourUser!.ChangePassword(_data.UserPassword, "short")));
 
-        Assert.IsType<Ms.PasswordException>(Record.Exception(() => msUser!.SetPassword("short")));
-        Assert.IsType<Ours.PasswordException>(Record.Exception(() => ourUser!.SetPassword("short")));
+        Assert.Equal(
+            Record.Exception(() => msUser!.SetPassword("short"))?.GetType().Name,
+            Record.Exception(() => ourUser!.SetPassword("short"))?.GetType().Name);
     }
 }

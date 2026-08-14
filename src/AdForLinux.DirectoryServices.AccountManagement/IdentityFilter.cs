@@ -14,8 +14,7 @@ internal static class IdentityFilter
 
         if (identityType is null)
         {
-            // The value-only overload searches the common identity attributes.
-            return $"(|(sAMAccountName={value})(userPrincipalName={value})(cn={value})(distinguishedName={value}))";
+            throw new ArgumentNullException(nameof(identityType));
         }
 
         return identityType switch
@@ -29,6 +28,41 @@ internal static class IdentityFilter
             _ => throw new InvalidEnumArgumentException(
                 nameof(identityType), (int)identityType.Value, typeof(IdentityType)),
         };
+    }
+
+    public static IReadOnlyList<string> BuildValueOnlyCandidates(string identityValue)
+    {
+        // AccountManagement tries these identity schemes in order and stops at
+        // the first scheme that finds an object. Invalid SID/GUID text skips
+        // only that scheme and remains eligible as an ordinary name.
+        var value = LdapFilter.EscapeValue(identityValue);
+        var assertions = new List<string>();
+        var separator = identityValue.IndexOf('\\');
+        if (separator != identityValue.Length - 1)
+        {
+            var samAccountName = separator < 0
+                ? identityValue
+                : identityValue[(separator + 1)..];
+            assertions.Add($"(sAMAccountName={LdapFilter.EscapeValue(samAccountName)})");
+        }
+
+        assertions.Add($"(userPrincipalName={value})");
+        assertions.Add($"(distinguishedName={value})");
+        try
+        {
+            assertions.Add($"(objectSid={LdapFilter.EscapeBytes(SidCodec.Parse(identityValue))})");
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        if (Guid.TryParse(identityValue, out var guid))
+        {
+            assertions.Add($"(objectGUID={LdapFilter.EscapeBytes(guid.ToByteArray())})");
+        }
+
+        assertions.Add($"(name={value})");
+        return assertions;
     }
 
     private static byte[] ParseGuid(string value) =>

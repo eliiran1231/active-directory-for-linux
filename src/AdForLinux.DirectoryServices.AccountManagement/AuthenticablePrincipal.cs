@@ -73,21 +73,25 @@ public abstract class AuthenticablePrincipal : Principal
         }
         set
         {
-            if (value is not null)
+            if (value is null)
             {
-                if (_passwordToSet is not null && Entry is null)
-                {
-                    // AD requires the password to be established before the
-                    // account is enabled. Remember the requested final state,
-                    // but always create a constructor-initialized account disabled.
-                    _enabledAfterPassword = value.Value;
-                    SetUserAccountControlBit(AccountDisabled, on: true);
-                }
-                else
-                {
-                    SetUserAccountControlBit(AccountDisabled, on: !value.Value);
-                }
+                throw new ArgumentNullException(nameof(value));
             }
+
+            if (_passwordToSet is not null && Entry is null)
+            {
+                // AD requires the password to be established before the
+                // account is enabled. Remember the requested final state,
+                // but always create a constructor-initialized account disabled.
+                _enabledAfterPassword = value.Value;
+                SetUserAccountControlBit(AccountDisabled, on: true);
+            }
+            else
+            {
+                SetUserAccountControlBit(AccountDisabled, on: !value.Value);
+            }
+
+            SetUserAccountControlQuery(nameof(Enabled), AccountDisabled, bitMustBeSet: !value.Value);
         }
     }
 
@@ -98,7 +102,16 @@ public abstract class AuthenticablePrincipal : Principal
     public DateTime? AccountExpirationDate
     {
         get => AdFileTime.ToDateTime(GetString("accountExpires"));
-        set => SetString("accountExpires", AdFileTime.FromDateTime(value));
+        set
+        {
+            SetString("accountExpires", AdFileTime.FromDateTime(value));
+            RemoveQueryFilter("accountExpires");
+            SetQueryFilter(
+                nameof(AccountExpirationDate),
+                PrincipalQueryFilterKind.AccountExpiration,
+                "accountExpires",
+                value);
+        }
     }
 
     /// <summary>When the account was locked out, or null if it is not locked.</summary>
@@ -130,14 +143,22 @@ public abstract class AuthenticablePrincipal : Principal
     public bool PasswordNeverExpires
     {
         get => HasUserAccountControlBit(PasswordDoesNotExpire);
-        set => SetUserAccountControlBit(PasswordDoesNotExpire, value);
+        set
+        {
+            SetUserAccountControlBit(PasswordDoesNotExpire, value);
+            SetUserAccountControlQuery(nameof(PasswordNeverExpires), PasswordDoesNotExpire, value);
+        }
     }
 
     /// <summary>Whether the account may have no password. Needs a Save.</summary>
     public bool PasswordNotRequired
     {
         get => HasUserAccountControlBit(PasswordNotRequiredFlag);
-        set => SetUserAccountControlBit(PasswordNotRequiredFlag, value);
+        set
+        {
+            SetUserAccountControlBit(PasswordNotRequiredFlag, value);
+            SetUserAccountControlQuery(nameof(PasswordNotRequired), PasswordNotRequiredFlag, value);
+        }
     }
 
     /// <summary>Whether the account may be delegated. Needs a Save.</summary>
@@ -145,19 +166,31 @@ public abstract class AuthenticablePrincipal : Principal
     {
         // Stored inverted: the NOT_DELEGATED bit means delegation is blocked.
         get => !HasUserAccountControlBit(NotDelegated);
-        set => SetUserAccountControlBit(NotDelegated, !value);
+        set
+        {
+            SetUserAccountControlBit(NotDelegated, !value);
+            SetUserAccountControlQuery(nameof(DelegationPermitted), NotDelegated, !value);
+        }
     }
 
     public bool AllowReversiblePasswordEncryption
     {
         get => HasUserAccountControlBit(ReversiblePasswordEncryption);
-        set => SetUserAccountControlBit(ReversiblePasswordEncryption, value);
+        set
+        {
+            SetUserAccountControlBit(ReversiblePasswordEncryption, value);
+            SetUserAccountControlQuery(nameof(AllowReversiblePasswordEncryption), ReversiblePasswordEncryption, value);
+        }
     }
 
     public bool SmartcardLogonRequired
     {
         get => HasUserAccountControlBit(SmartcardRequired);
-        set => SetUserAccountControlBit(SmartcardRequired, value);
+        set
+        {
+            SetUserAccountControlBit(SmartcardRequired, value);
+            SetUserAccountControlQuery(nameof(SmartcardLogonRequired), SmartcardRequired, value);
+        }
     }
 
     public byte[]? PermittedLogonTimes
@@ -169,7 +202,7 @@ public abstract class AuthenticablePrincipal : Principal
     public PrincipalValueCollection<string> PermittedWorkstations =>
         _permittedWorkstations ??= new PrincipalValueCollection<string>(
             ReadPermittedWorkstations(),
-            values => SetString("userWorkstations", values.Count == 0 ? null : string.Join(',', values)));
+            values => SetPermittedWorkstations(values));
 
     public X509Certificate2Collection Certificates
     {
@@ -216,7 +249,15 @@ public abstract class AuthenticablePrincipal : Principal
             var descriptor = Entry.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
             return ChangePasswordAcl.IsDenied(descriptor);
         }
-        set => _userCannotChangePassword = value;
+        set
+        {
+            _userCannotChangePassword = value;
+            SetQueryFilter(
+                nameof(UserCannotChangePassword),
+                PrincipalQueryFilterKind.Unsupported,
+                string.Empty,
+                value);
+        }
     }
 
     /// <summary>The home directory path.</summary>
@@ -298,7 +339,7 @@ public abstract class AuthenticablePrincipal : Principal
         }
 
         // AD wants the password quoted and encoded as little-endian UTF-16.
-        ExecutePasswordOperation(() => SetPasswordImmediate(newPassword));
+        ExecuteSetPasswordOperation(() => SetPasswordImmediate(newPassword));
     }
 
     public void ChangePassword(string oldPassword, string newPassword)
@@ -358,6 +399,37 @@ public abstract class AuthenticablePrincipal : Principal
         SetString("userAccountControl", flags.ToString());
     }
 
+    private void SetUserAccountControlQuery(string property, uint bit, bool bitMustBeSet)
+    {
+        RemoveQueryFilter("userAccountControl");
+        SetQueryFilter(
+            property,
+            PrincipalQueryFilterKind.UserAccountControlBit,
+            "userAccountControl",
+            bitMustBeSet,
+            bit);
+    }
+
+    internal override IEnumerable<PrincipalQueryFilter> QueryFilters
+    {
+        get
+        {
+            foreach (var filter in base.QueryFilters)
+            {
+                yield return filter;
+            }
+
+            if (_certificates is { Count: > 0 })
+            {
+                yield return new PrincipalQueryFilter(
+                    nameof(Certificates),
+                    PrincipalQueryFilterKind.CertificateCollection,
+                    "userCertificate",
+                    _certificates.Cast<X509Certificate2>().ToArray());
+            }
+        }
+    }
+
     private DirectoryEntry RequireSaved() =>
         Entry ?? throw new InvalidOperationException(
             "The account must be saved before this operation.");
@@ -374,6 +446,18 @@ public abstract class AuthenticablePrincipal : Principal
         }
     }
 
+    private static void ExecuteSetPasswordOperation(Action operation)
+    {
+        try
+        {
+            operation();
+        }
+        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        {
+            throw new InvalidOperationException(exception.Message, exception);
+        }
+    }
+
     private void SetPasswordImmediate(string password) =>
         Entry!.ReplaceAttributeImmediate("unicodePwd", EncodePassword(password));
 
@@ -385,9 +469,8 @@ public abstract class AuthenticablePrincipal : Principal
         }
         catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
         {
-            // Microsoft surfaces a password rejected during the initial Save()
-            // as InvalidOperationException, even though the same rejection from
-            // an immediate SetPassword() call is a PasswordException.
+            // Microsoft surfaces a password rejected by SetPassword as an
+            // InvalidOperationException, both immediately and during Save().
             throw new InvalidOperationException(exception.Message, exception);
         }
     }
@@ -444,6 +527,23 @@ public abstract class AuthenticablePrincipal : Principal
     {
         var value = GetString("userWorkstations");
         return string.IsNullOrEmpty(value) ? Array.Empty<string>() : value.Split(',');
+    }
+
+    private void SetPermittedWorkstations(IReadOnlyList<string> values)
+    {
+        var value = values.Count == 0 ? null : string.Join(',', values);
+        SetString("userWorkstations", value);
+        if (values.Count == 0)
+        {
+            RemoveQueryFilter("userWorkstations");
+            return;
+        }
+
+        SetQueryFilter(
+            "userWorkstations",
+            PrincipalQueryFilterKind.Workstations,
+            "userWorkstations",
+            values.ToArray());
     }
 
     private static byte[] EncodePassword(string password) =>

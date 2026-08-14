@@ -101,6 +101,37 @@ public class GroupMembershipSearchTests
 
             Assert.Contains(innerName, names);
             Assert.Contains(outerName, names);   // found through the nested group
+
+            // Verify tokenGroups independently from AccountManagement's group
+            // traversal: every directory-backed token SID must be represented,
+            // while well-known SIDs with no group object are intentionally absent.
+            using var entry = new DirectoryEntry(
+                TestSettings.PathFor(userDn),
+                TestSettings.BindDn,
+                TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer);
+            using var tokenSearcher = new DirectorySearcher(
+                entry, "(objectClass=*)", new[] { "tokenGroups" }, SearchScope.Base);
+            var tokenSids = tokenSearcher.FindOne()!.Properties["tokenGroups"]
+                .Cast<object>()
+                .OfType<byte[]>()
+                .Select(SidCodec.Format)
+                .ToList();
+            using var baseContext = TestSettings.CreatePrincipalContext(TestSettings.BaseDn);
+            var expectedDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var sid in tokenSids)
+            {
+                using var tokenGroup = GroupPrincipal.FindByIdentity(
+                    baseContext, IdentityType.Sid, sid);
+                if (tokenGroup?.DistinguishedName is not null)
+                {
+                    expectedDns.Add(tokenGroup.DistinguishedName);
+                }
+            }
+
+            using var verified = user.GetAuthorizationGroups();
+            Assert.True(expectedDns.SetEquals(
+                verified.Select(group => group.DistinguishedName!)));
             user.Dispose();
         }
         finally
@@ -193,6 +224,75 @@ public class GroupMembershipSearchTests
             TestDirectory.Delete(userDn);
             TestDirectory.Delete(specialOuDn);
             TestDirectory.Delete(normalOuDn);
+        }
+    }
+
+    [Fact]
+    public void GetMembers_recursive_handles_cycles_and_deduplicates_leaf_members()
+    {
+        var userName = NewName();
+        var outerName = NewName();
+        var leftName = NewName();
+        var rightName = NewName();
+        var userDn = SeedUser(userName);
+
+        try
+        {
+            using var context = Context();
+            using var outer = new GroupPrincipal(context, outerName);
+            using var left = new GroupPrincipal(context, leftName);
+            using var right = new GroupPrincipal(context, rightName);
+            outer.Save();
+            left.Save();
+            right.Save();
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+
+            left.Members.Add(user);
+            left.Members.Add(outer); // outer -> left -> outer
+            left.Save();
+            right.Members.Add(user); // diamond duplicate
+            right.Save();
+            outer.Members.Add(left);
+            outer.Members.Add(right);
+            outer.Save();
+
+            using var recursive = outer.GetMembers(recursive: true);
+            Assert.Equal(new[] { userName }, recursive.Select(member => member.SamAccountName));
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(outerName));
+            TestDirectory.Delete(DnFor(leftName));
+            TestDirectory.Delete(DnFor(rightName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void GetMembers_recursive_includes_primary_group_only_members_at_nested_levels()
+    {
+        var outerName = NewName();
+
+        try
+        {
+            using var context = Context();
+            using var outer = new GroupPrincipal(context, outerName);
+            using var domainUsers = GroupPrincipal.FindByIdentity(
+                context, IdentityType.SamAccountName, "Domain Users");
+            outer.Save();
+            Assert.NotNull(domainUsers);
+            outer.Members.Add(domainUsers!);
+            outer.Save();
+
+            using var recursive = outer.GetMembers(recursive: true);
+            var names = recursive.Select(member => member.SamAccountName).ToList();
+            Assert.Contains("Administrator", names);
+            Assert.DoesNotContain("Domain Users", names);
+            Assert.Equal(names.Count, names.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(outerName));
         }
     }
 
@@ -309,7 +409,7 @@ public class GroupMembershipSearchTests
             new UserPrincipal(context) { SamAccountName = "jeff" });
 
         Assert.Equal(
-            "(&(objectCategory=person)(objectClass=user)(sAMAccountName=jeff))",
+            "(&(objectCategory=user)(objectClass=user)(sAMAccountName=jeff))",
             searcher.GetLdapFilter());
     }
 

@@ -67,8 +67,8 @@ properties), `SetPassword`, `ChangePassword`, `UnlockAccount`,
 flags, permitted logon times/workstations, X.509 account certificates, and the
 portable `UserCannotChangePassword` change-password DACL mapping,
 `GroupPrincipal.Members` (`Add`/`Remove`/`Contains`), `GetMembers` (direct and
-recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (recursive, via
-`LDAP_MATCHING_RULE_IN_CHAIN`), `ComputerPrincipal` with mutable service
+recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (directory-backed
+authorization groups via `tokenGroups`, with a matching-rule fallback), `ComputerPrincipal` with mutable service
 principal names, and `PrincipalSearcher` query-by-example with wildcards and
 advanced date/count comparisons.
 
@@ -78,7 +78,12 @@ advanced date/count comparisons.
   domain auto-discovery on Linux. For the same reason, `UserPrincipal.Current`
   is present for source compatibility but throws `InvalidOperationException`;
   use an explicit `PrincipalContext` and `FindByIdentity` instead.
-- **Kerberos / Negotiate.** Simple bind over TLS only.
+- **Portable explicit-credential Negotiate on Linux.** The library maps
+  `AuthenticationTypes.Secure` to the runtime's Negotiate implementation and
+  never falls back to Basic. Current .NET 8/10 Linux
+  `System.DirectoryServices.Protocols` rejects an explicit credential at bind
+  time even with `gss-ntlmssp` installed; default-credential GSSAPI behavior is
+  runtime and machine configuration dependent.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
   within one AD naming context, including when the source and destination
@@ -96,8 +101,10 @@ advanced date/count comparisons.
 
 ## Auth
 
-Simple bind (username + password) over LDAPS. A self-signed certificate can be
-trusted for tests. No Kerberos yet.
+Simple bind (username + password) over LDAPS is the portable explicit-credential
+path. Negotiate requests are passed through to `System.DirectoryServices.Protocols`
+without a Basic fallback; support depends on the platform runtime and GSSAPI
+configuration. A self-signed certificate can be trusted for tests.
 
 ### Skipping a self-signed certificate on Linux
 
@@ -138,8 +145,8 @@ Then:
 docker compose up --build --abort-on-container-exit
 ```
 
-This builds an image with both .NET 8 and .NET 10 and runs the functional
-tests on each. 139 tests run on each target, including live coverage against a
-real Samba AD domain controller.
+This builds an image with both .NET 8 and .NET 10 and runs the full functional
+suite on each target, including live coverage against a real Samba AD domain
+controller.
 
 The tests create and delete their own objects under `CN=Users`.

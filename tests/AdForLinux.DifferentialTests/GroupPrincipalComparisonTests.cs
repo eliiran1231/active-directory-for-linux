@@ -1,3 +1,4 @@
+using System.Collections;
 using Xunit;
 using Ms = System.DirectoryServices.AccountManagement;
 using Ours = AdForLinux.DirectoryServices.AccountManagement;
@@ -22,7 +23,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(Ms.ContextType.Domain,
             DifferentialSettings.ServerName,
             container ?? DifferentialSettings.UsersContainer,
-            Ms.ContextOptions.SimpleBind | Ms.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.MicrosoftContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
@@ -30,7 +31,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(Ours.ContextType.Domain,
             DifferentialSettings.ServerName,
             container ?? DifferentialSettings.UsersContainer,
-            Ours.ContextOptions.SimpleBind | Ours.ContextOptions.SecureSocketLayer,
+            DifferentialSettings.OurContextOptions,
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
@@ -99,6 +100,209 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Check("user is a member",
                 msGroup!.Members.Contains(msUser),
                 ourGroup!.Members.Contains(ourUser!))
+            .Assert();
+    }
+
+    [Fact]
+    public void Members_collection_contract_matches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msGroup = Ms.GroupPrincipal.FindByIdentity(msContext, _data.GroupName);
+        using var ourGroup = Ours.GroupPrincipal.FindByIdentity(ourContext, _data.GroupName);
+        using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+
+        Assert.NotNull(msGroup);
+        Assert.NotNull(ourGroup);
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        ICollection<Ms.Principal> msGeneric = msGroup!.Members;
+        ICollection<Ours.Principal> ourGeneric = ourGroup!.Members;
+        ICollection msNongeneric = msGroup.Members;
+        ICollection ourNongeneric = ourGroup.Members;
+
+        new Comparison("PrincipalCollection surface")
+            .Check("IsReadOnly", msGeneric.IsReadOnly, ourGeneric.IsReadOnly)
+            .Check("IsSynchronized", msNongeneric.IsSynchronized, ourNongeneric.IsSynchronized)
+            .Check("SyncRoot is collection",
+                ReferenceEquals(msGroup.Members, msNongeneric.SyncRoot),
+                ReferenceEquals(ourGroup.Members, ourNongeneric.SyncRoot))
+            .Check("negative CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(Array.Empty<Ms.Principal>(), -1))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(Array.Empty<Ours.Principal>(), -1))?.GetType().Name)
+            .Check("null CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(null!, 0))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(null!, 0))?.GetType().Name)
+            .Check("multidimensional CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[1, 1], 0))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[1, 1], 0))?.GetType().Name)
+            .Check("index at length CopyTo exception",
+                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[msGroup.Members.Count], msGroup.Members.Count))?.GetType().Name,
+                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[ourGroup.Members.Count], ourGroup.Members.Count))?.GetType().Name)
+            .Check("duplicate Add exception",
+                Record.Exception(() => msGroup.Members.Add(msUser!))?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Add(ourUser!))?.GetType().Name)
+            .Check("missing identity Contains",
+                msGroup.Members.Contains(
+                    msContext, Ms.IdentityType.SamAccountName, "no-such-principal-xyz"),
+                ourGroup.Members.Contains(
+                    ourContext, Ours.IdentityType.SamAccountName, "no-such-principal-xyz"))
+            .Assert();
+
+        var msCopy = new Ms.Principal[msGroup.Members.Count];
+        var ourCopy = new Ours.Principal[ourGroup.Members.Count];
+        msGroup.Members.CopyTo(msCopy, 0);
+        ourGroup.Members.CopyTo(ourCopy, 0);
+        new Comparison("PrincipalCollection CopyTo")
+            .CheckSet("member DNs",
+                msCopy.Select(principal => principal.DistinguishedName),
+                ourCopy.Select(principal => principal.DistinguishedName))
+            .Assert();
+        foreach (var principal in msCopy)
+        {
+            principal.Dispose();
+        }
+
+        foreach (var principal in ourCopy)
+        {
+            principal.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Members_mutation_state_machine_matches_across_saves()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msName = $"adfl-ms-state-{suffix}";
+        var ourName = $"adfl-our-state-{suffix}";
+        var msDn = $"CN={msName},{DifferentialSettings.UsersContainer}";
+        var ourDn = $"CN={ourName},{DifferentialSettings.UsersContainer}";
+
+        try
+        {
+            using var msContext = MicrosoftContext();
+            using var ourContext = OurContext();
+            using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName)!;
+            using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName)!;
+            using var msOther = Ms.UserPrincipal.FindByIdentity(msContext, _data.UnsetUserName)!;
+            using var ourOther = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UnsetUserName)!;
+            using var msGroup = new Ms.GroupPrincipal(msContext, msName);
+            using var ourGroup = new Ours.GroupPrincipal(ourContext, ourName);
+            msGroup.Save();
+            ourGroup.Save();
+
+            var msState = ExerciseMembershipState(msGroup, msUser, msOther);
+            var ourState = ExerciseMembershipState(ourGroup, ourUser, ourOther);
+            Assert.Equal(msState, ourState);
+
+            using var msUnsaved = new Ms.GroupPrincipal(msContext, $"unsaved-{suffix}");
+            using var ourUnsaved = new Ours.GroupPrincipal(ourContext, $"unsaved-{suffix}");
+            msUnsaved.Members.Add(msUser);
+            ourUnsaved.Members.Add(ourUser);
+            new Comparison("unsaved PrincipalCollection state")
+                .Check("Count after Add", msUnsaved.Members.Count, ourUnsaved.Members.Count)
+                .Check("Remove", msUnsaved.Members.Remove(msUser), ourUnsaved.Members.Remove(ourUser))
+                .Check("Count after Remove", msUnsaved.Members.Count, ourUnsaved.Members.Count)
+                .Assert();
+
+            var msMembers = msUnsaved.Members;
+            var ourMembers = ourUnsaved.Members;
+            msUnsaved.Dispose();
+            ourUnsaved.Dispose();
+            Assert.Equal(
+                Record.Exception(() => _ = msMembers.Count)?.GetType().Name,
+                Record.Exception(() => _ = ourMembers.Count)?.GetType().Name);
+        }
+        finally
+        {
+            Delete(msDn);
+            Delete(ourDn);
+        }
+    }
+
+    private static string[] ExerciseMembershipState<TGroup, TPrincipal>(
+        TGroup group,
+        TPrincipal member,
+        TPrincipal nonMember)
+        where TGroup : IDisposable
+        where TPrincipal : IDisposable
+    {
+        if (group is Ms.GroupPrincipal msGroup && member is Ms.Principal msMember && nonMember is Ms.Principal msOther)
+        {
+            msGroup.Members.Add(msMember);
+            var addRemove = msGroup.Members.Remove(msMember);
+            msGroup.Save();
+            msGroup.Save();
+            msGroup.Members.Add(msMember);
+            msGroup.Save();
+            var duplicate = Record.Exception(() => msGroup.Members.Add(msMember))?.GetType().Name;
+            var removeAdd = msGroup.Members.Remove(msMember);
+            msGroup.Members.Add(msMember);
+            msGroup.Save();
+            var nonMemberResult = msGroup.Members.Remove(msOther);
+            msGroup.Members.Clear();
+            msGroup.Save();
+            return new[]
+            {
+                addRemove.ToString(), duplicate ?? "", removeAdd.ToString(),
+                nonMemberResult.ToString(), msGroup.Members.Count.ToString(),
+            };
+        }
+
+        var ourGroup = (Ours.GroupPrincipal)(object)group;
+        var ourMember = (Ours.Principal)(object)member;
+        var ourOther = (Ours.Principal)(object)nonMember;
+        ourGroup.Members.Add(ourMember);
+        var ourAddRemove = ourGroup.Members.Remove(ourMember);
+        ourGroup.Save();
+        ourGroup.Save();
+        ourGroup.Members.Add(ourMember);
+        ourGroup.Save();
+        var ourDuplicate = Record.Exception(() => ourGroup.Members.Add(ourMember))?.GetType().Name;
+        var ourRemoveAdd = ourGroup.Members.Remove(ourMember);
+        ourGroup.Members.Add(ourMember);
+        ourGroup.Save();
+        var ourNonMemberResult = ourGroup.Members.Remove(ourOther);
+        ourGroup.Members.Clear();
+        ourGroup.Save();
+        return new[]
+        {
+            ourAddRemove.ToString(), ourDuplicate ?? "", ourRemoveAdd.ToString(),
+            ourNonMemberResult.ToString(), ourGroup.Members.Count.ToString(),
+        };
+    }
+
+    [Fact]
+    public void Primary_group_mutation_guards_match()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msGroup = Ms.GroupPrincipal.FindByIdentity(
+            msContext, Ms.IdentityType.SamAccountName, "Domain Users");
+        using var ourGroup = Ours.GroupPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, "Domain Users");
+        using var msUser = Ms.UserPrincipal.FindByIdentity(
+            msContext, Ms.IdentityType.SamAccountName, "Administrator");
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, "Administrator");
+
+        Assert.NotNull(msGroup);
+        Assert.NotNull(ourGroup);
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        new Comparison("primary-group membership guards")
+            .Check("Contains",
+                msGroup!.Members.Contains(msUser!),
+                ourGroup!.Members.Contains(ourUser!))
+            .Check("Remove exception",
+                Record.Exception(() => msGroup.Members.Remove(msUser))?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Remove(ourUser))?.GetType().Name)
+            .Check("Clear exception",
+                Record.Exception(() => msGroup.Members.Clear())?.GetType().Name,
+                Record.Exception(() => ourGroup.Members.Clear())?.GetType().Name)
             .Assert();
     }
 
@@ -205,6 +409,28 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetGroups_with_context_matches_for_the_user()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+
+        using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+
+        Assert.NotNull(msUser);
+        Assert.NotNull(ourUser);
+
+        using var msGroups = msUser!.GetGroups(msContext);
+        using var ourGroups = ourUser!.GetGroups(ourContext);
+
+        new Comparison($"GetGroups(context) for {_data.UserName}")
+            .CheckSet("group DNs",
+                msGroups.Select(g => g.DistinguishedName),
+                ourGroups.Select(g => g.DistinguishedName))
+            .Assert();
+    }
+
+    [Fact]
     public void GetGroups_is_empty_for_unsaved_principals()
     {
         using var msContext = MicrosoftContext();
@@ -235,7 +461,48 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(msDomainUsers);
         Assert.NotNull(ourDomainUsers);
         Assert.Equal(msUser!.IsMemberOf(msDomainUsers!), ourUser!.IsMemberOf(ourDomainUsers!));
-        Assert.True(ourUser.IsMemberOf(ourDomainUsers));
+        Assert.False(ourUser.IsMemberOf(ourDomainUsers));
+
+        using (var rawGroup = Open(msDomainUsers.DistinguishedName))
+        {
+            Assert.DoesNotContain(
+                _data.UserDn,
+                rawGroup.Properties["member"].Cast<object>().Select(value => value.ToString()),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        new Comparison("primary-group-only Members")
+            .Check("Count", msDomainUsers.Members.Count, ourDomainUsers.Members.Count)
+            .Check("Contains", msDomainUsers.Members.Contains(msUser), ourDomainUsers.Members.Contains(ourUser))
+            .CheckSet(
+                "member DNs",
+                msDomainUsers.Members.Select(member => member.DistinguishedName),
+                ourDomainUsers.Members.Select(member => member.DistinguishedName))
+            .Assert();
+
+        using var msDirect = msDomainUsers.GetMembers(recursive: false);
+        using var ourDirect = ourDomainUsers.GetMembers(recursive: false);
+        using var msRecursive = msDomainUsers.GetMembers(recursive: true);
+        using var ourRecursive = ourDomainUsers.GetMembers(recursive: true);
+        new Comparison("primary-group-only GetMembers")
+            .CheckSet(
+                "direct member DNs",
+                msDirect.Select(member => member.DistinguishedName),
+                ourDirect.Select(member => member.DistinguishedName))
+            .CheckSet(
+                "recursive member DNs",
+                msRecursive.Select(member => member.DistinguishedName),
+                ourRecursive.Select(member => member.DistinguishedName))
+            .Assert();
+
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => msDomainUsers.Members.Remove(msUser)));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => ourDomainUsers.Members.Remove(ourUser)));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => msDomainUsers.Members.Clear()));
+        Assert.IsType<InvalidOperationException>(
+            Record.Exception(() => ourDomainUsers.Members.Clear()));
     }
 
     [Fact]
@@ -269,6 +536,10 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.Contains(_data.GroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, ourDns, StringComparer.OrdinalIgnoreCase);
         Assert.Contains(_data.NestedGroupDn, msDns, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(
+            ourGroups.Single(group => group.SamAccountName == "Domain Users").DistinguishedName,
+            msDns,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private static void CreateOrganizationalUnit(string distinguishedName)
@@ -296,7 +567,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         new(DifferentialSettings.PathFor(distinguishedName),
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword,
-            System.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+            DifferentialSettings.MicrosoftAuthenticationTypes);
 
     private static void Delete(string distinguishedName)
     {

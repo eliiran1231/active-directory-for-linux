@@ -190,6 +190,7 @@ public class PrincipalCompatibilityTests
             {
                 Name = userName,
                 SamAccountName = userName,
+                UserPrincipalName = $"{userName}@samdom.example.com",
             })
             {
                 user.WriteExtension("telephoneNumber", "12345");
@@ -231,11 +232,70 @@ public class PrincipalCompatibilityTests
             using var bySid = Principal.FindByIdentity(
                 context, IdentityType.Sid, found.SidValue!);
             Assert.Equal(found, bySid);
+
+            using var valueOnlyGuid = UserPrincipal.FindByIdentity(
+                context, found.Guid.Value.ToString());
+            using var valueOnlySid = UserPrincipal.FindByIdentity(context, found.SidValue!);
+            using var valueOnlyUpn = UserPrincipal.FindByIdentity(
+                context, $"{userName}@samdom.example.com");
+            using var valueOnlyDn = UserPrincipal.FindByIdentity(context, userDn);
+            using var valueOnlyName = UserPrincipal.FindByIdentity(context, userName);
+            Assert.Equal(found, valueOnlyGuid);
+            Assert.Equal(found, valueOnlySid);
+            Assert.Equal(found, valueOnlyUpn);
+            Assert.Equal(found, valueOnlyDn);
+            Assert.Equal(found, valueOnlyName);
+            Assert.Null(UserPrincipal.FindByIdentity(context, "S-not-a-valid-sid"));
+            Assert.Null(UserPrincipal.FindByIdentity(context, "not-a-valid-guid"));
         }
         finally
         {
             TestDirectory.Delete(groupDn);
             TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
+    public void Value_only_identity_lookup_throws_when_name_matches_multiple_users()
+    {
+        var duplicateName = NewName();
+        var firstOuDn = CreateOrganizationalUnit(NewName());
+        var secondOuDn = CreateOrganizationalUnit(NewName());
+        var firstDn = DnFor(duplicateName, firstOuDn);
+        var secondDn = DnFor(duplicateName, secondOuDn);
+
+        try
+        {
+            using (var firstContext = Context(firstOuDn))
+            using (var first = new UserPrincipal(firstContext)
+                   {
+                       Name = duplicateName,
+                       SamAccountName = $"{duplicateName}-1",
+                   })
+            {
+                first.Save();
+            }
+
+            using (var secondContext = Context(secondOuDn))
+            using (var second = new UserPrincipal(secondContext)
+                   {
+                       Name = duplicateName,
+                       SamAccountName = $"{duplicateName}-2",
+                   })
+            {
+                second.Save();
+            }
+
+            using var searchContext = Context(TestSettings.BaseDn);
+            Assert.Throws<MultipleMatchesException>(() =>
+                UserPrincipal.FindByIdentity(searchContext, duplicateName));
+        }
+        finally
+        {
+            TestDirectory.Delete(firstDn);
+            TestDirectory.Delete(secondDn);
+            TestDirectory.Delete(firstOuDn);
+            TestDirectory.Delete(secondOuDn);
         }
     }
 
@@ -268,9 +328,55 @@ public class PrincipalCompatibilityTests
                 domainUsers!.DistinguishedName,
                 groups.Select(group => group.DistinguishedName),
                 StringComparer.OrdinalIgnoreCase);
-            Assert.True(found.IsMemberOf(domainUsers));
-            Assert.True(found.IsMemberOf(
+            Assert.False(found.IsMemberOf(domainUsers));
+            Assert.False(found.IsMemberOf(
                 context, IdentityType.SamAccountName, "Domain Users"));
+
+            using (var entry = new DirectoryEntry(
+                       TestSettings.PathFor(domainUsers.DistinguishedName!),
+                       TestSettings.BindDn,
+                       TestSettings.BindPassword,
+                       AuthenticationTypes.SecureSocketsLayer))
+            {
+                Assert.DoesNotContain(
+                    userDn,
+                    entry.Properties["member"].Cast<object>().Select(value => value.ToString()),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+
+            Assert.False(domainUsers.Members.Contains(found));
+            var enumeratedMemberDns = new List<string?>();
+            foreach (var member in domainUsers.Members)
+            {
+                using (member)
+                {
+                    enumeratedMemberDns.Add(member.DistinguishedName);
+                }
+            }
+
+            Assert.Equal(domainUsers.Members.Count, enumeratedMemberDns.Count);
+            Assert.Contains(userDn, enumeratedMemberDns, StringComparer.OrdinalIgnoreCase);
+
+            using var directMembers = domainUsers.GetMembers(recursive: false);
+            Assert.Contains(
+                userDn,
+                directMembers.Select(member => member.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            using var recursiveMembers = domainUsers.GetMembers(recursive: true);
+            Assert.Contains(
+                userDn,
+                recursiveMembers.Select(member => member.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            using var authorizationGroups = found.GetAuthorizationGroups();
+            Assert.Contains(
+                domainUsers.DistinguishedName,
+                authorizationGroups.Select(group => group.DistinguishedName),
+                StringComparer.OrdinalIgnoreCase);
+
+            Assert.Throws<InvalidOperationException>(() => domainUsers.Members.Remove(found));
+            Assert.Throws<InvalidOperationException>(() => domainUsers.Members.Clear());
         }
         finally
         {

@@ -172,25 +172,32 @@ public class PrincipalSearcher : IDisposable
         var context = _context
             ?? throw new InvalidOperationException("No context: set Context or give the example one.");
 
-        var conditions = string.Concat(
-            example.StagedValues
-                .Where(pair => pair.Value is not null)
-                .Select(pair => $"({pair.Key}={EscapeKeepingWildcards(pair.Value!.ToString()!)})"));
+        var conditions = PrincipalQueryFilterTranslator.Translate(example.QueryFilters);
 
         conditions += string.Concat(example.AdvancedFilterConditions);
 
-        return (context, $"(&{example.CategoryFilter}{conditions})");
+        return (context, $"(&{CategoryFilterFor(example)}{conditions})");
     }
 
-    /// <summary>
-    /// Escapes a value for a filter but leaves <c>*</c> alone, so it still works
-    /// as a wildcard, which is what query-by-example expects.
-    /// </summary>
-    private static string EscapeKeepingWildcards(string value) => value
-        .Replace("\\", "\\5c")
-        .Replace("(", "\\28")
-        .Replace(")", "\\29")
-        .Replace("\0", "\\00");
+    private static string CategoryFilterFor(Principal example)
+    {
+        var type = example.GetType();
+        if (type == typeof(UserPrincipal)
+            || type == typeof(GroupPrincipal)
+            || type == typeof(ComputerPrincipal))
+        {
+            return example.CategoryFilter;
+        }
+
+        var objectClass = type.GetCustomAttributes(
+                typeof(DirectoryObjectClassAttribute), inherit: true)
+            .Cast<DirectoryObjectClassAttribute>()
+            .Select(attribute => attribute.ObjectClass)
+            .FirstOrDefault();
+        return objectClass is null
+            ? example.CategoryFilter
+            : $"(objectClass={LdapFilter.EscapeValue(objectClass)})";
+    }
 
     private void ResetUnderlyingSearcher()
     {

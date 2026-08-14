@@ -252,6 +252,8 @@ public class PrincipalContext : IDisposable
         bool useContextPort = true)
     {
         var useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
+        // The explicit validation overload accepts unusual flag combinations:
+        // SimpleBind wins when present, while zero falls back to Negotiate.
         var authenticationType = options.HasFlag(ContextOptions.SimpleBind)
             ? AuthType.Basic
             : AuthType.Negotiate;

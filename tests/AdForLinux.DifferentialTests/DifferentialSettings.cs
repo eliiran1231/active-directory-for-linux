@@ -28,8 +28,44 @@ public static class DifferentialSettings
     /// <summary>Where the tests create their temporary objects.</summary>
     public static string UsersContainer => $"CN=Users,{BaseDn}";
 
-    /// <summary>Server in <c>host:port</c> form, for PrincipalContext.</summary>
-    public static string ServerName => $"{Host}:{Port}";
+    /// <summary>
+    /// Server name for PrincipalContext. Microsoft credential validation and
+    /// forest discovery handle the standard LDAP ports more faithfully when
+    /// they receive the DNS host name rather than a redundant host:port pair.
+    /// </summary>
+    public static string ServerName => Port == (UseTls ? 636 : 389)
+        ? Host
+        : $"{Host}:{Port}";
+
+    public static System.DirectoryServices.AccountManagement.ContextOptions MicrosoftContextOptions =>
+        UseTls
+            ? System.DirectoryServices.AccountManagement.ContextOptions.SimpleBind |
+              System.DirectoryServices.AccountManagement.ContextOptions.SecureSocketLayer
+            : System.DirectoryServices.AccountManagement.ContextOptions.Negotiate |
+              System.DirectoryServices.AccountManagement.ContextOptions.Signing |
+              System.DirectoryServices.AccountManagement.ContextOptions.Sealing;
+
+    public static AdForLinux.DirectoryServices.AccountManagement.ContextOptions OurContextOptions =>
+        UseTls
+            ? AdForLinux.DirectoryServices.AccountManagement.ContextOptions.SimpleBind |
+              AdForLinux.DirectoryServices.AccountManagement.ContextOptions.SecureSocketLayer
+            : AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Negotiate |
+              AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Signing |
+              AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Sealing;
+
+    public static System.DirectoryServices.AuthenticationTypes MicrosoftAuthenticationTypes =>
+        UseTls
+            ? System.DirectoryServices.AuthenticationTypes.SecureSocketsLayer
+            : System.DirectoryServices.AuthenticationTypes.Secure |
+              System.DirectoryServices.AuthenticationTypes.Signing |
+              System.DirectoryServices.AuthenticationTypes.Sealing;
+
+    public static AdForLinux.DirectoryServices.AuthenticationTypes OurAuthenticationTypes =>
+        UseTls
+            ? AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer
+            : AdForLinux.DirectoryServices.AuthenticationTypes.Secure |
+              AdForLinux.DirectoryServices.AuthenticationTypes.Signing |
+              AdForLinux.DirectoryServices.AuthenticationTypes.Sealing;
 
     /// <summary>An LDAP path for a DN on the test server.</summary>
     public static string PathFor(string distinguishedName) =>

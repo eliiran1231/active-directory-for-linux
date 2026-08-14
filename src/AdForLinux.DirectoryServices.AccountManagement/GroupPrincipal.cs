@@ -43,7 +43,7 @@ public class GroupPrincipal : Principal
 
     private protected override string CreateObjectClass => "group";
 
-    internal override string CategoryFilter => "(objectCategory=group)";
+    internal override string CategoryFilter => "(objectClass=group)";
 
     /// <summary>The members of this group. Changes need a <see cref="Principal.Save"/>.</summary>
     public PrincipalCollection Members
@@ -72,37 +72,56 @@ public class GroupPrincipal : Principal
             return new PrincipalSearchResult<Principal>(Members.ToList());
         }
 
-        var groupDn = RequireEntry().DistinguishedName;
-        // Recursive results contain only leaves. Groups are traversal nodes,
-        // whereas GetMembers(false) may return direct group members.
-        var filter = $"(&(memberOf:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(groupDn)})(!(objectClass=group)))";
-        // GetMembers is not constrained by PrincipalContext.Container: group
-        // members in other containers must still be returned.
-        var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
-        try
+        // Walk each group's merged direct membership so primary-group-only
+        // members are included at every level. Groups are traversal nodes;
+        // recursive results contain leaves only.
+        _ = RequireEntry();
+        var members = new List<Principal>();
+        var memberDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visitedGroupDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Queue<(GroupPrincipal Group, bool Dispose)>();
+        groups.Enqueue((this, false));
+
+        while (groups.Count > 0)
         {
-            using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
-            var members = new List<Principal>();
-            using var results = searcher.FindAll();
-            foreach (var result in results.Cast<SearchResult>())
+            var (group, dispose) = groups.Dequeue();
+            try
             {
-                var entry = result.GetDirectoryEntry();
-                var principal = PrincipalFactory.FromEntry(ContextRef, entry);
-                if (principal is null)
+                var groupDn = group.DistinguishedName!;
+                if (!visitedGroupDns.Add(groupDn))
                 {
-                    entry.Dispose();
                     continue;
                 }
 
-                members.Add(principal);
-            }
+                foreach (var principal in group.Members)
+                {
+                    if (principal is GroupPrincipal nestedGroup)
+                    {
+                        groups.Enqueue((nestedGroup, true));
+                        continue;
+                    }
 
-            return new PrincipalSearchResult<Principal>(members);
+                    var principalDn = principal.DistinguishedName;
+                    if (principalDn is not null && memberDns.Add(principalDn))
+                    {
+                        members.Add(principal);
+                    }
+                    else
+                    {
+                        principal.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (dispose)
+                {
+                    group.Dispose();
+                }
+            }
         }
-        finally
-        {
-            root.Dispose();
-        }
+
+        return new PrincipalSearchResult<Principal>(members);
     }
 
     /// <summary>
@@ -132,18 +151,26 @@ public class GroupPrincipal : Principal
         {
             if (value is null)
             {
-                return;
+                throw new ArgumentNullException(nameof(value));
             }
 
             var bit = value switch
             {
                 AccountManagement.GroupScope.Local => ScopeLocal,
                 AccountManagement.GroupScope.Universal => ScopeUniversal,
-                _ => ScopeGlobal,
+                AccountManagement.GroupScope.Global => ScopeGlobal,
+                _ => ScopeUniversal,
             };
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType((groupType & ~ScopeMask) | bit);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(GroupScope),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                true,
+                (uint)bit);
         }
     }
 
@@ -162,51 +189,90 @@ public class GroupPrincipal : Principal
         {
             if (value is null)
             {
-                return;
+                throw new ArgumentNullException(nameof(value));
             }
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType(value.Value
                 ? groupType | SecurityEnabled
                 : groupType & ~SecurityEnabled);
+            RemoveQueryFilter("groupType");
+            SetQueryFilter(
+                nameof(IsSecurityGroup),
+                PrincipalQueryFilterKind.GroupTypeBit,
+                "groupType",
+                value.Value,
+                0x80000000);
         }
     }
 
     /// <summary>Finds a group by a value across the common identity attributes.</summary>
     public static new GroupPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
-        Find(context, null, identityValue);
+        (GroupPrincipal?)FindByIdentityWithType(context, typeof(GroupPrincipal), identityValue);
 
     /// <summary>Finds a group by a specific identity type.</summary>
     public static new GroupPrincipal? FindByIdentity(
         PrincipalContext context, IdentityType identityType, string identityValue) =>
-        Find(context, identityType, identityValue);
-
-    private static GroupPrincipal? Find(PrincipalContext context, IdentityType? identityType, string identityValue)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrEmpty(identityValue);
-
-        var idFilter = IdentityFilter.Build(identityType, identityValue);
-        var filter = $"(&(objectCategory=group){idFilter})";
-
-        var root = context.CreateDirectoryEntry(context.Container);
-        try
-        {
-            using var searcher = new DirectorySearcher(root, filter);
-            var result = searcher.FindOne();
-            return result is null
-                ? null
-                : new GroupPrincipal(context, result.GetDirectoryEntry());
-        }
-        finally
-        {
-            root.Dispose();
-        }
-    }
+        (GroupPrincipal?)FindByIdentityWithType(context, typeof(GroupPrincipal), identityType, identityValue);
 
     /// <summary>The underlying entry, or an error if the group is not saved yet.</summary>
     internal DirectoryEntry RequireEntry() =>
         GetUsableEntry();
+
+    internal void EnsureMembersUsable() => CheckDisposedOrDeleted();
+
+    internal bool HasPrimaryGroupMembers() => PrimaryGroupMemberDns().Any();
+
+    internal override IEnumerable<PrincipalQueryFilter> QueryFilters
+    {
+        get
+        {
+            var filters = base.QueryFilters.ToList();
+            foreach (var filter in filters.Where(filter =>
+                         filter.Key is not nameof(IsSecurityGroup) and not nameof(GroupScope)))
+            {
+                yield return filter;
+            }
+
+            var security = filters.FirstOrDefault(filter => filter.Key == nameof(IsSecurityGroup));
+            if (security is not null)
+            {
+                yield return security;
+            }
+
+            var scope = filters.FirstOrDefault(filter => filter.Key == nameof(GroupScope));
+            if (scope is not null)
+            {
+                yield return scope;
+            }
+        }
+    }
+
+    internal IEnumerable<string> PrimaryGroupMemberDns()
+    {
+        EnsureMembersUsable();
+        if (!IsPersisted
+            || RequireEntry().Properties["objectSid"].Value is not byte[] sid)
+        {
+            yield break;
+        }
+
+        var rid = SidCodec.GetRid(sid).ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
+        using var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
+        using var searcher = new DirectorySearcher(
+            root,
+            $"(&(|(objectCategory=person)(objectCategory=computer))(primaryGroupID={rid}))")
+        {
+            PageSize = 500,
+        };
+        using var results = searcher.FindAll();
+        foreach (var result in results.Cast<SearchResult>())
+        {
+            using var entry = result.GetDirectoryEntry();
+            yield return entry.DistinguishedName;
+        }
+    }
 
     private DirectoryEntry GetUsableEntry()
     {

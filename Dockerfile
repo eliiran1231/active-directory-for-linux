@@ -8,7 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 # base of this SDK image) ships OpenLDAP 2.6 as "libldap.so.2". So we install
 # the client and add compatibility symlinks with the name .NET looks for.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libldap2 libsasl2-2 \
+    && apt-get install -y --no-install-recommends libldap2 libsasl2-2 gss-ntlmssp \
     && rm -rf /var/lib/apt/lists/* \
     && ARCH_DIR="$(dirname "$(readlink -f "$(ldconfig -p | grep 'libldap.so.2' | awk '{print $NF}' | head -1)")")" \
     && ln -sf "$ARCH_DIR/libldap.so.2" "$ARCH_DIR/libldap-2.5.so.0" \
