@@ -653,18 +653,34 @@ public class DirectoryEntry : Component
         MoveOrRename(LdapDistinguishedName.Parent(_path.DistinguishedName), newName);
     }
 
-    /// <summary>Moves this entry beneath <paramref name="newParent"/>.</summary>
+    /// <summary>
+    /// Moves this entry beneath <paramref name="newParent"/> when both entries use
+    /// the same LDAP server and connection settings.
+    /// </summary>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The source and destination use different LDAP connection contexts. LDAP
+    /// ModifyDN cannot perform a cross-server move, so no request is sent.
+    /// </exception>
     public void MoveTo(DirectoryEntry newParent)
     {
         ArgumentNullException.ThrowIfNull(newParent);
+        EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(newParent.DistinguishedName, LdapDistinguishedName.RelativeName(_path.DistinguishedName));
     }
 
-    /// <summary>Moves this entry beneath <paramref name="newParent"/> and renames it.</summary>
+    /// <summary>
+    /// Moves this entry beneath <paramref name="newParent"/> and renames it when
+    /// both entries use the same LDAP server and connection settings.
+    /// </summary>
+    /// <exception cref="PlatformNotSupportedException">
+    /// The source and destination use different LDAP connection contexts. LDAP
+    /// ModifyDN cannot perform a cross-server move, so no request is sent.
+    /// </exception>
     public void MoveTo(DirectoryEntry newParent, string newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(newParent.DistinguishedName, newName);
     }
 
@@ -923,6 +939,37 @@ public class DirectoryEntry : Component
         GetConnection().SendRequestCompatible(request);
         property.ResetChanged();
     }
+
+    private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
+    {
+        var source = BuildOptions();
+        var destination = newParent.BuildOptions();
+
+        if (SameHost(source.Host, destination.Host)
+            && source.Port == destination.Port
+            && source.UseSsl == destination.UseSsl
+            && source.UseStartTls == destination.UseStartTls
+            && source.SkipCertificateCheck == destination.SkipCertificateCheck
+            && source.AuthenticationType == destination.AuthenticationType
+            && source.Signing == destination.Signing
+            && source.Sealing == destination.Sealing
+            && string.Equals(source.BindDn, destination.BindDn, StringComparison.Ordinal)
+            && string.Equals(source.BindPassword, destination.BindPassword, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        throw new PlatformNotSupportedException(
+            "DirectoryEntry.MoveTo does not support moving between different LDAP connection contexts. " +
+            "Source and destination must use the same server, port, TLS settings, authentication type, " +
+            "credentials, and connection security options. No LDAP request was sent.");
+    }
+
+    private static bool SameHost(string source, string destination) =>
+        string.Equals(
+            source.TrimEnd('.'),
+            destination.TrimEnd('.'),
+            StringComparison.OrdinalIgnoreCase);
 
     private void MoveOrRename(string? parentDn, string newName)
     {
