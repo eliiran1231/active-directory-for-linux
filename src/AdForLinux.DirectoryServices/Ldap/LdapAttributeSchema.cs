@@ -1,40 +1,43 @@
 using System.DirectoryServices.Protocols;
+using System.Runtime.CompilerServices;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
 /// <summary>
-/// Tells text attributes from binary ones. LDAP sends every value as raw bytes,
-/// so we decode text attributes to strings and leave binary ones as byte[].
-/// This is the small, well-known set of AD attributes that are truly binary;
-/// everything else is treated as text (UTF-8), like the common tools do.
+/// Resolves Active Directory attribute syntaxes and caches them for the life
+/// of an LDAP connection. Attribute names are not sufficient to determine
+/// their wire representation because administrators can extend the schema.
 /// </summary>
 internal static class LdapAttributeSchema
 {
-    private static readonly HashSet<string> BinaryAttributes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly ConditionalWeakTable<LdapConnection, SchemaCache> Caches = new();
+
+    // Preserve the safe behavior for common binary attributes if a non-AD
+    // server does not publish schemaNamingContext or the requested schema row.
+    private static readonly HashSet<string> BinaryFallback = new(StringComparer.OrdinalIgnoreCase)
     {
-        "objectGUID",
-        "objectSid",
-        "sIDHistory",
-        "mS-DS-ConsistencyGuid",
-        "msDS-ConsistencyGuid",
-        "schemaIDGUID",
-        "attributeSecurityGUID",
-        "nTSecurityDescriptor",
-        "thumbnailPhoto",
-        "jpegPhoto",
-        "photo",
-        "userCertificate",
-        "userSMIMECertificate",
-        "cACertificate",
-        "tokenGroups",
-        "tokenGroupsGlobalAndUniversal",
-        "logonHours",
-        "msExchMailboxGuid",
+        "objectGUID", "objectSid", "sIDHistory", "mS-DS-ConsistencyGuid",
+        "msDS-ConsistencyGuid", "schemaIDGUID", "attributeSecurityGUID",
+        "nTSecurityDescriptor", "thumbnailPhoto", "jpegPhoto", "photo",
+        "userCertificate", "userSMIMECertificate", "cACertificate", "tokenGroups",
+        "tokenGroupsGlobalAndUniversal", "logonHours", "msExchMailboxGuid",
     };
 
-    /// <summary>True if this attribute's values should stay as raw bytes.</summary>
-    public static bool IsBinary(string attributeName) => BinaryAttributes.Contains(attributeName);
+    public static IReadOnlyDictionary<string, LdapValueKind> Resolve(
+        LdapConnection connection,
+        IEnumerable<string> attributeNames)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(attributeNames);
+        return Caches.GetValue(connection, static connection => new SchemaCache(connection))
+            .Resolve(attributeNames);
+    }
+
+    public static LdapValueKind BinaryFallbackFor(string attributeName) =>
+        BinaryFallback.Contains(CanonicalName(attributeName))
+            ? LdapValueKind.Binary
+            : LdapValueKind.String;
 
     /// <summary>
     /// Verifies that an AD attribute has the Object(DS-DN) schema syntax required
@@ -75,6 +78,24 @@ internal static class LdapAttributeSchema
         }
     }
 
+    internal static LdapValueKind KindFromSyntax(string? attributeSyntax, string? omSyntax) =>
+        (attributeSyntax, omSyntax) switch
+        {
+            ("2.5.5.8", "1") => LdapValueKind.Boolean,
+            ("2.5.5.9", "2" or "10") => LdapValueKind.Int32,
+            ("2.5.5.16", "65") => LdapValueKind.Int64,
+            ("2.5.5.11", "23" or "24") => LdapValueKind.DateTime,
+            ("2.5.5.10", _) or ("2.5.5.15", "66") or ("2.5.5.17", "4") =>
+                LdapValueKind.Binary,
+            _ => LdapValueKind.String,
+        };
+
+    private static string CanonicalName(string attributeName)
+    {
+        var option = attributeName.IndexOf(';');
+        return option < 0 ? attributeName : attributeName[..option];
+    }
+
     private static string? FirstString(SearchResultEntry entry, string attributeName)
     {
         var attribute = entry.Attributes[attributeName];
@@ -93,4 +114,102 @@ internal static class LdapAttributeSchema
         .Replace("(", "\\28")
         .Replace(")", "\\29")
         .Replace("\0", "\\00");
+
+    private sealed class SchemaCache
+    {
+        private readonly LdapConnection _connection;
+        private readonly Dictionary<string, LdapValueKind> _kinds =
+            new(StringComparer.OrdinalIgnoreCase);
+        private string? _schemaNamingContext;
+        private bool _schemaUnavailable;
+
+        public SchemaCache(LdapConnection connection) => _connection = connection;
+
+        public IReadOnlyDictionary<string, LdapValueKind> Resolve(IEnumerable<string> attributeNames)
+        {
+            var names = attributeNames
+                .Select(CanonicalName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            lock (_kinds)
+            {
+                var missing = names.Where(name => !_kinds.ContainsKey(name)).ToArray();
+                if (missing.Length > 0)
+                {
+                    Load(missing);
+                }
+
+                return names.ToDictionary(
+                    name => name,
+                    name => _kinds[name],
+                    StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        private void Load(string[] names)
+        {
+            if (!_schemaUnavailable)
+            {
+                try
+                {
+                    _schemaNamingContext ??= ReadSchemaNamingContext();
+                    if (!string.IsNullOrEmpty(_schemaNamingContext))
+                    {
+                        var nameFilter = names.Length == 1
+                            ? $"(lDAPDisplayName={EscapeFilterValue(names[0])})"
+                            : $"(|{string.Concat(names.Select(name => $"(lDAPDisplayName={EscapeFilterValue(name)})"))})";
+                        var request = new SearchRequest(
+                            _schemaNamingContext,
+                            $"(&(objectClass=attributeSchema){nameFilter})",
+                            ProtocolScope.OneLevel,
+                            "lDAPDisplayName",
+                            "attributeSyntax",
+                            "oMSyntax");
+                        var response = (SearchResponse)_connection.SendRequest(request);
+                        foreach (SearchResultEntry entry in response.Entries)
+                        {
+                            var name = FirstString(entry, "lDAPDisplayName");
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                _kinds[name] = KindFromSyntax(
+                                    FirstString(entry, "attributeSyntax"),
+                                    FirstString(entry, "oMSyntax"));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _schemaUnavailable = true;
+                    }
+                }
+                catch (Exception error) when (error is LdapException or DirectoryOperationException)
+                {
+                    // Generic LDAP servers need not expose AD's schema partition.
+                    _schemaUnavailable = true;
+                }
+            }
+
+            foreach (var name in names)
+            {
+                _kinds.TryAdd(name, BinaryFallbackFor(name));
+            }
+        }
+
+        private string? ReadSchemaNamingContext()
+        {
+            var rootDse = RootDse.Read(_connection, "schemaNamingContext");
+            return rootDse.TryGetValue("schemaNamingContext", out var value) ? value : null;
+        }
+    }
+}
+
+internal enum LdapValueKind
+{
+    String,
+    Binary,
+    Boolean,
+    Int32,
+    Int64,
+    DateTime,
 }

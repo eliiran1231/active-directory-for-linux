@@ -25,6 +25,7 @@ public class DirectoryEntry : Component
 
     private LdapPath _path;
     private LdapConnection? _connection;
+    private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
     private bool _isNew;
     private bool _usePropertyCache = true;
@@ -534,10 +535,29 @@ public class DirectoryEntry : Component
             case string text:
                 attribute.Add(text);
                 break;
+            case bool boolean:
+                attribute.Add(boolean ? "TRUE" : "FALSE");
+                break;
+            case DateTime dateTime:
+                attribute.Add(FormatDirectoryTime(dateTime));
+                break;
+            case DateTimeOffset dateTimeOffset:
+                attribute.Add(dateTimeOffset.UtcDateTime.ToString(
+                    "yyyyMMddHHmmss.0'Z'", System.Globalization.CultureInfo.InvariantCulture));
+                break;
+            case IFormattable formattable:
+                attribute.Add(formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture));
+                break;
             default:
                 attribute.Add(value.ToString());
                 break;
         }
+    }
+
+    private static string FormatDirectoryTime(DateTime value)
+    {
+        var utc = value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+        return utc.ToString("yyyyMMddHHmmss.0'Z'", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>Re-reads this object's attributes from the server.</summary>
@@ -777,18 +797,19 @@ public class DirectoryEntry : Component
         ? SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl
         : Options.SecurityMasks;
 
-    private static void LoadEntry(
-        SearchResultEntry entry,
-        PropertyCollection properties,
-        string[] requestedProperties,
-        bool normalizeRangedNames)
+    private void LoadEntry(
+    SearchResultEntry entry,
+    PropertyCollection properties,
+    string[] requestedProperties,
+    bool normalizeRangedNames)
     {
-        foreach (var (name, value) in SearchEntryReader.Read(entry))
+        foreach (var (name, value) in SearchEntryReader.Read(entry, GetSchemaConnection()))
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
                 !HasRangeSpecifier(requestedName)
                 && string.Equals(requestedName, baseName, StringComparison.OrdinalIgnoreCase));
+
             properties.GetOrAdd(
                     normalizeRangedNames || requestedByBaseName ? baseName : name)
                 .AddLoaded(value);
@@ -796,6 +817,13 @@ public class DirectoryEntry : Component
     }
 
     internal LdapConnection GetConnection() => _connection ??= LdapConnectionFactory.CreateBound(BuildOptions());
+
+    /// <summary>
+    /// Schema discovery uses a dedicated connection so it never attempts a
+    /// second request on a connection that is yielding asynchronous results.
+    /// </summary>
+    internal LdapConnection GetSchemaConnection() =>
+        _schemaConnection ??= LdapConnectionFactory.CreateBound(BuildOptions());
 
     internal string? ServerHost => _path.Host;
 
@@ -923,6 +951,8 @@ public class DirectoryEntry : Component
     {
         _connection?.Dispose();
         _connection = null;
+        _schemaConnection?.Dispose();
+        _schemaConnection = null;
     }
 
     /// <summary>Releases the LDAP connection held by this entry.</summary>
