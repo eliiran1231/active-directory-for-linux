@@ -90,6 +90,11 @@ advanced date/count comparisons.
   contexts name different domain controllers for that domain. Moving an
   existing object between AD domains requires ADSI cross-store behavior and
   currently throws `PlatformNotSupportedException` in this Linux port.
+- **Cross-connection `DirectoryEntry.MoveTo` moves.** LDAP `ModifyDN` is sent on
+  the source connection and cannot honor a destination entry that uses another
+  server, port, TLS mode, authentication type, credential, or connection
+  security option. Such moves throw `PlatformNotSupportedException` before an
+  LDAP request is sent; same-connection moves and renames remain supported.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
