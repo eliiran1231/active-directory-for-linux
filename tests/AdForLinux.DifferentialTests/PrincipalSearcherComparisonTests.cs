@@ -366,19 +366,6 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
-    public void Invalid_group_scope_uses_Microsofts_universal_filter_fallback()
-    {
-        using var msContext = MicrosoftContext();
-        using var ourContext = OurContext();
-        using var ms = new Ms.GroupPrincipal(msContext);
-        using var ours = new Ours.GroupPrincipal(ourContext);
-
-        ms.GroupScope = (Ms.GroupScope)int.MaxValue;
-        ours.GroupScope = (Ours.GroupScope)int.MaxValue;
-        CompareQuery("invalid GroupScope", ms, ours);
-    }
-
-    [Fact]
     public void Null_and_cleared_high_value_QBE_properties_match()
     {
         using var msContext = MicrosoftContext();

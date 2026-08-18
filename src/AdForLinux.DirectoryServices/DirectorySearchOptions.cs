@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+
 namespace AdForLinux.DirectoryServices;
 
 /// <summary>Specifies when aliases are dereferenced during an LDAP search.</summary>
@@ -27,6 +30,9 @@ public enum SortDirection
 /// <summary>Describes the server-side sort requested for a directory search.</summary>
 public sealed class SortOption
 {
+    private string? _propertyName;
+    private SortDirection _direction;
+
     /// <summary>Creates an ascending sort with no property configured.</summary>
     public SortOption()
     {
@@ -40,10 +46,29 @@ public sealed class SortOption
     }
 
     /// <summary>The LDAP attribute to sort by.</summary>
-    public string? PropertyName { get; set; }
+    [DefaultValue(null)]
+    [DisallowNull]
+    public string? PropertyName
+    {
+        get => _propertyName;
+        set => _propertyName = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     /// <summary>The sort direction.</summary>
-    public SortDirection Direction { get; set; }
+    [DefaultValue(SortDirection.Ascending)]
+    public SortDirection Direction
+    {
+        get => _direction;
+        set
+        {
+            if (value is < SortDirection.Ascending or > SortDirection.Descending)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SortDirection));
+            }
+
+            _direction = value;
+        }
+    }
 }
 
 /// <summary>Options controlling Active Directory directory synchronization.</summary>
@@ -60,6 +85,7 @@ public enum DirectorySynchronizationOptions : long
 /// <summary>Stores the cookie and options used by an Active Directory DirSync search.</summary>
 public sealed class DirectorySynchronization
 {
+    private DirectorySynchronizationOptions _option;
     private byte[] _cookie = Array.Empty<byte>();
 
     /// <summary>Creates a synchronization request with no prior cookie.</summary>
@@ -68,28 +94,49 @@ public sealed class DirectorySynchronization
     }
 
     /// <summary>Creates a synchronization request from a prior cookie.</summary>
-    public DirectorySynchronization(byte[] cookie) => ResetDirectorySynchronizationCookie(cookie);
+    public DirectorySynchronization(byte[]? cookie) => ResetDirectorySynchronizationCookie(cookie);
 
     /// <summary>Creates a synchronization request with options.</summary>
     public DirectorySynchronization(DirectorySynchronizationOptions option) => Option = option;
 
     /// <summary>Creates a synchronization request with options and a prior cookie.</summary>
-    public DirectorySynchronization(DirectorySynchronizationOptions option, byte[] cookie)
+    public DirectorySynchronization(DirectorySynchronizationOptions option, byte[]? cookie)
     {
         Option = option;
         ResetDirectorySynchronizationCookie(cookie);
     }
 
     /// <summary>Creates a copy of another synchronization request.</summary>
-    public DirectorySynchronization(DirectorySynchronization synchronization)
+    public DirectorySynchronization(DirectorySynchronization? synchronization)
     {
-        ArgumentNullException.ThrowIfNull(synchronization);
-        Option = synchronization.Option;
-        _cookie = synchronization.GetDirectorySynchronizationCookie();
+        if (synchronization is not null)
+        {
+            Option = synchronization.Option;
+            ResetDirectorySynchronizationCookie(synchronization.GetDirectorySynchronizationCookie());
+        }
     }
 
     /// <summary>Gets or sets the synchronization options.</summary>
-    public DirectorySynchronizationOptions Option { get; set; }
+    [DefaultValue(DirectorySynchronizationOptions.None)]
+    public DirectorySynchronizationOptions Option
+    {
+        get => _option;
+        set
+        {
+            const DirectorySynchronizationOptions validOptions =
+                DirectorySynchronizationOptions.ObjectSecurity |
+                DirectorySynchronizationOptions.ParentsFirst |
+                DirectorySynchronizationOptions.PublicDataOnly |
+                DirectorySynchronizationOptions.IncrementalValues;
+            if ((value & ~validOptions) != 0)
+            {
+                throw new InvalidEnumArgumentException(
+                    nameof(value), (int)value, typeof(DirectorySynchronizationOptions));
+            }
+
+            _option = value;
+        }
+    }
 
     /// <summary>Returns an independent copy of the current synchronization cookie.</summary>
     public byte[] GetDirectorySynchronizationCookie() => _cookie.ToArray();
@@ -101,10 +148,9 @@ public sealed class DirectorySynchronization
     public void ResetDirectorySynchronizationCookie() => _cookie = Array.Empty<byte>();
 
     /// <summary>Replaces the synchronization cookie.</summary>
-    public void ResetDirectorySynchronizationCookie(byte[] cookie)
+    public void ResetDirectorySynchronizationCookie(byte[]? cookie)
     {
-        ArgumentNullException.ThrowIfNull(cookie);
-        _cookie = cookie.ToArray();
+        _cookie = cookie?.ToArray() ?? Array.Empty<byte>();
     }
 
     /// <summary>Creates the Protocols control for the current request state.</summary>
@@ -277,8 +323,15 @@ public sealed class DirectoryVirtualListView
 
     internal void Update(System.DirectoryServices.Protocols.VlvResponseControl response)
     {
-        Offset = response.TargetPosition;
-        ApproximateTotal = response.ContentCount;
-        DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(response.ContextId);
+        Update(response.TargetPosition, response.ContentCount, response.ContextId);
+    }
+
+    internal void Update(int offset, int approximateTotal, byte[]? contextId)
+    {
+        // Offset derives TargetPercentage from ApproximateTotal. Apply the
+        // response total first so all observable response state is coherent.
+        ApproximateTotal = approximateTotal;
+        Offset = offset;
+        DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(contextId);
     }
 }

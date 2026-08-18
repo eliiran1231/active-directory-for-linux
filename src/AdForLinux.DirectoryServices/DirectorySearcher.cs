@@ -841,16 +841,7 @@ public class DirectorySearcher : Component
 
     private void ConfigureConnection(LdapConnection connection)
     {
-        // The native Linux LDAP implementation accepts only None and All.
-        // Keep the ADSI-compatible partial modes on Windows, and degrade them
-        // to All only where the underlying runtime cannot represent them.
-        connection.SessionOptions.ReferralChasing = OperatingSystem.IsWindows()
-            ? (ReferralChasingOptions)(int)ReferralChasing
-            : ReferralChasing switch
-        {
-            ReferralChasingOption.None => ReferralChasingOptions.None,
-            _ => ReferralChasingOptions.All,
-        };
+        LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
     }
 
     private void UpdateControlState(SearchResponse response)

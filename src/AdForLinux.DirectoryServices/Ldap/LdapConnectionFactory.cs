@@ -70,7 +70,7 @@ internal static class LdapConnectionFactory
 
         // The connection stays open until disposed; bind eagerly so failures
         // surface here rather than on first search.
-        connection.Timeout = TimeSpan.FromSeconds(30);
+        connection.Timeout = options.Timeout;
 
         if (options.UseStartTls && !options.UseSsl)
         {
@@ -79,6 +79,23 @@ internal static class LdapConnectionFactory
         }
 
         return connection;
+    }
+
+    /// <summary>Applies the public DirectoryServices referral modes to the platform LDAP client.</summary>
+    internal static void ConfigureReferralChasing(
+        LdapConnection connection,
+        ReferralChasingOption referralChasing)
+    {
+        // The native Linux LDAP implementation accepts only None and All.
+        // Keep the ADSI-compatible partial modes on Windows, and degrade them
+        // to All only where the underlying runtime cannot represent them.
+        connection.SessionOptions.ReferralChasing = OperatingSystem.IsWindows()
+            ? (ReferralChasingOptions)(int)referralChasing
+            : referralChasing switch
+            {
+                ReferralChasingOption.None => ReferralChasingOptions.None,
+                _ => ReferralChasingOptions.All,
+            };
     }
 
     /// <summary>

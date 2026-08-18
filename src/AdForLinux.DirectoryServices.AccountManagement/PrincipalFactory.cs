@@ -16,22 +16,51 @@ internal static class PrincipalFactory
             .Select(value => value.ToString())
             .ToArray();
 
-        if (classes.Contains("computer", StringComparer.OrdinalIgnoreCase))
+        var principalType = SelectPrincipalType(classes);
+        if (principalType == typeof(ComputerPrincipal))
         {
             return new ComputerPrincipal(context, entry);
         }
 
-        if (classes.Contains("group", StringComparer.OrdinalIgnoreCase))
+        if (principalType == typeof(GroupPrincipal))
         {
             return new GroupPrincipal(context, entry);
         }
 
-        if (classes.Contains("user", StringComparer.OrdinalIgnoreCase))
+        if (principalType == typeof(UserPrincipal))
         {
             return new UserPrincipal(context, entry);
         }
 
-        // Contacts, computers and the like are not modelled yet.
+        if (principalType == typeof(ForeignSecurityPrincipal))
+        {
+            return new ForeignSecurityPrincipal(context, entry);
+        }
+
+        // Contacts and other non-principal directory objects are not modelled.
         return null;
+    }
+
+    internal static Type? SelectPrincipalType(IEnumerable<string?> classes)
+    {
+        var values = classes.ToArray();
+        if (values.Contains("computer", StringComparer.OrdinalIgnoreCase))
+        {
+            return typeof(ComputerPrincipal);
+        }
+
+        if (values.Contains("group", StringComparer.OrdinalIgnoreCase))
+        {
+            return typeof(GroupPrincipal);
+        }
+
+        if (values.Contains("user", StringComparer.OrdinalIgnoreCase))
+        {
+            return typeof(UserPrincipal);
+        }
+
+        return values.Contains("foreignSecurityPrincipal", StringComparer.OrdinalIgnoreCase)
+            ? typeof(ForeignSecurityPrincipal)
+            : null;
     }
 }

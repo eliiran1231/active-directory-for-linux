@@ -62,6 +62,45 @@ public class DirectoryEntryAuthenticationTests
         Assert.Null(options.ToCredential());
     }
 
+    [Fact]
+    public void Children_add_clones_the_complete_negotiate_connection_configuration()
+    {
+        var parentOptions = new LdapConnectionOptions
+        {
+            Host = "dc.example.test",
+            Port = 1389,
+            UseSsl = false,
+            UseStartTls = true,
+            SkipCertificateCheck = true,
+            AuthenticationType = AuthType.Negotiate,
+            Signing = true,
+            Sealing = true,
+            BindDn = "user@example.test",
+            BindPassword = "password",
+            Timeout = TimeSpan.FromSeconds(17),
+        };
+        using var parent = new DirectoryEntry(Path, parentOptions);
+
+        using var child = parent.Children.Add("CN=issue-56", "user");
+        var childOptions = child.BuildOptions();
+
+        Assert.NotSame(parentOptions, childOptions);
+        Assert.Equal(parentOptions.Host, childOptions.Host);
+        Assert.Equal(parentOptions.Port, childOptions.Port);
+        Assert.Equal(parentOptions.UseSsl, childOptions.UseSsl);
+        Assert.Equal(parentOptions.UseStartTls, childOptions.UseStartTls);
+        Assert.Equal(parentOptions.SkipCertificateCheck, childOptions.SkipCertificateCheck);
+        Assert.Equal(AuthType.Negotiate, childOptions.AuthenticationType);
+        Assert.True(childOptions.Signing);
+        Assert.True(childOptions.Sealing);
+        Assert.Equal(parentOptions.BindDn, childOptions.BindDn);
+        Assert.Equal(parentOptions.BindPassword, childOptions.BindPassword);
+        Assert.Equal(parentOptions.Timeout, childOptions.Timeout);
+        Assert.Equal(
+            AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing,
+            child.AuthenticationType);
+    }
+
     [Theory]
     [InlineData(AuthenticationTypes.Signing)]
     [InlineData(AuthenticationTypes.Sealing)]
