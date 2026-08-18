@@ -264,7 +264,7 @@ public class UserPrincipalWriteTests
             using var entry = new DirectoryEntry(
                 TestSettings.PathFor(dn), TestSettings.BindDn, TestSettings.BindPassword,
                 AuthenticationTypes.SecureSocketsLayer);
-            Assert.Equal("0", entry.Properties["pwdLastSet"].Value);
+            Assert.Equal(0L, entry.Properties["pwdLastSet"].Value);
         }
         finally
         {
@@ -293,7 +293,7 @@ public class UserPrincipalWriteTests
             using var entry = new DirectoryEntry(
                 TestSettings.PathFor(dn), TestSettings.BindDn, TestSettings.BindPassword,
                 AuthenticationTypes.SecureSocketsLayer);
-            Assert.Equal("0", entry.Properties["lockoutTime"].Value);
+            Assert.Equal(0L, entry.Properties["lockoutTime"].Value);
         }
         finally
         {

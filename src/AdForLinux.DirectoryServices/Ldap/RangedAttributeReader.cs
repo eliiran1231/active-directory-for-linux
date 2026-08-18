@@ -41,7 +41,7 @@ internal static class RangedAttributeReader
                 return values;
             }
 
-            AddValues(returned.Value.Attribute, attributeName, values);
+            AddValues(entry.GetSchemaConnection(), returned.Value.Attribute, attributeName, values);
             if (returned.Value.IsTerminal)
             {
                 return values;
@@ -162,14 +162,14 @@ internal static class RangedAttributeReader
     }
 
     private static void AddValues(
+        LdapConnection connection,
         DirectoryAttribute attribute,
         string attributeName,
         List<object> values)
     {
-        var wanted = LdapAttributeSchema.IsBinary(attributeName)
-            ? typeof(byte[])
-            : typeof(string);
-        values.AddRange(attribute.GetValues(wanted));
+        var kind = LdapAttributeSchema.Resolve(connection, new[] { attributeName })[attributeName];
+        var wanted = kind == LdapValueKind.Binary ? typeof(byte[]) : typeof(string);
+        values.AddRange(attribute.GetValues(wanted).Select(value => SearchEntryReader.ConvertValue(value, kind)));
     }
 
     private readonly record struct ReturnedAttribute(
