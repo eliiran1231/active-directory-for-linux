@@ -12,7 +12,7 @@ namespace AdForLinux.DirectoryServices;
 /// <see cref="PropertiesToLoad"/>, then call <see cref="FindOne"/> or
 /// <see cref="FindAll"/>.
 /// </summary>
-public class DirectorySearcher : IDisposable
+public class DirectorySearcher : Component
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(-1);
 
@@ -840,5 +840,11 @@ public class DirectorySearcher : IDisposable
         }
     }
 
-    public void Dispose() => GC.SuppressFinalize(this);
+    /// <summary>Releases resources used by the searcher.</summary>
+    protected override void Dispose(bool disposing)
+    {
+        // A caller-supplied SearchRoot remains owned by the caller. Streaming
+        // result collections own their cloned root and connection independently.
+        base.Dispose(disposing);
+    }
 }
