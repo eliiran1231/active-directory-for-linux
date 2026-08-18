@@ -250,7 +250,7 @@ public class DirectorySearcher : IDisposable
     }
 
     /// <summary>Gets or sets the extended-DN format requested from the server.</summary>
-    public ExtendedDN ExtendedDN { get; set; }
+    public ExtendedDN ExtendedDN { get; set; } = ExtendedDN.None;
 
     /// <summary>Gets or sets whether only property names, rather than values, are returned.</summary>
     public bool PropertyNamesOnly { get; set; }
