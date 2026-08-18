@@ -64,11 +64,11 @@ public class GroupPrincipal : Principal
     /// </summary>
     public PrincipalSearchResult<Principal> GetMembers(bool recursive)
     {
+        CheckDisposedOrDeleted();
         if (!recursive)
         {
-            // Materialize the collection so the returned result owns and
-            // disposes the principals, just like other PrincipalSearchResult
-            // APIs. This also keeps staged membership changes visible.
+            // Materialize the collection while keeping staged membership
+            // changes visible. As with Microsoft, callers own yielded principals.
             return new PrincipalSearchResult<Principal>(Members.ToList());
         }
 
@@ -132,6 +132,7 @@ public class GroupPrincipal : Principal
     {
         get
         {
+            CheckDisposedOrDeleted();
             var groupType = ReadGroupType();
             if (groupType is null)
             {
@@ -149,6 +150,7 @@ public class GroupPrincipal : Principal
         }
         set
         {
+            CheckDisposedOrDeleted();
             if (value is null)
             {
                 throw new ArgumentNullException(nameof(value));
@@ -182,11 +184,13 @@ public class GroupPrincipal : Principal
     {
         get
         {
+            CheckDisposedOrDeleted();
             var groupType = ReadGroupType();
             return groupType is null ? null : (groupType.Value & SecurityEnabled) != 0;
         }
         set
         {
+            CheckDisposedOrDeleted();
             if (value is null)
             {
                 throw new ArgumentNullException(nameof(value));
@@ -271,6 +275,18 @@ public class GroupPrincipal : Principal
         {
             using var entry = result.GetDirectoryEntry();
             yield return entry.DistinguishedName;
+        }
+    }
+
+    public override void Dispose()
+    {
+        try
+        {
+            _members?.Dispose();
+        }
+        finally
+        {
+            base.Dispose();
         }
     }
 

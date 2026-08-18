@@ -27,10 +27,16 @@ public class ComputerPrincipal : AuthenticablePrincipal
     internal override string CategoryFilter => "(objectClass=computer)";
     private protected override int DefaultUserAccountControl => 0x1000;
 
-    public PrincipalValueCollection<string> ServicePrincipalNames =>
-        _servicePrincipalNames ??= new PrincipalValueCollection<string>(
-            GetValues("servicePrincipalName"),
-            values => SetValues("servicePrincipalName", values));
+    public PrincipalValueCollection<string> ServicePrincipalNames
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _servicePrincipalNames ??= new PrincipalValueCollection<string>(
+                GetValues("servicePrincipalName"),
+                values => SetValues("servicePrincipalName", values));
+        }
+    }
 
     public static new ComputerPrincipal? FindByIdentity(PrincipalContext context, string identityValue) =>
         (ComputerPrincipal?)FindByIdentityWithType(context, typeof(ComputerPrincipal), identityValue);

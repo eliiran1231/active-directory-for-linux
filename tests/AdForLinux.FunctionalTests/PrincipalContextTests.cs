@@ -181,6 +181,36 @@ public class PrincipalContextTests
     }
 
     [Fact]
+    public void Disposed_context_rejects_properties_and_operations_with_microsoft_object_name()
+    {
+        var context = new PrincipalContext(
+            ContextType.Domain, "dc.example.test", "DC=example,DC=test");
+
+        context.Dispose();
+        context.Dispose();
+
+        Action[] members =
+        {
+            () => _ = context.ContextType,
+            () => _ = context.Name,
+            () => _ = context.Container,
+            () => _ = context.UserName,
+            () => _ = context.Options,
+            () => _ = context.ConnectedServer,
+            () => _ = context.Port,
+            () => _ = context.UseSsl,
+            () => context.ValidateCredentials("user", "password"),
+            () => context.ValidateCredentials("user", "password", ContextOptions.SimpleBind),
+        };
+
+        foreach (var member in members)
+        {
+            var exception = Assert.Throws<ObjectDisposedException>(member);
+            Assert.Equal("PrincipalContext", exception.ObjectName);
+        }
+    }
+
+    [Fact]
     public void Serverless_context_is_not_supported_on_linux()
     {
         Assert.Throws<NotSupportedException>(() => new PrincipalContext(ContextType.Domain));

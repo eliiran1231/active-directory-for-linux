@@ -79,6 +79,118 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
+    public void Disposed_principals_reject_cached_and_derived_properties()
+    {
+        using var context = OfflineContext();
+        var user = new UserPrincipal(context)
+        {
+            Name = "cached-name",
+            GivenName = "cached-given-name",
+            Enabled = false,
+        };
+        _ = user.PermittedWorkstations;
+        _ = user.Certificates;
+        _ = user.AdvancedSearchFilter;
+        user.Dispose();
+        user.Dispose();
+
+        Action[] members =
+        {
+            () => _ = user.Context,
+            () => _ = user.ContextType,
+            () => _ = user.DistinguishedName,
+            () => _ = user.Guid,
+            () => _ = user.SidValue,
+            () => _ = user.Name,
+            () => user.Name = "changed",
+            () => _ = user.GivenName,
+            () => user.GivenName = "changed",
+            () => _ = user.Enabled,
+            () => _ = user.PermittedWorkstations,
+            () => _ = user.Certificates,
+            () => _ = user.AdvancedSearchFilter,
+            () => user.SetPassword(null!),
+            () => user.ChangePassword(null!, null!),
+        };
+
+        foreach (var member in members)
+        {
+            var exception = Assert.Throws<ObjectDisposedException>(member);
+            Assert.Equal(typeof(UserPrincipal).ToString(), exception.ObjectName);
+        }
+    }
+
+    [Fact]
+    public void Disposing_a_context_does_not_dispose_its_principal()
+    {
+        var context = OfflineContext();
+        using var user = new UserPrincipal(context)
+        {
+            Name = "cached-name",
+            SamAccountName = "cached-account",
+        };
+
+        context.Dispose();
+
+        Assert.Same(context, user.Context);
+        Assert.Equal("cached-account", user.SamAccountName);
+        var nameException = Assert.Throws<ObjectDisposedException>(() => _ = user.Name);
+        Assert.Equal("PrincipalContext", nameException.ObjectName);
+        var contextTypeException = Assert.Throws<ObjectDisposedException>(() => _ = user.ContextType);
+        Assert.Equal("PrincipalContext", contextTypeException.ObjectName);
+        var saveException = Assert.Throws<ObjectDisposedException>(() => user.Save());
+        Assert.Equal("PrincipalContext", saveException.ObjectName);
+    }
+
+    [Fact]
+    public void Search_results_and_enumerators_have_independent_disposal_lifetimes()
+    {
+        using var context = OfflineContext();
+        var user = new UserPrincipal(context) { Name = "still-owned-by-caller" };
+        var results = new PrincipalSearchResult<Principal>(new Principal[] { user });
+        var enumerator = results.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Same(user, enumerator.Current);
+
+        results.Dispose();
+        results.Dispose();
+
+        Assert.Equal("still-owned-by-caller", user.Name);
+        var resultException = Assert.Throws<ObjectDisposedException>(() => results.GetEnumerator());
+        Assert.Equal("PrincipalSearchResult", resultException.ObjectName);
+        Assert.False(enumerator.MoveNext());
+
+        var secondResults = new PrincipalSearchResult<Principal>(Array.Empty<Principal>());
+        var disposedEnumerator = secondResults.GetEnumerator();
+        disposedEnumerator.Dispose();
+        disposedEnumerator.Dispose();
+        var enumeratorException = Assert.Throws<ObjectDisposedException>(() => disposedEnumerator.MoveNext());
+        Assert.Equal("FindResultEnumerator", enumeratorException.ObjectName);
+
+        secondResults.Dispose();
+        user.Dispose();
+    }
+
+    [Fact]
+    public void Disposing_a_group_disposes_its_member_collection_and_enumerator()
+    {
+        using var context = OfflineContext();
+        var group = new GroupPrincipal(context);
+        var members = group.Members;
+        var enumerator = members.GetEnumerator();
+        enumerator.Dispose();
+
+        var enumeratorException = Assert.Throws<ObjectDisposedException>(() => enumerator.MoveNext());
+        Assert.Equal("PrincipalCollectionEnumerator", enumeratorException.ObjectName);
+
+        group.Dispose();
+        group.Dispose();
+
+        var collectionException = Assert.Throws<ObjectDisposedException>(() => _ = members.Count);
+        Assert.Equal("PrincipalCollection", collectionException.ObjectName);
+    }
+
+    [Fact]
     public void Principal_surface_validates_arguments_before_connecting()
     {
         using var context = OfflineContext();
@@ -414,6 +526,11 @@ public class PrincipalCompatibilityTests
             Assert.Throws<InvalidOperationException>(() => user.Save());
             Assert.Throws<InvalidOperationException>(() => user.GetGroups());
             Assert.Throws<InvalidOperationException>(() => user.GetUnderlyingObject());
+            Assert.Throws<InvalidOperationException>(() => _ = user.Context);
+            Assert.Throws<InvalidOperationException>(() => _ = user.DistinguishedName);
+            Assert.Throws<InvalidOperationException>(() => _ = user.Name);
+            Assert.Throws<InvalidOperationException>(() => _ = user.GivenName);
+            Assert.Throws<InvalidOperationException>(() => user.Name = "changed");
         }
         finally
         {
