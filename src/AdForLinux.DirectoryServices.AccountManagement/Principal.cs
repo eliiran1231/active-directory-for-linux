@@ -329,7 +329,7 @@ public abstract class Principal : IDisposable
         string membershipFilter)
     {
         var filter = $"(&(objectCategory=group){membershipFilter})";
-        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.Container);
+        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.QueryContainer);
         try
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
