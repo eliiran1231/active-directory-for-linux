@@ -638,7 +638,7 @@ public abstract class AuthenticablePrincipal : Principal
             : typeof(T) == typeof(UserPrincipal)
                 ? "(objectCategory=person)(objectClass=user)"
                 : "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
-        using var root = context.CreateDirectoryEntry(context.Container);
+        using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, $"(&{category}{condition})") { PageSize = 500 };
         using var results = searcher.FindAll();
         var principals = new List<T>();

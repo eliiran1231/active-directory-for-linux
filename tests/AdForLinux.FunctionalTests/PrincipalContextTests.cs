@@ -13,12 +13,63 @@ public class PrincipalContextTests
         TestSettings.CreatePrincipalContext(container);
 
     [Fact]
-    public void Container_defaults_to_the_default_naming_context()
+    public void Container_is_null_when_no_container_was_supplied()
     {
         using var context = Authenticated();
 
-        Assert.Equal(TestSettings.BaseDn, context.Container, ignoreCase: true);
+        Assert.Null(context.Container);
     }
+
+    [Fact]
+    public void Well_known_container_values_preserve_renamed_or_moved_distinguished_names()
+    {
+        var users = $"OU=Renamed Users,OU=Provisioning,{TestSettings.BaseDn}";
+        var computers = $"OU=Workstations,OU=Provisioning,{TestSettings.BaseDn}";
+        object?[] values =
+        {
+            $"B:32:A9D1CA15768811D1ADED00C04FD8D5CD:{users}",
+            System.Text.Encoding.UTF8.GetBytes(
+                $"B:32:AA312825768811D1ADED00C04FD8D5CD:{computers}"),
+        };
+
+        Assert.True(PrincipalContext.TryResolveWellKnownContainers(
+            values, out var resolvedUsers, out var resolvedComputers));
+        Assert.Equal(users, resolvedUsers);
+        Assert.Equal(computers, resolvedComputers);
+    }
+
+    [Fact]
+    public void Default_context_creates_principals_in_well_known_containers()
+    {
+        using var context = Authenticated();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        using var user = new UserPrincipal(context) { Name = $"i38-u-{suffix}" };
+        using var group = new GroupPrincipal(context) { Name = $"i38-g-{suffix}" };
+        using var computer = new ComputerPrincipal(context) { Name = $"i38-c-{suffix}" };
+
+        try
+        {
+            user.Save();
+            group.Save();
+            computer.Save();
+
+            Assert.Equal(TestDirectory.UsersContainer,
+                ParentOf(user.DistinguishedName!), ignoreCase: true);
+            Assert.Equal(TestDirectory.UsersContainer,
+                ParentOf(group.DistinguishedName!), ignoreCase: true);
+            Assert.Equal($"CN=Computers,{TestSettings.BaseDn}",
+                ParentOf(computer.DistinguishedName!), ignoreCase: true);
+        }
+        finally
+        {
+            if (user.DistinguishedName is { } userDn) TestDirectory.Delete(userDn);
+            if (group.DistinguishedName is { } groupDn) TestDirectory.Delete(groupDn);
+            if (computer.DistinguishedName is { } computerDn) TestDirectory.Delete(computerDn);
+        }
+    }
+
+    private static string ParentOf(string distinguishedName) =>
+        distinguishedName.Substring(distinguishedName.IndexOf(',') + 1);
 
     [Fact]
     public void Container_uses_the_value_given()
