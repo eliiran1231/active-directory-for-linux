@@ -153,7 +153,15 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         {
             var msException = Assert.IsType<ObjectDisposedException>(Record.Exception(microsoft));
             var ourException = Assert.IsType<ObjectDisposedException>(Record.Exception(ours));
-            Assert.Equal(msException.ObjectName, ourException.ObjectName);
+            // Principal.CheckDisposedOrDeleted uses GetType().ToString(), so the
+            // ObjectName is namespace-qualified; normalize the namespace before
+            // comparing, same as Disposed_context_members_match_exception_type_and_object_name.
+            Assert.Equal(
+                msException.ObjectName?.Replace(
+                    "System.DirectoryServices.AccountManagement",
+                    "AdForLinux.DirectoryServices.AccountManagement",
+                    StringComparison.Ordinal),
+                ourException.ObjectName);
         }
     }
 
