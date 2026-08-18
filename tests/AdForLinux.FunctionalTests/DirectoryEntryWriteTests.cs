@@ -17,6 +17,80 @@ public class DirectoryEntryWriteTests
     private static string UsersContainer => $"CN=Users,{TestSettings.BaseDn}";
 
     [Fact]
+    public void Multi_valued_mutations_preserve_concurrent_changes_and_use_distinct_operations()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..6];
+        var groupName = $"adfl-delta-g-{suffix}";
+        var groupDn = $"CN={groupName},{TestSettings.BaseDn}";
+        var memberDns = Enumerable.Range(0, 4)
+            .Select(index => $"CN=adfl-d-{suffix}-{index},{TestSettings.BaseDn}")
+            .ToArray();
+
+        try
+        {
+            using var container = Open(TestSettings.BaseDn);
+            for (var index = 0; index < memberDns.Length; index++)
+            {
+                using var member = container.Children.Add($"CN=adfl-d-{suffix}-{index}", "user");
+                member.Properties["sAMAccountName"].Value = $"d{suffix}{index}";
+                member.CommitChanges();
+            }
+
+            using (var group = container.Children.Add($"CN={groupName}", "group"))
+            {
+                group.Properties["sAMAccountName"].Value = groupName;
+                group.Properties["member"].AddRange(memberDns[..2]);
+                group.CommitChanges();
+            }
+
+            using (var first = Open(groupDn))
+            using (var second = Open(groupDn))
+            {
+                _ = first.Properties["member"].Count;
+                _ = second.Properties["member"].Count;
+                first.Properties["member"].Add(memberDns[2]);
+                first.CommitChanges();
+                second.Properties["member"].Add(memberDns[3]);
+                second.CommitChanges();
+            }
+
+            AssertMembers(groupDn, memberDns);
+
+            using (var group = Open(groupDn))
+            {
+                group.Properties["member"].Remove(memberDns[0]);
+                group.CommitChanges();
+            }
+
+            AssertMembers(groupDn, memberDns[1..]);
+
+            using (var group = Open(groupDn))
+            {
+                group.Properties["member"].Value = memberDns[..2];
+                group.CommitChanges();
+            }
+
+            AssertMembers(groupDn, memberDns[..2]);
+
+            using (var group = Open(groupDn))
+            {
+                group.Properties["member"].Clear();
+                group.CommitChanges();
+            }
+
+            AssertMembers(groupDn, Array.Empty<string>());
+        }
+        finally
+        {
+            SafeDelete(groupDn);
+            foreach (var memberDn in memberDns)
+            {
+                SafeDelete(memberDn);
+            }
+        }
+    }
+
+    [Fact]
     public void Children_add_creates_an_object()
     {
         var name = $"adfl-grp-{Guid.NewGuid():N}";
@@ -298,5 +372,15 @@ public class DirectoryEntryWriteTests
         using var entry = Open(dn);
         var error = Assert.Throws<DirectoryOperationException>(() => entry.RefreshCache());
         Assert.Equal(ResultCode.NoSuchObject, error.Response.ResultCode);
+    }
+
+    private static void AssertMembers(string groupDn, IEnumerable<string> expected)
+    {
+        using var group = Open(groupDn);
+        Assert.Equal(
+            expected.OrderBy(value => value, StringComparer.OrdinalIgnoreCase),
+            group.Properties["member"].Cast<string>()
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
     }
 }
