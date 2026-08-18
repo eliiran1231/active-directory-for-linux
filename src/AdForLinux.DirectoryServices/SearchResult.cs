@@ -18,7 +18,7 @@ public sealed class SearchResult
 
         var properties = new ResultPropertyCollection();
         var grouped = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (name, value) in SearchEntryReader.Read(entry))
+        foreach (var (name, value) in SearchEntryReader.Read(entry, searchRoot.GetSchemaConnection()))
         {
             if (!grouped.TryGetValue(name, out var list))
             {
