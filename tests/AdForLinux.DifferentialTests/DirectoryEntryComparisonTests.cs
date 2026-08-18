@@ -296,11 +296,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
 
             var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
             Assert.Equal(unchecked((int)0x80072015), msComError.HResult);
-            var ourProtocolError = Assert.IsType<
-                System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
-            Assert.Equal(
-                System.DirectoryServices.Protocols.ResultCode.NotAllowedOnNonLeaf,
-                ourProtocolError.Response.ResultCode);
+            var ourComError = Assert.IsType<Ours.DirectoryServicesCOMException>(ourError);
+            Assert.Equal(msComError.HResult, ourComError.HResult);
             Assert.True(MicrosoftEntryExists(msParentDn));
             Assert.True(MicrosoftEntryExists(msChildDn));
             Assert.True(OurEntryExists(ourParentDn));
@@ -353,11 +350,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
 
             var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
             Assert.Equal(unchecked((int)0x80072030), msComError.HResult);
-            var ourProtocolError = Assert.IsType<
-                System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
-            Assert.Equal(
-                System.DirectoryServices.Protocols.ResultCode.NoSuchObject,
-                ourProtocolError.Response.ResultCode);
+            var ourComError = Assert.IsType<Ours.DirectoryServicesCOMException>(ourError);
+            Assert.Equal(msComError.HResult, ourComError.HResult);
             Assert.True(MicrosoftEntryExists(msChildDn));
             Assert.True(OurEntryExists(ourChildDn));
         }
@@ -596,7 +590,7 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check("throws", msError is not null, ourError is not null)
             .Assert();
         Assert.NotNull(msError);
-        Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(ourError);
+        Assert.IsType<Ours.DirectoryServicesCOMException>(ourError);
         Assert.Contains("InvalidAttributeSyntax (21)", ourError!.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -638,8 +632,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             entry.RefreshCache();
             return true;
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException error)
-            when (error.Response.ResultCode == System.DirectoryServices.Protocols.ResultCode.NoSuchObject)
+        catch (Ours.DirectoryServicesCOMException error)
+            when (error.ErrorCode == unchecked((int)0x80072030))
         {
             return false;
         }

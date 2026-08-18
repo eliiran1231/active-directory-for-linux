@@ -74,7 +74,9 @@ public class PrincipalSearcher : IDisposable
     }
 
     /// <summary>Returns the first match, or null.</summary>
-    public Principal? FindOne()
+    public Principal? FindOne() => AccountManagementExceptionTranslator.Execute(FindOneCore);
+
+    private Principal? FindOneCore()
     {
         var searcher = PrepareUnderlyingSearcher();
         var originalSizeLimit = searcher.SizeLimit;
@@ -94,7 +96,10 @@ public class PrincipalSearcher : IDisposable
     }
 
     /// <summary>Returns every match.</summary>
-    public PrincipalSearchResult<Principal> FindAll()
+    public PrincipalSearchResult<Principal> FindAll() =>
+        AccountManagementExceptionTranslator.Execute(FindAllCore);
+
+    private PrincipalSearchResult<Principal> FindAllCore()
     {
         var searcher = PrepareUnderlyingSearcher();
         var found = new List<Principal>();

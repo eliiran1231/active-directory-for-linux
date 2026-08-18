@@ -278,7 +278,7 @@ public class DirectoryEntry : Component
 
             objectSecurityWritten = AddObjectSecurity(add);
 
-            connection.SendRequest(add);
+            connection.SendRequestCompatible(add);
             _isNew = false;
         }
         else
@@ -299,7 +299,7 @@ public class DirectoryEntry : Component
 
             if (modify.Modifications.Count > 0)
             {
-                connection.SendRequest(modify);
+                connection.SendRequestCompatible(modify);
             }
         }
 
@@ -336,7 +336,7 @@ public class DirectoryEntry : Component
 
         var request = new ModifyRequest(_path.DistinguishedName);
         request.Modifications.Add(modification);
-        connection.SendRequest(request);
+        connection.SendRequestCompatible(request);
     }
 
     /// <summary>
@@ -362,7 +362,7 @@ public class DirectoryEntry : Component
         var request = new ModifyRequest(_path.DistinguishedName);
         request.Modifications.Add(deletion);
         request.Modifications.Add(addition);
-        GetConnection().SendRequest(request);
+        GetConnection().SendRequestCompatible(request);
     }
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
@@ -375,7 +375,7 @@ public class DirectoryEntry : Component
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
 
-        var response = (SearchResponse)GetConnection().SendRequest(request);
+        var response = (SearchResponse)GetConnection().SendRequestCompatible(request);
         if (response.Entries.Count == 0
             || response.Entries[0].Attributes["nTSecurityDescriptor"] is not { Count: > 0 } attribute
             || attribute[0] is not byte[] binaryForm)
@@ -399,7 +399,7 @@ public class DirectoryEntry : Component
         request.Modifications.Add(replacement);
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
-        GetConnection().SendRequest(request);
+        GetConnection().SendRequestCompatible(request);
     }
 
     /// <summary>
@@ -449,7 +449,7 @@ public class DirectoryEntry : Component
             request.Modifications.Add(addition);
         }
 
-        GetConnection().SendRequest(request);
+        GetConnection().SendRequestCompatible(request);
     }
 
     /// <summary>Deletes this object and everything under it.</summary>
@@ -459,7 +459,7 @@ public class DirectoryEntry : Component
         var delete = new DeleteRequest(_path.DistinguishedName);
         // Ask the server to delete the whole subtree (OID 1.2.840.113556.1.4.805).
         delete.Controls.Add(new TreeDeleteControl());
-        connection.SendRequest(delete);
+        connection.SendRequestCompatible(delete);
     }
 
     /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
@@ -468,7 +468,7 @@ public class DirectoryEntry : Component
         var distinguishedName = string.IsNullOrEmpty(_path.DistinguishedName)
             ? relativeName
             : $"{relativeName},{_path.DistinguishedName}";
-        GetConnection().SendRequest(new DeleteRequest(distinguishedName));
+        GetConnection().SendRequestCompatible(new DeleteRequest(distinguishedName));
     }
 
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
@@ -639,7 +639,8 @@ public class DirectoryEntry : Component
             entry.RefreshCache(new[] { "objectClass" });
             return true;
         }
-        catch (DirectoryOperationException ex) when (ex.Response.ResultCode == ResultCode.NoSuchObject)
+        catch (DirectoryServicesCOMException ex)
+            when (ex.ErrorCode == unchecked((int)0x80072030))
         {
             return false;
         }
@@ -722,7 +723,7 @@ public class DirectoryEntry : Component
                 (System.DirectoryServices.Protocols.SecurityMasks)(int)EffectiveSecurityMasks()));
         }
 
-        var response = (SearchResponse)connection.SendRequest(request);
+        var response = (SearchResponse)connection.SendRequestCompatible(request);
         var properties = new PropertyCollection(OnPropertyChanged);
 
         if (response.Entries.Count > 0)
@@ -816,7 +817,7 @@ public class DirectoryEntry : Component
         }
     }
 
-    internal LdapConnection GetConnection() => _connection ??= LdapConnectionFactory.CreateBound(BuildOptions());
+    internal LdapConnection GetConnection() => _connection ??= LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(BuildOptions()));
 
     /// <summary>
     /// Schema discovery uses a dedicated connection so it never attempts a
@@ -919,7 +920,7 @@ public class DirectoryEntry : Component
 
         var request = new ModifyRequest(_path.DistinguishedName);
         AddModifications(request, property);
-        GetConnection().SendRequest(request);
+        GetConnection().SendRequestCompatible(request);
         property.ResetChanged();
     }
 
@@ -934,7 +935,7 @@ public class DirectoryEntry : Component
         {
             DeleteOldRdn = true,
         };
-        GetConnection().SendRequest(request);
+        GetConnection().SendRequestCompatible(request);
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
     }
 

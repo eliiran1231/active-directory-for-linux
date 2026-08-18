@@ -156,7 +156,7 @@ public class DirectoryEntryWriteTests
 
         // Reading a deleted object should fail.
         using var reopened = Open(dn);
-        Assert.Throws<System.DirectoryServices.Protocols.DirectoryOperationException>(
+        Assert.Throws<DirectoryServicesCOMException>(
             () => _ = reopened.Properties["sAMAccountName"].Value);
     }
 
@@ -222,10 +222,10 @@ public class DirectoryEntryWriteTests
             using var child = parent.Children.Add($"OU={childName}", "organizationalUnit");
             child.CommitChanges();
 
-            var error = Assert.Throws<DirectoryOperationException>(
+            var error = Assert.Throws<DirectoryServicesCOMException>(
                 () => domain.Children.Remove(parent));
 
-            Assert.Equal(ResultCode.NotAllowedOnNonLeaf, error.Response.ResultCode);
+            Assert.Equal(unchecked((int)0x80072015), error.ErrorCode);
             AssertExists(parentDn);
             AssertExists(childDn);
         }
@@ -282,10 +282,10 @@ public class DirectoryEntryWriteTests
             using var child = second.Children.Add($"OU={childName}", "organizationalUnit");
             child.CommitChanges();
 
-            var error = Assert.Throws<DirectoryOperationException>(
+            var error = Assert.Throws<DirectoryServicesCOMException>(
                 () => first.Children.Remove(child));
 
-            Assert.Equal(ResultCode.NoSuchObject, error.Response.ResultCode);
+            Assert.Equal(unchecked((int)0x80072030), error.ErrorCode);
             AssertExists(childDn);
         }
         finally
@@ -370,8 +370,8 @@ public class DirectoryEntryWriteTests
     private static void AssertMissing(string dn)
     {
         using var entry = Open(dn);
-        var error = Assert.Throws<DirectoryOperationException>(() => entry.RefreshCache());
-        Assert.Equal(ResultCode.NoSuchObject, error.Response.ResultCode);
+        var error = Assert.Throws<DirectoryServicesCOMException>(() => entry.RefreshCache());
+        Assert.Equal(unchecked((int)0x80072030), error.ErrorCode);
     }
 
     private static void AssertMembers(string groupDn, IEnumerable<string> expected)

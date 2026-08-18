@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.DirectoryServices.Protocols;
+using AdForLinux.DirectoryServices.Ldap;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 
 namespace AdForLinux.DirectoryServices;
@@ -472,9 +473,6 @@ public class DirectorySearcher : Component
         var partialMode = returnPartialResults
             ? PartialResultProcessing.ReturnPartialResults
             : PartialResultProcessing.NoPartialResultSupport;
-        var asyncResult = timeout >= TimeSpan.Zero
-            ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
-            : connection.BeginSendRequest(request, partialMode, null, null);
         var returnedDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         void AddEntries(System.Collections.IEnumerable entries)
@@ -490,6 +488,10 @@ public class DirectorySearcher : Component
 
         try
         {
+            var asyncResult = timeout >= TimeSpan.Zero
+                ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
+                : connection.BeginSendRequest(request, partialMode, null, null);
+
             while (!asyncResult.IsCompleted)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -521,6 +523,14 @@ public class DirectorySearcher : Component
         {
             AddEntries(partial.Entries);
             return partial;
+        }
+        catch (LdapException ex) when (ex.ErrorCode == 87)
+        {
+            throw new ArgumentException(ex.Message, nameof(Filter), ex);
+        }
+        catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
+        {
+            throw LdapExceptionTranslator.Translate(exception);
         }
     }
 
@@ -630,8 +640,8 @@ public class DirectorySearcher : Component
             {
                 response = SendSearch(connection, request);
             }
-            catch (DirectoryOperationException ex)
-                when (ex.Response.ResultCode == ResultCode.NoSuchObject)
+            catch (DirectoryServicesCOMException ex)
+                when (ex.ErrorCode == unchecked((int)0x80072030))
             {
                 // A stale DN-valued reference behaves like an ASQ row that no
                 // longer resolves: it contributes no result.
@@ -676,8 +686,8 @@ public class DirectorySearcher : Component
         {
             response = SendSearch(connection, request);
         }
-        catch (DirectoryOperationException ex)
-            when (ex.Response.ResultCode == ResultCode.UnavailableCriticalExtension)
+        catch (DirectoryServicesCOMException ex)
+            when (ex.ErrorCode == unchecked((int)0x8007202C))
         {
             return null;
         }
@@ -695,7 +705,8 @@ public class DirectorySearcher : Component
 
         if (asq.Result is not ResultCode.Success and not ResultCode.SizeLimitExceeded)
         {
-            throw new DirectoryOperationException(
+            throw LdapExceptionTranslator.Translate(
+                asq.Result,
                 $"AttributeScopeQuery failed with LDAP {asq.Result} ({(int)asq.Result}).");
         }
 
@@ -751,7 +762,8 @@ public class DirectorySearcher : Component
             var separator = range.IndexOf('-');
             if (separator < 0 || !int.TryParse(range[(separator + 1)..], out var end))
             {
-                throw new DirectoryOperationException(
+                throw LdapExceptionTranslator.Translate(
+                    ResultCode.ProtocolError,
                     $"Directory server returned an invalid attribute range '{returnedAttribute}'.");
             }
 
@@ -791,6 +803,14 @@ public class DirectorySearcher : Component
             // FindOne / SizeLimit ask for fewer results than exist; the server
             // returns what it has plus this code. That is expected, not an error.
             return partial;
+        }
+        catch (LdapException ex) when (ex.ErrorCode == 87)
+        {
+            throw new ArgumentException(ex.Message, nameof(Filter), ex);
+        }
+        catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
+        {
+            throw LdapExceptionTranslator.Translate(exception);
         }
         finally
         {

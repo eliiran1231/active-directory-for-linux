@@ -344,6 +344,10 @@ public class PrincipalContext : IDisposable
             {
                 return false;
             }
+            catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
+            {
+                throw AccountManagementExceptionTranslator.TranslateProtocol(ex);
+            }
         }
     }
 
@@ -371,6 +375,10 @@ public class PrincipalContext : IDisposable
         catch (LdapException ex) when (IsAuthenticationFailure(ex))
         {
             return false;
+        }
+        catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
+        {
+            throw AccountManagementExceptionTranslator.TranslateProtocol(ex);
         }
     }
 
@@ -449,11 +457,21 @@ public class PrincipalContext : IDisposable
             });
     }
 
-    private string DiscoverDefaultNamingContext()
+    private string DiscoverDefaultNamingContext() =>
+        AccountManagementExceptionTranslator.Execute(DiscoverDefaultNamingContextCore);
+
+    private string DiscoverDefaultNamingContextCore()
     {
-        using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
-        return RootDse.GetDefaultNamingContext(connection)
-            ?? throw new InvalidOperationException("The server did not report a default naming context.");
+        try
+        {
+            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+            return RootDse.GetDefaultNamingContext(connection)
+                ?? throw new InvalidOperationException("The server did not report a default naming context.");
+        }
+        catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
+        {
+            throw AccountManagementExceptionTranslator.TranslateProtocol(ex);
+        }
     }
 
     private string DiscoverRootDomainNamingContext()

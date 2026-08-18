@@ -376,16 +376,18 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     }
 
     private List<string> CurrentDirectMemberDns() =>
-        !_group.IsPersisted
-            ? new List<string>()
-            : RangedAttributeReader.Read(_group.RequireEntry(), "member")
-                .Select(value => value.ToString()!)
-                .ToList();
+        AccountManagementExceptionTranslator.Execute(() =>
+            !_group.IsPersisted
+                ? new List<string>()
+                : RangedAttributeReader.Read(_group.RequireEntry(), "member")
+                    .Select(value => value.ToString()!)
+                    .ToList());
 
     private List<string> CurrentMemberDns()
     {
         var dns = CurrentDirectMemberDns();
-        _primaryGroupMemberDns ??= _group.PrimaryGroupMemberDns().ToList();
+        _primaryGroupMemberDns ??= AccountManagementExceptionTranslator.Execute(
+            () => _group.PrimaryGroupMemberDns().ToList());
         foreach (var dn in _primaryGroupMemberDns)
         {
             AddDn(dns, dn);

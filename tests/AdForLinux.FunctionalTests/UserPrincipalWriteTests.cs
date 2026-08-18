@@ -400,7 +400,7 @@ public class UserPrincipalWriteTests
 
             var exception = Assert.Throws<PasswordException>(
                 () => user.ChangePassword("Wr0ng!OldPass#2026", "Str0ng!NewPass#2026"));
-            Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(
+            Assert.IsType<DirectoryServicesCOMException>(
                 exception.InnerException);
         }
         finally
@@ -469,7 +469,7 @@ public class UserPrincipalWriteTests
             user.SetPassword("short");
 
             var exception = Assert.Throws<InvalidOperationException>(user.Save);
-            Assert.IsType<System.DirectoryServices.Protocols.DirectoryOperationException>(
+            Assert.IsType<DirectoryServicesCOMException>(
                 exception.InnerException);
         }
         finally

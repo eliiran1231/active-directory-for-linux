@@ -5,8 +5,8 @@ using System.Runtime.Serialization;
 namespace AdForLinux.DirectoryServices;
 
 /// <summary>
-/// Compatibility exception for code that exposes the classic DirectoryServices COM exception type.
-/// LDAP protocol failures continue to surface as <see cref="System.DirectoryServices.Protocols.DirectoryOperationException"/>.
+/// The exception exposed by the classic DirectoryServices API when an LDAP
+/// provider operation fails.
 /// </summary>
 [Serializable]
 public class DirectoryServicesCOMException : COMException
@@ -32,9 +32,15 @@ public class DirectoryServicesCOMException : COMException
     {
     }
 
-    internal DirectoryServicesCOMException(string? message, int extendedError, string? extendedErrorMessage)
-        : base(message)
+    internal DirectoryServicesCOMException(
+        string? message,
+        Exception inner,
+        int errorCode,
+        int extendedError,
+        string? extendedErrorMessage)
+        : base(message, inner)
     {
+        HResult = errorCode;
         ExtendedError = extendedError;
         ExtendedErrorMessage = extendedErrorMessage;
     }

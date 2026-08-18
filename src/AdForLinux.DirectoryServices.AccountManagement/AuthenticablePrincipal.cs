@@ -262,7 +262,8 @@ public abstract class AuthenticablePrincipal : Principal
                 return false;
             }
 
-            var descriptor = Entry.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
+            var descriptor = AccountManagementExceptionTranslator.Execute(
+                () => Entry.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl));
             return ChangePasswordAcl.IsDenied(descriptor);
         }
         set
@@ -322,7 +323,10 @@ public abstract class AuthenticablePrincipal : Principal
         return DateTime.UtcNow < lockedAt.Value + duration.Value;
     }
 
-    private TimeSpan? ReadDomainLockoutDuration()
+    private TimeSpan? ReadDomainLockoutDuration() =>
+        AccountManagementExceptionTranslator.Execute(ReadDomainLockoutDurationCore);
+
+    private TimeSpan? ReadDomainLockoutDurationCore()
     {
         // lockoutDuration lives on the domain object at the naming context root,
         // which is not the container when the context is scoped.
@@ -381,7 +385,8 @@ public abstract class AuthenticablePrincipal : Principal
     {
         CheckDisposedOrDeleted();
         var entry = RequireSaved();
-        entry.ReplaceAttributeImmediate("lockoutTime", "0");
+        AccountManagementExceptionTranslator.Execute(
+            () => entry.ReplaceAttributeImmediate("lockoutTime", "0"));
     }
 
     /// <summary>Forces the password to be changed at next logon. Immediate.</summary>
@@ -394,7 +399,8 @@ public abstract class AuthenticablePrincipal : Principal
             return;
         }
 
-        Entry.ReplaceAttributeImmediate("pwdLastSet", "0");
+        AccountManagementExceptionTranslator.Execute(
+            () => Entry.ReplaceAttributeImmediate("pwdLastSet", "0"));
     }
 
     public void RefreshExpiredPassword()
@@ -406,7 +412,8 @@ public abstract class AuthenticablePrincipal : Principal
             return;
         }
 
-        Entry.ReplaceAttributeImmediate("pwdLastSet", "-1");
+        AccountManagementExceptionTranslator.Execute(
+            () => Entry.ReplaceAttributeImmediate("pwdLastSet", "-1"));
     }
 
     private protected int? ReadUserAccountControl()
@@ -463,9 +470,13 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             throw new PasswordException(exception.Message, exception);
+        }
+        catch (System.Runtime.InteropServices.COMException exception)
+        {
+            throw AccountManagementExceptionTranslator.Translate(exception);
         }
     }
 
@@ -475,9 +486,13 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             throw new InvalidOperationException(exception.Message, exception);
+        }
+        catch (System.Runtime.InteropServices.COMException exception)
+        {
+            throw AccountManagementExceptionTranslator.Translate(exception);
         }
     }
 
@@ -490,11 +505,15 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             // Microsoft surfaces a password rejected by SetPassword as an
             // InvalidOperationException, both immediately and during Save().
             throw new InvalidOperationException(exception.Message, exception);
+        }
+        catch (System.Runtime.InteropServices.COMException exception)
+        {
+            throw AccountManagementExceptionTranslator.Translate(exception);
         }
     }
 
@@ -630,6 +649,10 @@ public abstract class AuthenticablePrincipal : Principal
     }
 
     private static PrincipalSearchResult<T> FindByAdvancedFilter<T>(PrincipalContext context, string condition)
+        where T : AuthenticablePrincipal => AccountManagementExceptionTranslator.Execute(
+            () => FindByAdvancedFilterCore<T>(context, condition));
+
+    private static PrincipalSearchResult<T> FindByAdvancedFilterCore<T>(PrincipalContext context, string condition)
         where T : AuthenticablePrincipal
     {
         ArgumentNullException.ThrowIfNull(context);
