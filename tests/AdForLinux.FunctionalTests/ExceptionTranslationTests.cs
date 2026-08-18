@@ -11,6 +11,20 @@ namespace AdForLinux.FunctionalTests;
 public class ExceptionTranslationTests
 {
     [Theory]
+    [InlineData(ResultCode.InappropriateMatching, unchecked((int)0x8007202E))]
+    [InlineData(ResultCode.AffectsMultipleDsas, unchecked((int)0x80072039))]
+    public void DirectoryResultCodesUseExactAdsiHResults(
+        ResultCode resultCode,
+        int expectedHResult)
+    {
+        var translated = LdapExceptionTranslator.Translate(resultCode, "server failure");
+
+        Assert.Equal(expectedHResult, translated.ErrorCode);
+        Assert.Equal((int)resultCode, translated.ExtendedError);
+        Assert.IsType<DirectoryOperationException>(translated.InnerException);
+    }
+
+    [Theory]
     [InlineData(81, unchecked((int)0x8007203A))]
     [InlineData(85, unchecked((int)0x80072022))]
     [InlineData(87, unchecked((int)0x8007203E))]

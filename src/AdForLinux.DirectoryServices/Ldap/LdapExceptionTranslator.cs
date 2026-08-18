@@ -100,7 +100,7 @@ internal static class LdapExceptionTranslator
                 ResultCode.ConfidentialityRequired => unchecked((int)0x8007202D),
                 ResultCode.NoSuchAttribute => unchecked((int)0x8007200A),
                 ResultCode.UndefinedAttributeType => unchecked((int)0x8007200C),
-                ResultCode.InappropriateMatching => unchecked((int)0x8007200E),
+                ResultCode.InappropriateMatching => unchecked((int)0x8007202E),
                 ResultCode.ConstraintViolation => unchecked((int)0x8007202F),
                 ResultCode.AttributeOrValueExists => unchecked((int)0x8007200D),
                 ResultCode.InvalidAttributeSyntax => unchecked((int)0x8007200B),
@@ -118,7 +118,7 @@ internal static class LdapExceptionTranslator
                 ResultCode.NotAllowedOnRdn => unchecked((int)0x80072016),
                 ResultCode.EntryAlreadyExists => unchecked((int)0x80071392),
                 ResultCode.ObjectClassModificationsProhibited => unchecked((int)0x80072017),
-                ResultCode.AffectsMultipleDsas => unchecked((int)0x80072018),
+                ResultCode.AffectsMultipleDsas => unchecked((int)0x80072039),
                 _ => AdsUnknownError,
             };
         }
