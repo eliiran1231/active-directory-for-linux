@@ -391,25 +391,8 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         var members = new List<MemberReference>();
         foreach (var dn in CurrentDirectMemberDns())
         {
-            using var entry = _group.Context.CreateDirectoryEntry(dn);
-            var principal = PrincipalFactory.FromEntry(_group.Context, entry);
-            if (principal is null)
-            {
-                AddMember(members, new MemberReference(dn, dn, _group.Context));
-                continue;
-            }
-
-            using (principal)
-            {
-                var value = principal is ForeignSecurityPrincipal
-                    ? GroupMembershipConverter.SelectValue(
-                        isForeignSecurityPrincipal: true,
-                        sameForest: true,
-                        dn,
-                        principal.GetSidBytes())
-                    : dn;
-                AddMember(members, new MemberReference(value, dn, _group.Context));
-            }
+            var value = GroupMembershipConverter.ForStoredDistinguishedName(dn);
+            AddMember(members, new MemberReference(value, dn, _group.Context));
         }
 
         return members;

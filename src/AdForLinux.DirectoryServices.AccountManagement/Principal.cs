@@ -142,7 +142,10 @@ public abstract class Principal : IDisposable
 
     /// <summary>Returns a copy of the directory SID for internal store operations.</summary>
     internal byte[]? GetSidBytes() =>
-        Entry?.Properties["objectSid"].Value is byte[] bytes ? bytes.ToArray() : null;
+        AccountManagementExceptionTranslator.Execute(
+                () => Entry?.Properties["objectSid"].Value) is byte[] bytes
+            ? bytes.ToArray()
+            : null;
 
     /// <summary>The object name (<c>cn</c>).</summary>
     public string? Name

@@ -58,6 +58,23 @@ public class ForeignGroupMembershipConversionTests
     }
 
     [Fact]
+    public void Stored_fsp_dn_is_normalized_without_reading_the_directory_object()
+    {
+        var value = GroupMembershipConverter.ForStoredDistinguishedName(
+            "CN=S-1-5-21-287454020,CN=ForeignSecurityPrincipals,DC=example,DC=com");
+
+        Assert.Equal("<SID=01020000000000051500000044332211>", value);
+    }
+
+    [Theory]
+    [InlineData("CN=S-1-5-21-1,OU=Users,DC=example,DC=com")]
+    [InlineData("CN=not-a-sid,CN=ForeignSecurityPrincipals,DC=example,DC=com")]
+    public void Non_fsp_or_malformed_dns_remain_distinguished_names(string dn)
+    {
+        Assert.Equal(dn, GroupMembershipConverter.ForStoredDistinguishedName(dn));
+    }
+
+    [Fact]
     public void Cross_forest_conversion_requires_a_sid()
     {
         Assert.Throws<PrincipalOperationException>(() =>
