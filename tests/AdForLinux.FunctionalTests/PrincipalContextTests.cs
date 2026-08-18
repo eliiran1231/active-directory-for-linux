@@ -128,6 +128,23 @@ public class PrincipalContextTests
     }
 
     [Fact]
+    public void ValidateCredentials_returns_false_when_fallback_rejects_wrong_password_on_Linux()
+    {
+        Assert.True(OperatingSystem.IsLinux());
+        using var context = Authenticated();
+        var lastMethod = typeof(PrincipalContext).GetField(
+            "_lastCredentialValidationMethod",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(lastMethod);
+        lastMethod.SetValue(context, Enum.Parse(lastMethod.FieldType, "Negotiate"));
+
+        // Negotiate fails in this fixture, forcing the second Simple+SSL bind.
+        Assert.False(context.ValidateCredentials(
+            TestSettings.BindDn,
+            "definitely-wrong-password"));
+    }
+
+    [Fact]
     public void Issue_11_constructor_overloads_and_options_are_available()
     {
         using var credentialContext = new PrincipalContext(

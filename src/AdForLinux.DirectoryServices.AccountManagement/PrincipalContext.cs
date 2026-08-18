@@ -360,6 +360,10 @@ public class PrincipalContext : IDisposable
             {
                 return false;
             }
+            catch (DirectoryOperationException ex) when (IsAuthenticationFailure(ex))
+            {
+                return false;
+            }
             catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
             {
                 throw AccountManagementExceptionTranslator.TranslateProtocol(ex);
