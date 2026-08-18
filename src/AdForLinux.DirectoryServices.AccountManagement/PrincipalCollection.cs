@@ -18,6 +18,8 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private bool _clearPending;
     private bool _disposed;
     private List<string>? _primaryGroupMemberDns;
+    private readonly Dictionary<string, MemberReference> _memberSources =
+        new(StringComparer.OrdinalIgnoreCase);
 
     internal PrincipalCollection(GroupPrincipal group)
     {
@@ -41,7 +43,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         {
             CheckDisposed();
             _group.EnsureMembersUsable();
-            return EffectiveMemberDns().Count;
+            return EffectiveMembers().Count;
         }
     }
 
@@ -55,21 +57,23 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
-        var dn = RequireDn(principal);
-        if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsDn(dn))
+        var value = RequireMembershipValue(principal);
+        if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsValue(value))
         {
             throw new PrincipalExistsException(
                 "The principal already exists in the collection.");
         }
 
-        if (RemoveDn(_removedValuesPending, dn))
+        _memberSources[value] = new MemberReference(
+            value, principal.DistinguishedName!, principal.Context);
+        if (RemoveValue(_removedValuesPending, value))
         {
-            AddDn(_insertedValuesCompleted, dn);
+            AddValue(_insertedValuesCompleted, value);
         }
         else
         {
-            AddDn(_insertedValuesPending, dn);
-            RemoveDn(_removedValuesCompleted, dn);
+            AddValue(_insertedValuesPending, value);
+            RemoveValue(_removedValuesCompleted, value);
         }
     }
 
@@ -99,26 +103,26 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
-        var dn = RequireDn(principal);
+        var value = RequireMembershipValue(principal);
         if (_group.IsPersisted && principal.IsPrimaryGroup(_group))
         {
             throw new InvalidOperationException(
                 "The principal cannot be removed because this is its primary group.");
         }
 
-        if (RemoveDn(_insertedValuesPending, dn))
+        if (RemoveValue(_insertedValuesPending, value))
         {
-            AddDn(_removedValuesCompleted, dn);
+            AddValue(_removedValuesCompleted, value);
             return true;
         }
 
-        if (!ContainsDn(dn))
+        if (!ContainsValue(value))
         {
             return false;
         }
 
-        AddDn(_removedValuesPending, dn);
-        RemoveDn(_insertedValuesCompleted, dn);
+        AddValue(_removedValuesPending, value);
+        RemoveValue(_insertedValuesCompleted, value);
         return true;
     }
 
@@ -148,8 +152,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
-        var dn = RequireDn(principal);
-        return ContainsDn(dn);
+        return ContainsValue(RequireMembershipValue(principal));
     }
 
     public bool Contains(
@@ -238,13 +241,13 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
         foreach (var dn in _removedValuesPending)
         {
-            AddDn(_removedValuesCompleted, dn);
+            AddValue(_removedValuesCompleted, dn);
         }
 
         _removedValuesPending.Clear();
         foreach (var dn in _insertedValuesPending)
         {
-            AddDn(_insertedValuesCompleted, dn);
+            AddValue(_insertedValuesCompleted, dn);
         }
 
         _insertedValuesPending.Clear();
@@ -266,11 +269,10 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     private IEnumerable<Principal> EnumerateMembers()
     {
-        var context = _group.Context;
-        foreach (var dn in EffectiveMemberDns())
+        foreach (var member in EffectiveMembers())
         {
-            var entry = context.CreateDirectoryEntry(dn);
-            var principal = PrincipalFactory.FromEntry(context, entry);
+            var entry = member.Context.CreateDirectoryEntry(member.DistinguishedName);
+            var principal = PrincipalFactory.FromEntry(member.Context, entry);
             if (principal is null)
             {
                 entry.Dispose();
@@ -356,23 +358,24 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         }
     }
 
-    private bool ContainsDn(string dn)
+    private bool ContainsValue(string value)
     {
-        if (ContainsDn(_insertedValuesCompleted, dn)
-            || ContainsDn(_insertedValuesPending, dn))
+        if (ContainsValue(_insertedValuesCompleted, value)
+            || ContainsValue(_insertedValuesPending, value))
         {
             return true;
         }
 
-        if (ContainsDn(_removedValuesCompleted, dn)
-            || ContainsDn(_removedValuesPending, dn)
+        if (ContainsValue(_removedValuesCompleted, value)
+            || ContainsValue(_removedValuesPending, value)
             || _clearPending
             || _clearCompleted)
         {
             return false;
         }
 
-        return CurrentDirectMemberDns().Contains(dn, StringComparer.OrdinalIgnoreCase);
+        return CurrentDirectMembers().Any(member =>
+            member.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
     }
 
     private List<string> CurrentDirectMemberDns() =>
@@ -383,64 +386,112 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
                     .Select(value => value.ToString()!)
                     .ToList());
 
-    private List<string> CurrentMemberDns()
+    private List<MemberReference> CurrentDirectMembers()
     {
-        var dns = CurrentDirectMemberDns();
+        var members = new List<MemberReference>();
+        foreach (var dn in CurrentDirectMemberDns())
+        {
+            using var entry = _group.Context.CreateDirectoryEntry(dn);
+            var principal = PrincipalFactory.FromEntry(_group.Context, entry);
+            if (principal is null)
+            {
+                AddMember(members, new MemberReference(dn, dn, _group.Context));
+                continue;
+            }
+
+            using (principal)
+            {
+                var value = principal is ForeignSecurityPrincipal
+                    ? GroupMembershipConverter.SelectValue(
+                        isForeignSecurityPrincipal: true,
+                        sameForest: true,
+                        dn,
+                        principal.GetSidBytes())
+                    : dn;
+                AddMember(members, new MemberReference(value, dn, _group.Context));
+            }
+        }
+
+        return members;
+    }
+
+    private List<MemberReference> CurrentMembers()
+    {
+        var members = CurrentDirectMembers();
         _primaryGroupMemberDns ??= AccountManagementExceptionTranslator.Execute(
             () => _group.PrimaryGroupMemberDns().ToList());
         foreach (var dn in _primaryGroupMemberDns)
         {
-            AddDn(dns, dn);
+            AddMember(members, new MemberReference(dn, dn, _group.Context));
         }
 
-        return dns;
+        return members;
     }
 
-    /// <summary>Member DNs with the staged changes applied.</summary>
-    private List<string> EffectiveMemberDns()
+    /// <summary>Member references with the staged changes applied.</summary>
+    private List<MemberReference> EffectiveMembers()
     {
-        var dns = _clearPending || _clearCompleted
-            ? new List<string>()
-            : CurrentMemberDns();
-        dns.RemoveAll(dn =>
-            ContainsDn(_removedValuesCompleted, dn)
-            || ContainsDn(_removedValuesPending, dn));
-        foreach (var dn in _insertedValuesCompleted)
+        var members = _clearPending || _clearCompleted
+            ? new List<MemberReference>()
+            : CurrentMembers();
+        members.RemoveAll(member =>
+            ContainsValue(_removedValuesCompleted, member.Value)
+            || ContainsValue(_removedValuesPending, member.Value));
+        foreach (var value in _insertedValuesCompleted)
         {
-            AddDn(dns, dn);
+            AddMember(members, SourceFor(value));
         }
 
-        foreach (var dn in _insertedValuesPending)
+        foreach (var value in _insertedValuesPending)
         {
-            AddDn(dns, dn);
+            AddMember(members, SourceFor(value));
         }
 
-        return dns;
+        return members;
     }
 
-    private static string RequireDn(Principal principal)
+    private string RequireMembershipValue(Principal principal)
     {
         ArgumentNullException.ThrowIfNull(principal);
-        return principal.DistinguishedName
-            ?? throw new InvalidOperationException(
-                "The principal must be saved before it can be used as a group member.");
+        return GroupMembershipConverter.ForPrincipal(_group, principal);
     }
 
-    private static bool ContainsDn(IEnumerable<string> values, string dn) =>
-        values.Contains(dn, StringComparer.OrdinalIgnoreCase);
+    private MemberReference SourceFor(string value) =>
+        _memberSources.TryGetValue(value, out var source)
+            ? source
+            : throw new InvalidOperationException("The staged group member source is unavailable.");
 
-    private static void AddDn(ICollection<string> values, string dn)
+    private static bool ContainsValue(IEnumerable<string> values, string value) =>
+        values.Contains(value, StringComparer.OrdinalIgnoreCase);
+
+    private static void AddValue(ICollection<string> values, string value)
     {
-        if (!ContainsDn(values, dn))
+        if (!ContainsValue(values, value))
         {
-            values.Add(dn);
+            values.Add(value);
         }
     }
 
-    private static bool RemoveDn(ICollection<string> values, string dn)
+    private static bool RemoveValue(ICollection<string> values, string value)
     {
-        var match = values.FirstOrDefault(value =>
-            value.Equals(dn, StringComparison.OrdinalIgnoreCase));
+        var match = values.FirstOrDefault(candidate =>
+            candidate.Equals(value, StringComparison.OrdinalIgnoreCase));
         return match is not null && values.Remove(match);
     }
+
+    private static void AddMember(
+        ICollection<MemberReference> members,
+        MemberReference member)
+    {
+        if (!members.Any(candidate =>
+                candidate.Value.Equals(member.Value, StringComparison.OrdinalIgnoreCase)))
+        {
+            members.Add(member);
+        }
+    }
+
+    private sealed record MemberReference(
+        string Value,
+        string DistinguishedName,
+        PrincipalContext Context);
 }
