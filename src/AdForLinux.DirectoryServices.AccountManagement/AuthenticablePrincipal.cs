@@ -463,7 +463,7 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             throw new PasswordException(exception.Message, exception);
         }
@@ -475,7 +475,7 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             throw new InvalidOperationException(exception.Message, exception);
         }
@@ -490,7 +490,7 @@ public abstract class AuthenticablePrincipal : Principal
         {
             operation();
         }
-        catch (System.DirectoryServices.Protocols.DirectoryOperationException exception)
+        catch (DirectoryServicesCOMException exception)
         {
             // Microsoft surfaces a password rejected by SetPassword as an
             // InvalidOperationException, both immediately and during Save().
@@ -630,6 +630,10 @@ public abstract class AuthenticablePrincipal : Principal
     }
 
     private static PrincipalSearchResult<T> FindByAdvancedFilter<T>(PrincipalContext context, string condition)
+        where T : AuthenticablePrincipal => AccountManagementExceptionTranslator.Execute(
+            () => FindByAdvancedFilterCore<T>(context, condition));
+
+    private static PrincipalSearchResult<T> FindByAdvancedFilterCore<T>(PrincipalContext context, string condition)
         where T : AuthenticablePrincipal
     {
         ArgumentNullException.ThrowIfNull(context);

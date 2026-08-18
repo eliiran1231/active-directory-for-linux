@@ -94,7 +94,7 @@ public abstract class Principal : IDisposable
                 return null;
             }
 
-            var guid = Entry.Guid;
+            var guid = AccountManagementExceptionTranslator.Execute(() => Entry.Guid);
             return guid == System.Guid.Empty ? null : guid;
         }
     }
@@ -105,7 +105,8 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            if (Entry?.Properties["objectSid"].Value is not byte[] bytes)
+            if (AccountManagementExceptionTranslator.Execute(
+                    () => Entry?.Properties["objectSid"].Value) is not byte[] bytes)
             {
                 return null;
             }
@@ -132,7 +133,8 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return Entry?.Properties["objectSid"].Value is byte[] bytes
+            return AccountManagementExceptionTranslator.Execute(
+                    () => Entry?.Properties["objectSid"].Value) is byte[] bytes
                 ? SidCodec.Format(bytes)
                 : null;
         }
@@ -195,7 +197,7 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return Entry?.SchemaClassName;
+            return AccountManagementExceptionTranslator.Execute(() => Entry?.SchemaClassName);
         }
     }
 
@@ -280,7 +282,10 @@ public abstract class Principal : IDisposable
             membershipFilter);
     }
 
-    private protected PrincipalSearchResult<Principal> GetAuthorizationGroupsCore()
+    private protected PrincipalSearchResult<Principal> GetAuthorizationGroupsCore() =>
+        AccountManagementExceptionTranslator.Execute(GetAuthorizationGroupsUntranslated);
+
+    private PrincipalSearchResult<Principal> GetAuthorizationGroupsUntranslated()
     {
         CheckDisposedOrDeleted();
         var distinguishedName = RequireDistinguishedName();
@@ -325,6 +330,11 @@ public abstract class Principal : IDisposable
     }
 
     private PrincipalSearchResult<Principal> FindGroups(
+        PrincipalContext contextToQuery,
+        string membershipFilter) => AccountManagementExceptionTranslator.Execute(
+            () => FindGroupsCore(contextToQuery, membershipFilter));
+
+    private PrincipalSearchResult<Principal> FindGroupsCore(
         PrincipalContext contextToQuery,
         string membershipFilter)
     {
@@ -574,6 +584,13 @@ public abstract class Principal : IDisposable
         PrincipalContext context,
         Type principalType,
         IdentityType? identityType,
+        string identityValue) => AccountManagementExceptionTranslator.Execute(
+            () => FindByIdentityWithTypeUntranslated(context, principalType, identityType, identityValue));
+
+    private static Principal? FindByIdentityWithTypeUntranslated(
+        PrincipalContext context,
+        Type principalType,
+        IdentityType? identityType,
         string identityValue)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -732,7 +749,9 @@ public abstract class Principal : IDisposable
     /// the context container (its <see cref="Name"/> becomes the CN); an
     /// existing one has its changed properties written.
     /// </summary>
-    public void Save()
+    public void Save() => AccountManagementExceptionTranslator.Execute(SaveCore);
+
+    private void SaveCore()
     {
         CheckDisposedOrDeleted();
         if (Entry is not null)
@@ -797,7 +816,10 @@ public abstract class Principal : IDisposable
     /// Saves a new principal in, or moves an existing principal to, another
     /// domain context.
     /// </summary>
-    public void Save(PrincipalContext context)
+    public void Save(PrincipalContext context) =>
+        AccountManagementExceptionTranslator.Execute(() => SaveCore(context));
+
+    private void SaveCore(PrincipalContext context)
     {
         CheckDisposedOrDeleted();
         if (context is null)
@@ -896,7 +918,9 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>Deletes this principal from the directory.</summary>
-    public void Delete()
+    public void Delete() => AccountManagementExceptionTranslator.Execute(DeleteCore);
+
+    private void DeleteCore()
     {
         CheckDisposedOrDeleted();
         if (Entry is null)
@@ -1060,7 +1084,8 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (Entry is not null)
         {
-            return Entry.Properties[attributeName].Value?.ToString();
+            return AccountManagementExceptionTranslator.Execute(
+                () => Entry.Properties[attributeName].Value?.ToString());
         }
 
         return _pending.TryGetValue(attributeName, out var value) ? value?.ToString() : null;
@@ -1071,7 +1096,8 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (Entry is not null)
         {
-            return Entry.Properties[attributeName].Cast<object>().Select(value => value.ToString()!).ToArray();
+            return AccountManagementExceptionTranslator.Execute(
+                () => Entry.Properties[attributeName].Cast<object>().Select(value => value.ToString()!).ToArray());
         }
 
         return _pending.TryGetValue(attributeName, out var value) && value is IEnumerable<object> many
@@ -1099,7 +1125,8 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (Entry is not null)
         {
-            return Entry.Properties[attributeName].Value;
+            return AccountManagementExceptionTranslator.Execute(
+                () => Entry.Properties[attributeName].Value);
         }
 
         return _pending.TryGetValue(attributeName, out var value) ? value : null;
@@ -1110,7 +1137,8 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (Entry is not null)
         {
-            return Entry.Properties[attributeName].Cast<object>().ToArray();
+            return AccountManagementExceptionTranslator.Execute(
+                () => Entry.Properties[attributeName].Cast<object>().ToArray());
         }
 
         return _pending.TryGetValue(attributeName, out var value) && value is IEnumerable<object> many

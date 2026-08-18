@@ -58,7 +58,7 @@ internal static class LdapAttributeSchema
             ProtocolScope.OneLevel,
             "attributeSyntax",
             "oMSyntax");
-        var response = (SearchResponse)connection.SendRequest(request);
+        var response = (SearchResponse)connection.SendRequestCompatible(request);
 
         if (response.Entries.Count != 1)
         {
@@ -104,8 +104,10 @@ internal static class LdapAttributeSchema
             : null;
     }
 
-    private static DirectoryOperationException InvalidAttributeSyntax(string attributeName, string reason) =>
-        new($"AttributeScopeQuery attribute '{attributeName}' is invalid: {reason}. " +
+    private static DirectoryServicesCOMException InvalidAttributeSyntax(string attributeName, string reason) =>
+        LdapExceptionTranslator.Translate(
+            ResultCode.InvalidAttributeSyntax,
+            $"AttributeScopeQuery attribute '{attributeName}' is invalid: {reason}. " +
             "LDAP invalidAttributeSyntax (21).");
 
     private static string EscapeFilterValue(string value) => value

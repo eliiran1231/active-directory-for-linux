@@ -26,7 +26,7 @@ internal static class RangedAttributeReader
                 "(objectClass=*)",
                 ProtocolScope.Base,
                 requestedName);
-            var response = (SearchResponse)entry.GetConnection().SendRequest(request);
+            var response = (SearchResponse)entry.GetConnection().SendRequestCompatible(request);
             if (response.Entries.Count == 0)
             {
                 return values;

@@ -62,7 +62,10 @@ public class GroupPrincipal : Principal
     /// Returns this group's members. When <paramref name="recursive"/> is
     /// true, members of nested groups are included as well.
     /// </summary>
-    public PrincipalSearchResult<Principal> GetMembers(bool recursive)
+    public PrincipalSearchResult<Principal> GetMembers(bool recursive) =>
+        AccountManagementExceptionTranslator.Execute(() => GetMembersCore(recursive));
+
+    private PrincipalSearchResult<Principal> GetMembersCore(bool recursive)
     {
         CheckDisposedOrDeleted();
         if (!recursive)
@@ -225,7 +228,8 @@ public class GroupPrincipal : Principal
 
     internal void EnsureMembersUsable() => CheckDisposedOrDeleted();
 
-    internal bool HasPrimaryGroupMembers() => PrimaryGroupMemberDns().Any();
+    internal bool HasPrimaryGroupMembers() => AccountManagementExceptionTranslator.Execute(
+        () => PrimaryGroupMemberDns().Any());
 
     internal override IEnumerable<PrincipalQueryFilter> QueryFilters
     {

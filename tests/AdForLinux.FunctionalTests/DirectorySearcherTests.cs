@@ -594,7 +594,7 @@ public class DirectorySearcherTests
             AttributeScopeQuery = attributeName,
         };
 
-        var error = Assert.Throws<ProtocolDirectoryOperationException>(() => searcher.FindAll());
+        var error = Assert.Throws<DirectoryServicesCOMException>(() => searcher.FindAll());
         Assert.Contains("InvalidAttributeSyntax (21)", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 

@@ -222,12 +222,12 @@ public class PrincipalContextTests
     }
 
     [Fact]
-    public void ValidateCredentials_propagates_non_authentication_ldap_failures()
+    public void ValidateCredentials_translates_server_unavailable()
     {
         using var context = new PrincipalContext(
             ContextType.Domain, "127.0.0.2", "DC=example,DC=test");
 
-        Assert.ThrowsAny<DirectoryException>(() => context.ValidateCredentials(
+        Assert.Throws<PrincipalServerDownException>(() => context.ValidateCredentials(
             "user", "password", ContextOptions.SimpleBind));
     }
 

@@ -21,7 +21,7 @@ internal static class RootDse
             ProtocolScope.Base,
             attributes);
 
-        var response = (SearchResponse)connection.SendRequest(request);
+        var response = (SearchResponse)connection.SendRequestCompatible(request);
 
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (response.Entries.Count == 0)

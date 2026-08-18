@@ -112,8 +112,7 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
         var error = Record.Exception(entry.CommitChanges);
 
         Assert.NotNull(error);
-        Assert.True(error is System.DirectoryServices.Protocols.LdapException or
-            System.DirectoryServices.Protocols.DirectoryOperationException);
+        Assert.IsType<System.Runtime.InteropServices.COMException>(error);
         Assert.Same(dirtySecurity, entry.ObjectSecurity);
     }
 

@@ -91,7 +91,8 @@ public class DirectoryEntryAuthenticationTests
             // explicit credential at Negotiate BindHelper even when GSSAPI's
             // NTLM mechanism is installed. Do not reject it before Bind(): a
             // future/runtime-specific implementation may support it.
-            var error = Assert.Throws<LdapException>(() => entry.SchemaClassName);
+            var error = Assert.Throws<System.Runtime.InteropServices.COMException>(
+                () => entry.SchemaClassName);
             Assert.Contains("not supported", error.Message, StringComparison.OrdinalIgnoreCase);
             return;
         }
