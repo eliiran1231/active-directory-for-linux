@@ -91,5 +91,7 @@ public class DirectoryEntryOptionsTests
         Assert.Equal(EntrySecurityMasks.Owner | EntrySecurityMasks.Dacl, entry.Options.SecurityMasks);
         Assert.Throws<InvalidEnumArgumentException>(
             () => entry.Options.SecurityMasks = (EntrySecurityMasks)0x10);
+        Assert.Throws<InvalidEnumArgumentException>(
+            () => entry.Options.SecurityMasks = (EntrySecurityMasks)(-1));
     }
 }

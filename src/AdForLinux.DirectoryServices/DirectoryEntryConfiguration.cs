@@ -107,8 +107,7 @@ public sealed class DirectoryEntryConfiguration
         {
             const SecurityMasks allMasks = SecurityMasks.Owner | SecurityMasks.Group |
                                            SecurityMasks.Dacl | SecurityMasks.Sacl;
-            // Match System.DirectoryServices: values above the complete mask are invalid.
-            if (value > allMasks)
+            if (value < SecurityMasks.None || value > allMasks)
             {
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SecurityMasks));
             }
