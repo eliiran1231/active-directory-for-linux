@@ -58,3 +58,6 @@ nunit-*.xml
 
 # Graphify
 graphify-out/
+
+# Agents
+.agent-task
