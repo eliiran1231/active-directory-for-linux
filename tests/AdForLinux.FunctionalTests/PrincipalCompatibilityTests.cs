@@ -191,6 +191,26 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
+    public void Disposing_a_group_mid_iteration_invalidates_its_open_enumerator()
+    {
+        using var context = OfflineContext();
+        var group = new GroupPrincipal(context);
+        var members = group.Members;
+        var enumerator = members.GetEnumerator();
+
+        // Dispose the owning group (and therefore its PrincipalCollection) while
+        // the enumerator is still open, instead of disposing the enumerator itself.
+        group.Dispose();
+
+        var moveNextException = Assert.Throws<ObjectDisposedException>(() => enumerator.MoveNext());
+        Assert.Equal("PrincipalCollection", moveNextException.ObjectName);
+        var currentException = Assert.Throws<ObjectDisposedException>(() => enumerator.Current);
+        Assert.Equal("PrincipalCollection", currentException.ObjectName);
+
+        enumerator.Dispose();
+    }
+
+    [Fact]
     public void Principal_surface_validates_arguments_before_connecting()
     {
         using var context = OfflineContext();
