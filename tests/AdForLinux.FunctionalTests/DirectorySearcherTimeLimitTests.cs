@@ -45,6 +45,21 @@ public class DirectorySearcherTimeLimitTests
     }
 
     [Fact]
+    public void Paged_search_does_not_turn_subsecond_remaining_budget_into_unlimited_request()
+    {
+        var clock = new ManualTimeProvider();
+        var budget = new ServerSearchTimeLimitBudget(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(30),
+            isPaged: true,
+            clock);
+
+        clock.Advance(TimeSpan.FromMilliseconds(4_700));
+
+        Assert.False(budget.TryApply(new SearchRequest()));
+    }
+
+    [Fact]
     public void Paged_search_resets_page_limit_when_overall_limit_is_unbounded()
     {
         var clock = new ManualTimeProvider();
@@ -63,6 +78,20 @@ public class DirectorySearcherTimeLimitTests
         var secondPage = new SearchRequest();
         Assert.True(budget.TryApply(secondPage));
         Assert.Equal(TimeSpan.FromSeconds(4), secondPage.TimeLimit);
+    }
+
+    [Fact]
+    public void Paged_search_applies_page_limit_when_zero_disables_overall_limit()
+    {
+        var budget = new ServerSearchTimeLimitBudget(
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(4),
+            isPaged: true,
+            new ManualTimeProvider());
+        var request = new SearchRequest();
+
+        Assert.True(budget.TryApply(request));
+        Assert.Equal(TimeSpan.FromSeconds(4), request.TimeLimit);
     }
 
     [Fact]

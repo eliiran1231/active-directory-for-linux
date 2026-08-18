@@ -8,6 +8,8 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 internal sealed class ServerSearchTimeLimitBudget
 {
+    private static readonly TimeSpan MinimumLdapTimeLimit = TimeSpan.FromSeconds(1);
+
     private readonly TimeSpan _serverTimeLimit;
     private readonly TimeSpan _serverPageTimeLimit;
     private readonly bool _isPaged;
@@ -35,19 +37,27 @@ internal sealed class ServerSearchTimeLimitBudget
     {
         TimeSpan? requestTimeLimit = null;
 
-        if (_serverTimeLimit >= TimeSpan.Zero)
+        if (_serverTimeLimit > TimeSpan.Zero)
         {
             var remaining = _serverTimeLimit;
-            if (_isPaged && _serverTimeLimit > TimeSpan.Zero)
+            if (_isPaged)
             {
                 remaining -= _timeProvider.GetElapsedTime(_startedAt);
-                if (remaining <= TimeSpan.Zero)
+                // LDAP encodes the request time limit as integer seconds. A
+                // positive fraction would become zero, which means unlimited.
+                if (remaining < MinimumLdapTimeLimit)
                 {
                     return false;
                 }
             }
 
             requestTimeLimit = remaining;
+        }
+        // Zero is LDAP's unlimited sentinel. For paging, leave the overall
+        // limit unset so an independently configured page limit can apply.
+        else if (_serverTimeLimit == TimeSpan.Zero && !_isPaged)
+        {
+            requestTimeLimit = TimeSpan.Zero;
         }
 
         if (_isPaged &&
