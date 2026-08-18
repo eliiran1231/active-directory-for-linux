@@ -54,8 +54,14 @@ public abstract class AuthenticablePrincipal : Principal
         Enabled = enabled;
     }
 
-    public virtual AdvancedFilters AdvancedSearchFilter =>
-        _advancedSearchFilter ??= new AdvancedFilters(this);
+    public virtual AdvancedFilters AdvancedSearchFilter
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _advancedSearchFilter ??= new AdvancedFilters(this);
+        }
+    }
 
     private protected virtual int DefaultUserAccountControl => NormalAccount;
 
@@ -68,11 +74,13 @@ public abstract class AuthenticablePrincipal : Principal
     {
         get
         {
+            CheckDisposedOrDeleted();
             var flags = ReadUserAccountControl();
             return flags is null ? null : (flags.Value & AccountDisabled) == 0;
         }
         set
         {
+            CheckDisposedOrDeleted();
             if (value is null)
             {
                 throw new ArgumentNullException(nameof(value));
@@ -199,15 +207,22 @@ public abstract class AuthenticablePrincipal : Principal
         set => SetValue("logonHours", value);
     }
 
-    public PrincipalValueCollection<string> PermittedWorkstations =>
-        _permittedWorkstations ??= new PrincipalValueCollection<string>(
-            ReadPermittedWorkstations(),
-            values => SetPermittedWorkstations(values));
+    public PrincipalValueCollection<string> PermittedWorkstations
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _permittedWorkstations ??= new PrincipalValueCollection<string>(
+                ReadPermittedWorkstations(),
+                values => SetPermittedWorkstations(values));
+        }
+    }
 
     public X509Certificate2Collection Certificates
     {
         get
         {
+            CheckDisposedOrDeleted();
             if (_certificates is not null)
             {
                 return _certificates;
@@ -236,6 +251,7 @@ public abstract class AuthenticablePrincipal : Principal
     {
         get
         {
+            CheckDisposedOrDeleted();
             if (_userCannotChangePassword is not null)
             {
                 return _userCannotChangePassword.Value;
@@ -251,6 +267,7 @@ public abstract class AuthenticablePrincipal : Principal
         }
         set
         {
+            CheckDisposedOrDeleted();
             _userCannotChangePassword = value;
             SetQueryFilter(
                 nameof(UserCannotChangePassword),
@@ -288,6 +305,7 @@ public abstract class AuthenticablePrincipal : Principal
     /// </summary>
     public bool IsAccountLockedOut()
     {
+        CheckDisposedOrDeleted();
         var lockedAt = AccountLockoutTime;
         if (lockedAt is null)
         {
@@ -325,6 +343,7 @@ public abstract class AuthenticablePrincipal : Principal
     /// </summary>
     public void SetPassword(string newPassword)
     {
+        CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(newPassword);
         if (Entry is null)
         {
@@ -344,6 +363,7 @@ public abstract class AuthenticablePrincipal : Principal
 
     public void ChangePassword(string oldPassword, string newPassword)
     {
+        CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(oldPassword);
         ArgumentNullException.ThrowIfNull(newPassword);
         var entry = RequireSaved();
@@ -359,6 +379,7 @@ public abstract class AuthenticablePrincipal : Principal
     /// <summary>Unlocks a locked-out account. Takes effect immediately.</summary>
     public void UnlockAccount()
     {
+        CheckDisposedOrDeleted();
         var entry = RequireSaved();
         entry.ReplaceAttributeImmediate("lockoutTime", "0");
     }
@@ -366,6 +387,7 @@ public abstract class AuthenticablePrincipal : Principal
     /// <summary>Forces the password to be changed at next logon. Immediate.</summary>
     public void ExpirePasswordNow()
     {
+        CheckDisposedOrDeleted();
         if (Entry is null)
         {
             _expirePasswordAfterSave = true;
@@ -377,6 +399,7 @@ public abstract class AuthenticablePrincipal : Principal
 
     public void RefreshExpiredPassword()
     {
+        CheckDisposedOrDeleted();
         if (Entry is null)
         {
             _expirePasswordAfterSave = false;

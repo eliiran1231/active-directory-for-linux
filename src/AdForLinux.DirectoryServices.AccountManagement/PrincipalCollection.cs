@@ -16,6 +16,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private readonly List<string> _removedValuesPending = new();
     private bool _clearCompleted;
     private bool _clearPending;
+    private bool _disposed;
     private List<string>? _primaryGroupMemberDns;
 
     internal PrincipalCollection(GroupPrincipal group)
@@ -38,6 +39,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         get
         {
+            CheckDisposed();
             _group.EnsureMembersUsable();
             return EffectiveMemberDns().Count;
         }
@@ -51,6 +53,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public void Add(Principal principal)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
         if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsDn(dn))
@@ -75,6 +78,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         IdentityType identityType,
         string identityValue)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(identityValue);
@@ -93,6 +97,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public bool Remove(Principal principal)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
         if (_group.IsPersisted && principal.IsPrimaryGroup(_group))
@@ -122,6 +127,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         IdentityType identityType,
         string identityValue)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(identityValue);
@@ -140,6 +146,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public bool Contains(Principal principal)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         var dn = RequireDn(principal);
         return ContainsDn(dn);
@@ -150,6 +157,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         IdentityType identityType,
         string identityValue)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(identityValue);
@@ -160,6 +168,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public void Clear()
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         if (_group.IsPersisted && _group.HasPrimaryGroupMembers())
         {
@@ -179,6 +188,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     void ICollection.CopyTo(Array array, int index)
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
         if (index < 0)
         {
@@ -249,7 +259,13 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public IEnumerator<Principal> GetEnumerator()
     {
+        CheckDisposed();
         _group.EnsureMembersUsable();
+        return new PrincipalCollectionEnumerator(EnumerateMembers().GetEnumerator(), CheckDisposed);
+    }
+
+    private IEnumerable<Principal> EnumerateMembers()
+    {
         var context = _group.Context;
         foreach (var dn in EffectiveMemberDns())
         {
@@ -266,6 +282,79 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    internal void Dispose()
+    {
+        _disposed = true;
+    }
+
+    private void CheckDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(PrincipalCollection));
+        }
+    }
+
+    private sealed class PrincipalCollectionEnumerator : IEnumerator<Principal>
+    {
+        private readonly IEnumerator<Principal> _inner;
+        private readonly Action _checkCollection;
+        private bool _disposed;
+
+        internal PrincipalCollectionEnumerator(
+            IEnumerator<Principal> inner,
+            Action checkCollection)
+        {
+            _inner = inner;
+            _checkCollection = checkCollection;
+        }
+
+        public Principal Current
+        {
+            get
+            {
+                CheckDisposed();
+                _checkCollection();
+                return _inner.Current;
+            }
+        }
+
+        object IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            CheckDisposed();
+            _checkCollection();
+            return _inner.MoveNext();
+        }
+
+        public void Reset()
+        {
+            CheckDisposed();
+            _checkCollection();
+            _inner.Reset();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _inner.Dispose();
+            _disposed = true;
+        }
+
+        private void CheckDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(PrincipalCollectionEnumerator));
+            }
+        }
+    }
 
     private bool ContainsDn(string dn)
     {

@@ -38,19 +38,41 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>The context this principal belongs to.</summary>
-    public PrincipalContext Context => ContextRef;
+    public PrincipalContext Context
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return ContextRef;
+        }
+    }
 
     /// <summary>The context type (Domain).</summary>
-    public ContextType ContextType => ContextRef.ContextType;
+    public ContextType ContextType
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return ContextRef.ContextType;
+        }
+    }
 
     /// <summary>The distinguished name, or null before the object is saved.</summary>
-    public string? DistinguishedName => Entry?.DistinguishedName;
+    public string? DistinguishedName
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return Entry?.DistinguishedName;
+        }
+    }
 
     /// <summary>The object GUID, or null before the object is saved.</summary>
     public Guid? Guid
     {
         get
         {
+            CheckDisposedOrDeleted();
             if (Entry is null)
             {
                 return null;
@@ -66,6 +88,7 @@ public abstract class Principal : IDisposable
     {
         get
         {
+            CheckDisposedOrDeleted();
             if (Entry?.Properties["objectSid"].Value is not byte[] bytes)
             {
                 return null;
@@ -88,16 +111,32 @@ public abstract class Principal : IDisposable
     /// The portable SDDL-form SID string. Unlike <see cref="Sid"/>, this works
     /// on Linux where .NET's <see cref="SecurityIdentifier"/> is a platform stub.
     /// </summary>
-    public string? SidValue =>
-        Entry?.Properties["objectSid"].Value is byte[] bytes
-            ? SidCodec.Format(bytes)
-            : null;
+    public string? SidValue
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return Entry?.Properties["objectSid"].Value is byte[] bytes
+                ? SidCodec.Format(bytes)
+                : null;
+        }
+    }
 
     /// <summary>The object name (<c>cn</c>).</summary>
     public string? Name
     {
-        get => GetString("cn");
-        set => SetString("cn", value);
+        get
+        {
+            // Microsoft consults the context type before its normal principal
+            // guard because machine contexts map Name to SamAccountName.
+            _ = ContextRef.ContextType;
+            return GetString("cn");
+        }
+        set
+        {
+            _ = ContextRef.ContextType;
+            SetString("cn", value);
+        }
     }
 
     /// <summary>The <c>sAMAccountName</c>.</summary>
@@ -129,7 +168,16 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>The most specific structural class, e.g. "user" or "group".</summary>
-    public string? StructuralObjectClass => Entry?.SchemaClassName;
+    public string? StructuralObjectClass
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return Entry?.SchemaClassName;
+        }
+    }
+
+    public override string? ToString() => Name;
 
     /// <summary>The objectClass to create this principal with, e.g. "user".</summary>
     private protected abstract string CreateObjectClass { get; }
@@ -811,6 +859,7 @@ public abstract class Principal : IDisposable
     /// <summary>Reads a single string attribute, from the entry or a pending value.</summary>
     private protected string? GetString(string attributeName)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             return Entry.Properties[attributeName].Value?.ToString();
@@ -821,6 +870,7 @@ public abstract class Principal : IDisposable
 
     private protected IEnumerable<string> GetValues(string attributeName)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             return Entry.Properties[attributeName].Cast<object>().Select(value => value.ToString()!).ToArray();
@@ -833,6 +883,7 @@ public abstract class Principal : IDisposable
 
     private protected void SetValues<T>(string attributeName, IReadOnlyList<T> values)
     {
+        CheckDisposedOrDeleted();
         var array = values.Cast<object>().ToArray();
         if (Entry is not null)
         {
@@ -847,6 +898,7 @@ public abstract class Principal : IDisposable
 
     private protected object? GetValue(string attributeName)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             return Entry.Properties[attributeName].Value;
@@ -857,6 +909,7 @@ public abstract class Principal : IDisposable
 
     private protected IEnumerable<object> GetRawValues(string attributeName)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             return Entry.Properties[attributeName].Cast<object>().ToArray();
@@ -869,6 +922,7 @@ public abstract class Principal : IDisposable
 
     private protected void SetValue(string attributeName, object? value)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             if (value is null)
@@ -894,27 +948,48 @@ public abstract class Principal : IDisposable
         }
     }
 
-    internal void SetAdvancedFilter(string attribute, string value, MatchType match) =>
+    internal void SetAdvancedFilter(string attribute, string value, MatchType match)
+    {
+        CheckDisposedOrDeleted();
         _advancedFilters[attribute] = AdvancedFilters.ToLdapCondition(attribute, value, match);
+    }
 
-    internal void SetAdvancedFilter(string key, string condition) =>
+    internal void SetAdvancedFilter(string key, string condition)
+    {
+        CheckDisposedOrDeleted();
         _advancedFilters[key] = condition;
+    }
 
-    internal IEnumerable<string> AdvancedFilterConditions => _advancedFilters.Values;
+    internal IEnumerable<string> AdvancedFilterConditions
+    {
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _advancedFilters.Values;
+        }
+    }
 
     private protected void SetQueryFilter(
         string key,
         PrincipalQueryFilterKind kind,
         string attribute,
         object? value,
-        uint bit = 0) =>
+        uint bit = 0)
+    {
+        CheckDisposedOrDeleted();
         _queryFilters[key] = new PrincipalQueryFilter(key, kind, attribute, value, bit);
+    }
 
-    private protected void RemoveQueryFilter(string key) => _queryFilters.Remove(key);
+    private protected void RemoveQueryFilter(string key)
+    {
+        CheckDisposedOrDeleted();
+        _queryFilters.Remove(key);
+    }
 
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)
     {
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             if (value is null)

@@ -96,6 +96,76 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void Disposed_context_members_match_exception_type_and_object_name()
+    {
+        var msContext = MicrosoftContext();
+        var ourContext = OurContext();
+        msContext.Dispose();
+        ourContext.Dispose();
+
+        (Action Microsoft, Action Ours)[] members =
+        {
+            (() => _ = msContext.ContextType, () => _ = ourContext.ContextType),
+            (() => _ = msContext.Name, () => _ = ourContext.Name),
+            (() => _ = msContext.Container, () => _ = ourContext.Container),
+            (() => _ = msContext.UserName, () => _ = ourContext.UserName),
+            (() => _ = msContext.Options, () => _ = ourContext.Options),
+            (() => _ = msContext.ConnectedServer, () => _ = ourContext.ConnectedServer),
+            (() => msContext.ValidateCredentials("user", "password"),
+             () => ourContext.ValidateCredentials("user", "password")),
+        };
+
+        foreach (var (microsoft, ours) in members)
+        {
+            var msException = Assert.IsType<ObjectDisposedException>(Record.Exception(microsoft));
+            var ourException = Assert.IsType<ObjectDisposedException>(Record.Exception(ours));
+            Assert.Equal(
+                msException.ObjectName?.Replace(
+                    "System.DirectoryServices.AccountManagement",
+                    "AdForLinux.DirectoryServices.AccountManagement",
+                    StringComparison.Ordinal),
+                ourException.ObjectName);
+        }
+    }
+
+    [Fact]
+    public void Disposed_cached_principal_properties_match_exception_contract()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        var msUser = new Ms.UserPrincipal(msContext) { Name = "cached", GivenName = "given" };
+        var ourUser = new Ours.UserPrincipal(ourContext) { Name = "cached", GivenName = "given" };
+        msUser.Dispose();
+        ourUser.Dispose();
+
+        (Action Microsoft, Action Ours)[] members =
+        {
+            (() => _ = msUser.Context, () => _ = ourUser.Context),
+            (() => _ = msUser.ContextType, () => _ = ourUser.ContextType),
+            (() => _ = msUser.DistinguishedName, () => _ = ourUser.DistinguishedName),
+            (() => _ = msUser.Name, () => _ = ourUser.Name),
+            (() => _ = msUser.GivenName, () => _ = ourUser.GivenName),
+            (() => msUser.Name = "changed", () => ourUser.Name = "changed"),
+            (() => msUser.SetPassword(null!), () => ourUser.SetPassword(null!)),
+        };
+
+        foreach (var (microsoft, ours) in members)
+        {
+            var msException = Assert.IsType<ObjectDisposedException>(Record.Exception(microsoft));
+            var ourException = Assert.IsType<ObjectDisposedException>(Record.Exception(ours));
+            // Principal.CheckDisposedOrDeleted uses GetType().ToString(), so the
+            // ObjectName is namespace-qualified; normalize the namespace before
+            // comparing, same as Disposed_context_members_match_exception_type_and_object_name.
+            Assert.Equal(
+                msException.ObjectName?.Replace(
+                    "System.DirectoryServices.AccountManagement",
+                    "AdForLinux.DirectoryServices.AccountManagement",
+                    StringComparison.Ordinal),
+                ourException.ObjectName);
+        }
+    }
+
+    [Fact]
     public void GetGroups_with_context_matches_for_unsaved_principals()
     {
         using var msContext = MicrosoftContext();

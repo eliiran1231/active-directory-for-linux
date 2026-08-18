@@ -17,10 +17,16 @@ public class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
     private readonly bool _hasExplicitPort;
+    private readonly ContextType _contextType;
+    private readonly string _name;
+    private readonly int _port;
+    private readonly bool _useSsl;
+    private readonly string? _userName;
     private readonly object _credentialValidationLock = new();
     private CredentialValidationMethod _lastCredentialValidationMethod =
         CredentialValidationMethod.SimpleBindOverSsl;
     private string? _container;
+    private bool _disposed;
 
     private enum CredentialValidationMethod
     {
@@ -108,13 +114,13 @@ public class PrincipalContext : IDisposable
 
         ValidateOptions(options);
 
-        ContextType = contextType;
+        _contextType = contextType;
         _options = options;
-        UserName = userName;
+        _userName = userName;
         _password = password;
 
-        UseSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
-        (Name, Port, _hasExplicitPort) = ParseServer(name, UseSsl);
+        _useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
+        (_name, _port, _hasExplicitPort) = ParseServer(name, _useSsl);
         _container = container;
     }
 
@@ -130,37 +136,100 @@ public class PrincipalContext : IDisposable
         ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing;
 
     /// <summary>The store type. Always Domain here.</summary>
-    public ContextType ContextType { get; }
+    public ContextType ContextType
+    {
+        get
+        {
+            CheckDisposed();
+            return _contextType;
+        }
+    }
 
     /// <summary>The server host name.</summary>
-    public string Name { get; }
+    public string Name
+    {
+        get
+        {
+            CheckDisposed();
+            return _name;
+        }
+    }
 
     /// <summary>The port used to reach the server.</summary>
-    public int Port { get; }
+    public int Port
+    {
+        get
+        {
+            CheckDisposed();
+            return _port;
+        }
+    }
 
     /// <summary>Whether the connection uses TLS.</summary>
-    public bool UseSsl { get; }
+    public bool UseSsl
+    {
+        get
+        {
+            CheckDisposed();
+            return _useSsl;
+        }
+    }
 
     /// <summary>The bind user, or null for an anonymous context.</summary>
-    public string? UserName { get; }
+    public string? UserName
+    {
+        get
+        {
+            CheckDisposed();
+            return _userName;
+        }
+    }
 
     /// <summary>The options used to bind this context.</summary>
-    public ContextOptions Options => _options;
+    public ContextOptions Options
+    {
+        get
+        {
+            CheckDisposed();
+            return _options;
+        }
+    }
 
     /// <summary>The server this context is connected to.</summary>
-    public string ConnectedServer => Name;
+    public string ConnectedServer
+    {
+        get
+        {
+            CheckDisposed();
+            return _name;
+        }
+    }
 
     /// <summary>
     /// The container (base DN) for searches. If none was given, it is discovered
     /// from the server's default naming context on first use.
     /// </summary>
-    public string Container => _container ??= DefaultNamingContext;
+    public string Container
+    {
+        get
+        {
+            CheckDisposed();
+            return _container ??= DefaultNamingContext;
+        }
+    }
 
     /// <summary>
     /// The domain root DN, whatever <see cref="Container"/> is scoped to.
     /// Domain-wide settings such as the lockout policy live here.
     /// </summary>
-    internal string DefaultNamingContext => _defaultNamingContext ??= DiscoverDefaultNamingContext();
+    internal string DefaultNamingContext
+    {
+        get
+        {
+            CheckDisposed();
+            return _defaultNamingContext ??= DiscoverDefaultNamingContext();
+        }
+    }
 
     private string? _defaultNamingContext;
 
@@ -170,6 +239,7 @@ public class PrincipalContext : IDisposable
     /// </summary>
     public bool ValidateCredentials(string userName, string password)
     {
+        CheckDisposed();
         ValidateCredentialPair(userName, password);
         if (userName is { Length: 0 })
         {
@@ -222,6 +292,7 @@ public class PrincipalContext : IDisposable
         string password,
         ContextOptions options)
     {
+        CheckDisposed();
         ValidateCredentialPair(userName, password);
 
         if (userName is { Length: 0 })
@@ -240,10 +311,17 @@ public class PrincipalContext : IDisposable
         }
     }
 
-    internal LdapConnectionOptions BuildOptions() => BuildOptions(UserName, _password);
+    internal LdapConnectionOptions BuildOptions()
+    {
+        CheckDisposed();
+        return BuildOptions(_userName, _password);
+    }
 
-    internal LdapConnectionOptions BuildOptions(string? bindUser, string? bindPassword) =>
-        BuildOptions(bindUser, bindPassword, _options);
+    internal LdapConnectionOptions BuildOptions(string? bindUser, string? bindPassword)
+    {
+        CheckDisposed();
+        return BuildOptions(bindUser, bindPassword, _options);
+    }
 
     private LdapConnectionOptions BuildOptions(
         string? bindUser,
@@ -251,6 +329,7 @@ public class PrincipalContext : IDisposable
         ContextOptions options,
         bool useContextPort = true)
     {
+        CheckDisposed();
         var useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
         // The explicit validation overload accepts unusual flag combinations:
         // SimpleBind wins when present, while zero falls back to Negotiate.
@@ -259,8 +338,8 @@ public class PrincipalContext : IDisposable
             : AuthType.Negotiate;
         return new LdapConnectionOptions
         {
-            Host = Name,
-            Port = useContextPort && _hasExplicitPort ? Port : useSsl ? 636 : 389,
+            Host = _name,
+            Port = useContextPort && _hasExplicitPort ? _port : useSsl ? 636 : 389,
             UseSsl = useSsl,
             AuthenticationType = authenticationType,
             Signing = options.HasFlag(ContextOptions.Signing),
@@ -273,7 +352,8 @@ public class PrincipalContext : IDisposable
     /// <summary>The LDAP path for a DN on this context's server.</summary>
     internal string PathFor(string distinguishedName)
     {
-        var authority = $"{Name}:{Port}";
+        CheckDisposed();
+        var authority = $"{_name}:{_port}";
         return string.IsNullOrEmpty(distinguishedName)
             ? $"LDAP://{authority}"
             : $"LDAP://{authority}/{distinguishedName}";
@@ -282,6 +362,7 @@ public class PrincipalContext : IDisposable
     /// <summary>Opens a DirectoryEntry for a DN, using this context's credentials.</summary>
     internal DirectoryEntry CreateDirectoryEntry(string distinguishedName)
     {
+        CheckDisposed();
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
@@ -358,5 +439,22 @@ public class PrincipalContext : IDisposable
             BuildOptions(userName, password, options, useContextPort: false));
     }
 
-    public void Dispose() => GC.SuppressFinalize(this);
+    internal void CheckDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(PrincipalContext));
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
+    }
 }
