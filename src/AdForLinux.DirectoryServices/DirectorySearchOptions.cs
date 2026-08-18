@@ -12,9 +12,9 @@ public enum DereferenceAlias
 /// <summary>Specifies the extended distinguished-name format returned by the server.</summary>
 public enum ExtendedDN
 {
-    None = 0,
+    None = -1,
+    HexString = 0,
     Standard = 1,
-    HexString = 2,
 }
 
 /// <summary>Specifies a directory-search sort direction.</summary>
@@ -137,13 +137,20 @@ public sealed class DirectoryVirtualListViewContext
 /// <summary>Configures a virtual-list-view LDAP search.</summary>
 public sealed class DirectoryVirtualListView
 {
+    private int _beforeCount;
+    private int _afterCount;
+    private int _offset;
+    private string _target = string.Empty;
+    private int _approximateTotal;
+    private int _targetPercentage;
+
     /// <summary>Creates a default virtual-list-view configuration.</summary>
     public DirectoryVirtualListView()
     {
     }
 
-    /// <summary>Creates a configuration centered on an offset.</summary>
-    public DirectoryVirtualListView(int offset) => Offset = offset;
+    /// <summary>Creates a configuration with the requested number of entries after the target.</summary>
+    public DirectoryVirtualListView(int afterCount) => AfterCount = afterCount;
 
     /// <summary>Creates a configuration centered on an offset with surrounding entries.</summary>
     public DirectoryVirtualListView(int beforeCount, int afterCount, int offset)
@@ -170,22 +177,90 @@ public sealed class DirectoryVirtualListView
         : this(beforeCount, afterCount, target) => DirectoryVirtualListViewContext = context;
 
     /// <summary>Entries to return before the target.</summary>
-    public int BeforeCount { get; set; }
+    public int BeforeCount
+    {
+        get => _beforeCount;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException("The before count cannot be negative.");
+            }
+
+            _beforeCount = value;
+        }
+    }
 
     /// <summary>Entries to return after the target.</summary>
-    public int AfterCount { get; set; }
+    public int AfterCount
+    {
+        get => _afterCount;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException("The after count cannot be negative.");
+            }
+
+            _afterCount = value;
+        }
+    }
 
     /// <summary>The target offset, using LDAP's one-based convention.</summary>
-    public int Offset { get; set; } = 1;
+    public int Offset
+    {
+        get => _offset;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException("The offset cannot be negative.");
+            }
+
+            _offset = value;
+            _targetPercentage = _approximateTotal == 0
+                ? 0
+                : (int)((double)_offset / _approximateTotal * 100);
+        }
+    }
 
     /// <summary>Approximate total entries in the server-side list.</summary>
-    public int ApproximateTotal { get; set; }
+    public int ApproximateTotal
+    {
+        get => _approximateTotal;
+        set
+        {
+            if (value < 0)
+            {
+                throw new ArgumentException("The approximate total cannot be negative.");
+            }
+
+            _approximateTotal = value;
+        }
+    }
 
     /// <summary>Target percentage used when the server computes an offset.</summary>
-    public int TargetPercentage { get; set; }
+    public int TargetPercentage
+    {
+        get => _targetPercentage;
+        set
+        {
+            if (value is < 0 or > 100)
+            {
+                throw new ArgumentException("The target percentage must be between 0 and 100.");
+            }
+
+            _targetPercentage = value;
+            _offset = _approximateTotal * _targetPercentage / 100;
+        }
+    }
 
     /// <summary>The optional target value.</summary>
-    public string? Target { get; set; }
+    public string Target
+    {
+        get => _target;
+        set => _target = value ?? string.Empty;
+    }
 
     /// <summary>The context returned from the previous virtual-list-view request.</summary>
     public DirectoryVirtualListViewContext? DirectoryVirtualListViewContext { get; set; }

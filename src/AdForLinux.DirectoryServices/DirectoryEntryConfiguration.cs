@@ -40,8 +40,8 @@ public sealed class DirectoryEntryConfiguration
 /// <summary>Specifies password transport encoding.</summary>
 public enum PasswordEncodingMethod
 {
-    PasswordEncodingClear = 0,
-    PasswordEncodingSsl = 1,
+    PasswordEncodingSsl = 0,
+    PasswordEncodingClear = 1,
 }
 
 /// <summary>Specifies how LDAP referrals are chased.</summary>

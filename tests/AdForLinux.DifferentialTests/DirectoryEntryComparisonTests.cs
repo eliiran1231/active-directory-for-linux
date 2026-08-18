@@ -503,6 +503,28 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Assert();
     }
 
+    [Theory]
+    [InlineData(Ms.ExtendedDN.Standard, Ours.ExtendedDN.Standard)]
+    [InlineData(Ms.ExtendedDN.HexString, Ours.ExtendedDN.HexString)]
+    public void Searcher_extended_dn_representation_matches(
+        Ms.ExtendedDN microsoftFormat,
+        Ours.ExtendedDN ourFormat)
+    {
+        using var msRoot = MicrosoftEntry(DifferentialSettings.UsersContainer);
+        using var ourRoot = OurEntry(DifferentialSettings.UsersContainer);
+        var filter = $"(sAMAccountName={_data.UserName})";
+        using var msSearcher = new Ms.DirectorySearcher(msRoot, filter) { ExtendedDN = microsoftFormat };
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot, filter) { ExtendedDN = ourFormat };
+        msSearcher.PropertiesToLoad.Add("distinguishedName");
+        ourSearcher.PropertiesToLoad.Add("distinguishedName");
+
+        var msValue = msSearcher.FindOne()!.Properties["distinguishedName"][0].ToString();
+        var ourValue = ourSearcher.FindOne()!.Properties["distinguishedName"][0].ToString();
+
+        Assert.Contains("<GUID=", msValue, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(msValue, ourValue, ignoreCase: true);
+    }
+
     [Fact]
     public void Searcher_attribute_scope_query_matches()
     {
