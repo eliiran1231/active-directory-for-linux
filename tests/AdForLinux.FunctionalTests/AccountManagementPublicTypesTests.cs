@@ -209,12 +209,60 @@ public class AccountManagementPublicTypesTests
         var rdn = new DirectoryRdnPrefixAttribute("CN");
 
         Assert.Equal("extensionAttribute1", property.SchemaAttributeName);
-        Assert.Null(property.Context);
+        Assert.Equal(ContextType.Domain, property.Context);
         Assert.Equal("customPerson", objectClass.ObjectClass);
         Assert.Null(objectClass.Context);
         Assert.Equal("CN", rdn.RdnPrefix);
         Assert.Null(rdn.Context);
         Assert.True(typeof(DirectoryPropertyAttribute).GetCustomAttribute<AttributeUsageAttribute>()!.AllowMultiple);
+    }
+
+    [Fact]
+    public void Custom_principal_extension_surface_and_filters_match_the_contract()
+    {
+        using var first = OfflineContext();
+        using var second = OfflineContext();
+        using var principal = new OfflineCustomPrincipal(first) { Name = "custom-name" };
+
+        Assert.Same(first, principal.RawContext);
+        principal.RawContext = second;
+        Assert.Same(second, principal.RawContext);
+        Assert.Equal("custom-name", principal.ToString());
+
+        using var searcher = new PrincipalSearcher(principal);
+        Assert.Contains("(objectClass=organizationalUnit)", searcher.GetLdapFilter());
+        Assert.Equal("OU", PrincipalExtensionMetadata.GetRdnPrefixForCreation(
+            typeof(OfflineCustomPrincipal)));
+        Assert.Equal("organizationalUnit", PrincipalExtensionMetadata.GetObjectClassForCreation(
+            typeof(OfflineCustomPrincipal), "ignored"));
+
+        var contextRaw = typeof(Principal).GetProperty(
+            "ContextRaw", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
+        Assert.NotNull(contextRaw);
+        Assert.True(contextRaw.GetMethod!.IsFamilyOrAssembly);
+        Assert.True(contextRaw.SetMethod!.IsFamilyOrAssembly);
+
+        Assert.Null(typeof(Principal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes));
+        var authorizationGroups = typeof(UserPrincipal).GetMethod(
+            "GetAuthorizationGroups", Type.EmptyTypes);
+        Assert.NotNull(authorizationGroups);
+        Assert.Equal(typeof(UserPrincipal), authorizationGroups!.DeclaringType);
+    }
+
+    [DirectoryObjectClass("organizationalUnit")]
+    [DirectoryRdnPrefix("OU")]
+    private sealed class OfflineCustomPrincipal : Principal
+    {
+        public OfflineCustomPrincipal(PrincipalContext context)
+        {
+            ContextRaw = context;
+        }
+
+        public PrincipalContext RawContext
+        {
+            get => ContextRaw;
+            set => ContextRaw = value;
+        }
     }
 
     [Fact]

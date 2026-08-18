@@ -7,6 +7,65 @@ namespace AdForLinux.FunctionalTests;
 public class CollectionCompatibilityTests
 {
     [Fact]
+    public void Property_values_track_ordered_add_delete_replace_and_clear_changes()
+    {
+        var values = new PropertyValueCollection("member");
+
+        values.Add("CN=one");
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(change, PropertyValueChangeType.Add, "CN=one"));
+
+        values.ResetChanged();
+        values.Remove("CN=not-in-the-downloaded-range");
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(
+                change,
+                PropertyValueChangeType.Delete,
+                "CN=not-in-the-downloaded-range"));
+
+        values.ResetChanged();
+        values.Value = new object[] { "CN=two", "CN=three" };
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(
+                change,
+                PropertyValueChangeType.Replace,
+                "CN=two",
+                "CN=three"));
+
+        values.Clear();
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(change, PropertyValueChangeType.Clear));
+    }
+
+    [Fact]
+    public void Indexed_replacement_uses_delete_and_add_for_multi_valued_properties()
+    {
+        var values = new PropertyValueCollection("member");
+        values.AddLoaded("CN=one");
+        values.AddLoaded("CN=two");
+
+        values[1] = "CN=replacement";
+
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(change, PropertyValueChangeType.Delete, "CN=two"),
+            change => AssertChange(change, PropertyValueChangeType.Add, "CN=replacement"));
+    }
+
+    private static void AssertChange(
+        PropertyValueChange change,
+        PropertyValueChangeType expectedType,
+        params object[] expectedValues)
+    {
+        Assert.Equal(expectedType, change.Type);
+        Assert.Equal(expectedValues, change.Values);
+    }
+
+    [Fact]
     public void Schema_name_collection_supports_the_list_contract()
     {
         using var entry = new DirectoryEntry();

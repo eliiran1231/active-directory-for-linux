@@ -50,6 +50,13 @@ public class UserPrincipal : AuthenticablePrincipal
 
     internal override string CategoryFilter => "(objectCategory=user)(objectClass=user)";
 
+    /// <summary>
+    /// Every authorization group this user belongs to, including transitive
+    /// membership and the primary group.
+    /// </summary>
+    public PrincipalSearchResult<Principal> GetAuthorizationGroups() =>
+        GetAuthorizationGroupsCore();
+
     /// <summary>The first name (<c>givenName</c>).</summary>
     public string? GivenName
     {
