@@ -435,7 +435,7 @@ public abstract class Principal : IDisposable
         string identityFilter)
     {
         var filter = $"(&{PrincipalTypeFilter(principalType)}{identityFilter})";
-        using var root = context.CreateDirectoryEntry(context.Container);
+        using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, filter) { SizeLimit = 2 };
         using var results = searcher.FindAll();
 
@@ -568,7 +568,7 @@ public abstract class Principal : IDisposable
         var cn = GetString("cn")
             ?? throw new InvalidOperationException("Name must be set before saving a new principal.");
 
-        var parent = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        var parent = ContextRef.CreateDirectoryEntry(ContextRef.GetCreationContainer(GetType()));
         try
         {
             var child = parent.Children.Add($"CN={EscapeRdnValue(cn)}", CreateObjectClass);
@@ -642,13 +642,14 @@ public abstract class Principal : IDisposable
         var originalEntry = Entry;
         var currentDn = Entry.DistinguishedName;
         var currentParent = LdapDistinguishedName.Parent(currentDn);
-        var moved = !string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase);
+        var destinationContainer = context.GetCreationContainer(GetType());
+        var moved = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
 
         try
         {
             if (moved)
             {
-                using var target = context.CreateDirectoryEntry(context.Container);
+                using var target = context.CreateDirectoryEntry(destinationContainer);
                 originalEntry.MoveTo(target);
                 currentDn = originalEntry.DistinguishedName;
             }

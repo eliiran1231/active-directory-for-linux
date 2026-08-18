@@ -142,7 +142,7 @@ public class PrincipalSearcher : IDisposable
         if (_underlyingSearcher is null || !ReferenceEquals(_underlyingContext, context))
         {
             ResetUnderlyingSearcher();
-            _searchRoot = context.CreateDirectoryEntry(context.Container);
+        _searchRoot = context.CreateDirectoryEntry(context.QueryContainer);
             _underlyingSearcher = new DirectorySearcher(_searchRoot)
             {
                 PageSize = 256,

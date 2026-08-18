@@ -2,6 +2,7 @@ using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 using System.ComponentModel;
 using System.DirectoryServices.Protocols;
+using System.Text;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -23,6 +24,7 @@ public class PrincipalContext : IDisposable
     private readonly bool _useSsl;
     private readonly string? _userName;
     private readonly object _credentialValidationLock = new();
+    private readonly object _containerDiscoveryLock = new();
     private CredentialValidationMethod _lastCredentialValidationMethod =
         CredentialValidationMethod.SimpleBindOverSsl;
     private string? _container;
@@ -205,17 +207,35 @@ public class PrincipalContext : IDisposable
         }
     }
 
-    /// <summary>
-    /// The container (base DN) for searches. If none was given, it is discovered
-    /// from the server's default naming context on first use.
-    /// </summary>
-    public string Container
+    /// <summary>The explicitly configured container, or null when none was supplied.</summary>
+    public string? Container
     {
         get
         {
             CheckDisposed();
-            return _container ??= DefaultNamingContext;
+            return _container;
         }
+    }
+
+    /// <summary>
+    /// The search base. A context without an explicit container searches the whole domain,
+    /// even though new principals are created in the domain's well-known containers.
+    /// </summary>
+    internal string QueryContainer => _container ?? DefaultNamingContext;
+
+    /// <summary>Gets the Microsoft-compatible creation container for a principal type.</summary>
+    internal string GetCreationContainer(Type principalType)
+    {
+        CheckDisposed();
+        if (_container is not null)
+        {
+            return _container;
+        }
+
+        EnsureWellKnownContainers();
+        return typeof(ComputerPrincipal).IsAssignableFrom(principalType)
+            ? _computerContainer!
+            : _userContainer!;
     }
 
     /// <summary>
@@ -232,6 +252,8 @@ public class PrincipalContext : IDisposable
     }
 
     private string? _defaultNamingContext;
+    private string? _userContainer;
+    private string? _computerContainer;
 
     /// <summary>
     /// Checks a username and password by trying a bind. Returns true if it
@@ -371,6 +393,115 @@ public class PrincipalContext : IDisposable
         using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
         return RootDse.GetDefaultNamingContext(connection)
             ?? throw new InvalidOperationException("The server did not report a default naming context.");
+    }
+
+    private void EnsureWellKnownContainers()
+    {
+        if (_userContainer is not null && _computerContainer is not null)
+        {
+            return;
+        }
+
+        lock (_containerDiscoveryLock)
+        {
+            if (_userContainer is not null && _computerContainer is not null)
+            {
+                return;
+            }
+
+            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+            var request = new SearchRequest(
+                DefaultNamingContext,
+                "(objectClass=*)",
+                System.DirectoryServices.Protocols.SearchScope.Base,
+                "wellKnownObjects");
+            var response = (SearchResponse)connection.SendRequest(request);
+
+            string? users = null;
+            string? computers = null;
+            if (response.Entries.Count > 0 &&
+                response.Entries[0].Attributes["wellKnownObjects"] is { } values)
+            {
+                TryResolveWellKnownContainers(values.Cast<object?>(), out users, out computers);
+            }
+
+            if (users is null || computers is null)
+            {
+                throw new PrincipalOperationException(
+                    "The domain did not report its well-known Users and Computers containers.");
+            }
+
+            _userContainer = users;
+            _computerContainer = computers;
+        }
+    }
+
+    private const string UsersContainerIdentifier = "A9D1CA15768811D1ADED00C04FD8D5CD";
+    private const string ComputersContainerIdentifier = "AA312825768811D1ADED00C04FD8D5CD";
+
+    internal static bool TryResolveWellKnownContainers(
+        IEnumerable<object?> values,
+        out string? users,
+        out string? computers)
+    {
+        users = null;
+        computers = null;
+        foreach (var value in values)
+        {
+            if (!TryParseDnWithBinary(value, out var identifier, out var distinguishedName))
+            {
+                continue;
+            }
+
+            if (identifier.Equals(UsersContainerIdentifier, StringComparison.OrdinalIgnoreCase))
+            {
+                users = distinguishedName;
+            }
+            else if (identifier.Equals(ComputersContainerIdentifier, StringComparison.OrdinalIgnoreCase))
+            {
+                computers = distinguishedName;
+            }
+        }
+
+        return users is not null && computers is not null;
+    }
+
+    internal static bool TryParseDnWithBinary(
+        object? value,
+        out string identifier,
+        out string distinguishedName)
+    {
+        identifier = string.Empty;
+        distinguishedName = string.Empty;
+
+        var text = value switch
+        {
+            string stringValue => stringValue,
+            byte[] bytes => Encoding.UTF8.GetString(bytes),
+            _ => null,
+        };
+        if (text is null || !text.StartsWith("B:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var lengthSeparator = text.IndexOf(':', 2);
+        if (lengthSeparator < 0 ||
+            !int.TryParse(text.AsSpan(2, lengthSeparator - 2), out var identifierLength) ||
+            identifierLength <= 0)
+        {
+            return false;
+        }
+
+        var dnSeparator = text.IndexOf(':', lengthSeparator + 1);
+        if (dnSeparator < 0 || dnSeparator - lengthSeparator - 1 != identifierLength)
+        {
+            return false;
+        }
+
+        identifier = text.Substring(lengthSeparator + 1, identifierLength);
+        distinguishedName = text.Substring(dnSeparator + 1);
+        return distinguishedName.Length > 0;
     }
 
     private static (string Host, int Port, bool HasExplicitPort) ParseServer(
