@@ -46,6 +46,9 @@ internal sealed class LdapConnectionOptions
     /// <summary>Bind password. Ignored for anonymous bind.</summary>
     public string? BindPassword { get; init; }
 
+    /// <summary>Maximum time allowed for an LDAP operation.</summary>
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
+
     /// <summary>True when a Basic bind has no username, or Anonymous was requested explicitly.</summary>
     public bool IsAnonymous =>
         AuthenticationType == AuthType.Anonymous ||
@@ -56,4 +59,24 @@ internal sealed class LdapConnectionOptions
         IsAnonymous || string.IsNullOrEmpty(BindDn)
             ? null
             : new NetworkCredential(BindDn, BindPassword);
+
+    /// <summary>
+    /// Makes an independent snapshot for another entry. Keep this explicit so
+    /// new connection-specific settings cannot be silently dropped by callers
+    /// that need to preserve the complete bind configuration.
+    /// </summary>
+    public LdapConnectionOptions Clone() => new()
+    {
+        Host = Host,
+        Port = Port,
+        UseSsl = UseSsl,
+        UseStartTls = UseStartTls,
+        SkipCertificateCheck = SkipCertificateCheck,
+        AuthenticationType = AuthenticationType,
+        Signing = Signing,
+        Sealing = Sealing,
+        BindDn = BindDn,
+        BindPassword = BindPassword,
+        Timeout = Timeout,
+    };
 }
