@@ -291,7 +291,7 @@ public class DirectoryEntry : Component
                     continue;
                 }
 
-                modify.Modifications.Add(ToModification(property));
+                AddModifications(modify, property);
             }
 
             objectSecurityWritten = AddObjectSecurity(modify);
@@ -498,22 +498,30 @@ public class DirectoryEntry : Component
         return attribute;
     }
 
-    private static DirectoryAttributeModification ToModification(PropertyValueCollection property)
+    private static void AddModifications(ModifyRequest request, PropertyValueCollection property)
     {
-        var modification = new DirectoryAttributeModification
+        foreach (var change in property.Changes)
         {
-            Name = property.PropertyName,
-            Operation = property.Count == 0
-                ? DirectoryAttributeOperation.Delete   // cleared = remove the attribute
-                : DirectoryAttributeOperation.Replace,
-        };
+            var modification = new DirectoryAttributeModification
+            {
+                Name = property.PropertyName,
+                Operation = change.Type switch
+                {
+                    PropertyValueChangeType.Add => DirectoryAttributeOperation.Add,
+                    PropertyValueChangeType.Delete => DirectoryAttributeOperation.Delete,
+                    PropertyValueChangeType.Replace => DirectoryAttributeOperation.Replace,
+                    PropertyValueChangeType.Clear => DirectoryAttributeOperation.Delete,
+                    _ => throw new InvalidOperationException("Unknown property change type."),
+                },
+            };
 
-        foreach (var value in property)
-        {
-            AddValue(modification, value);
+            foreach (var value in change.Values)
+            {
+                AddValue(modification, value);
+            }
+
+            request.Modifications.Add(modification);
         }
-
-        return modification;
     }
 
     private static void AddValue(DirectoryAttribute attribute, object value)
@@ -699,7 +707,7 @@ public class DirectoryEntry : Component
 
         if (response.Entries.Count > 0)
         {
-            LoadEntry(response.Entries[0], properties);
+            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties);
         }
 
         return properties;
@@ -769,11 +777,21 @@ public class DirectoryEntry : Component
         ? SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl
         : Options.SecurityMasks;
 
-    private static void LoadEntry(SearchResultEntry entry, PropertyCollection properties)
+    private static void LoadEntry(
+        SearchResultEntry entry,
+        PropertyCollection properties,
+        string[] requestedProperties,
+        bool normalizeRangedNames)
     {
         foreach (var (name, value) in SearchEntryReader.Read(entry))
         {
-            properties.GetOrAdd(name).AddLoaded(value);
+            var baseName = WithoutRangeSpecifier(name);
+            var requestedByBaseName = requestedProperties.Any(requestedName =>
+                !HasRangeSpecifier(requestedName)
+                && string.Equals(requestedName, baseName, StringComparison.OrdinalIgnoreCase));
+            properties.GetOrAdd(
+                    normalizeRangedNames || requestedByBaseName ? baseName : name)
+                .AddLoaded(value);
         }
     }
 
@@ -872,7 +890,7 @@ public class DirectoryEntry : Component
         }
 
         var request = new ModifyRequest(_path.DistinguishedName);
-        request.Modifications.Add(ToModification(property));
+        AddModifications(request, property);
         GetConnection().SendRequest(request);
         property.ResetChanged();
     }

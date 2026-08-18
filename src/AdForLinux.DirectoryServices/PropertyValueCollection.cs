@@ -13,6 +13,7 @@ namespace AdForLinux.DirectoryServices;
 public sealed class PropertyValueCollection : IList, IEnumerable<object>
 {
     private readonly List<object> _values = new();
+    private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
 
     internal PropertyValueCollection(string propertyName, Action<PropertyValueCollection>? onChanged = null)
@@ -28,10 +29,13 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     /// True once the values were changed since the last load or commit. The
     /// entry uses this to know what to send on CommitChanges.
     /// </summary>
-    internal bool Changed { get; private set; }
+    internal bool Changed => _changes.Count != 0;
 
-    /// <summary>Clears the changed flag after a successful commit or load.</summary>
-    internal void ResetChanged() => Changed = false;
+    /// <summary>The ordered LDAP changes staged since the last load or commit.</summary>
+    internal IReadOnlyList<PropertyValueChange> Changes => _changes;
+
+    /// <summary>Clears staged changes after a successful commit or load.</summary>
+    internal void ResetChanged() => _changes.Clear();
 
     /// <summary>Number of values.</summary>
     public int Count => _values.Count;
@@ -42,8 +46,17 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
         get => _values[index];
         set
         {
+            var oldValue = _values[index];
             _values[index] = value;
-            MarkChanged();
+            if (_values.Count <= 1)
+            {
+                RecordChange(PropertyValueChangeType.Replace, _values);
+            }
+            else
+            {
+                RecordChange(PropertyValueChangeType.Delete, new[] { oldValue });
+                RecordChange(PropertyValueChangeType.Add, new[] { value });
+            }
         }
     }
 
@@ -71,7 +84,9 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
                 _values.Add(value);
             }
 
-            MarkChanged();
+            RecordChange(
+                _values.Count == 0 ? PropertyValueChangeType.Clear : PropertyValueChangeType.Replace,
+                _values);
         }
     }
 
@@ -79,15 +94,18 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     public int Add(object value)
     {
         _values.Add(value);
-        MarkChanged();
+        RecordChange(PropertyValueChangeType.Add, new[] { value });
         return _values.Count - 1;
     }
 
     /// <summary>Adds several values.</summary>
     public void AddRange(IEnumerable<object> values)
     {
-        _values.AddRange(values);
-        MarkChanged();
+        ArgumentNullException.ThrowIfNull(values);
+        foreach (var value in values)
+        {
+            Add(value);
+        }
     }
 
     /// <summary>Adds several values.</summary>
@@ -97,7 +115,7 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     public void AddRange(PropertyValueCollection values)
     {
         ArgumentNullException.ThrowIfNull(values);
-        AddRange(values._values);
+        AddRange(values._values.ToArray());
     }
 
     /// <summary>Removes one value.</summary>
@@ -107,8 +125,12 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
         if (index >= 0)
         {
             _values.RemoveAt(index);
-            MarkChanged();
         }
+
+        // ADSI still stages a single-value delete when a value is absent from
+        // the local cache. Active Directory may have withheld it in a later
+        // range of a large multi-valued attribute.
+        RecordChange(PropertyValueChangeType.Delete, new[] { value });
     }
 
     /// <summary>Appends a value read from the server, without marking it changed.</summary>
@@ -127,21 +149,22 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     public void Insert(int index, object value)
     {
         _values.Insert(index, value);
-        MarkChanged();
+        RecordChange(PropertyValueChangeType.Add, new[] { value });
     }
 
     /// <summary>Removes the value at the specified index.</summary>
     public void RemoveAt(int index)
     {
+        var value = _values[index];
         _values.RemoveAt(index);
-        MarkChanged();
+        RecordChange(PropertyValueChangeType.Delete, new[] { value });
     }
 
     /// <summary>Removes every value.</summary>
     public void Clear()
     {
         _values.Clear();
-        MarkChanged();
+        RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
     }
 
     private static bool ValueEquals(object a, object b)
@@ -159,9 +182,17 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
         return Equals(a, b);
     }
 
-    private void MarkChanged()
+    private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)
     {
-        Changed = true;
+        // A whole-attribute operation supersedes every earlier pending delta.
+        // This also prevents a stale Add/Delete from making an intentional
+        // replacement fail before LDAP reaches the replacement operation.
+        if (type is PropertyValueChangeType.Replace or PropertyValueChangeType.Clear)
+        {
+            _changes.Clear();
+        }
+
+        _changes.Add(new PropertyValueChange(type, values.ToArray()));
         _onChanged?.Invoke(this);
     }
 
@@ -201,3 +232,13 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
 
     void ICollection.CopyTo(Array array, int index) => ((ICollection)_values).CopyTo(array, index);
 }
+
+internal enum PropertyValueChangeType
+{
+    Add,
+    Delete,
+    Replace,
+    Clear,
+}
+
+internal sealed record PropertyValueChange(PropertyValueChangeType Type, object[] Values);
