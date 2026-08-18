@@ -84,7 +84,8 @@ public class PrincipalSearcher : IDisposable
             var result = searcher.FindOne();
             return result is null
                 ? null
-                : PrincipalFactory.FromEntry(Context!, result.GetDirectoryEntry());
+                : Principal.Materialize(
+                    Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());
         }
         finally
         {
@@ -101,7 +102,8 @@ public class PrincipalSearcher : IDisposable
         foreach (var result in results.Cast<SearchResult>())
         {
             var entry = result.GetDirectoryEntry();
-            var principal = PrincipalFactory.FromEntry(Context!, entry);
+            var principal = Principal.Materialize(
+                Context!, QueryFilter!.GetType(), entry);
             if (principal is null)
             {
                 entry.Dispose();
@@ -142,7 +144,7 @@ public class PrincipalSearcher : IDisposable
         if (_underlyingSearcher is null || !ReferenceEquals(_underlyingContext, context))
         {
             ResetUnderlyingSearcher();
-            _searchRoot = context.CreateDirectoryEntry(context.Container);
+        _searchRoot = context.CreateDirectoryEntry(context.QueryContainer);
             _underlyingSearcher = new DirectorySearcher(_searchRoot)
             {
                 PageSize = 256,
@@ -189,11 +191,7 @@ public class PrincipalSearcher : IDisposable
             return example.CategoryFilter;
         }
 
-        var objectClass = type.GetCustomAttributes(
-                typeof(DirectoryObjectClassAttribute), inherit: true)
-            .Cast<DirectoryObjectClassAttribute>()
-            .Select(attribute => attribute.ObjectClass)
-            .FirstOrDefault();
+        var objectClass = PrincipalExtensionMetadata.GetDeclaredObjectClass(type);
         return objectClass is null
             ? example.CategoryFilter
             : $"(objectClass={LdapFilter.EscapeValue(objectClass)})";

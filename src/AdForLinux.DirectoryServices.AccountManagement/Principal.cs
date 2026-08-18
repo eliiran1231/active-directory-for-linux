@@ -48,6 +48,21 @@ public abstract class Principal : IDisposable
         }
     }
 
+    /// <summary>
+    /// Low-level context access for custom principal implementations.
+    /// </summary>
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected internal PrincipalContext ContextRaw
+    {
+        get => ContextRef;
+        set
+        {
+            value?.CheckDisposed();
+            ContextRef = value!;
+        }
+    }
+
     /// <summary>The context type (Domain).</summary>
     public ContextType ContextType
     {
@@ -131,7 +146,13 @@ public abstract class Principal : IDisposable
             // Microsoft consults the context type before its normal principal
             // guard because machine contexts map Name to SamAccountName.
             _ = ContextRef.ContextType;
-            return GetString("cn");
+            CheckDisposedOrDeleted();
+            if (Entry is not null)
+            {
+                return Entry.Properties["name"].Value?.ToString();
+            }
+
+            return _pending.TryGetValue("cn", out var value) ? value?.ToString() : null;
         }
         set
         {
@@ -181,13 +202,27 @@ public abstract class Principal : IDisposable
     public override string? ToString() => Name;
 
     /// <summary>The objectClass to create this principal with, e.g. "user".</summary>
-    private protected abstract string CreateObjectClass { get; }
+    private protected virtual string CreateObjectClass =>
+        PrincipalExtensionMetadata.GetDeclaredObjectClass(GetType())
+        ?? throw new InvalidOperationException(
+            $"Custom principal type {GetType().FullName} must declare " +
+            $"{nameof(DirectoryObjectClassAttribute)}.");
 
     /// <summary>
     /// The filter piece that selects this kind of principal, e.g.
     /// <c>(objectCategory=group)</c>. Used by searches.
     /// </summary>
-    internal abstract string CategoryFilter { get; }
+    internal virtual string CategoryFilter
+    {
+        get
+        {
+            var objectClass = PrincipalExtensionMetadata.GetDeclaredObjectClass(GetType())
+                ?? throw new InvalidOperationException(
+                    $"Custom principal type {GetType().FullName} must declare " +
+                    $"{nameof(DirectoryObjectClassAttribute)}.");
+            return $"(objectClass={LdapFilter.EscapeValue(objectClass)})";
+        }
+    }
 
     /// <summary>The values staged before the object is saved, by LDAP attribute.</summary>
     internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
@@ -196,7 +231,7 @@ public abstract class Principal : IDisposable
 
     /// <summary>
     /// The groups this principal is a direct member of. Nested groups are not
-    /// followed — use <see cref="GetAuthorizationGroups"/> for that.
+    /// followed — use <see cref="UserPrincipal.GetAuthorizationGroups"/> for that.
     /// </summary>
     public PrincipalSearchResult<Principal> GetGroups()
     {
@@ -245,11 +280,7 @@ public abstract class Principal : IDisposable
             membershipFilter);
     }
 
-    /// <summary>
-    /// Every group this principal belongs to, directly or through nesting. Uses
-    /// the AD matching rule LDAP_MATCHING_RULE_IN_CHAIN (1.2.840.113556.1.4.1941).
-    /// </summary>
-    public PrincipalSearchResult<Principal> GetAuthorizationGroups()
+    private protected PrincipalSearchResult<Principal> GetAuthorizationGroupsCore()
     {
         CheckDisposedOrDeleted();
         var distinguishedName = RequireDistinguishedName();
@@ -581,7 +612,7 @@ public abstract class Principal : IDisposable
         string identityFilter)
     {
         var filter = $"(&{PrincipalTypeFilter(principalType)}{identityFilter})";
-        using var root = context.CreateDirectoryEntry(context.Container);
+        using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, filter) { SizeLimit = 2 };
         using var results = searcher.FindAll();
 
@@ -617,30 +648,36 @@ public abstract class Principal : IDisposable
             return "(|(objectCategory=person)(objectCategory=group)(objectCategory=computer))";
         }
 
-        if (typeof(GroupPrincipal).IsAssignableFrom(principalType))
+        if (principalType == typeof(GroupPrincipal))
         {
             return "(objectCategory=group)";
         }
 
-        if (typeof(ComputerPrincipal).IsAssignableFrom(principalType))
+        if (principalType == typeof(ComputerPrincipal))
         {
             return "(objectCategory=computer)";
         }
 
-        if (typeof(UserPrincipal).IsAssignableFrom(principalType))
+        if (principalType == typeof(UserPrincipal))
         {
             return "(&(objectCategory=person)(objectClass=user))";
         }
 
-        if (typeof(AuthenticablePrincipal).IsAssignableFrom(principalType))
+        if (principalType == typeof(AuthenticablePrincipal))
         {
             return "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
+        }
+
+        var objectClass = PrincipalExtensionMetadata.GetDeclaredObjectClass(principalType);
+        if (objectClass is not null)
+        {
+            return $"(objectClass={LdapFilter.EscapeValue(objectClass)})";
         }
 
         throw new NotSupportedException($"Principal type {principalType.FullName} is not supported.");
     }
 
-    private static Principal? Materialize(
+    internal static Principal? Materialize(
         PrincipalContext context,
         Type principalType,
         DirectoryEntry entry)
@@ -714,14 +751,28 @@ public abstract class Principal : IDisposable
         var cn = GetString("cn")
             ?? throw new InvalidOperationException("Name must be set before saving a new principal.");
 
-        var parent = ContextRef.CreateDirectoryEntry(ContextRef.Container);
+        var principalType = GetType();
+        var objectClass = PrincipalExtensionMetadata.GetObjectClassForCreation(
+            principalType, CreateObjectClass);
+        var rdnPrefix = PrincipalExtensionMetadata.GetRdnPrefixForCreation(principalType);
+        var writeBaseCn = !rdnPrefix.Equals("CN", StringComparison.OrdinalIgnoreCase)
+            && (typeof(UserPrincipal).IsAssignableFrom(principalType)
+                || typeof(GroupPrincipal).IsAssignableFrom(principalType)
+                || typeof(ComputerPrincipal).IsAssignableFrom(principalType));
+
+        var parent = ContextRef.CreateDirectoryEntry(ContextRef.GetCreationContainer(GetType()));
         try
         {
-            var child = parent.Children.Add($"CN={EscapeRdnValue(cn)}", CreateObjectClass);
+            var child = parent.Children.Add(
+                $"{rdnPrefix}={EscapeRdnValue(cn)}", objectClass);
             foreach (var (name, value) in _pending)
             {
-                // The CN is already set by the RDN above.
-                if (value is null || name.Equals("cn", StringComparison.OrdinalIgnoreCase))
+                // The RDN attribute is already set by Children.Add. When a
+                // custom type uses a different RDN, retain the base CN value as
+                // Microsoft does for UserPrincipal/GroupPrincipal subclasses.
+                if (value is null
+                    || name.Equals(rdnPrefix, StringComparison.OrdinalIgnoreCase)
+                    || (name.Equals("cn", StringComparison.OrdinalIgnoreCase) && !writeBaseCn))
                 {
                     continue;
                 }
@@ -788,13 +839,14 @@ public abstract class Principal : IDisposable
         var originalEntry = Entry;
         var currentDn = Entry.DistinguishedName;
         var currentParent = LdapDistinguishedName.Parent(currentDn);
-        var moved = !string.Equals(currentParent, context.Container, StringComparison.OrdinalIgnoreCase);
+        var destinationContainer = context.GetCreationContainer(GetType());
+        var moved = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
 
         try
         {
             if (moved)
             {
-                using var target = context.CreateDirectoryEntry(context.Container);
+                using var target = context.CreateDirectoryEntry(destinationContainer);
                 originalEntry.MoveTo(target);
                 currentDn = originalEntry.DistinguishedName;
             }

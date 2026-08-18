@@ -15,6 +15,51 @@ public class DirectorySearcherTests
             AuthenticationTypes.SecureSocketsLayer);
 
     [Fact]
+    public void Searcher_participates_in_component_lifecycle()
+    {
+        var searcher = new TrackingDirectorySearcher();
+        Component component = searcher;
+        IComponent iComponent = searcher;
+        var disposedCount = 0;
+        component.Disposed += (_, _) => disposedCount++;
+
+        using var container = new Container();
+        container.Add(iComponent, "searcher");
+
+        Assert.Same(searcher, component);
+        Assert.Same(searcher, iComponent);
+        Assert.Same(container, searcher.Site!.Container);
+        Assert.Equal("searcher", searcher.Site.Name);
+        Assert.False(searcher.Site.DesignMode);
+
+        container.Dispose();
+
+        Assert.Null(searcher.Site);
+        Assert.Equal(1, disposedCount);
+        Assert.Equal(1, searcher.DisposeCallCount);
+    }
+
+    [Fact]
+    public void Disposing_searcher_does_not_dispose_caller_owned_search_root()
+    {
+        var root = new TrackingDirectoryEntry();
+        try
+        {
+            using (Component searcher = new DirectorySearcher(root))
+            {
+            }
+
+            Assert.Equal(0, root.DisposeCallCount);
+        }
+        finally
+        {
+            root.Dispose();
+        }
+
+        Assert.Equal(1, root.DisposeCallCount);
+    }
+
+    [Fact]
     public void Constructor_and_option_surface_matches_the_portable_api()
     {
         using var searcher = new DirectorySearcher(
@@ -551,5 +596,35 @@ public class DirectorySearcherTests
 
         var error = Assert.Throws<ProtocolDirectoryOperationException>(() => searcher.FindAll());
         Assert.Contains("InvalidAttributeSyntax (21)", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class TrackingDirectorySearcher : DirectorySearcher
+    {
+        public int DisposeCallCount { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                DisposeCallCount++;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class TrackingDirectoryEntry : DirectoryEntry
+    {
+        public int DisposeCallCount { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                DisposeCallCount++;
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }

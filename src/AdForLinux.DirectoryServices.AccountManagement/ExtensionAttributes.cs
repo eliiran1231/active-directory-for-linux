@@ -3,6 +3,8 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
 public sealed class DirectoryPropertyAttribute : Attribute
 {
+    private ContextType? _context;
+
     public DirectoryPropertyAttribute(string schemaAttributeName)
     {
         ArgumentNullException.ThrowIfNull(schemaAttributeName);
@@ -12,8 +14,8 @@ public sealed class DirectoryPropertyAttribute : Attribute
     public string SchemaAttributeName { get; }
     public ContextType? Context
     {
-        get => null;
-        set { }
+        get => _context;
+        set => _context = value;
     }
 }
 

@@ -6,22 +6,57 @@ namespace AdForLinux.DifferentialTests;
 public class LowLevelPublicSurfaceComparisonTests
 {
     [Fact]
-    public void Modern_low_level_public_type_names_match_microsoft()
+    public void Modern_low_level_public_type_names_and_base_types_match_microsoft()
     {
-        var microsoft = typeof(System.DirectoryServices.DirectoryEntry).Assembly
+        var microsoftTypes = typeof(System.DirectoryServices.DirectoryEntry).Assembly
             .GetExportedTypes()
             .Where(type => type.Namespace == "System.DirectoryServices")
-            .Select(type => type.Name)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        var ours = typeof(AdForLinux.DirectoryServices.DirectoryEntry).Assembly
+            .ToDictionary(type => type.Name, StringComparer.Ordinal);
+        var ourTypes = typeof(AdForLinux.DirectoryServices.DirectoryEntry).Assembly
             .GetExportedTypes()
             .Where(type => type.Namespace == "AdForLinux.DirectoryServices")
-            .Select(type => type.Name)
+            .ToDictionary(type => type.Name, StringComparer.Ordinal);
+        var microsoft = microsoftTypes.Keys
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var ours = ourTypes.Keys
             .Order(StringComparer.Ordinal)
             .ToArray();
 
         Assert.Equal(microsoft, ours);
+        var baseTypeDifferences = microsoft
+            .Select(typeName => new
+            {
+                TypeName = typeName,
+                Microsoft = Normalize(microsoftTypes[typeName].BaseType),
+                Ours = Normalize(ourTypes[typeName].BaseType),
+            })
+            .Where(item => !string.Equals(item.Microsoft, item.Ours, StringComparison.Ordinal))
+            .Select(item => $"{item.TypeName}: Microsoft={item.Microsoft}, Ours={item.Ours}")
+            .ToArray();
+
+        // These collection hierarchy gaps predate the all-exported-types check.
+        // Baseline them precisely so a new mismatch (such as DirectorySearcher
+        // not deriving from Component) still fails this test.
+        var knownDifferences = new[]
+        {
+            "PropertyValueCollection: Microsoft=System.Collections.CollectionBase, Ours=System.Object",
+            "ResultPropertyCollection: Microsoft=System.Collections.DictionaryBase, Ours=System.Object",
+            "ResultPropertyValueCollection: Microsoft=System.Collections.ReadOnlyCollectionBase, Ours=System.Object",
+        };
+        Assert.Equal(knownDifferences, baseTypeDifferences);
+    }
+
+    [Fact]
+    public void DirectorySearcher_component_inheritance_and_interfaces_match_microsoft()
+    {
+        var microsoft = typeof(System.DirectoryServices.DirectorySearcher);
+        var ours = typeof(AdForLinux.DirectoryServices.DirectorySearcher);
+
+        Assert.Equal(Normalize(microsoft.BaseType), Normalize(ours.BaseType));
+        Assert.Equal(
+            microsoft.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal),
+            ours.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal));
     }
 
     [Theory]
