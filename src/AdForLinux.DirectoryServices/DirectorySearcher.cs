@@ -33,6 +33,8 @@ public class DirectorySearcher : Component
     private SortOption _sort = new();
     private DirectoryVirtualListView? _virtualListView;
 
+    internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
     /// <summary>Creates a searcher with no root yet.</summary>
     public DirectorySearcher()
     {
@@ -341,6 +343,8 @@ public class DirectorySearcher : Component
         var request = BuildRequest();
         request.SizeLimit = 1;
 
+        CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
+
         var connection = root.GetConnection();
         ConfigureConnection(connection);
         var response = SendSearch(connection, request);
@@ -369,6 +373,7 @@ public class DirectorySearcher : Component
         var connection = root.GetConnection();
         ConfigureConnection(connection);
         var results = new List<SearchResult>();
+        var timeLimitBudget = CreateServerTimeLimitBudget(PageSize > 0);
 
         if (PageSize > 0)
         {
@@ -377,6 +382,11 @@ public class DirectorySearcher : Component
             {
                 var request = BuildRequest();
                 request.Controls.Add(pageControl);
+                if (!timeLimitBudget.TryApply(request))
+                {
+                    break;
+                }
+
                 var response = SendSearch(connection, request);
                 UpdateControlState(response);
 
@@ -399,7 +409,9 @@ public class DirectorySearcher : Component
         }
         else
         {
-            var response = SendSearch(connection, BuildRequest());
+            var request = BuildRequest();
+            timeLimitBudget.TryApply(request);
+            var response = SendSearch(connection, request);
             UpdateControlState(response);
             foreach (SearchResultEntry entry in response.Entries)
             {
@@ -430,8 +442,14 @@ public class DirectorySearcher : Component
         {
             try
             {
+                var timeLimitBudget = CreateServerTimeLimitBudget(pageControl is not null);
                 while (true)
                 {
+                    if (!timeLimitBudget.TryApply(request))
+                    {
+                        break;
+                    }
+
                     var response = SendSearchAsynchronously(
                         connection, request, resultRoot, returnPartialResults, timeout, add, cancellationToken);
                     UpdateControlState(response);
@@ -552,12 +570,12 @@ public class DirectorySearcher : Component
         request.Aliases = (System.DirectoryServices.Protocols.DereferenceAlias)(int)DerefAlias;
         request.TypesOnly = PropertyNamesOnly;
 
-        var timeLimit = ServerTimeLimit >= TimeSpan.Zero
-            ? ServerTimeLimit
-            : ServerPageTimeLimit;
-        if (timeLimit >= TimeSpan.Zero)
+        // ServerPageTimeLimit applies only to paged searches. Paged callers
+        // replace this initial value with the per-page limit and remaining
+        // overall search budget immediately before each request is sent.
+        if (ServerTimeLimit >= TimeSpan.Zero)
         {
-            request.TimeLimit = timeLimit;
+            request.TimeLimit = ServerTimeLimit;
         }
 
         if (ExtendedDN != ExtendedDN.None)
@@ -598,6 +616,9 @@ public class DirectorySearcher : Component
 
         return request;
     }
+
+    private ServerSearchTimeLimitBudget CreateServerTimeLimitBudget(bool isPaged) =>
+        new(ServerTimeLimit, ServerPageTimeLimit, isPaged, TimeProvider);
 
     private bool HasAttributeScopeQuery => _attributeScopeQuery.Length > 0;
 
