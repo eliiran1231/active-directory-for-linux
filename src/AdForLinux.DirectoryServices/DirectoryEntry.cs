@@ -81,9 +81,24 @@ public class DirectoryEntry : Component
         _path = LdapPath.Parse(path);
         _username = connectionOptions.BindDn;
         _password = connectionOptions.BindPassword;
-        _authenticationType = connectionOptions.UseSsl
-            ? AuthenticationTypes.SecureSocketsLayer
-            : AuthenticationTypes.None;
+        _authenticationType = connectionOptions.AuthenticationType switch
+        {
+            AuthType.Negotiate => AuthenticationTypes.Secure,
+            AuthType.Anonymous => AuthenticationTypes.Anonymous,
+            _ => AuthenticationTypes.None,
+        };
+        if (connectionOptions.UseSsl)
+        {
+            _authenticationType |= AuthenticationTypes.SecureSocketsLayer;
+        }
+        if (connectionOptions.Signing)
+        {
+            _authenticationType |= AuthenticationTypes.Signing;
+        }
+        if (connectionOptions.Sealing)
+        {
+            _authenticationType |= AuthenticationTypes.Sealing;
+        }
         _connectionOptionsOverride = connectionOptions;
     }
 
@@ -477,10 +492,10 @@ public class DirectoryEntry : Component
         var dn = $"{relativeName},{parent._path.DistinguishedName}";
         var path = new LdapPath(parent._path.Host, parent._path.Port, dn).ToString();
 
-        var child = new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
-        {
-            _isNew = true,
-        };
+        var child = parent._connectionOptionsOverride is null
+            ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
+            : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
+        child._isNew = true;
         child._properties = new PropertyCollection(child.OnPropertyChanged);
 
         // The structural class; AD fills in the rest of the class chain.
