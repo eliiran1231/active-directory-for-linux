@@ -848,14 +848,31 @@ public class DirectoryEntry : Component
         }
     }
 
-    internal LdapConnection GetConnection() => _connection ??= LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(BuildOptions()));
+    internal LdapConnection GetConnection() => _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
 
     /// <summary>
     /// Schema discovery uses a dedicated connection so it never attempts a
     /// second request on a connection that is yielding asynchronous results.
     /// </summary>
     internal LdapConnection GetSchemaConnection() =>
-        _schemaConnection ??= LdapConnectionFactory.CreateBound(BuildOptions());
+        _schemaConnection ??= CreateBoundConnection();
+
+    private LdapConnection CreateBoundConnection()
+    {
+        var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+        try
+        {
+            LdapConnectionFactory.ConfigureReferralChasing(connection, Options.Referral);
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
+    }
+
+    internal void OnReferralChanged() => ResetConnection();
 
     internal string? ServerHost => _path.Host;
 

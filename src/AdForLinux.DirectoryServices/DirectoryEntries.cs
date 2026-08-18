@@ -80,6 +80,8 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
         using var searcher = new DirectorySearcher(_parent, BuildSchemaFilter())
         {
             SearchScope = SearchScope.OneLevel,
+            PageSize = _parent.Options.PageSize,
+            ReferralChasing = _parent.Options.Referral,
         };
 
         using var results = searcher.FindAll();
