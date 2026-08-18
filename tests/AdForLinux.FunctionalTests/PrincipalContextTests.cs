@@ -110,6 +110,24 @@ public class PrincipalContextTests
     }
 
     [Fact]
+    public void ValidateCredentials_without_options_returns_false_for_wrong_password_on_Linux()
+    {
+        Assert.True(OperatingSystem.IsLinux());
+        using var context = Authenticated();
+
+        // Explicit Negotiate remains unavailable in this Linux fixture. The
+        // optionless overload must not reach it after LDAPS rejects a bad password.
+        Assert.Throws<PrincipalServerDownException>(() => context.ValidateCredentials(
+            TestSettings.BindDn,
+            "definitely-wrong-password",
+            ContextOptions.Negotiate | ContextOptions.Signing | ContextOptions.Sealing));
+
+        Assert.False(context.ValidateCredentials(
+            TestSettings.BindDn,
+            "definitely-wrong-password"));
+    }
+
+    [Fact]
     public void Issue_11_constructor_overloads_and_options_are_available()
     {
         using var credentialContext = new PrincipalContext(
