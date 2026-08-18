@@ -70,7 +70,7 @@ internal static class LdapConnectionFactory
 
         // The connection stays open until disposed; bind eagerly so failures
         // surface here rather than on first search.
-        connection.Timeout = TimeSpan.FromSeconds(30);
+        connection.Timeout = options.Timeout;
 
         if (options.UseStartTls && !options.UseSsl)
         {

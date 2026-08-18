@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices;
+using System.ComponentModel;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
@@ -159,12 +160,19 @@ public class GroupPrincipal : Principal
                 throw new ArgumentNullException(nameof(value));
             }
 
+            if (!Enum.IsDefined(value.Value))
+            {
+                throw new InvalidEnumArgumentException(
+                    nameof(value), (int)value.Value, typeof(GroupScope));
+            }
+
             var bit = value switch
             {
                 AccountManagement.GroupScope.Local => ScopeLocal,
                 AccountManagement.GroupScope.Universal => ScopeUniversal,
                 AccountManagement.GroupScope.Global => ScopeGlobal,
-                _ => ScopeUniversal,
+                _ => throw new InvalidEnumArgumentException(
+                    nameof(value), (int)value.Value, typeof(GroupScope)),
             };
 
             var groupType = ReadGroupType() ?? DefaultGroupType;

@@ -322,16 +322,32 @@ public class PrincipalContext : IDisposable
                 _lastCredentialValidationMethod = first;
                 return true;
             }
-            catch (LdapException)
+            catch (LdapException ex) when (IsAuthenticationFailure(ex))
             {
-                // Microsoft tries the other credential-validation method even
-                // when the first failure looks like invalid credentials.
+                // The server reached by this method conclusively rejected the
+                // credentials. Trying a platform-unsupported alternate method
+                // must not turn an ordinary rejection into an exception.
+                return false;
             }
-            catch (DirectoryOperationException)
-                when (first == CredentialValidationMethod.SimpleBindOverSsl)
+            catch (DirectoryOperationException ex) when (IsAuthenticationFailure(ex))
             {
-                // Microsoft's Simple+SSL first attempt also falls back for
-                // DirectoryOperationException; its Negotiate-first path does not.
+                return false;
+            }
+            catch (LdapException ex) when (ShouldTryAlternateValidationMethod(ex))
+            {
+                // The endpoint or authentication method may be unavailable;
+                // try the other validation method below.
+            }
+            catch (DirectoryOperationException ex)
+                when (first == CredentialValidationMethod.SimpleBindOverSsl &&
+                    ShouldTryAlternateValidationMethod(ex))
+            {
+                // Microsoft's Simple+SSL path can report method/transport
+                // mismatch as a DirectoryOperationException.
+            }
+            catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
+            {
+                throw AccountManagementExceptionTranslator.TranslateProtocol(ex);
             }
 
             try
@@ -341,6 +357,10 @@ public class PrincipalContext : IDisposable
                 return true;
             }
             catch (LdapException ex) when (IsAuthenticationFailure(ex))
+            {
+                return false;
+            }
+            catch (DirectoryOperationException ex) when (IsAuthenticationFailure(ex))
             {
                 return false;
             }
@@ -633,6 +653,27 @@ public class PrincipalContext : IDisposable
 
     private static bool IsAuthenticationFailure(LdapException exception) =>
         exception.ErrorCode is 49 or 1326;
+
+    private static bool IsAuthenticationFailure(DirectoryOperationException exception) =>
+        (int?)exception.Response?.ResultCode == 49;
+
+    private static bool ShouldTryAlternateValidationMethod(LdapException exception) =>
+        exception.ErrorCode is
+            7 or   // auth method not supported
+            8 or   // strong authentication required
+            13 or  // confidentiality required
+            48 or  // inappropriate authentication
+            52 or  // server endpoint unavailable
+            81 or  // server down
+            85 or  // timeout
+            86 or  // unknown authentication method
+            91 or  // connect error
+            92 or  // operation not supported
+            112;   // TLS is not supported
+
+    private static bool ShouldTryAlternateValidationMethod(
+        DirectoryOperationException exception) =>
+        (int?)exception.Response?.ResultCode is 7 or 8 or 13 or 48 or 52;
 
     private static void ValidateCredentialPair(string? userName, string? password)
     {
