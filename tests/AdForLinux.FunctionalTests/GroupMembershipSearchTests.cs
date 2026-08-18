@@ -74,6 +74,72 @@ public class GroupMembershipSearchTests
     }
 
     [Fact]
+    public void GetGroups_honors_the_query_context_container()
+    {
+        var userName = NewName();
+        var insideName = NewName();
+        var outsideName = NewName();
+        var organizationalUnitName = NewName();
+        var userDn = SeedUser(userName);
+        var organizationalUnitDn = CreateOrganizationalUnit(organizationalUnitName);
+        var insideDn = $"CN={insideName},{organizationalUnitDn}";
+        var outsideDn = DnFor(outsideName);
+
+        try
+        {
+            using (var insideContainer = new DirectoryEntry(
+                TestSettings.PathFor(organizationalUnitDn),
+                TestSettings.BindDn,
+                TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer))
+            using (var inside = insideContainer.Children.Add($"CN={insideName}", "group"))
+            {
+                inside.Properties["sAMAccountName"].Value = insideName;
+                inside.Properties["member"].Add(userDn);
+                inside.CommitChanges();
+            }
+
+            using (var users = new DirectoryEntry(
+                TestSettings.PathFor(TestDirectory.UsersContainer),
+                TestSettings.BindDn,
+                TestSettings.BindPassword,
+                AuthenticationTypes.SecureSocketsLayer))
+            using (var outside = users.Children.Add($"CN={outsideName}", "group"))
+            {
+                outside.Properties["sAMAccountName"].Value = outsideName;
+                outside.Properties["member"].Add(userDn);
+                outside.CommitChanges();
+            }
+
+            using var userContext = Context();
+            using var scopedContext = TestSettings.CreatePrincipalContext(organizationalUnitDn);
+            using var domainContext = TestSettings.CreatePrincipalContext();
+            using var user = UserPrincipal.FindByIdentity(userContext, userName)!;
+
+            using var scoped = user.GetGroups(scopedContext);
+            Assert.Equal(new[] { insideName }, scoped.Select(group => group.SamAccountName));
+
+            using var domainWide = user.GetGroups(domainContext);
+            var domainNames = domainWide.Select(group => group.SamAccountName).ToHashSet();
+            Assert.Contains(insideName, domainNames);
+            Assert.Contains(outsideName, domainNames);
+
+            // The no-argument overload is constrained by the principal's own
+            // explicitly configured context (CN=Users here).
+            using var ownContext = user.GetGroups();
+            Assert.Contains(outsideName, ownContext.Select(group => group.SamAccountName));
+            Assert.DoesNotContain(insideName, ownContext.Select(group => group.SamAccountName));
+        }
+        finally
+        {
+            TestDirectory.Delete(outsideDn);
+            TestDirectory.Delete(insideDn);
+            TestDirectory.Delete(organizationalUnitDn);
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
     public void GetAuthorizationGroups_follows_nesting()
     {
         var userName = NewName();

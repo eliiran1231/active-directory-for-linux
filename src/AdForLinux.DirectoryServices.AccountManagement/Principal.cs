@@ -1,5 +1,6 @@
 using System.Collections;
 using System.ComponentModel;
+using System.DirectoryServices.Protocols;
 using System.Security.Principal;
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
@@ -212,8 +213,30 @@ public abstract class Principal : IDisposable
     {
         ArgumentNullException.ThrowIfNull(contextToQuery);
         CheckDisposedOrDeleted();
-        var memberFilter = $"(member={LdapFilter.EscapeValue(RequireDistinguishedName())})";
-        var primaryGroupSid = TryGetPrimaryGroupSid();
+        var distinguishedName = RequireDistinguishedName();
+        var objectSid = Entry?.Properties["objectSid"].Value as byte[]
+            ?? throw new InvalidOperationException(
+                "The principal must have a security identifier before its groups can be queried in another context.");
+
+        // The target store can represent a principal from another domain by a
+        // foreignSecurityPrincipal.  Find that store-local object by SID rather
+        // than assuming the foreign principal's DN is what group.member stores.
+        var targetPrincipal = FindBySid(contextToQuery, objectSid);
+        var memberDns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            distinguishedName,
+        };
+        if (targetPrincipal?.Properties["distinguishedName"].Value is string targetDn)
+        {
+            memberDns.Add(targetDn);
+        }
+
+        var memberFilter = memberDns.Count == 1
+            ? $"(member={LdapFilter.EscapeValue(memberDns.Single())})"
+            : $"(|{string.Concat(memberDns.Select(
+                dn => $"(member={LdapFilter.EscapeValue(dn)})"))})";
+        var primaryGroupSid = TryGetPrimaryGroupSid(targetPrincipal);
+        targetPrincipal?.Dispose();
         var membershipFilter = primaryGroupSid is null
             ? memberFilter
             : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
@@ -259,9 +282,10 @@ public abstract class Principal : IDisposable
                         : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))");
             }
 
-            var sidFilter = string.Concat(tokenSids.Select(
-                sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"));
-            return FindGroups(ContextRef, $"(|{sidFilter})");
+            var objectSid = Entry?.Properties["objectSid"].Value as byte[]
+                ?? throw new InvalidOperationException(
+                    "The principal must have a security identifier before its authorization groups can be queried.");
+            return FindAuthorizationGroups(ContextRef, tokenSids, objectSid, distinguishedName);
         }
         finally
         {
@@ -274,7 +298,7 @@ public abstract class Principal : IDisposable
         string membershipFilter)
     {
         var filter = $"(&(objectCategory=group){membershipFilter})";
-        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.DefaultNamingContext);
+        var root = contextToQuery.CreateDirectoryEntry(contextToQuery.Container);
         try
         {
             using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
@@ -290,6 +314,143 @@ public abstract class Principal : IDisposable
         finally
         {
             root.Dispose();
+        }
+    }
+
+    private static DirectoryEntry? FindBySid(PrincipalContext context, byte[] sid)
+    {
+        using var root = context.CreateDirectoryEntry(context.DefaultNamingContext);
+        using var searcher = new DirectorySearcher(
+            root,
+            $"(objectSid={LdapFilter.EscapeBytes(sid)})",
+            new[] { "distinguishedName", "primaryGroupID", "objectSid", "objectClass" },
+            SearchScope.Subtree)
+        {
+            SizeLimit = 1,
+        };
+        return searcher.FindOne()?.GetDirectoryEntry();
+    }
+
+    private static byte[]? TryGetPrimaryGroupSid(DirectoryEntry? entry)
+    {
+        if (entry?.Properties["objectSid"].Value is not byte[] objectSid)
+        {
+            return null;
+        }
+
+        var rawRid = entry.Properties["primaryGroupID"].Value;
+        return uint.TryParse(
+            Convert.ToString(rawRid, System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var rid)
+            ? SidCodec.ReplaceRid(objectSid, rid)
+            : null;
+    }
+
+    private static PrincipalSearchResult<Principal> FindAuthorizationGroups(
+        PrincipalContext context,
+        IReadOnlyCollection<byte[]> tokenSids,
+        byte[] principalSid,
+        string principalDn)
+    {
+        var filter = $"(&(objectCategory=group)(|{string.Concat(tokenSids.Select(
+            sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"))}))";
+        var groups = new List<Principal>();
+        var returnedSids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        SearchAuthorizationGroups(
+            context,
+            context.CreateDirectoryEntry(context.DefaultNamingContext),
+            filter,
+            groups,
+            returnedSids);
+
+        // tokenGroups can contain universal groups from another domain.  A
+        // domain-NC search cannot see them; a GC search rooted at the forest NC
+        // can.  If the connected server is not a GC, preserve the domain result
+        // rather than turning a successful query into a server-down failure.
+        if (!context.CanUseGlobalCatalog)
+        {
+            return new PrincipalSearchResult<Principal>(groups);
+        }
+
+        try
+        {
+            var forestRoot = context.RootDomainNamingContext;
+            SearchAuthorizationGroups(context, context.CreateGlobalCatalogEntry(forestRoot),
+                filter, groups, returnedSids);
+
+            // AuthZ includes resource-domain memberships that are not present
+            // in the account domain's tokenGroups.  Locate every store object
+            // for the principal SID (the account and any FSPs), then ask the GC
+            // for direct and nested groups containing those DNs.
+            var memberDns = FindForestPrincipalDns(context, forestRoot, principalSid);
+            memberDns.Add(principalDn);
+            var memberFilter = string.Concat(memberDns.Select(dn =>
+                $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(dn)})"));
+            SearchAuthorizationGroups(context, context.CreateGlobalCatalogEntry(forestRoot),
+                $"(&(objectCategory=group)(|{memberFilter}))", groups, returnedSids);
+        }
+        catch (Exception exception) when (
+            exception is LdapException or DirectoryOperationException)
+        {
+            // Microsoft falls back to tokenGroups when AuthZ/trust discovery is
+            // unavailable.  The local naming-context result above is that same
+            // deterministic fallback for this LDAP implementation.
+        }
+
+        return new PrincipalSearchResult<Principal>(groups);
+    }
+
+    private static HashSet<string> FindForestPrincipalDns(
+        PrincipalContext context,
+        string forestRoot,
+        byte[] principalSid)
+    {
+        using var root = context.CreateGlobalCatalogEntry(forestRoot);
+        using var searcher = new DirectorySearcher(
+            root,
+            $"(objectSid={LdapFilter.EscapeBytes(principalSid)})",
+            new[] { "distinguishedName" },
+            SearchScope.Subtree)
+        {
+            PageSize = 500,
+        };
+        using var results = searcher.FindAll();
+        return results.Cast<SearchResult>()
+            .Select(result => result.Properties["distinguishedName"].Count > 0
+                ? result.Properties["distinguishedName"][0]?.ToString()
+                : null)
+            .Where(dn => !string.IsNullOrWhiteSpace(dn))
+            .Select(dn => dn!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void SearchAuthorizationGroups(
+        PrincipalContext context,
+        DirectoryEntry root,
+        string filter,
+        ICollection<Principal> groups,
+        ISet<string> returnedSids)
+    {
+        using (root)
+        using (var searcher = new DirectorySearcher(root, filter) { PageSize = 500 })
+        using (var results = searcher.FindAll())
+        {
+            foreach (var result in results.Cast<SearchResult>())
+            {
+                var entry = result.GetDirectoryEntry();
+                if (entry.Properties["objectSid"].Value is byte[] sid
+                    && returnedSids.Add(SidCodec.Format(sid)))
+                {
+                    groups.Add(new GroupPrincipal(context, entry));
+                }
+                else
+                {
+                    entry.Dispose();
+                }
+            }
         }
     }
 
@@ -335,22 +496,7 @@ public abstract class Principal : IDisposable
 
     private byte[]? TryGetPrimaryGroupSid()
     {
-        if (Entry?.Properties["objectSid"].Value is not byte[] objectSid)
-        {
-            return null;
-        }
-
-        var rawRid = Entry.Properties["primaryGroupID"].Value;
-        if (!uint.TryParse(
-                Convert.ToString(rawRid, System.Globalization.CultureInfo.InvariantCulture),
-                System.Globalization.NumberStyles.None,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var rid))
-        {
-            return null;
-        }
-
-        return SidCodec.ReplaceRid(objectSid, rid);
+        return TryGetPrimaryGroupSid(Entry);
     }
 
     internal uint? GetPrimaryGroupRid()

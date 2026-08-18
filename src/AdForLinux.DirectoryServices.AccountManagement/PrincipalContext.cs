@@ -233,6 +233,47 @@ public class PrincipalContext : IDisposable
 
     private string? _defaultNamingContext;
 
+    /// <summary>The forest-root naming context used as the GC search base.</summary>
+    internal string RootDomainNamingContext
+    {
+        get
+        {
+            CheckDisposed();
+            return _rootDomainNamingContext ??= DiscoverRootDomainNamingContext();
+        }
+    }
+
+    private string? _rootDomainNamingContext;
+
+    /// <summary>Whether the connected DC exposes its global-catalog endpoint.</summary>
+    internal bool CanUseGlobalCatalog
+    {
+        get
+        {
+            CheckDisposed();
+            if (_canUseGlobalCatalog is not null)
+            {
+                return _canUseGlobalCatalog.Value;
+            }
+
+            try
+            {
+                using var client = new System.Net.Sockets.TcpClient();
+                var connect = client.ConnectAsync(_name, _useSsl ? 3269 : 3268);
+                _canUseGlobalCatalog = connect.Wait(TimeSpan.FromSeconds(1)) && client.Connected;
+            }
+            catch (Exception exception) when (
+                exception is System.Net.Sockets.SocketException or AggregateException)
+            {
+                _canUseGlobalCatalog = false;
+            }
+
+            return _canUseGlobalCatalog.Value;
+        }
+    }
+
+    private bool? _canUseGlobalCatalog;
+
     /// <summary>
     /// Checks a username and password by trying a bind. Returns true if it
     /// succeeds, false if the credentials are rejected.
@@ -366,11 +407,40 @@ public class PrincipalContext : IDisposable
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
+    /// <summary>Opens the same server's global-catalog endpoint.</summary>
+    internal DirectoryEntry CreateGlobalCatalogEntry(string distinguishedName)
+    {
+        CheckDisposed();
+        var options = BuildOptions();
+        return new DirectoryEntry(
+            $"LDAP://{_name}:{(_useSsl ? 3269 : 3268)}/{distinguishedName}",
+            new LdapConnectionOptions
+            {
+                Host = options.Host,
+                Port = _useSsl ? 3269 : 3268,
+                UseSsl = options.UseSsl,
+                AuthenticationType = options.AuthenticationType,
+                Signing = options.Signing,
+                Sealing = options.Sealing,
+                BindDn = options.BindDn,
+                BindPassword = options.BindPassword,
+            });
+    }
+
     private string DiscoverDefaultNamingContext()
     {
         using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
         return RootDse.GetDefaultNamingContext(connection)
             ?? throw new InvalidOperationException("The server did not report a default naming context.");
+    }
+
+    private string DiscoverRootDomainNamingContext()
+    {
+        using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+        var values = RootDse.Read(connection, "rootDomainNamingContext");
+        return values.TryGetValue("rootDomainNamingContext", out var namingContext)
+            ? namingContext
+            : DefaultNamingContext;
     }
 
     private static (string Host, int Port, bool HasExplicitPort) ParseServer(
