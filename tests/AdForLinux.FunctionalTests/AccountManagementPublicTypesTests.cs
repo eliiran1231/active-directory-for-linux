@@ -1,4 +1,5 @@
 using System.Collections;
+using System.ComponentModel;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -113,13 +114,8 @@ public class AccountManagementPublicTypesTests
             Assert.Equal("(&(objectCategory=user)(objectClass=user))", searcher.GetLdapFilter());
         }
 
-        group.GroupScope = (GroupScope)int.MaxValue;
-        using (var searcher = new PrincipalSearcher(group))
-        {
-            Assert.Equal(
-                "(&(objectClass=group)(groupType:1.2.840.113556.1.4.803:=8))",
-                searcher.GetLdapFilter());
-        }
+        Assert.Throws<InvalidEnumArgumentException>(
+            () => group.GroupScope = (GroupScope)int.MaxValue);
     }
 
     [Fact]
