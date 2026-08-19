@@ -747,10 +747,10 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Renames this entry under its existing parent.</summary>
-    public void Rename(string newName)
+    public void Rename(string? newName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
-        MoveOrRename(LdapDistinguishedName.Parent(_path.DistinguishedName), newName);
+        using var parent = Parent;
+        MoveTo(parent!, newName, validateNewName: false);
     }
 
     /// <summary>
@@ -772,9 +772,12 @@ public class DirectoryEntry : Component
     /// ModifyDN cannot perform a cross-server move, so no request is sent.
     /// </exception>
     public void MoveTo(DirectoryEntry newParent, string? newName)
+        => MoveTo(newParent, newName, validateNewName: true);
+
+    private void MoveTo(DirectoryEntry newParent, string? newName, bool validateNewName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
-        if (newName is not null)
+        if (validateNewName && newName is not null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(newName);
         }
