@@ -50,7 +50,27 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
     }
 
     [Fact]
-    public void Successful_ObjectSecurity_commit_reloads_clean_state_and_empty_commit_does_not_rewrite()
+    public void Empty_cached_commit_invalidates_initialized_security_like_Microsoft()
+    {
+        using var ms = MicrosoftEntry();
+        using var ours = OurEntry();
+        ms.Options!.SecurityMasks = Ms.SecurityMasks.Dacl;
+        ours.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
+        var msSecurity = ms.ObjectSecurity;
+        var ourSecurity = ours.ObjectSecurity;
+
+        ms.CommitChanges();
+        ours.CommitChanges();
+
+        new Comparison("ObjectSecurity cache after empty cached CommitChanges")
+            .Check("invalidated",
+                !ReferenceEquals(msSecurity, ms.ObjectSecurity),
+                !ReferenceEquals(ourSecurity, ours.ObjectSecurity))
+            .Assert();
+    }
+
+    [Fact]
+    public void Successful_ObjectSecurity_and_empty_commits_reload_clean_state()
     {
         var objectType = Guid.NewGuid();
         var identity = ReadOurObjectSid();
@@ -77,10 +97,7 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
 
             entry.CommitChanges();
 
-            // A second descriptor write would invalidate the cache again. The
-            // same instance proves AddObjectSecurity no longer considered the
-            // freshly reloaded descriptor dirty.
-            Assert.Same(reloadedSecurity, entry.ObjectSecurity);
+            Assert.NotSame(reloadedSecurity, entry.ObjectSecurity);
 
             using var reread = OurEntry();
             reread.Options.SecurityMasks = Ours.SecurityMasks.Dacl;

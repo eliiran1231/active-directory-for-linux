@@ -312,10 +312,20 @@ public class DirectoryEntry : Component
     /// <c>Children.Add</c>) this creates it; for an existing one it sends only
     /// the changed attributes, like Microsoft's <c>CommitChanges</c>.
     /// </summary>
-    public void CommitChanges()
+    public void CommitChanges() => CommitChanges(invalidatePropertyCache: true);
+
+    private void CommitChanges(bool invalidatePropertyCache)
     {
+        ThrowIfDisposed();
+        if (!_isNew
+            && !_usePropertyCache
+            && (_objectSecurity is null
+                || (!_objectSecurityChanged && !_objectSecurity.IsModified())))
+        {
+            return;
+        }
+
         var connection = GetConnection();
-        var objectSecurityWritten = false;
 
         if (_isNew)
         {
@@ -328,7 +338,7 @@ public class DirectoryEntry : Component
                 }
             }
 
-            objectSecurityWritten = AddObjectSecurity(add);
+            AddObjectSecurity(add);
 
             connection.SendRequestCompatible(add);
             _isNew = false;
@@ -347,7 +357,7 @@ public class DirectoryEntry : Component
                 AddModifications(modify, property);
             }
 
-            objectSecurityWritten = AddObjectSecurity(modify);
+            AddObjectSecurity(modify);
 
             if (modify.Modifications.Count > 0)
             {
@@ -355,19 +365,25 @@ public class DirectoryEntry : Component
             }
         }
 
-        foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
+        if (invalidatePropertyCache)
         {
-            property.ResetChanged();
+            // A successful public CommitChanges mirrors ADSI SetInfo: the next
+            // managed property access must bind again and observe server-
+            // generated or normalized values. Keep the pre-commit collection
+            // intact until this point so a failed request retains local state.
+            _properties = null;
+        }
+        else
+        {
+            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
+            {
+                property.ResetChanged();
+            }
         }
 
-        if (objectSecurityWritten)
-        {
-            // DirectoryObjectSecurity does not expose a way to clear its
-            // internal modification flags. Discard the successfully written
-            // instance so the next access reloads a clean descriptor from AD.
-            _objectSecurity = null;
-        }
-
+        // Microsoft also discards the initialized security descriptor after a
+        // successful SetInfo, regardless of whether it supplied the change.
+        _objectSecurity = null;
         _objectSecurityChanged = false;
     }
 
@@ -934,9 +950,13 @@ public class DirectoryEntry : Component
 
     private void CommitIfNotCaching()
     {
-        if (!UsePropertyCache)
+        if (!UsePropertyCache && !_isNew)
         {
-            CommitChanges();
+            // Immediate property writes do not represent a public
+            // CommitChanges call. In particular, an immediate ObjectSecurity
+            // write resets its security state without discarding the managed
+            // PropertyCollection.
+            CommitChanges(invalidatePropertyCache: false);
         }
     }
 
