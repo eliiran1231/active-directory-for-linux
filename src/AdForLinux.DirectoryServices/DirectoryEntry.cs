@@ -258,14 +258,14 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>The parent entry, or <see langword="null"/> for a naming-context root.</summary>
-    public DirectoryEntry Parent
+    public DirectoryEntry? Parent
     {
         get
         {
             var parentDn = LdapDistinguishedName.Parent(BindEntry());
             if (parentDn is null)
             {
-                return null!;
+                return null;
             }
 
             var parent = CreateEntryForDn(parentDn);

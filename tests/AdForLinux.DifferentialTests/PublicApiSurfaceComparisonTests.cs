@@ -455,9 +455,13 @@ public class PublicApiSurfaceComparisonTests
         Ours("SearchResultCollection", "interface System.Collections.Generic.IReadOnlyCollection<DirectoryServices.SearchResult>"),
         Ours("SearchResultCollection", "interface System.Collections.Generic.IReadOnlyList<DirectoryServices.SearchResult>"),
 
-        // Known metadata-only debt. DirectoryEntry.Options never returns null
-        // in the LDAP implementation, Filter normalizes null to the default,
-        // and the Windows-only designer converter cannot be instantiated here.
+        // Known metadata-only debt. Parent remains honestly nullable because
+        // LDAP naming-context roots have no parent, DirectoryEntry.Options
+        // never returns null in the LDAP implementation, Filter normalizes
+        // null to the default, and the Windows-only designer converter cannot
+        // be instantiated here.
+        Microsoft("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) DirectoryServices.DirectoryEntry Parent[] nullability NotNull/Unknown"),
+        Ours("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) DirectoryServices.DirectoryEntry Parent[] nullability Nullable/Unknown"),
         Microsoft("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) DirectoryServices.DirectoryEntryConfiguration Options[] nullability Nullable/Unknown"),
         Ours("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) DirectoryServices.DirectoryEntryConfiguration Options[] nullability NotNull/Unknown"),
         Microsoft("DirectoryEntry", "type attribute System.ComponentModel.TypeConverterAttribute(System.Type:DirectoryServices.Design.DirectoryEntryConverter)"),

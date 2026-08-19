@@ -67,9 +67,11 @@ entries fail the test. The current groups are:
 - Linux/LDAP conveniences: `DirectoryEntry.DistinguishedName`, portable SID and
   connection properties, and `PrincipalSearcher.GetLdapFilter`.
 - generic enumeration/readonly-list conveniences used by Linux and LINQ callers.
-- three documented metadata-only differences: the Windows designer converter,
+- four documented metadata-only differences: the Windows designer converter,
+  honest nullable metadata for `DirectoryEntry.Parent`,
   `DirectoryEntry.Options` nullability, and normalized `DirectorySearcher.Filter`
-  getter nullability.
+  getter nullability. `Parent` intentionally stays nullable because an LDAP
+  naming-context root has no parent.
 
 Any new extension, including a future LINQ API, therefore requires an explicit,
 reviewable allowlist entry; unrelated public-surface drift fails with side-by-side
