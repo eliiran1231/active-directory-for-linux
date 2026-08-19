@@ -103,6 +103,10 @@ advanced date/count comparisons.
   ADSI/COM object, which has no Linux equivalent. The property is retained for
   source compatibility, but accessing it always throws
   `PlatformNotSupportedException` on Linux.
+- **`SearchResultCollection.Handle`.** Microsoft exposes the native ADSI
+  `IDirectorySearch::ExecuteSearch` handle. Protocol-based LDAP searches have no
+  equivalent stable native handle, so accessing this property throws
+  `PlatformNotSupportedException` rather than returning a fabricated zero value.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
@@ -111,6 +115,12 @@ advanced date/count comparisons.
   provider option for returning quota information for a named security
   principal. LDAP has no equivalent interoperable option or control, so there
   is no portable fallback; this method throws `PlatformNotSupportedException`.
+- **`DirectoryEntryConfiguration.IsMutuallyAuthenticated`.** The LDAP bind is
+  performed before this member returns, but `System.DirectoryServices.Protocols`
+  exposes neither the negotiated SSPI/GSSAPI mutual-authentication flag nor an
+  equivalent portable status. The method therefore throws
+  `PlatformNotSupportedException` instead of fabricating `false`. This applies
+  to both default-credential Negotiate and explicit-credential binds.
 - **Legacy `DirectoryServicesPermission*` types.** These belonged to .NET
   Framework Code Access Security. They are absent from the modern
   `System.DirectoryServices` reference assembly and CAS is not supported by

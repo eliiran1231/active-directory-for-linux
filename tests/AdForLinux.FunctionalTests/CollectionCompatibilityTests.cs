@@ -255,7 +255,7 @@ public class CollectionCompatibilityTests
     }
 
     [Fact]
-    public void Search_result_collection_exposes_protocol_compatible_metadata_and_disposal()
+    public void Search_result_collection_reports_unsupported_native_handle_and_preserves_disposal_contract()
     {
         var requested = new[] { "cn", "mail" };
         var results = new SearchResultCollection(Array.Empty<SearchResult>(), requested);
@@ -263,11 +263,13 @@ public class CollectionCompatibilityTests
         requested[0] = "changed";
         Assert.Empty(results);
         Assert.Equal(new[] { "cn", "mail" }, results.PropertiesLoaded);
-        Assert.Equal(IntPtr.Zero, results.Handle);
+        var unsupported = Assert.Throws<PlatformNotSupportedException>(() => results.Handle);
+        Assert.Contains("ADSI native search handle", unsupported.Message);
         Assert.IsAssignableFrom<ICollection>(results);
 
         results.Dispose();
-        Assert.Throws<ObjectDisposedException>(() => results.Handle);
+        var disposed = Assert.Throws<ObjectDisposedException>(() => results.Handle);
+        Assert.Equal(nameof(SearchResultCollection), disposed.ObjectName);
     }
 
     [Fact]

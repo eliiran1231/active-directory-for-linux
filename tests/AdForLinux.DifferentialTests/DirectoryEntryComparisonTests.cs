@@ -61,6 +61,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         ms.Dispose();
         ours.Dispose();
 
+        var msRefreshError = Assert.IsType<ObjectDisposedException>(Record.Exception(ms.RefreshCache));
+        var ourRefreshError = Assert.IsType<ObjectDisposedException>(Record.Exception(ours.RefreshCache));
         var msPropertyError = Assert.IsType<ObjectDisposedException>(
             Record.Exception(() => _ = ms.Properties["displayName"].Value));
         var ourPropertyError = Assert.IsType<ObjectDisposedException>(
@@ -74,6 +76,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         var ourSearchError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => ourSearcher.FindOne()));
 
         new Comparison($"DirectoryEntry disposed lifecycle (UsePropertyCache={usePropertyCache})")
+            .Check("RefreshCache exception", msRefreshError.GetType().Name, ourRefreshError.GetType().Name)
+            .Check("RefreshCache object name", msRefreshError.ObjectName, ourRefreshError.ObjectName)
             .Check("Properties exception", msPropertyError.GetType().Name, ourPropertyError.GetType().Name)
             .Check("Properties object name", msPropertyError.ObjectName, ourPropertyError.ObjectName)
             .Check("CommitChanges exception", msCommitError.GetType().Name, ourCommitError.GetType().Name)
@@ -85,6 +89,32 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
 
         ms.Dispose();
         ours.Dispose();
+    }
+
+    [Fact]
+    public void Closed_entry_rebinds_and_refreshes_like_microsoft()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+
+        var msBefore = ms.Properties["displayName"].Value?.ToString();
+        var oursBefore = ours.Properties["displayName"].Value?.ToString();
+
+        ms.Close();
+        ours.Close();
+        ms.RefreshCache();
+        ours.RefreshCache();
+
+        new Comparison("DirectoryEntry Close followed by rebind")
+            .Check("Value before Close", msBefore, oursBefore)
+            .Check("Value after RefreshCache", ms.Properties["displayName"].Value?.ToString(),
+                ours.Properties["displayName"].Value?.ToString())
+            .Assert();
+
+        ms.Close();
+        ours.Close();
+        ms.Close();
+        ours.Close();
     }
 
     [Fact]
@@ -538,6 +568,33 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .CheckSet("paths",
                 msResults.Cast<Ms.SearchResult>().Select(r => r.Properties["distinguishedname"][0].ToString()),
                 ourResults.Select(r => r.Properties["distinguishedname"][0].ToString()))
+            .Assert();
+    }
+
+    [Fact]
+    public void Searcher_result_handle_documents_adsi_limitation_and_matches_disposed_contract()
+    {
+        using var msRoot = MicrosoftEntry(DifferentialSettings.UsersContainer);
+        using var ourRoot = OurEntry(DifferentialSettings.UsersContainer);
+        using var msSearcher = new Ms.DirectorySearcher(msRoot, "(objectClass=*)");
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot, "(objectClass=*)");
+
+        var msResults = msSearcher.FindAll();
+        var ourResults = ourSearcher.FindAll();
+
+        Assert.NotEqual(IntPtr.Zero, msResults.Handle);
+        Assert.Throws<PlatformNotSupportedException>(() => ourResults.Handle);
+
+        msResults.Dispose();
+        ourResults.Dispose();
+
+        var msDisposed = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = msResults.Handle));
+        var ourDisposed = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = ourResults.Handle));
+        new Comparison("SearchResultCollection.Handle disposed contract")
+            .Check("Exception", msDisposed.GetType().Name, ourDisposed.GetType().Name)
+            .Check("ObjectName", msDisposed.ObjectName, ourDisposed.ObjectName)
             .Assert();
     }
 

@@ -96,6 +96,28 @@ public class DirectoryEntryOptionsTests
     }
 
     [Fact]
+    public void Current_server_name_binds_and_reports_the_server_from_root_dse()
+    {
+        using var entry = Open(TestSettings.BaseDn);
+        using var connection = LdapConnectionFactory.CreateBound(entry.BuildOptions());
+        var expected = RootDse.GetConnectedServerName(connection);
+
+        Assert.Equal(expected, entry.Options.GetCurrentServerName(), ignoreCase: true);
+    }
+
+    [Fact]
+    public void Mutual_authentication_status_is_explicitly_unavailable_after_binding()
+    {
+        using var entry = Open(TestSettings.BaseDn);
+
+        var exception = Assert.Throws<PlatformNotSupportedException>(
+            () => entry.Options.IsMutuallyAuthenticated());
+
+        Assert.Contains("does not expose", exception.Message, StringComparison.Ordinal);
+        Assert.NotNull(entry.GetConnection());
+    }
+
+    [Fact]
     public void User_name_query_quota_is_not_available_over_ldap()
     {
         using var entry = new DirectoryEntry();
