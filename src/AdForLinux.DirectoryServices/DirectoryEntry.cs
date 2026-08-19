@@ -592,6 +592,26 @@ public class DirectoryEntry : Component
         EnsureLoaded();
     }
 
+    /// <summary>
+    /// Atomically reloads a newly added entry. If the follow-up base search
+    /// does not return the object, throws without replacing the add-request cache.
+    /// </summary>
+    internal void RefreshCacheAfterCreate()
+    {
+        var refreshed = ReadProperties(
+            new[] { "*", "nTSecurityDescriptor" },
+            loadDefaultProperties: true);
+        if (refreshed.Count == 0)
+        {
+            throw new DirectoryServicesCOMException(
+                "The newly created directory entry could not be read back from the directory.");
+        }
+
+        _properties = refreshed;
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
+    }
+
     /// <summary>Re-reads the specified attributes into the local property cache.</summary>
     public void RefreshCache(string[] propertyNames)
     {
