@@ -1060,7 +1060,11 @@ public class DirectoryEntry : Component
     {
         if (!_disposed)
         {
-            ResetConnection();
+            if (disposing)
+            {
+                ResetConnection();
+            }
+
             _properties = null;
             _objectSecurity = null;
             _objectSecurityChanged = false;

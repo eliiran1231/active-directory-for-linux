@@ -14,6 +14,7 @@ public class DirectoryEntryLifecycleTests
     {
         var entry = new DirectoryEntry(UnreachablePath, null, null, AuthenticationTypes.Anonymous);
         var children = entry.Children;
+        var childEnumerator = children.GetEnumerator();
 
         if (close)
         {
@@ -34,7 +35,8 @@ public class DirectoryEntryLifecycleTests
         AssertDisposed(entry, () => _ = entry.Parent);
         AssertDisposed(entry, () => children.Add("CN=child", "user"));
         AssertDisposed(entry, () => children.Find("CN=child"));
-        AssertDisposed(entry, () => children.GetEnumerator().MoveNext());
+        AssertDisposed(entry, () => children.GetEnumerator());
+        AssertDisposed(entry, () => childEnumerator.MoveNext());
 
         using var searcher = new DirectorySearcher(entry);
         AssertDisposed(entry, () => searcher.FindOne());

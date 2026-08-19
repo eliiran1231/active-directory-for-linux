@@ -74,9 +74,17 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
         _parent.DeleteChild(child.Name);
     }
 
-    public IEnumerator GetEnumerator() => Enumerate().GetEnumerator();
+    public IEnumerator GetEnumerator()
+    {
+        _parent.ThrowIfDisposed();
+        return Enumerate().GetEnumerator();
+    }
 
-    IEnumerator<DirectoryEntry> IEnumerable<DirectoryEntry>.GetEnumerator() => Enumerate().GetEnumerator();
+    IEnumerator<DirectoryEntry> IEnumerable<DirectoryEntry>.GetEnumerator()
+    {
+        _parent.ThrowIfDisposed();
+        return Enumerate().GetEnumerator();
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
