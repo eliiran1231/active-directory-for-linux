@@ -169,6 +169,11 @@ public abstract class Principal : IDisposable
         }
         set
         {
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
             _ = ContextRef.ContextType;
             SetString("cn", value);
         }
@@ -178,7 +183,15 @@ public abstract class Principal : IDisposable
     public string? SamAccountName
     {
         get => GetString("sAMAccountName");
-        set => SetString("sAMAccountName", value);
+        set
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            SetString("sAMAccountName", value);
+        }
     }
 
     /// <summary>The display name.</summary>

@@ -35,16 +35,7 @@ public class LowLevelPublicSurfaceComparisonTests
             .Select(item => $"{item.TypeName}: Microsoft={item.Microsoft}, Ours={item.Ours}")
             .ToArray();
 
-        // These collection hierarchy gaps predate the all-exported-types check.
-        // Baseline them precisely so a new mismatch (such as DirectorySearcher
-        // not deriving from Component) still fails this test.
-        var knownDifferences = new[]
-        {
-            "PropertyValueCollection: Microsoft=System.Collections.CollectionBase, Ours=System.Object",
-            "ResultPropertyCollection: Microsoft=System.Collections.DictionaryBase, Ours=System.Object",
-            "ResultPropertyValueCollection: Microsoft=System.Collections.ReadOnlyCollectionBase, Ours=System.Object",
-        };
-        Assert.Equal(knownDifferences, baseTypeDifferences);
+        Assert.Empty(baseTypeDifferences);
     }
 
     [Fact]

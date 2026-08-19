@@ -224,6 +224,53 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void Required_name_setters_validate_persisted_and_deleted_principals()
+    {
+        var name = NewName();
+        var dn = TestDirectory.Create(name, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = name,
+            ["description"] = "clear me",
+        });
+
+        try
+        {
+            using var context = Context();
+            using var user = UserPrincipal.FindByIdentity(context, name);
+            Assert.NotNull(user);
+
+            foreach (var value in new string?[] { null, string.Empty })
+            {
+                var nameException = Assert.Throws<ArgumentNullException>(() => user!.Name = value);
+                var samException = Assert.Throws<ArgumentNullException>(
+                    () => user!.SamAccountName = value);
+                Assert.Equal("value", nameException.ParamName);
+                Assert.Equal("value", samException.ParamName);
+            }
+
+            user!.Description = null;
+            user.Save();
+            Assert.Null(user.Description);
+
+            user.Delete();
+            foreach (var value in new string?[] { null, string.Empty })
+            {
+                Assert.Equal("value", Assert.Throws<ArgumentNullException>(
+                    () => user.Name = value).ParamName);
+                Assert.Equal("value", Assert.Throws<ArgumentNullException>(
+                    () => user.SamAccountName = value).ParamName);
+            }
+
+            Assert.Throws<InvalidOperationException>(() => user.Name = "valid");
+            Assert.Throws<InvalidOperationException>(() => user.SamAccountName = "valid");
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void SetPassword_then_the_password_works_for_binding()
     {
         var name = NewName();

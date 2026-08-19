@@ -176,6 +176,12 @@ public class PrincipalSearcher : IDisposable
                 "A persisted principal cannot be used as a query filter.");
         }
 
+        if (example is GroupPrincipal { HasReferentialPropertiesSet: true })
+        {
+            throw new InvalidOperationException(
+                "Referential properties cannot be used in a query filter.");
+        }
+
         var context = _context
             ?? throw new InvalidOperationException("No context: set Context or give the example one.");
 

@@ -55,6 +55,135 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             DifferentialSettings.BindPassword);
 
     [Fact]
+    public void Required_name_setter_validation_matches_microsoft_across_principal_states()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msUnsaved = new Ms.UserPrincipal(msContext);
+        using var ourUnsaved = new Ours.UserPrincipal(ourContext);
+
+        foreach (var value in new string?[] { null, string.Empty })
+        {
+            AssertRequiredNameSetterValidation(msUnsaved, ourUnsaved, value);
+        }
+
+        msUnsaved.Name = " ";
+        ourUnsaved.Name = " ";
+        msUnsaved.SamAccountName = "\t";
+        ourUnsaved.SamAccountName = "\t";
+        msUnsaved.Description = null;
+        ourUnsaved.Description = null;
+        Assert.Equal(msUnsaved.Name, ourUnsaved.Name);
+        Assert.Equal(msUnsaved.SamAccountName, ourUnsaved.SamAccountName);
+        Assert.Equal(msUnsaved.Description, ourUnsaved.Description);
+
+        using var msPersisted = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourPersisted = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+        Assert.NotNull(msPersisted);
+        Assert.NotNull(ourPersisted);
+        foreach (var value in new string?[] { null, string.Empty })
+        {
+            AssertRequiredNameSetterValidation(msPersisted!, ourPersisted!, value);
+        }
+
+        var msDisposed = new Ms.UserPrincipal(msContext);
+        var ourDisposed = new Ours.UserPrincipal(ourContext);
+        msDisposed.Dispose();
+        ourDisposed.Dispose();
+        foreach (var value in new string?[] { null, string.Empty })
+        {
+            AssertRequiredNameSetterValidation(msDisposed, ourDisposed, value);
+        }
+        Assert.Equal(
+            Record.Exception(() => msDisposed.Name = "valid")?.GetType().Name,
+            Record.Exception(() => ourDisposed.Name = "valid")?.GetType().Name);
+        Assert.Equal(
+            Record.Exception(() => msDisposed.SamAccountName = "valid")?.GetType().Name,
+            Record.Exception(() => ourDisposed.SamAccountName = "valid")?.GetType().Name);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msDeletedName = $"adfl-nm-{suffix}";
+        var ourDeletedName = $"adfl-no-{suffix}";
+        using var msDeleted = new Ms.UserPrincipal(msContext)
+        {
+            Name = msDeletedName,
+            SamAccountName = msDeletedName,
+        };
+        using var ourDeleted = new Ours.UserPrincipal(ourContext)
+        {
+            Name = ourDeletedName,
+            SamAccountName = ourDeletedName,
+        };
+        try
+        {
+            msDeleted.Save();
+            ourDeleted.Save();
+            msDeleted.Delete();
+            ourDeleted.Delete();
+
+            foreach (var value in new string?[] { null, string.Empty })
+            {
+                AssertRequiredNameSetterValidation(msDeleted, ourDeleted, value);
+            }
+            Assert.Equal(
+                Record.Exception(() => msDeleted.Name = "valid")?.GetType().Name,
+                Record.Exception(() => ourDeleted.Name = "valid")?.GetType().Name);
+            Assert.Equal(
+                Record.Exception(() => msDeleted.SamAccountName = "valid")?.GetType().Name,
+                Record.Exception(() => ourDeleted.SamAccountName = "valid")?.GetType().Name);
+        }
+        finally
+        {
+            DeleteIfPresent(msContext, msDeletedName);
+            DeleteIfPresent(ourContext, ourDeletedName);
+        }
+    }
+
+    private static void AssertRequiredNameSetterValidation(
+        Ms.UserPrincipal microsoft,
+        Ours.UserPrincipal ours,
+        string? value)
+    {
+        var msName = Assert.IsType<ArgumentNullException>(
+            Record.Exception(() => microsoft.Name = value));
+        var ourName = Assert.IsType<ArgumentNullException>(
+            Record.Exception(() => ours.Name = value));
+        Assert.Equal(msName.ParamName, ourName.ParamName);
+
+        var msSam = Assert.IsType<ArgumentNullException>(
+            Record.Exception(() => microsoft.SamAccountName = value));
+        var ourSam = Assert.IsType<ArgumentNullException>(
+            Record.Exception(() => ours.SamAccountName = value));
+        Assert.Equal(msSam.ParamName, ourSam.ParamName);
+    }
+
+    private static void DeleteIfPresent(Ms.PrincipalContext context, string name)
+    {
+        try
+        {
+            using var principal = Ms.UserPrincipal.FindByIdentity(context, name);
+            principal?.Delete();
+        }
+        catch
+        {
+            // Best-effort cleanup for a failed comparison.
+        }
+    }
+
+    private static void DeleteIfPresent(Ours.PrincipalContext context, string name)
+    {
+        try
+        {
+            using var principal = Ours.UserPrincipal.FindByIdentity(context, name);
+            principal?.Delete();
+        }
+        catch
+        {
+            // Best-effort cleanup for a failed comparison.
+        }
+    }
+
+    [Fact]
     public void ExtensionSet_treats_non_array_collections_as_one_value()
     {
         using var msContext = MicrosoftContext();
