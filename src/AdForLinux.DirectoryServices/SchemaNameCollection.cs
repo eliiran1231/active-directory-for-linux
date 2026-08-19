@@ -5,7 +5,7 @@ namespace AdForLinux.DirectoryServices;
 /// <summary>
 /// Schema class names used by <see cref="DirectoryEntries.SchemaFilter"/>.
 /// </summary>
-public sealed class SchemaNameCollection : IList
+public class SchemaNameCollection : IList
 {
     private readonly List<string> _names = new();
 

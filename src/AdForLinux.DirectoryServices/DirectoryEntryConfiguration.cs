@@ -3,7 +3,7 @@ using System.ComponentModel;
 namespace AdForLinux.DirectoryServices;
 
 /// <summary>Provider-style LDAP options exposed by <see cref="DirectoryEntry.Options"/>.</summary>
-public sealed class DirectoryEntryConfiguration
+public class DirectoryEntryConfiguration
 {
     private readonly DirectoryEntry _entry;
     private int _pageSize;
