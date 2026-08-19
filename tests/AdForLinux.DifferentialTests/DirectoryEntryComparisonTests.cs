@@ -69,6 +69,10 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             Record.Exception(() => _ = ours.Properties["displayName"].Value));
         var msCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ms.CommitChanges));
         var ourCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ours.CommitChanges));
+        var msNameError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ms.Name));
+        var ourNameError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ours.Name));
+        var msParentError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ms.Parent));
+        var ourParentError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ours.Parent));
 
         using var msSearcher = new Ms.DirectorySearcher(ms);
         using var ourSearcher = new Ours.DirectorySearcher(ours);
@@ -82,6 +86,10 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check("Properties object name", msPropertyError.ObjectName, ourPropertyError.ObjectName)
             .Check("CommitChanges exception", msCommitError.GetType().Name, ourCommitError.GetType().Name)
             .Check("CommitChanges object name", msCommitError.ObjectName, ourCommitError.ObjectName)
+            .Check("Name exception", msNameError.GetType().Name, ourNameError.GetType().Name)
+            .Check("Name object name", msNameError.ObjectName, ourNameError.ObjectName)
+            .Check("Parent exception", msParentError.GetType().Name, ourParentError.GetType().Name)
+            .Check("Parent object name", msParentError.ObjectName, ourParentError.ObjectName)
             .Check("Search exception", msSearchError.GetType().Name, ourSearchError.GetType().Name)
             .Check("Search object name", msSearchError.ObjectName, ourSearchError.ObjectName)
             .Check("Path remains readable", msPath, ourPath)
@@ -127,6 +135,52 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check(nameof(ms.Name), ms.Name, ours.Name)
             .Check(nameof(ms.SchemaClassName), ms.SchemaClassName, ours.SchemaClassName)
             .Check(nameof(ms.Guid), ms.Guid, ours.Guid)
+            .Assert();
+    }
+
+    [Fact]
+    public void Parent_identity_and_inherited_state_match()
+    {
+        using var ms = MicrosoftEntry(_data.UserDn);
+        using var ours = OurEntry(_data.UserDn);
+        ms.UsePropertyCache = false;
+        ours.UsePropertyCache = false;
+
+        using var msParent = ms.Parent;
+        using var ourParent = ours.Parent;
+
+        new Comparison("DirectoryEntry.Parent inherited state")
+            .Check("Name", msParent.Name, ourParent!.Name)
+            .Check("Path", msParent.Path, ourParent.Path)
+            .Check("UsePropertyCache", msParent.UsePropertyCache, ourParent.UsePropertyCache)
+            .Check("Username", msParent.Username, ourParent.Username)
+            .Check("AuthenticationType", msParent.AuthenticationType.ToString(), ourParent.AuthenticationType.ToString())
+            .Assert();
+    }
+
+    [Fact]
+    public void Missing_entry_name_and_parent_errors_match()
+    {
+        var missingDn = $"CN=issue107-missing-{Guid.NewGuid():N},{DifferentialSettings.BaseDn}";
+        using var msName = MicrosoftEntry(missingDn);
+        using var ourName = OurEntry(missingDn);
+        using var msParent = MicrosoftEntry(missingDn);
+        using var ourParent = OurEntry(missingDn);
+
+        var msNameError = Assert.IsType<Ms.DirectoryServicesCOMException>(
+            Record.Exception(() => _ = msName.Name));
+        var ourNameError = Assert.IsType<Ours.DirectoryServicesCOMException>(
+            Record.Exception(() => _ = ourName.Name));
+        var msParentError = Assert.IsType<Ms.DirectoryServicesCOMException>(
+            Record.Exception(() => _ = msParent.Parent));
+        var ourParentError = Assert.IsType<Ours.DirectoryServicesCOMException>(
+            Record.Exception(() => _ = ourParent.Parent));
+
+        new Comparison("DirectoryEntry missing bind semantics")
+            .Check("Name exception", msNameError.GetType().Name, ourNameError.GetType().Name)
+            .Check("Name HResult", msNameError.ErrorCode, ourNameError.ErrorCode)
+            .Check("Parent exception", msParentError.GetType().Name, ourParentError.GetType().Name)
+            .Check("Parent HResult", msParentError.ErrorCode, ourParentError.ErrorCode)
             .Assert();
     }
 
