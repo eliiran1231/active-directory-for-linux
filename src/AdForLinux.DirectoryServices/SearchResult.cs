@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices;
 /// One entry returned by <see cref="DirectorySearcher"/>, like Microsoft's
 /// <c>SearchResult</c>. Read the attributes through <see cref="Properties"/>.
 /// </summary>
-public sealed class SearchResult
+public class SearchResult
 {
     private readonly DirectoryEntry _searchRoot;
 
