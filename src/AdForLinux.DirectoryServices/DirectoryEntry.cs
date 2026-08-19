@@ -786,65 +786,29 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>
-    /// Creates a managed copy beneath <paramref name="newParent"/>. LDAP has no
-    /// copy operation, so client-writable attributes are read and sent in a new
-    /// Add request instead.
+    /// Attempts to copy this entry beneath <paramref name="newParent"/>.
     /// </summary>
+    /// <exception cref="NotImplementedException">
+    /// The LDAP provider does not implement ADSI's server-side CopyHere operation.
+    /// LDAP has no equivalent copy request, and a client-side read followed by Add
+    /// cannot preserve its identity, security, defaulting, or account-state semantics.
+    /// </exception>
     public DirectoryEntry CopyTo(DirectoryEntry newParent) => CopyTo(newParent, null);
 
     /// <inheritdoc cref="CopyTo(DirectoryEntry)"/>
     public DirectoryEntry CopyTo(DirectoryEntry newParent, string? newName)
     {
-        ArgumentNullException.ThrowIfNull(newParent);
-        if (newName is not null)
+        // System.DirectoryServices dereferences the parent before invoking ADSI,
+        // so a null parent surfaces as NullReferenceException rather than the
+        // ArgumentNullException used by newer guard helpers.
+        if (newParent is null)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+            throw new NullReferenceException();
         }
 
         ThrowIfDisposed();
         newParent.ThrowIfDisposed();
-
-        newName ??= Name;
-
-        var schemaClassName = SchemaClassName
-            ?? throw new InvalidOperationException("The source entry does not expose a schema class.");
-        var sourceProperties = Properties.Cast<PropertyValueCollection>().ToArray();
-        var writable = LdapAttributeSchema.WritableOnAdd(
-            newParent.GetSchemaConnection(),
-            sourceProperties.Select(property => property.PropertyName));
-        var sourceRdnAttribute = RdnAttributeName(Name);
-        var destinationRdnAttribute = RdnAttributeName(newName);
-
-        var copy = newParent.Children.Add(newName, schemaClassName);
-        try
-        {
-            foreach (var property in sourceProperties)
-            {
-                if (property.Count == 0
-                    || !writable.Contains(property.PropertyName)
-                    || IsCopyManagedAttribute(property.PropertyName, sourceRdnAttribute, destinationRdnAttribute))
-                {
-                    continue;
-                }
-
-                copy.Properties[property.PropertyName].Value = property.Value;
-            }
-
-            var sourceSamAccountName = sourceProperties.FirstOrDefault(property =>
-                string.Equals(property.PropertyName, "sAMAccountName", StringComparison.OrdinalIgnoreCase));
-            if (sourceSamAccountName?.Value is string samAccountName)
-            {
-                copy.Properties["sAMAccountName"].Value = UniqueCopySamAccountName(samAccountName);
-            }
-
-            copy.CommitChanges();
-            return copy;
-        }
-        catch
-        {
-            copy.Dispose();
-            throw;
-        }
+        throw new NotImplementedException();
     }
 
     /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
@@ -1196,47 +1160,6 @@ public class DirectoryEntry : Component
             source.TrimEnd('.'),
             destination.TrimEnd('.'),
             StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsCopyManagedAttribute(
-        string attributeName,
-        string? sourceRdnAttribute,
-        string? destinationRdnAttribute) =>
-        string.Equals(attributeName, "objectClass", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "nTSecurityDescriptor", StringComparison.OrdinalIgnoreCase)
-        // Reusing these identity attributes would make an otherwise valid
-        // Add fail because AD requires their values to be unique.
-        || string.Equals(attributeName, "sAMAccountName", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "userPrincipalName", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "servicePrincipalName", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "dNSHostName", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "msDS-AdditionalSamAccountName", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "msDS-AdditionalDnsHostName", StringComparison.OrdinalIgnoreCase)
-        // AD initializes these account-state values and rejects some of them
-        // when a client replays values from an existing object in an Add.
-        || string.Equals(attributeName, "sAMAccountType", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "pwdLastSet", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "accountExpires", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "countryCode", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "codePage", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "userAccountControl", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, "primaryGroupID", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, sourceRdnAttribute, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(attributeName, destinationRdnAttribute, StringComparison.OrdinalIgnoreCase);
-
-    private static string UniqueCopySamAccountName(string source)
-    {
-        var computerSuffix = source.EndsWith('$') ? "$" : string.Empty;
-        var baseName = computerSuffix.Length == 0 ? source : source[..^1];
-        var suffix = $"-{Guid.NewGuid():N}"[..9];
-        var maximumBaseLength = 20 - suffix.Length - computerSuffix.Length;
-        return string.Concat(baseName.AsSpan(0, Math.Min(baseName.Length, maximumBaseLength)), suffix, computerSuffix);
-    }
-
-    private static string? RdnAttributeName(string relativeName)
-    {
-        var separator = relativeName.IndexOf('=');
-        return separator > 0 ? relativeName[..separator].Trim() : null;
-    }
 
     private void MoveOrRename(string? parentDn, string newName)
     {

@@ -142,18 +142,14 @@ public class DirectoryEntryWriteTests
     }
 
     [Fact]
-    public void CopyTo_creates_committed_copies_and_skips_server_managed_attributes()
+    public void CopyTo_reports_unsupported_ADSI_operation_without_creating_a_target()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var sourceParentDn = $"OU=adfl-copy-source-{suffix},{TestSettings.BaseDn}";
         var destinationParentDn = $"OU=adfl-copy-target-{suffix},{TestSettings.BaseDn}";
         var sourceDn = $"OU=original,{sourceParentDn}";
-        var explicitNullSourceDn = $"OU=explicit-null,{sourceParentDn}";
         var sameNameCopyDn = $"OU=original,{destinationParentDn}";
-        var explicitNullCopyDn = $"OU=explicit-null,{destinationParentDn}";
         var renamedCopyDn = $"OU=renamed,{destinationParentDn}";
-        var sourceUserDn = $"CN=source-user,{sourceParentDn}";
-        var copiedUserDn = $"CN=copied-user,{destinationParentDn}";
         using var domain = Open(TestSettings.BaseDn);
 
         try
@@ -173,49 +169,28 @@ public class DirectoryEntryWriteTests
                 source.CommitChanges();
             }
 
-            using (var sourceParent = Open(sourceParentDn))
-            using (var source = sourceParent.Children.Add("OU=explicit-null", "organizationalUnit"))
-            {
-                source.Properties["description"].Value = "managed CopyTo explicit null";
-                source.CommitChanges();
-            }
-
-            using (var sourceParent = Open(sourceParentDn))
-            using (var sourceUser = sourceParent.Children.Add("CN=source-user", "user"))
-            {
-                sourceUser.Properties["sAMAccountName"].Value = $"cp{suffix}";
-                sourceUser.Properties["description"].Value = "copied user property";
-                sourceUser.CommitChanges();
-            }
-
             using var openedSource = Open(sourceDn);
             using var destinationParentEntry = Open(destinationParentDn);
-            using var sameNameCopy = openedSource.CopyTo(destinationParentEntry);
-            using var explicitNullSource = Open(explicitNullSourceDn);
-            using var explicitNullCopy = explicitNullSource.CopyTo(destinationParentEntry, null);
-            using var renamedCopy = openedSource.CopyTo(destinationParentEntry, "OU=renamed");
-            using var reopenedSameNameCopy = Open(sameNameCopyDn);
-            using var reopenedExplicitNullCopy = Open(explicitNullCopyDn);
-            using var reopenedRenamedCopy = Open(renamedCopyDn);
-            using var openedSourceUser = Open(sourceUserDn);
-            using var copiedUser = openedSourceUser.CopyTo(destinationParentEntry, "CN=copied-user");
-            using var reopenedCopiedUser = Open(copiedUserDn);
+            var sourceGuid = openedSource.Guid;
 
-            Assert.Equal(sameNameCopyDn, sameNameCopy.DistinguishedName);
-            Assert.Equal(explicitNullCopyDn, explicitNullCopy.DistinguishedName);
-            Assert.Equal(renamedCopyDn, renamedCopy.DistinguishedName);
-            Assert.Equal("managed CopyTo fallback", reopenedSameNameCopy.Properties["description"].Value);
-            Assert.Equal("managed CopyTo explicit null", reopenedExplicitNullCopy.Properties["description"].Value);
-            Assert.Equal("+1 555 0100", reopenedRenamedCopy.Properties["telephoneNumber"].Value);
-            Assert.NotEqual(openedSource.Guid, reopenedSameNameCopy.Guid);
-            Assert.NotEqual(openedSource.Guid, reopenedRenamedCopy.Guid);
-            Assert.Equal("copied user property", reopenedCopiedUser.Properties["description"].Value);
-            Assert.NotEqual(
-                openedSourceUser.Properties["sAMAccountName"].Value,
-                reopenedCopiedUser.Properties["sAMAccountName"].Value);
-            Assert.NotEqual(Guid.Empty, copiedUser.Guid);
-            Assert.NotEmpty(Assert.IsType<byte[]>(copiedUser.Properties["objectSid"].Value));
-            Assert.NotNull(copiedUser.Properties["primaryGroupID"].Value);
+            var sameNameError = Assert.Throws<NotImplementedException>(
+                () => openedSource.CopyTo(destinationParentEntry));
+            var renamedError = Assert.Throws<NotImplementedException>(
+                () => openedSource.CopyTo(destinationParentEntry, "OU=renamed"));
+            var explicitNullError = Assert.Throws<NotImplementedException>(
+                () => openedSource.CopyTo(destinationParentEntry, null));
+
+            Assert.Equal(unchecked((int)0x80004001), sameNameError.HResult);
+            Assert.Equal(sameNameError.HResult, renamedError.HResult);
+            Assert.Equal(sameNameError.HResult, explicitNullError.HResult);
+            Assert.Equal(sourceGuid, openedSource.Guid);
+            Assert.Equal("managed CopyTo fallback", openedSource.Properties["description"].Value);
+            var destinationNames = destinationParentEntry.Children
+                .Cast<DirectoryEntry>()
+                .Select(child => child.Name)
+                .ToArray();
+            Assert.DoesNotContain("OU=original", destinationNames, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain("OU=renamed", destinationNames, StringComparer.OrdinalIgnoreCase);
         }
         finally
         {
