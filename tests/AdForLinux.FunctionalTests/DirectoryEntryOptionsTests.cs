@@ -94,4 +94,16 @@ public class DirectoryEntryOptionsTests
         Assert.Throws<InvalidEnumArgumentException>(
             () => entry.Options.SecurityMasks = (EntrySecurityMasks)(-1));
     }
+
+    [Fact]
+    public void User_name_query_quota_is_not_available_over_ldap()
+    {
+        using var entry = new DirectoryEntry();
+
+        var exception = Assert.Throws<PlatformNotSupportedException>(
+            () => entry.Options.SetUserNameQueryQuota("CONTOSO\\alice"));
+
+        Assert.Contains("requires ADSI", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not available over LDAP", exception.Message, StringComparison.Ordinal);
+    }
 }

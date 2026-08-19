@@ -99,6 +99,10 @@ advanced date/count comparisons.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
   `System.Security.AccessControl` base classes are Windows-only in modern .NET.
+- **`DirectoryEntryConfiguration.SetUserNameQueryQuota`.** This is an ADSI
+  provider option for returning quota information for a named security
+  principal. LDAP has no equivalent interoperable option or control, so there
+  is no portable fallback; this method throws `PlatformNotSupportedException`.
 - **Legacy `DirectoryServicesPermission*` types.** These belonged to .NET
   Framework Code Access Security. They are absent from the modern
   `System.DirectoryServices` reference assembly and CAS is not supported by
