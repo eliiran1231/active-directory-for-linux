@@ -91,6 +91,73 @@ public class DirectorySearchOptionsComparisonTests
     }
 
     [Fact]
+    public void Directory_searcher_filter_setter_state_matches_microsoft()
+    {
+        using var microsoft = new MicrosoftDirectoryServices.DirectorySearcher();
+        using var ours = new LinuxDirectoryServices.DirectorySearcher();
+
+        foreach (var filter in new string?[] { "(objectClass=person)", null, string.Empty })
+        {
+            microsoft.Filter = filter;
+            ours.Filter = filter;
+
+            Assert.Equal(microsoft.Filter, ours.Filter);
+        }
+    }
+
+    [Fact]
+    public void Directory_searcher_extended_dn_validation_matches_microsoft()
+    {
+        using var microsoft = new MicrosoftDirectoryServices.DirectorySearcher();
+        using var ours = new LinuxDirectoryServices.DirectorySearcher();
+
+        foreach (var value in new[] { -1, 0, 1 })
+        {
+            microsoft.ExtendedDN = (MicrosoftDirectoryServices.ExtendedDN)value;
+            ours.ExtendedDN = (LinuxDirectoryServices.ExtendedDN)value;
+
+            Assert.Equal(microsoft.ExtendedDN.ToString(), ours.ExtendedDN.ToString());
+        }
+
+        foreach (var value in new[] { int.MinValue, -2, 2, int.MaxValue })
+        {
+            AssertSameException(
+                () => microsoft.ExtendedDN = (MicrosoftDirectoryServices.ExtendedDN)value,
+                () => ours.ExtendedDN = (LinuxDirectoryServices.ExtendedDN)value);
+            Assert.Equal(microsoft.ExtendedDN.ToString(), ours.ExtendedDN.ToString());
+        }
+    }
+
+    [Fact]
+    public void Directory_searcher_security_mask_validation_matches_microsoft()
+    {
+        using var microsoft = new MicrosoftDirectoryServices.DirectorySearcher();
+        using var ours = new LinuxDirectoryServices.DirectorySearcher();
+
+        for (var value = 0; value <= 15; value++)
+        {
+            microsoft.SecurityMasks = (MicrosoftDirectoryServices.SecurityMasks)value;
+            ours.SecurityMasks = (LinuxDirectoryServices.SecurityMasks)value;
+
+            Assert.Equal((int)microsoft.SecurityMasks, (int)ours.SecurityMasks);
+        }
+
+        // Microsoft's range check has no lower-bound guard; preserve that
+        // observable setter behavior even though negative masks are not useful.
+        microsoft.SecurityMasks = (MicrosoftDirectoryServices.SecurityMasks)(-1);
+        ours.SecurityMasks = (LinuxDirectoryServices.SecurityMasks)(-1);
+        Assert.Equal((int)microsoft.SecurityMasks, (int)ours.SecurityMasks);
+
+        foreach (var value in new[] { 16, int.MaxValue })
+        {
+            AssertSameException(
+                () => microsoft.SecurityMasks = (MicrosoftDirectoryServices.SecurityMasks)value,
+                () => ours.SecurityMasks = (LinuxDirectoryServices.SecurityMasks)value);
+            Assert.Equal((int)microsoft.SecurityMasks, (int)ours.SecurityMasks);
+        }
+    }
+
+    [Fact]
     public void Virtual_list_view_constructors_match_microsoft()
     {
         var microsoftContext = new MicrosoftDirectoryServices.DirectoryVirtualListViewContext();
