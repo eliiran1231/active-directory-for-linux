@@ -871,6 +871,9 @@ public class DirectoryEntry : Component
 
         if (_boundDistinguishedName is not null)
         {
+            // ADSI keeps its bound IADs object after DeleteTree(), so Name and
+            // Parent continue to use that binding until an explicit unbind.
+            // Match that behavior rather than reopening the deleted path.
             return _boundDistinguishedName;
         }
 
