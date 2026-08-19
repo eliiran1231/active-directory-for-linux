@@ -111,6 +111,11 @@ path. Negotiate requests are passed through to `System.DirectoryServices.Protoco
 without a Basic fallback; support depends on the platform runtime and GSSAPI
 configuration. A self-signed certificate can be trusted for tests.
 
+Password operations require an SSL-protected LDAP connection. Only
+`PasswordEncodingMethod.PasswordEncodingSsl` is supported by
+`DirectoryEntryConfiguration.PasswordEncoding`; `PasswordEncodingClear` throws
+`PlatformNotSupportedException`.
+
 ### Skipping a self-signed certificate on Linux
 
 On Linux the LDAP client is native OpenLDAP. To trust a self-signed
