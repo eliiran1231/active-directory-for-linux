@@ -850,30 +850,34 @@ public abstract class Principal : IDisposable
             }
             catch
             {
+                var shouldDisposeChild = !created;
                 if (created)
                 {
                     // The add itself succeeded, so remove only that new child.
                     // Cleanup is best effort and must never hide the save failure.
+                    if (TryRollbackCreatedEntry(() => parent.Children.Remove(child)))
+                    {
+                        Entry = null;
+                        RestoreValues(_pending, pendingBeforeCreate);
+                        RestoreValues(_extensionCache, extensionsBeforeCreate);
+                        shouldDisposeChild = true;
+                    }
+                    // If deletion fails, retain the attached entry. Callers can
+                    // inspect or explicitly delete the partially configured object
+                    // instead of seeing an apparently unpersisted principal while
+                    // the directory still contains its name.
+                }
+
+                if (shouldDisposeChild)
+                {
                     try
                     {
-                        parent.Children.Remove(child);
+                        child.Dispose();
                     }
                     catch
                     {
+                        // Preserve the original save exception.
                     }
-
-                    Entry = null;
-                    RestoreValues(_pending, pendingBeforeCreate);
-                    RestoreValues(_extensionCache, extensionsBeforeCreate);
-                }
-
-                try
-                {
-                    child.Dispose();
-                }
-                catch
-                {
-                    // Preserve the original save exception.
                 }
 
                 throw;
@@ -882,6 +886,19 @@ public abstract class Principal : IDisposable
         finally
         {
             parent.Dispose();
+        }
+    }
+
+    internal static bool TryRollbackCreatedEntry(Action rollback)
+    {
+        try
+        {
+            rollback();
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
