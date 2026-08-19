@@ -10,6 +10,8 @@ internal static class TestDirectory
 {
     public static string UsersContainer => $"CN=Users,{TestSettings.BaseDn}";
 
+    public static string ComputersContainer => $"CN=Computers,{TestSettings.BaseDn}";
+
     private static DirectoryEntry Open(string dn) =>
         new(TestSettings.PathFor(dn), TestSettings.BindDn, TestSettings.BindPassword,
             AuthenticationTypes.SecureSocketsLayer);
