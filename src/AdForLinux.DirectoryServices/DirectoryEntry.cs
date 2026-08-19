@@ -763,6 +763,11 @@ public class DirectoryEntry : Component
     public void MoveTo(DirectoryEntry newParent, string? newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
+        if (newName is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        }
+
         EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(
             newParent.DistinguishedName,
@@ -780,6 +785,11 @@ public class DirectoryEntry : Component
     public DirectoryEntry CopyTo(DirectoryEntry newParent, string? newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
+        if (newName is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        }
+
         ThrowIfDisposed();
         newParent.ThrowIfDisposed();
 
@@ -1198,10 +1208,10 @@ public class DirectoryEntry : Component
             return new LdapPath(null, null, string.Empty);
         }
 
-        // Microsoft stores whitespace paths verbatim and defers failure until
-        // binding. Preserve that distinction from an empty/unbound path.
+        // Microsoft stores whitespace paths verbatim. Keep the parsed state
+        // serverless while _pathText preserves the caller-visible value.
         return string.IsNullOrWhiteSpace(path)
-            ? new LdapPath(path, null, string.Empty)
+            ? new LdapPath(null, null, string.Empty)
             : LdapPath.Parse(path);
     }
 

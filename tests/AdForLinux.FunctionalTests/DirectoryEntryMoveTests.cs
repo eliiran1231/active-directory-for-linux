@@ -59,6 +59,26 @@ public class DirectoryEntryMoveTests
         Assert.Equal(SourceDn, source.DistinguishedName);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void MoveTo_and_CopyTo_reject_explicit_empty_or_whitespace_names(string newName)
+    {
+        using var source = new DirectoryEntry(
+            $"LDAP://source.example.test:389/{SourceDn}",
+            "bind",
+            "secret",
+            AuthenticationTypes.None);
+        using var destination = new DirectoryEntry(
+            $"LDAP://source.example.test:389/{DestinationDn}",
+            "bind",
+            "secret",
+            AuthenticationTypes.None);
+
+        Assert.Throws<ArgumentException>(() => source.MoveTo(destination, newName));
+        Assert.Throws<ArgumentException>(() => source.CopyTo(destination, newName));
+    }
+
     [Fact]
     public void MoveTo_same_connection_moves_and_renames_the_entry()
     {

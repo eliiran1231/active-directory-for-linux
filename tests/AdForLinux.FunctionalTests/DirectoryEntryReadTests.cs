@@ -45,6 +45,10 @@ public class DirectoryEntryReadTests
 
         Assert.Equal(path, constructed.Path);
         Assert.Equal(path, assigned.Path);
+        Assert.Null(constructed.ServerHost);
+        Assert.Null(assigned.ServerHost);
+        Assert.Throws<NotSupportedException>(() => constructed.BuildOptions());
+        Assert.Throws<NotSupportedException>(() => assigned.BuildOptions());
     }
 
     [Fact]
