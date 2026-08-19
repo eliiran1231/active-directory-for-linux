@@ -2,7 +2,10 @@ using System.DirectoryServices.Protocols;
 using System.Net;
 using Xunit;
 
+using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
+using MsAm = System.DirectoryServices.AccountManagement;
+using OursAm = AdForLinux.DirectoryServices.AccountManagement;
 
 namespace AdForLinux.DifferentialTests;
 
@@ -10,6 +13,44 @@ public class DirectoryEntryOptionsLiveTests
 {
     private const string RequiredBaseDn = "OU=Issue62,OU=AoTesting,DC=adlab,DC=local";
     private const int ChildCount = 1005;
+
+    [Fact]
+    public void Connected_server_names_match_microsoft_for_the_configured_endpoint()
+    {
+        using var microsoftContext = new MsAm.PrincipalContext(
+            MsAm.ContextType.Domain,
+            DifferentialSettings.ServerName,
+            DifferentialSettings.UsersContainer,
+            DifferentialSettings.MicrosoftContextOptions,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var ourContext = new OursAm.PrincipalContext(
+            OursAm.ContextType.Domain,
+            DifferentialSettings.ServerName,
+            DifferentialSettings.UsersContainer,
+            DifferentialSettings.OurContextOptions,
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword);
+        using var microsoftEntry = new Ms.DirectoryEntry(
+            DifferentialSettings.PathFor(DifferentialSettings.BaseDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.MicrosoftAuthenticationTypes);
+        using var ourEntry = new Ours.DirectoryEntry(
+            DifferentialSettings.PathFor(DifferentialSettings.BaseDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.OurAuthenticationTypes);
+
+        Assert.Equal(
+            microsoftContext.ConnectedServer,
+            ourContext.ConnectedServer,
+            ignoreCase: true);
+        Assert.Equal(
+            microsoftEntry.Options!.GetCurrentServerName(),
+            ourEntry.Options.GetCurrentServerName(),
+            ignoreCase: true);
+    }
 
     [Fact]
     public void Configured_page_size_enumerates_more_than_the_ad_size_limit()
