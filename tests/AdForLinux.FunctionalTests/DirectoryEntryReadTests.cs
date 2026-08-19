@@ -13,6 +13,45 @@ public class DirectoryEntryReadTests
             AuthenticationTypes.SecureSocketsLayer);
 
     [Fact]
+    public void Null_paths_are_normalized_to_an_empty_unbound_path()
+    {
+        using var pathOnly = new DirectoryEntry((string?)null);
+        using var credentials = new DirectoryEntry(null, "user", "password");
+        using var authentication = new DirectoryEntry(
+            null, "user", "password", AuthenticationTypes.Anonymous);
+
+        Assert.Equal(string.Empty, pathOnly.Path);
+        Assert.Equal(string.Empty, credentials.Path);
+        Assert.Equal(string.Empty, authentication.Path);
+
+        using var bound = new DirectoryEntry("LDAP://server/DC=example,DC=test");
+        bound.Path = null;
+
+        Assert.Equal(string.Empty, bound.Path);
+        Assert.Equal(string.Empty, bound.DistinguishedName);
+        Assert.Null(bound.ServerHost);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("  \t  ")]
+    public void Empty_and_whitespace_paths_remain_distinct_from_null(string path)
+    {
+        using var constructed = new DirectoryEntry(path);
+        using var assigned = new DirectoryEntry();
+
+        assigned.Path = path;
+
+        Assert.Equal(path, constructed.Path);
+        Assert.Equal(path, assigned.Path);
+        Assert.Null(constructed.ServerHost);
+        Assert.Null(assigned.ServerHost);
+        Assert.Throws<NotSupportedException>(() => constructed.BuildOptions());
+        Assert.Throws<NotSupportedException>(() => assigned.BuildOptions());
+    }
+
+    [Fact]
     public void Reads_a_string_property()
     {
         using var entry = Open(TestSettings.AdministratorDn);
