@@ -593,8 +593,8 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>
-    /// Atomically reloads a newly added entry, retaining its add-request cache
-    /// if the server does not return the object on the follow-up base search.
+    /// Atomically reloads a newly added entry. If the follow-up base search
+    /// does not return the object, throws without replacing the add-request cache.
     /// </summary>
     internal void RefreshCacheAfterCreate()
     {
