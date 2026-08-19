@@ -76,20 +76,38 @@ public sealed class Issue45GroupQueryComparisonTests
         }
 
         var userName = NewName("xusr");
+        var foreignGroupName = NewName("xgrp");
+        var computerName = NewName("xcmp");
         var directName = NewName("xdir");
         var nestedName = NewName("xnest");
         var userDn = $"CN={userName},{DifferentialSettings.BaseDn}";
+        var foreignGroupDn = $"CN={foreignGroupName},{DifferentialSettings.BaseDn}";
+        var computerDn = $"CN={computerName},{DifferentialSettings.BaseDn}";
         var directDn = $"CN={directName},{secondBaseDn}";
         var nestedDn = $"CN={nestedName},{secondBaseDn}";
 
         try
         {
-            CreateUser(userDn, userName);
+            CreateUser(userDn, userName, $"{userName}@example.test");
+            CreateComputer(computerDn, computerName);
             using var msSource = MicrosoftContext(DifferentialSettings.BaseDn);
             using var msTarget = MicrosoftSecondContext(secondHost, secondBaseDn);
             using var ourSource = OurContext(DifferentialSettings.BaseDn);
             using var ourTarget = OurSecondContext(secondHost, secondBaseDn);
             using var msUser = Ms.UserPrincipal.FindByIdentity(msSource, userName)!;
+            using var msComputer = Ms.ComputerPrincipal.FindByIdentity(msSource, $"{computerName}$")!;
+
+            using (var foreignGroup = new Ms.GroupPrincipal(msSource, foreignGroupName)
+            {
+                GroupScope = Ms.GroupScope.Global,
+                IsSecurityGroup = true,
+            })
+            {
+                foreignGroup.Members.Add(msUser);
+                foreignGroup.Save();
+            }
+
+            using var msForeignGroup = Ms.GroupPrincipal.FindByIdentity(msSource, foreignGroupName)!;
 
             using (var direct = new Ms.GroupPrincipal(msTarget, directName)
             {
@@ -98,6 +116,8 @@ public sealed class Issue45GroupQueryComparisonTests
             })
             {
                 direct.Members.Add(msUser);
+                direct.Members.Add(msForeignGroup);
+                direct.Members.Add(msComputer);
                 direct.Save();
             }
 
@@ -115,6 +135,25 @@ public sealed class Issue45GroupQueryComparisonTests
             using var ourUser = Ours.UserPrincipal.FindByIdentity(ourSource, userName)!;
             Compare("cross-domain direct groups",
                 msUser.GetGroups(msTarget), ourUser.GetGroups(ourTarget));
+
+            using var msDirectGroup = Ms.GroupPrincipal.FindByIdentity(msTarget, directName)!;
+            using var ourDirectGroup = Ours.GroupPrincipal.FindByIdentity(ourTarget, directName)!;
+            using var msDirectMembers = msDirectGroup.GetMembers();
+            using var ourDirectMembers = ourDirectGroup.GetMembers();
+            var microsoftDirect = msDirectMembers.Select(MemberSnapshot).Order().ToArray();
+            var ourDirect = ourDirectMembers.Select(MemberSnapshot).Order().ToArray();
+            Assert.Equal(microsoftDirect, ourDirect);
+            Assert.Contains(microsoftDirect, value => value.StartsWith("UserPrincipal|"));
+            Assert.Contains(microsoftDirect, value => value.StartsWith("GroupPrincipal|"));
+            Assert.Contains(microsoftDirect, value => value.StartsWith("ComputerPrincipal|"));
+
+            using var msNestedGroup = Ms.GroupPrincipal.FindByIdentity(msTarget, nestedName)!;
+            using var ourNestedGroup = Ours.GroupPrincipal.FindByIdentity(ourTarget, nestedName)!;
+            using var msRecursiveMembers = msNestedGroup.GetMembers(recursive: true);
+            using var ourRecursiveMembers = ourNestedGroup.GetMembers(recursive: true);
+            Assert.Equal(
+                msRecursiveMembers.Select(MemberSnapshot).Order().ToArray(),
+                ourRecursiveMembers.Select(MemberSnapshot).Order().ToArray());
 
             using var msAuthorization = msUser.GetAuthorizationGroups();
             using var ourAuthorization = ourUser.GetAuthorizationGroups();
@@ -136,6 +175,8 @@ public sealed class Issue45GroupQueryComparisonTests
         {
             DeleteOnSecond(secondHost, nestedDn);
             DeleteOnSecond(secondHost, directDn);
+            Delete(foreignGroupDn);
+            Delete(computerDn);
             Delete(userDn);
         }
     }
@@ -186,14 +227,39 @@ public sealed class Issue45GroupQueryComparisonTests
         child.CommitChanges();
     }
 
-    private static void CreateUser(string dn, string samAccountName)
+    private static void CreateUser(string dn, string samAccountName, string? email = null)
     {
         var separator = dn.IndexOf(',');
         using var parent = Open(dn[(separator + 1)..]);
         using var child = parent.Children.Add(dn[..separator], "user");
         child.Properties["sAMAccountName"].Value = samAccountName;
+        if (email is not null)
+        {
+            child.Properties["mail"].Value = email;
+        }
         child.CommitChanges();
     }
+
+    private static void CreateComputer(string dn, string samAccountName)
+    {
+        var separator = dn.IndexOf(',');
+        using var parent = Open(dn[(separator + 1)..]);
+        using var child = parent.Children.Add(dn[..separator], "computer");
+        child.Properties["sAMAccountName"].Value = $"{samAccountName}$";
+        child.CommitChanges();
+    }
+
+    private static string MemberSnapshot(Ms.Principal principal) => string.Join('|',
+        principal.GetType().Name,
+        principal.Sid?.Value,
+        principal.SamAccountName,
+        (principal as Ms.UserPrincipal)?.EmailAddress);
+
+    private static string MemberSnapshot(Ours.Principal principal) => string.Join('|',
+        principal.GetType().Name,
+        principal.Sid?.Value,
+        principal.SamAccountName,
+        (principal as Ours.UserPrincipal)?.EmailAddress);
 
     private static void CreateGroup(string dn, string samAccountName, string memberDn)
     {
