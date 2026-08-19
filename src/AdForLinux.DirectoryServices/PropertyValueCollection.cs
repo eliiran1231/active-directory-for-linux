@@ -75,8 +75,16 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
         set
         {
             _values.Clear();
-            if (value is object[] many)
+            if (value is byte[] bytes)
             {
+                _values.Add(bytes);
+            }
+            else if (value is Array array)
+            {
+                // Match ADSI: every array except byte[] represents multiple
+                // attribute values. Array.CopyTo boxes value-type elements.
+                var many = new object[array.Length];
+                array.CopyTo(many, 0);
                 _values.AddRange(many);
             }
             else if (value is not null)
@@ -121,7 +129,7 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     /// <summary>Removes one value.</summary>
     public void Remove(object value)
     {
-        var index = _values.FindIndex(v => ValueEquals(v, value));
+        var index = _values.IndexOf(value);
         if (index >= 0)
         {
             _values.RemoveAt(index);
@@ -137,13 +145,13 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     internal void AddLoaded(object value) => _values.Add(value);
 
     /// <summary>True if the value is present.</summary>
-    public bool Contains(object value) => _values.Exists(v => ValueEquals(v, value));
+    public bool Contains(object value) => _values.Contains(value);
 
     /// <summary>Copies the values to an array.</summary>
     public void CopyTo(object[] array, int index) => _values.CopyTo(array, index);
 
     /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
-    public int IndexOf(object value) => _values.FindIndex(v => ValueEquals(v, value));
+    public int IndexOf(object value) => _values.IndexOf(value);
 
     /// <summary>Inserts a value at the specified index.</summary>
     public void Insert(int index, object value)
@@ -165,21 +173,6 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     {
         _values.Clear();
         RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
-    }
-
-    private static bool ValueEquals(object a, object b)
-    {
-        if (a is byte[] ba && b is byte[] bb)
-        {
-            return ba.AsSpan().SequenceEqual(bb);
-        }
-
-        if (a is string sa && b is string sb)
-        {
-            return string.Equals(sa, sb, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return Equals(a, b);
     }
 
     private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)

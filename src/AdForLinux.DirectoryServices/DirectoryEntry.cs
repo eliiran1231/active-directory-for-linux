@@ -560,6 +560,11 @@ public class DirectoryEntry : Component
                 attribute.Add(dateTimeOffset.UtcDateTime.ToString(
                     "yyyyMMddHHmmss.0'Z'", System.Globalization.CultureInfo.InvariantCulture));
                 break;
+            case Array:
+                // Value expands arrays before changes reach serialization.
+                // Reject nested arrays or arrays added as scalar values rather
+                // than silently writing a CLR type name such as System.Int32[].
+                throw new ArgumentException("LDAP attribute values cannot be arrays.", nameof(value));
             case IFormattable formattable:
                 attribute.Add(formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture));
                 break;

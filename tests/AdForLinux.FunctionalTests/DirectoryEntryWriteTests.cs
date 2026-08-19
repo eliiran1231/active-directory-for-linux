@@ -348,6 +348,34 @@ public class DirectoryEntryWriteTests
         }
     }
 
+    [Fact]
+    public void Value_type_array_is_immediately_written_as_individual_values()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var name = $"adfl-arr-{suffix}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={name}", "user");
+            child.Properties["sAMAccountName"].Value = name;
+            child.CommitChanges();
+            child.UsePropertyCache = false;
+
+            child.Properties["otherTelephone"].Value = new[] { 101, 202 };
+
+            using var reopened = Open(dn);
+            Assert.Equal(
+                new[] { "101", "202" },
+                reopened.Properties["otherTelephone"].Cast<string>().Order());
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
     private static void SafeDelete(string dn)
     {
         try

@@ -6,6 +6,12 @@ namespace AdForLinux.FunctionalTests;
 
 public class CollectionCompatibilityTests
 {
+    private enum SampleValue
+    {
+        First = 1,
+        Second = 2,
+    }
+
     [Fact]
     public void Property_values_track_ordered_add_delete_replace_and_clear_changes()
     {
@@ -126,7 +132,7 @@ public class CollectionCompatibilityTests
         IList list = values;
         list.Add("tail");
 
-        Assert.Equal(1, values.IndexOf("SECOND"));
+        Assert.Equal(1, values.IndexOf("second"));
         Assert.Equal(new object[] { "first", "second", "last", "tail" }, values.Cast<object>());
 
         var copy = new object[values.Count];
@@ -136,6 +142,65 @@ public class CollectionCompatibilityTests
         values.RemoveAt(3);
         Assert.Equal(3, values.Count);
         Assert.True(values.Changed);
+    }
+
+    [Fact]
+    public void Property_value_expands_all_arrays_except_byte_arrays()
+    {
+        var values = new PropertyValueCollection("extensionAttribute");
+
+        values.Value = new[] { 1, 2 };
+        Assert.Equal(new object[] { 1, 2 }, values.Cast<object>());
+        AssertChange(values.Changes.Single(), PropertyValueChangeType.Replace, 1, 2);
+
+        values.Value = new long[] { 3, 4 };
+        Assert.Equal(new object[] { 3L, 4L }, values.Cast<object>());
+
+        values.Value = new[] { SampleValue.First, SampleValue.Second };
+        Assert.Equal(
+            new object[] { SampleValue.First, SampleValue.Second },
+            values.Cast<object>());
+
+        values.Value = new object[] { "five", 6 };
+        Assert.Equal(new object[] { "five", 6 }, values.Cast<object>());
+
+        var bytes = new byte[] { 7, 8 };
+        values.Value = bytes;
+        Assert.Single(values);
+        Assert.Same(bytes, values[0]);
+        AssertChange(values.Changes.Single(), PropertyValueChangeType.Replace, bytes);
+    }
+
+    [Fact]
+    public void Property_value_lookup_and_removal_use_object_equality()
+    {
+        var bytes = new byte[] { 1, 2, 3 };
+        var equalBytes = new byte[] { 1, 2, 3 };
+        var values = new PropertyValueCollection("extensionAttribute");
+        values.Value = new object[] { "CaseSensitive", bytes };
+        values.ResetChanged();
+
+        Assert.False(values.Contains("casesensitive"));
+        Assert.Equal(-1, values.IndexOf("casesensitive"));
+        values.Remove("casesensitive");
+        Assert.Equal(2, values.Count);
+        AssertChange(
+            values.Changes.Single(),
+            PropertyValueChangeType.Delete,
+            "casesensitive");
+
+        values.ResetChanged();
+        Assert.False(values.Contains(equalBytes));
+        Assert.Equal(-1, values.IndexOf(equalBytes));
+        values.Remove(equalBytes);
+        Assert.Equal(2, values.Count);
+        AssertChange(values.Changes.Single(), PropertyValueChangeType.Delete, equalBytes);
+
+        values.ResetChanged();
+        Assert.True(values.Contains(bytes));
+        Assert.Equal(1, values.IndexOf(bytes));
+        values.Remove(bytes);
+        Assert.Single(values);
     }
 
     [Fact]
