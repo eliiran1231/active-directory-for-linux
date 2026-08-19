@@ -22,6 +22,8 @@ public class DirectorySearcher : Component
     private TimeSpan _clientTimeout = DefaultTimeout;
     private DereferenceAlias _derefAlias;
     private DirectorySynchronization? _directorySynchronization;
+    private ExtendedDN _extendedDn = ExtendedDN.None;
+    private string _filter = "(objectClass=*)";
     private SearchScope _searchScope = SearchScope.Subtree;
     private bool _searchScopeSpecified;
     private string _attributeScopeQuery = string.Empty;
@@ -31,6 +33,7 @@ public class DirectorySearcher : Component
     private TimeSpan _serverTimeLimit = DefaultTimeout;
     private int _sizeLimit;
     private SortOption _sort = new();
+    private SecurityMasks _securityMasks;
     private DirectoryVirtualListView? _virtualListView;
 
     internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
@@ -99,7 +102,12 @@ public class DirectorySearcher : Component
     public DirectoryEntry? SearchRoot { get; set; }
 
     /// <summary>The LDAP filter, e.g. <c>(&amp;(objectClass=user)(cn=jeff))</c>.</summary>
-    public string Filter { get; set; } = "(objectClass=*)";
+    [AllowNull]
+    public string Filter
+    {
+        get => _filter;
+        set => _filter = string.IsNullOrEmpty(value) ? "(objectClass=*)" : value;
+    }
 
     /// <summary>How deep to search. Subtree by default.</summary>
     public SearchScope SearchScope
@@ -253,7 +261,19 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the extended-DN format requested from the server.</summary>
-    public ExtendedDN ExtendedDN { get; set; } = ExtendedDN.None;
+    public ExtendedDN ExtendedDN
+    {
+        get => _extendedDn;
+        set
+        {
+            if (value < ExtendedDN.None || value > ExtendedDN.Standard)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ExtendedDN));
+            }
+
+            _extendedDn = value;
+        }
+    }
 
     /// <summary>Gets or sets whether only property names, rather than values, are returned.</summary>
     public bool PropertyNamesOnly { get; set; }
@@ -277,7 +297,21 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the requested security descriptor sections.</summary>
-    public SecurityMasks SecurityMasks { get; set; }
+    public SecurityMasks SecurityMasks
+    {
+        get => _securityMasks;
+        set
+        {
+            const SecurityMasks allMasks =
+                SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
+            if (value > allMasks)
+            {
+                throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SecurityMasks));
+            }
+
+            _securityMasks = value;
+        }
+    }
 
     /// <summary>Gets or sets the server time limit for each page.</summary>
     public TimeSpan ServerPageTimeLimit

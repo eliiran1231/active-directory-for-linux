@@ -104,6 +104,21 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void Filter_setter_normalizes_null_and_empty_values()
+    {
+        using var searcher = new DirectorySearcher();
+
+        searcher.Filter = "(objectClass=person)";
+        Assert.Equal("(objectClass=person)", searcher.Filter);
+
+        searcher.Filter = null;
+        Assert.Equal("(objectClass=*)", searcher.Filter);
+
+        searcher.Filter = string.Empty;
+        Assert.Equal("(objectClass=*)", searcher.Filter);
+    }
+
+    [Fact]
     public void Invalid_limits_and_null_sort_fail_like_microsoft()
     {
         using var searcher = new DirectorySearcher();
@@ -182,6 +197,29 @@ public class DirectorySearcherTests
             () => searcher.DerefAlias = (DereferenceAlias)int.MaxValue);
         Assert.Throws<InvalidEnumArgumentException>(
             () => searcher.ReferralChasing = (ReferralChasingOption)int.MaxValue);
+
+        foreach (var extendedDn in new[] { ExtendedDN.None, ExtendedDN.HexString, ExtendedDN.Standard })
+        {
+            searcher.ExtendedDN = extendedDn;
+            Assert.Equal(extendedDn, searcher.ExtendedDN);
+        }
+
+        var extendedDnException = Assert.Throws<InvalidEnumArgumentException>(
+            () => searcher.ExtendedDN = (ExtendedDN)2);
+        Assert.Equal("value", extendedDnException.ParamName);
+        Assert.Equal(ExtendedDN.Standard, searcher.ExtendedDN);
+        Assert.Throws<InvalidEnumArgumentException>(() => searcher.ExtendedDN = (ExtendedDN)(-2));
+
+        for (var value = 0; value <= 15; value++)
+        {
+            searcher.SecurityMasks = (SecurityMasks)value;
+            Assert.Equal((SecurityMasks)value, searcher.SecurityMasks);
+        }
+
+        var securityMasksException = Assert.Throws<InvalidEnumArgumentException>(
+            () => searcher.SecurityMasks = (SecurityMasks)16);
+        Assert.Equal("value", securityMasksException.ParamName);
+        Assert.Equal((SecurityMasks)15, searcher.SecurityMasks);
 
         var maximum = TimeSpan.FromSeconds(int.MaxValue);
         var tooLarge = maximum.Add(TimeSpan.FromSeconds(1));
