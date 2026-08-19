@@ -8,47 +8,43 @@ namespace AdForLinux.DirectoryServices;
 /// <c>result.Properties["x"][0]</c> only throws when the attribute really is
 /// absent (empty), not with a KeyNotFoundException.
 /// </summary>
-public sealed class ResultPropertyCollection : IDictionary, IEnumerable<ResultPropertyValueCollection>
+public sealed class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable<ResultPropertyValueCollection>
 {
     private static readonly ResultPropertyValueCollection Empty =
         new(Array.Empty<object>());
-
-    private readonly Dictionary<string, ResultPropertyValueCollection> _byName =
-        new(StringComparer.OrdinalIgnoreCase);
 
     internal ResultPropertyCollection()
     {
     }
 
+    // Microsoft normalizes result-property keys before placing them in its
+    // DictionaryBase, so dictionary enumeration exposes lower-case names too.
     internal void Set(string name, IReadOnlyList<object> values) =>
-        _byName[name] = new ResultPropertyValueCollection(values);
+        InnerHashtable[name.ToLowerInvariant()] = new ResultPropertyValueCollection(values);
 
     /// <summary>The values for an attribute, or an empty collection if absent.</summary>
     public ResultPropertyValueCollection this[string propertyName] =>
-        _byName.TryGetValue(propertyName, out var values) ? values : Empty;
+        InnerHashtable[propertyName.ToLowerInvariant()] is ResultPropertyValueCollection values ? values : Empty;
 
     /// <summary>True if the attribute is present in the result.</summary>
-    public bool Contains(string propertyName) => _byName.ContainsKey(propertyName);
+    public bool Contains(string propertyName) => InnerHashtable.Contains(propertyName.ToLowerInvariant());
 
     /// <summary>All attribute names in the result.</summary>
-    public ICollection PropertyNames => _byName.Keys;
+    public ICollection PropertyNames => InnerHashtable.Keys;
 
     /// <summary>All property value collections in the result.</summary>
-    public ICollection Values => _byName.Values;
-
-    /// <summary>Number of distinct attributes.</summary>
-    public int Count => _byName.Count;
+    public ICollection Values => InnerHashtable.Values;
 
     /// <summary>Copies the property value collections to an array.</summary>
     public void CopyTo(ResultPropertyValueCollection[] array, int index) =>
-        _byName.Values.CopyTo(array, index);
+        InnerHashtable.Values.CopyTo(array, index);
 
-    public IDictionaryEnumerator GetEnumerator() => ((IDictionary)_byName).GetEnumerator();
+    public new IDictionaryEnumerator GetEnumerator() => InnerHashtable.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     IEnumerator<ResultPropertyValueCollection> IEnumerable<ResultPropertyValueCollection>.GetEnumerator() =>
-        _byName.Values.GetEnumerator();
+        InnerHashtable.Values.Cast<ResultPropertyValueCollection>().GetEnumerator();
 
     bool IDictionary.IsFixedSize => true;
 
@@ -80,5 +76,5 @@ public sealed class ResultPropertyCollection : IDictionary, IEnumerable<ResultPr
 
     object ICollection.SyncRoot => this;
 
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_byName).CopyTo(array, index);
+    void ICollection.CopyTo(Array array, int index) => InnerHashtable.CopyTo(array, index);
 }

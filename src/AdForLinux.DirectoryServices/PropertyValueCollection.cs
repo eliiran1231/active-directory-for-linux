@@ -10,9 +10,8 @@ namespace AdForLinux.DirectoryServices;
 /// Values are strings for text attributes and <c>byte[]</c> for binary ones,
 /// the same shapes S.DS.Protocols returns.
 /// </summary>
-public sealed class PropertyValueCollection : IList, IEnumerable<object>
+public sealed class PropertyValueCollection : CollectionBase, IEnumerable<object>
 {
-    private readonly List<object> _values = new();
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
 
@@ -37,27 +36,11 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     /// <summary>Clears staged changes after a successful commit or load.</summary>
     internal void ResetChanged() => _changes.Clear();
 
-    /// <summary>Number of values.</summary>
-    public int Count => _values.Count;
-
     /// <summary>Gets the value at an index.</summary>
     public object this[int index]
     {
-        get => _values[index];
-        set
-        {
-            var oldValue = _values[index];
-            _values[index] = value;
-            if (_values.Count <= 1)
-            {
-                RecordChange(PropertyValueChangeType.Replace, _values);
-            }
-            else
-            {
-                RecordChange(PropertyValueChangeType.Delete, new[] { oldValue });
-                RecordChange(PropertyValueChangeType.Add, new[] { value });
-            }
-        }
+        get => List[index]!;
+        set => List[index] = value;
     }
 
     /// <summary>
@@ -66,18 +49,20 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     /// </summary>
     public object? Value
     {
-        get => _values.Count switch
+        get => Count switch
         {
             0 => null,
-            1 => _values[0],
-            _ => _values.ToArray(),
+            1 => List[0],
+            _ => InnerList.ToArray(),
         };
         set
         {
-            _values.Clear();
+            // Bypass CollectionBase's hooks so replacing the whole attribute
+            // is recorded as one LDAP operation rather than Clear plus Adds.
+            InnerList.Clear();
             if (value is byte[] bytes)
             {
-                _values.Add(bytes);
+                InnerList.Add(bytes);
             }
             else if (value is Array array)
             {
@@ -85,26 +70,22 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
                 // attribute values. Array.CopyTo boxes value-type elements.
                 var many = new object[array.Length];
                 array.CopyTo(many, 0);
-                _values.AddRange(many);
+                InnerList.AddRange(many);
             }
             else if (value is not null)
             {
-                _values.Add(value);
+                InnerList.Add(value);
             }
 
             RecordChange(
-                _values.Count == 0 ? PropertyValueChangeType.Clear : PropertyValueChangeType.Replace,
-                _values);
+                Count == 0 ? PropertyValueChangeType.Clear : PropertyValueChangeType.Replace,
+                InnerList.Cast<object>());
         }
     }
 
     /// <summary>Adds one value. Returns its index.</summary>
     public int Add(object value)
-    {
-        _values.Add(value);
-        RecordChange(PropertyValueChangeType.Add, new[] { value });
-        return _values.Count - 1;
-    }
+        => List.Add(value);
 
     /// <summary>Adds several values.</summary>
     public void AddRange(IEnumerable<object> values)
@@ -123,16 +104,17 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     public void AddRange(PropertyValueCollection values)
     {
         ArgumentNullException.ThrowIfNull(values);
-        AddRange(values._values.ToArray());
+        AddRange(values.InnerList.Cast<object>().ToArray());
     }
 
     /// <summary>Removes one value.</summary>
     public void Remove(object value)
     {
-        var index = _values.IndexOf(value);
+        var index = List.IndexOf(value);
         if (index >= 0)
         {
-            _values.RemoveAt(index);
+            List.RemoveAt(index);
+            return;
         }
 
         // ADSI still stages a single-value delete when a value is absent from
@@ -142,38 +124,44 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
     }
 
     /// <summary>Appends a value read from the server, without marking it changed.</summary>
-    internal void AddLoaded(object value) => _values.Add(value);
+    internal void AddLoaded(object value) => InnerList.Add(value);
 
     /// <summary>True if the value is present.</summary>
-    public bool Contains(object value) => _values.Contains(value);
+    public bool Contains(object value) => List.Contains(value);
 
     /// <summary>Copies the values to an array.</summary>
-    public void CopyTo(object[] array, int index) => _values.CopyTo(array, index);
+    public void CopyTo(object[] array, int index) => List.CopyTo(array, index);
 
     /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
-    public int IndexOf(object value) => _values.IndexOf(value);
+    public int IndexOf(object value) => List.IndexOf(value);
 
     /// <summary>Inserts a value at the specified index.</summary>
     public void Insert(int index, object value)
     {
-        _values.Insert(index, value);
-        RecordChange(PropertyValueChangeType.Add, new[] { value });
+        List.Insert(index, value);
     }
 
-    /// <summary>Removes the value at the specified index.</summary>
-    public void RemoveAt(int index)
+    protected override void OnInsertComplete(int index, object? value) =>
+        RecordChange(PropertyValueChangeType.Add, new[] { value! });
+
+    protected override void OnRemoveComplete(int index, object? value) =>
+        RecordChange(PropertyValueChangeType.Delete, new[] { value! });
+
+    protected override void OnSetComplete(int index, object? oldValue, object? newValue)
     {
-        var value = _values[index];
-        _values.RemoveAt(index);
-        RecordChange(PropertyValueChangeType.Delete, new[] { value });
+        if (Count <= 1)
+        {
+            RecordChange(PropertyValueChangeType.Replace, InnerList.Cast<object>());
+        }
+        else
+        {
+            RecordChange(PropertyValueChangeType.Delete, new[] { oldValue! });
+            RecordChange(PropertyValueChangeType.Add, new[] { newValue! });
+        }
     }
 
-    /// <summary>Removes every value.</summary>
-    public void Clear()
-    {
-        _values.Clear();
+    protected override void OnClearComplete() =>
         RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
-    }
 
     private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)
     {
@@ -189,41 +177,7 @@ public sealed class PropertyValueCollection : IList, IEnumerable<object>
         _onChanged?.Invoke(this);
     }
 
-    public IEnumerator<object> GetEnumerator() => _values.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    bool IList.IsFixedSize => false;
-
-    bool IList.IsReadOnly => false;
-
-    object? IList.this[int index]
-    {
-        get => this[index];
-        set => this[index] = value!;
-    }
-
-    int IList.Add(object? value) => Add(value!);
-
-    bool IList.Contains(object? value) => value is not null && Contains(value);
-
-    int IList.IndexOf(object? value) => value is not null ? IndexOf(value) : -1;
-
-    void IList.Insert(int index, object? value) => Insert(index, value!);
-
-    void IList.Remove(object? value)
-    {
-        if (value is not null)
-        {
-            Remove(value);
-        }
-    }
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_values).CopyTo(array, index);
+    public new IEnumerator<object> GetEnumerator() => InnerList.Cast<object>().GetEnumerator();
 }
 
 internal enum PropertyValueChangeType
