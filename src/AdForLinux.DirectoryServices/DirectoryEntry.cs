@@ -747,10 +747,10 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Renames this entry under its existing parent.</summary>
-    public void Rename(string newName)
+    public void Rename(string? newName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
-        MoveOrRename(LdapDistinguishedName.Parent(_path.DistinguishedName), newName);
+        using var parent = Parent;
+        MoveTo(parent!, newName);
     }
 
     /// <summary>
@@ -774,10 +774,6 @@ public class DirectoryEntry : Component
     public void MoveTo(DirectoryEntry newParent, string? newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
-        if (newName is not null)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
-        }
 
         EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(
