@@ -750,7 +750,7 @@ public class DirectoryEntry : Component
     public void Rename(string? newName)
     {
         using var parent = Parent;
-        MoveTo(parent!, newName);
+        MoveTo(parent!, newName, validateNewName: false);
     }
 
     /// <summary>
@@ -772,8 +772,15 @@ public class DirectoryEntry : Component
     /// ModifyDN cannot perform a cross-server move, so no request is sent.
     /// </exception>
     public void MoveTo(DirectoryEntry newParent, string? newName)
+        => MoveTo(newParent, newName, validateNewName: true);
+
+    private void MoveTo(DirectoryEntry newParent, string? newName, bool validateNewName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
+        if (validateNewName && newName is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        }
 
         EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(
