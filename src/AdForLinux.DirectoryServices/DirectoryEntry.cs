@@ -32,6 +32,7 @@ public class DirectoryEntry : Component
     private DirectoryEntryConfiguration? _options;
     private ActiveDirectorySecurity? _objectSecurity;
     private bool _objectSecurityChanged;
+    private bool _disposed;
 
     /// <summary>Creates an unbound entry, like Microsoft's parameterless constructor.</summary>
     public DirectoryEntry()
@@ -190,7 +191,14 @@ public class DirectoryEntry : Component
     /// The relative name of this object, e.g. <c>CN=Jeff Smith</c> — the first
     /// component of the DN, including its attribute type, like Microsoft.
     /// </summary>
-    public string Name => LdapDistinguishedName.RelativeName(_path.DistinguishedName);
+    public string Name
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return LdapDistinguishedName.RelativeName(_path.DistinguishedName);
+        }
+    }
 
     /// <summary>
     /// The most specific structural class, e.g. <c>user</c> or <c>group</c> —
@@ -200,6 +208,7 @@ public class DirectoryEntry : Component
     {
         get
         {
+            ThrowIfDisposed();
             var classes = Properties["objectClass"];
             return classes.Count > 0 ? classes[classes.Count - 1]?.ToString() : null;
         }
@@ -210,32 +219,56 @@ public class DirectoryEntry : Component
     {
         get
         {
+            ThrowIfDisposed();
             var value = Properties["objectGUID"].Value;
             return value is byte[] bytes && bytes.Length == 16 ? new Guid(bytes) : Guid.Empty;
         }
     }
 
     /// <summary>The object GUID in the provider's string form.</summary>
-    public string NativeGuid => Guid == Guid.Empty ? string.Empty : Guid.ToString("B");
+    public string NativeGuid
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return Guid == Guid.Empty ? string.Empty : Guid.ToString("B");
+        }
+    }
 
     /// <summary>ADSI native objects are not available through LDAP protocols.</summary>
-    public object NativeObject => throw new PlatformNotSupportedException(
-        "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
+    public object NativeObject
+    {
+        get
+        {
+            ThrowIfDisposed();
+            throw new PlatformNotSupportedException(
+                "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
+        }
+    }
 
     /// <summary>Gets the LDAP provider options associated with this entry.</summary>
-    public DirectoryEntryConfiguration Options => _options ??= new DirectoryEntryConfiguration(this);
+    public DirectoryEntryConfiguration Options
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _options ??= new DirectoryEntryConfiguration(this);
+        }
+    }
 
     /// <summary>Gets or sets this entry's Active Directory security descriptor.</summary>
     public ActiveDirectorySecurity ObjectSecurity
     {
         get
         {
+            ThrowIfDisposed();
             EnsureAccessControlSupported();
             return _objectSecurity ??= ReadObjectSecurity();
         }
         set
         {
             ArgumentNullException.ThrowIfNull(value);
+            ThrowIfDisposed();
             EnsureAccessControlSupported();
             _objectSecurity = value;
             _objectSecurityChanged = true;
@@ -248,20 +281,29 @@ public class DirectoryEntry : Component
     {
         get
         {
+            ThrowIfDisposed();
             var parentDn = LdapDistinguishedName.Parent(_path.DistinguishedName);
             return parentDn is null ? null : CreateEntryForDn(parentDn);
         }
     }
 
     /// <summary>ADSI schema entries are not available through the portable LDAP API.</summary>
-    public DirectoryEntry SchemaEntry => throw new PlatformNotSupportedException(
-        "DirectoryEntry.SchemaEntry requires ADSI schema-provider behavior, which is not available on Linux.");
+    public DirectoryEntry SchemaEntry
+    {
+        get
+        {
+            ThrowIfDisposed();
+            throw new PlatformNotSupportedException(
+                "DirectoryEntry.SchemaEntry requires ADSI schema-provider behavior, which is not available on Linux.");
+        }
+    }
 
     /// <summary>The loaded attributes. Reading this binds and fetches on first use.</summary>
     public PropertyCollection Properties
     {
         get
         {
+            ThrowIfDisposed();
             EnsureLoaded();
             return _properties!;
         }
@@ -489,6 +531,7 @@ public class DirectoryEntry : Component
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
     internal static DirectoryEntry NewChild(DirectoryEntry parent, string relativeName, string schemaClassName)
     {
+        parent.ThrowIfDisposed();
         var dn = $"{relativeName},{parent._path.DistinguishedName}";
         var path = new LdapPath(parent._path.Host, parent._path.Port, dn).ToString();
 
@@ -679,6 +722,8 @@ public class DirectoryEntry : Component
     public void MoveTo(DirectoryEntry newParent)
     {
         ArgumentNullException.ThrowIfNull(newParent);
+        ThrowIfDisposed();
+        newParent.ThrowIfDisposed();
         EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(newParent.DistinguishedName, LdapDistinguishedName.RelativeName(_path.DistinguishedName));
     }
@@ -695,6 +740,8 @@ public class DirectoryEntry : Component
     {
         ArgumentNullException.ThrowIfNull(newParent);
         ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        ThrowIfDisposed();
+        newParent.ThrowIfDisposed();
         EnsureSameMoveConnectionContext(newParent);
         MoveOrRename(newParent.DistinguishedName, newName);
     }
@@ -703,24 +750,41 @@ public class DirectoryEntry : Component
     /// ADSI exposes a provider copy operation; LDAP has no interoperable copy
     /// operation, so callers must create a child and copy supported attributes explicitly.
     /// </summary>
-    public DirectoryEntry CopyTo(DirectoryEntry newParent) =>
+    public DirectoryEntry CopyTo(DirectoryEntry newParent)
+    {
+        ThrowIfDisposed();
+        newParent?.ThrowIfDisposed();
         throw new PlatformNotSupportedException("LDAP does not define an interoperable DirectoryEntry copy operation.");
+    }
 
     /// <inheritdoc cref="CopyTo(DirectoryEntry)"/>
-    public DirectoryEntry CopyTo(DirectoryEntry newParent, string newName) =>
+    public DirectoryEntry CopyTo(DirectoryEntry newParent, string newName)
+    {
+        ThrowIfDisposed();
+        newParent?.ThrowIfDisposed();
         throw new PlatformNotSupportedException("LDAP does not define an interoperable DirectoryEntry copy operation.");
+    }
 
     /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
-    public object? Invoke(string methodName, params object?[]? args) =>
+    public object? Invoke(string methodName, params object?[]? args)
+    {
+        ThrowIfDisposed();
         throw new PlatformNotSupportedException("DirectoryEntry.Invoke requires ADSI/COM and is not available on Linux.");
+    }
 
     /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
-    public object? InvokeGet(string propertyName) =>
+    public object? InvokeGet(string propertyName)
+    {
+        ThrowIfDisposed();
         throw new PlatformNotSupportedException("DirectoryEntry.InvokeGet requires ADSI/COM and is not available on Linux.");
+    }
 
     /// <summary>ADSI provider invocation is not available through LDAP protocols.</summary>
-    public void InvokeSet(string propertyName, params object?[]? args) =>
+    public void InvokeSet(string propertyName, params object?[]? args)
+    {
+        ThrowIfDisposed();
         throw new PlatformNotSupportedException("DirectoryEntry.InvokeSet requires ADSI/COM and is not available on Linux.");
+    }
 
     private void EnsureLoaded(string[]? propertyNames = null)
     {
@@ -848,14 +912,21 @@ public class DirectoryEntry : Component
         }
     }
 
-    internal LdapConnection GetConnection() => _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
+    internal LdapConnection GetConnection()
+    {
+        ThrowIfDisposed();
+        return _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
+    }
 
     /// <summary>
     /// Schema discovery uses a dedicated connection so it never attempts a
     /// second request on a connection that is yielding asynchronous results.
     /// </summary>
-    internal LdapConnection GetSchemaConnection() =>
-        _schemaConnection ??= CreateBoundConnection();
+    internal LdapConnection GetSchemaConnection()
+    {
+        ThrowIfDisposed();
+        return _schemaConnection ??= CreateBoundConnection();
+    }
 
     private LdapConnection CreateBoundConnection()
     {
@@ -884,6 +955,7 @@ public class DirectoryEntry : Component
     /// </summary>
     internal DirectoryEntry CreateEntryForDn(string distinguishedName)
     {
+        ThrowIfDisposed();
         var path = new LdapPath(_path.Host, _path.Port, distinguishedName).ToString();
         return _connectionOptionsOverride is null
             ? new DirectoryEntry(path, _username, _password, _authenticationType)
@@ -1035,12 +1107,24 @@ public class DirectoryEntry : Component
         _schemaConnection = null;
     }
 
+    internal void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(GetType().Name);
+        }
+    }
+
     /// <summary>Releases the LDAP connection held by this entry.</summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (!_disposed)
         {
+            _disposed = true;
             ResetConnection();
+            _properties = null;
+            _objectSecurity = null;
+            _objectSecurityChanged = false;
         }
 
         base.Dispose(disposing);

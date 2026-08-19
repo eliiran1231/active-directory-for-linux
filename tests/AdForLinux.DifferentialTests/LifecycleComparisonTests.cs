@@ -1,13 +1,72 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit;
+using MsDirectory = System.DirectoryServices;
 using Ms = System.DirectoryServices.AccountManagement;
+using OursDirectory = AdForLinux.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices.AccountManagement;
 
 namespace AdForLinux.DifferentialTests;
 
 public class LifecycleComparisonTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Disposed_directory_entry_bind_members_match(bool usePropertyCache)
+    {
+        var microsoft = new MsDirectory.DirectoryEntry(
+            DifferentialSettings.PathFor(DifferentialSettings.BaseDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.MicrosoftAuthenticationTypes);
+        var ours = new OursDirectory.DirectoryEntry(
+            DifferentialSettings.PathFor(DifferentialSettings.BaseDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.OurAuthenticationTypes);
+
+        microsoft.UsePropertyCache = usePropertyCache;
+        ours.UsePropertyCache = usePropertyCache;
+        _ = microsoft.Properties["distinguishedName"].Value;
+        _ = ours.Properties["distinguishedName"].Value;
+
+        microsoft.Dispose();
+        ours.Dispose();
+
+        (string Name, Action Microsoft, Action Ours)[] members =
+        {
+            (nameof(microsoft.RefreshCache), microsoft.RefreshCache, ours.RefreshCache),
+            ("RefreshCache(string[])", () => microsoft.RefreshCache(Array.Empty<string>()),
+             () => ours.RefreshCache(Array.Empty<string>())),
+            (nameof(microsoft.Properties), () => _ = microsoft.Properties["distinguishedName"].Value,
+             () => _ = ours.Properties["distinguishedName"].Value),
+            (nameof(microsoft.Name), () => _ = microsoft.Name, () => _ = ours.Name),
+            (nameof(microsoft.SchemaClassName), () => _ = microsoft.SchemaClassName, () => _ = ours.SchemaClassName),
+            (nameof(microsoft.Guid), () => _ = microsoft.Guid, () => _ = ours.Guid),
+            (nameof(microsoft.NativeGuid), () => _ = microsoft.NativeGuid, () => _ = ours.NativeGuid),
+            (nameof(microsoft.NativeObject), () => _ = microsoft.NativeObject, () => _ = ours.NativeObject),
+            (nameof(microsoft.Parent), () => _ = microsoft.Parent, () => _ = ours.Parent),
+            (nameof(microsoft.SchemaEntry), () => _ = microsoft.SchemaEntry, () => _ = ours.SchemaEntry),
+            (nameof(microsoft.Options), () => _ = microsoft.Options, () => _ = ours.Options),
+            ("Children.Add", () => microsoft.Children.Add("CN=issue-74-child", "user"),
+             () => ours.Children.Add("CN=issue-74-child", "user")),
+            ("Children.GetEnumerator", () => microsoft.Children.GetEnumerator().MoveNext(),
+             () => ours.Children.GetEnumerator().MoveNext()),
+            (nameof(microsoft.DeleteTree), microsoft.DeleteTree, ours.DeleteTree),
+            (nameof(microsoft.Rename), () => microsoft.Rename("CN=issue-74-renamed"),
+             () => ours.Rename("CN=issue-74-renamed")),
+        };
+
+        AssertMatchingDisposedExceptions(members);
+        Assert.Equal(microsoft.Path, ours.Path);
+        Assert.Equal(microsoft.Username, ours.Username);
+        Assert.Equal(microsoft.UsePropertyCache, ours.UsePropertyCache);
+
+        microsoft.Dispose();
+        ours.Dispose();
+    }
+
     [Fact]
     public void Disposed_context_members_match_without_a_directory_connection()
     {
@@ -142,6 +201,39 @@ public class LifecycleComparisonTests
         {
             AssertMatchingDisposedException(microsoft, ours);
         }
+    }
+
+    private static void AssertMatchingDisposedExceptions(
+        IEnumerable<(string Name, Action Microsoft, Action Ours)> members)
+    {
+        var differences = new List<string>();
+        foreach (var (name, microsoft, ours) in members)
+        {
+            var microsoftException = Record.Exception(microsoft);
+            var ourException = Record.Exception(ours);
+            if (microsoftException?.GetType() != typeof(ObjectDisposedException)
+                || ourException?.GetType() != typeof(ObjectDisposedException))
+            {
+                differences.Add(
+                    $"{name}: Microsoft={microsoftException?.GetType().Name ?? "no exception"}, " +
+                    $"ours={ourException?.GetType().Name ?? "no exception"}");
+                continue;
+            }
+
+            var typedMicrosoftException = (ObjectDisposedException)microsoftException!;
+            var typedOurException = (ObjectDisposedException)ourException!;
+            if (!string.Equals(
+                    typedMicrosoftException.ObjectName,
+                    typedOurException.ObjectName,
+                    StringComparison.Ordinal))
+            {
+                differences.Add(
+                    $"{name}: Microsoft object name='{typedMicrosoftException.ObjectName}', " +
+                    $"ours='{typedOurException.ObjectName}'");
+            }
+        }
+
+        Assert.True(differences.Count == 0, string.Join(Environment.NewLine, differences));
     }
 
     private static void AssertMatchingDisposedException(Action microsoft, Action ours)

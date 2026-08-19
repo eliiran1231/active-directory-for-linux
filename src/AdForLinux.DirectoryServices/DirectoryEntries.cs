@@ -61,6 +61,7 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// <summary>Deletes a child object without recursively deleting its descendants.</summary>
     public void Remove(DirectoryEntry child)
     {
+        _parent.ThrowIfDisposed();
         // Microsoft asks this collection's parent container to delete the
         // entry by schema class and relative name. Reading SchemaClassName
         // preserves the observable bind/error behavior even though LDAP's
