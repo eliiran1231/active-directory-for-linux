@@ -326,7 +326,7 @@ public class UserPrincipalWriteTests
                 var user = UserPrincipal.FindByIdentity(context, name);
                 Assert.NotNull(user);
                 user!.Delete();
-                Assert.Null(user.DistinguishedName);
+                Assert.Throws<InvalidOperationException>(() => user.DistinguishedName);
             }
 
             using var check = Context();
