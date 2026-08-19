@@ -40,6 +40,78 @@ internal static class LdapAttributeSchema
             : LdapValueKind.String;
 
     /// <summary>
+    /// Returns the attributes that can safely be supplied by a client in an
+    /// LDAP Add request. Unknown attributes remain eligible so this also works
+    /// with generic LDAP servers and custom schemas.
+    /// </summary>
+    public static IReadOnlySet<string> WritableOnAdd(
+        LdapConnection connection,
+        IEnumerable<string> attributeNames)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(attributeNames);
+
+        var names = attributeNames
+            .Select(CanonicalName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (names.Length == 0)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var writable = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var rootDse = RootDse.Read(connection, "schemaNamingContext");
+            if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
+                || string.IsNullOrEmpty(schemaNamingContext))
+            {
+                return writable;
+            }
+
+            var nameFilter = names.Length == 1
+                ? $"(lDAPDisplayName={EscapeFilterValue(names[0])})"
+                : $"(|{string.Concat(names.Select(name => $"(lDAPDisplayName={EscapeFilterValue(name)})"))})";
+            var request = new SearchRequest(
+                schemaNamingContext,
+                $"(&(objectClass=attributeSchema){nameFilter})",
+                ProtocolScope.OneLevel,
+                "lDAPDisplayName",
+                "systemOnly",
+                "systemFlags");
+            var response = (SearchResponse)connection.SendRequestCompatible(request);
+            foreach (SearchResultEntry entry in response.Entries)
+            {
+                var name = FirstString(entry, "lDAPDisplayName");
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                var systemOnly = string.Equals(
+                    FirstString(entry, "systemOnly"),
+                    "TRUE",
+                    StringComparison.OrdinalIgnoreCase);
+                _ = int.TryParse(FirstString(entry, "systemFlags"), out var systemFlags);
+                const int serverManagedFlags = 0x1 | 0x4 | 0x8;
+                if (systemOnly || (systemFlags & serverManagedFlags) != 0)
+                {
+                    writable.Remove(name);
+                }
+            }
+        }
+        catch (Exception error) when (error is LdapException or DirectoryOperationException)
+        {
+            // LDAP servers are not required to publish an Active Directory
+            // schema partition. The caller still excludes RDN and security
+            // values, while unknown user attributes remain eligible.
+        }
+
+        return writable;
+    }
+
+    /// <summary>
     /// Verifies that an AD attribute has the Object(DS-DN) schema syntax required
     /// by attribute-scoped queries: attributeSyntax 2.5.5.1 and oMSyntax 127.
     /// </summary>
