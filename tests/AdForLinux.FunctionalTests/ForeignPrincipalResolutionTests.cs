@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices.AccountManagement;
+using System.Reflection;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -45,10 +46,16 @@ public sealed class ForeignPrincipalResolutionTests
             ContextOptions.SimpleBind,
             "bind-user",
             "password");
+        typeof(PrincipalContext)
+            .GetField("_defaultNamingContext", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(source, "DC=source,DC=example");
+
+        var current = source.GetForeignDomainContext("source.example");
 
         var first = source.GetForeignDomainContext("target.example");
         var second = source.GetForeignDomainContext("TARGET.EXAMPLE");
 
+        Assert.Same(source, current);
         Assert.Same(first, second);
         Assert.Equal("target.example", first.Name);
         Assert.Equal("bind-user", first.UserName);

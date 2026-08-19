@@ -61,21 +61,31 @@ internal static class ForeignPrincipalResolver
         var domainSid = TryGetAccountDomainSid(sid);
         if (domainSid is not null)
         {
-            using var system = context.CreateDirectoryEntry(
-                $"CN=System,{context.DefaultNamingContext}");
-            using var searcher = new DirectorySearcher(
-                system,
-                $"(&(objectClass=trustedDomain)(securityIdentifier={LdapFilter.EscapeBytes(domainSid)}))",
-                new[] { "trustPartner" },
-                SearchScope.Subtree)
+            try
             {
-                SizeLimit = 1,
-            };
-            using var result = searcher.FindOne()?.GetDirectoryEntry();
-            if (result?.Properties["trustPartner"].Value is string trustPartner
-                && !string.IsNullOrWhiteSpace(trustPartner))
+                using var system = context.CreateDirectoryEntry(
+                    $"CN=System,{context.DefaultNamingContext}");
+                using var searcher = new DirectorySearcher(
+                    system,
+                    $"(&(objectClass=trustedDomain)(securityIdentifier={LdapFilter.EscapeBytes(domainSid)}))",
+                    new[] { "trustPartner" },
+                    SearchScope.Subtree)
+                {
+                    SizeLimit = 1,
+                };
+                using var result = searcher.FindOne()?.GetDirectoryEntry();
+                if (result?.Properties["trustPartner"].Value is string trustPartner
+                    && !string.IsNullOrWhiteSpace(trustPartner))
+                {
+                    return trustPartner;
+                }
+            }
+            catch (Exception exception) when (
+                exception is LdapException or DirectoryOperationException)
             {
-                return trustPartner;
+                // Trusted-domain lookup is optional discovery. If it is
+                // unavailable, try the GC and ultimately retain the unknown
+                // principal fallback rather than failing group enumeration.
             }
         }
 
@@ -119,8 +129,7 @@ internal static class ForeignPrincipalResolver
         if (sid.Length != 28 || sid[0] != 1 || sid[1] != 5
             || sid[2] != 0 || sid[3] != 0 || sid[4] != 0
             || sid[5] != 0 || sid[6] != 0 || sid[7] != 5
-            || sid[8] != 21 || sid[9] != 0 || sid[10] != 0 || sid[11] != 0
-            || sid.Length != 8 + (sid[1] * 4))
+            || sid[8] != 21 || sid[9] != 0 || sid[10] != 0 || sid[11] != 0)
         {
             return null;
         }

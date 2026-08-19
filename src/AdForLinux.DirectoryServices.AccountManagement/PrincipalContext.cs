@@ -501,7 +501,7 @@ public class PrincipalContext : IDisposable
     {
         CheckDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(domainName);
-        if (ForeignPrincipalResolver.TryGetDnsDomainName(_defaultNamingContext ?? _container ?? string.Empty)
+        if (ForeignPrincipalResolver.TryGetDnsDomainName(DefaultNamingContext)
             ?.Equals(domainName, StringComparison.OrdinalIgnoreCase) == true)
         {
             return this;
