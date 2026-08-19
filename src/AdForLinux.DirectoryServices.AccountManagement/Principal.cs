@@ -836,6 +836,12 @@ public abstract class Principal : IDisposable
                 child.CommitChanges();
                 created = true;
                 Entry = child;
+                // Children.Add seeds the entry cache with only the attributes used
+                // for the add request. Reload the object that the server actually
+                // created so generated identity values (notably objectGUID and
+                // objectSid) and the completed structural class chain are available
+                // before post-create work or the caller observes this principal.
+                child.RefreshCache();
                 _pending.Clear();
                 _extensionCache.Clear();
                 _inserting = true;
