@@ -31,6 +31,7 @@ property that disagreed, not just the first.
 | `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, date-based finders, `ValidateCredentials` |
 | `GroupPrincipalComparisonTests` | group properties, `Members`, `GetMembers`, `GetGroups`, `GetAuthorizationGroups` |
 | `DirectoryEntryComparisonTests` | `DirectoryEntry` properties, `DirectorySearcher` `FindOne`/`FindAll` |
+| `DirectoryEntryCopyComparisonTests` | real-AD `CopyTo` matrix for user, group, computer, and OU objects, both overloads, identity/security/source state, and failure results |
 | `ObjectSecurityComparisonTests` | live DACL round trips, partial `SecurityMasks`, and cached versus immediate `ObjectSecurity` writes |
 | `PrincipalSearcherComparisonTests` | query-by-example search, including wildcards |
 
@@ -61,6 +62,26 @@ property that disagreed, not just the first.
 
 The tests create their own temporary user and two groups under `CN=Users`, and
 delete them at the end.
+
+## `DirectoryEntry.CopyTo` protocol limitation
+
+The real-AD matrix found that Microsoft's Windows LDAP ADSI provider returns
+`E_NOTIMPL` (`NotImplementedException`, HRESULT `0x80004001`) for both
+`CopyTo(parent)` and `CopyTo(parent, newName)`. This was observed for valid user,
+group, computer, and organizational-unit sources and valid destination
+containers. No destination object is created, and the source DN, object class,
+attributes, identity fields, account state, and security descriptor remain
+unchanged. Consequently, copied/defaulted attributes, a resulting name/DN, and
+copied security are not applicable; there is no Microsoft LDAP copy result to
+reproduce.
+
+`System.DirectoryServices.DirectoryEntry.CopyTo` delegates to ADSI
+`IADsContainer.CopyHere`. LDAP itself defines no server-side copy operation. A
+portable read-plus-Add emulation cannot reproduce server decisions for schema
+defaults, object identity and uniqueness, SPN/DNS fields, account state,
+security descriptor inheritance, or transactional/subtree behavior. The
+library therefore matches the observed LDAP provider by throwing
+`NotImplementedException` instead of creating a materially different object.
 
 ## Things to know before you read a failure
 

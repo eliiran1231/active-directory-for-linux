@@ -62,7 +62,7 @@ public class DirectoryEntryMoveTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void MoveTo_and_CopyTo_reject_explicit_empty_or_whitespace_names(string newName)
+    public void MoveTo_rejects_invalid_names_while_CopyTo_reports_ADSI_not_implemented(string newName)
     {
         using var source = new DirectoryEntry(
             $"LDAP://source.example.test:389/{SourceDn}",
@@ -76,7 +76,7 @@ public class DirectoryEntryMoveTests
             AuthenticationTypes.None);
 
         Assert.Throws<ArgumentException>(() => source.MoveTo(destination, newName));
-        Assert.Throws<ArgumentException>(() => source.CopyTo(destination, newName));
+        Assert.Throws<NotImplementedException>(() => source.CopyTo(destination, newName));
     }
 
     [Fact]
