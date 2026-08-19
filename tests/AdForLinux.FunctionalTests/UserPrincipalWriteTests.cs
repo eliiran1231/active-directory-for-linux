@@ -163,6 +163,28 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void Rollback_cleanup_failure_does_not_replace_the_save_failure()
+    {
+        var saveFailure = new InvalidOperationException("save failed");
+        var cleanupFailure = new InvalidOperationException("cleanup failed");
+
+        var observed = Assert.Throws<InvalidOperationException>((Action)(() =>
+        {
+            try
+            {
+                throw saveFailure;
+            }
+            catch
+            {
+                Assert.False(Principal.TryRollbackCreatedEntry(() => throw cleanupFailure));
+                throw;
+            }
+        }));
+
+        Assert.Same(saveFailure, observed);
+    }
+
+    [Fact]
     public void Save_updates_an_existing_user()
     {
         var name = NewName();
