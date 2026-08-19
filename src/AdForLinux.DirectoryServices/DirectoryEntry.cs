@@ -32,6 +32,7 @@ public class DirectoryEntry : Component
     private DirectoryEntryConfiguration? _options;
     private ActiveDirectorySecurity? _objectSecurity;
     private bool _objectSecurityChanged;
+    private bool _disposed;
 
     /// <summary>Creates an unbound entry, like Microsoft's parameterless constructor.</summary>
     public DirectoryEntry()
@@ -248,6 +249,7 @@ public class DirectoryEntry : Component
     {
         get
         {
+            ThrowIfDisposed();
             var parentDn = LdapDistinguishedName.Parent(_path.DistinguishedName);
             return parentDn is null ? null : CreateEntryForDn(parentDn);
         }
@@ -489,6 +491,7 @@ public class DirectoryEntry : Component
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
     internal static DirectoryEntry NewChild(DirectoryEntry parent, string relativeName, string schemaClassName)
     {
+        parent.ThrowIfDisposed();
         var dn = $"{relativeName},{parent._path.DistinguishedName}";
         var path = new LdapPath(parent._path.Host, parent._path.Port, dn).ToString();
 
@@ -853,14 +856,21 @@ public class DirectoryEntry : Component
         }
     }
 
-    internal LdapConnection GetConnection() => _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
+    internal LdapConnection GetConnection()
+    {
+        ThrowIfDisposed();
+        return _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
+    }
 
     /// <summary>
     /// Schema discovery uses a dedicated connection so it never attempts a
     /// second request on a connection that is yielding asynchronous results.
     /// </summary>
-    internal LdapConnection GetSchemaConnection() =>
-        _schemaConnection ??= CreateBoundConnection();
+    internal LdapConnection GetSchemaConnection()
+    {
+        ThrowIfDisposed();
+        return _schemaConnection ??= CreateBoundConnection();
+    }
 
     private LdapConnection CreateBoundConnection()
     {
@@ -901,6 +911,7 @@ public class DirectoryEntry : Component
 
     internal LdapConnectionOptions BuildOptions()
     {
+        ThrowIfDisposed();
         if (_connectionOptionsOverride is not null)
         {
             return _connectionOptionsOverride;
@@ -966,6 +977,7 @@ public class DirectoryEntry : Component
 
     private void OnPropertyChanged(PropertyValueCollection property)
     {
+        ThrowIfDisposed();
         if (_usePropertyCache || _isNew)
         {
             return;
@@ -1040,12 +1052,28 @@ public class DirectoryEntry : Component
         _schemaConnection = null;
     }
 
+    internal void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(GetType().Name);
+        }
+    }
+
     /// <summary>Releases the LDAP connection held by this entry.</summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (!_disposed)
         {
-            ResetConnection();
+            if (disposing)
+            {
+                ResetConnection();
+            }
+
+            _properties = null;
+            _objectSecurity = null;
+            _objectSecurityChanged = false;
+            _disposed = true;
         }
 
         base.Dispose(disposing);
