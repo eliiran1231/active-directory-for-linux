@@ -6,7 +6,7 @@ namespace AdForLinux.DirectoryServices;
 /// The values of one attribute in a <see cref="SearchResult"/>. Read-only,
 /// like Microsoft's type. Typical use: <c>result.Properties["cn"][0]</c>.
 /// </summary>
-public sealed class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable<object>
+public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable<object>
 {
     internal ResultPropertyValueCollection(IReadOnlyList<object> values)
     {

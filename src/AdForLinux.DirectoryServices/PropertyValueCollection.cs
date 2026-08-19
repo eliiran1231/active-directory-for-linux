@@ -10,7 +10,7 @@ namespace AdForLinux.DirectoryServices;
 /// Values are strings for text attributes and <c>byte[]</c> for binary ones,
 /// the same shapes S.DS.Protocols returns.
 /// </summary>
-public sealed class PropertyValueCollection : CollectionBase, IEnumerable<object>
+public class PropertyValueCollection : CollectionBase, IEnumerable<object>
 {
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;

@@ -11,7 +11,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// top of <see cref="Principal"/>.
 /// </summary>
 [DirectoryRdnPrefix("CN")]
-public abstract class AuthenticablePrincipal : Principal
+public class AuthenticablePrincipal : Principal
 {
     // userAccountControl bits.
     private const int AccountDisabled = 0x2;
