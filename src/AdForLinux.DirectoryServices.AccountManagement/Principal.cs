@@ -22,6 +22,7 @@ public abstract class Principal : IDisposable
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
+    private bool _inserting;
 
     private protected PrincipalContext ContextRef = null!;
 
@@ -30,6 +31,9 @@ public abstract class Principal : IDisposable
 
     /// <summary>Whether this principal currently wraps a directory object.</summary>
     internal bool IsPersisted => Entry is not null;
+
+    /// <summary>Whether post-save work is running as part of a new insert.</summary>
+    private protected bool IsInserting => _inserting;
 
     /// <summary>Sets up a found principal that wraps an existing entry.</summary>
     private protected void AttachExisting(PrincipalContext context, DirectoryEntry entry)
@@ -786,36 +790,96 @@ public abstract class Principal : IDisposable
                 || typeof(GroupPrincipal).IsAssignableFrom(principalType)
                 || typeof(ComputerPrincipal).IsAssignableFrom(principalType));
 
+        // Microsoft keeps a principal unpersisted when any part of its insert
+        // sequence fails. Preserve staged values so its observable state still
+        // represents the attempted principal after a post-create failure.
+        var pendingBeforeCreate = _pending.ToArray();
+        var extensionsBeforeCreate = _extensionCache.ToArray();
+
         var parent = ContextRef.CreateDirectoryEntry(ContextRef.GetCreationContainer(GetType()));
         try
         {
             var child = parent.Children.Add(
                 $"{rdnPrefix}={EscapeRdnValue(cn)}", objectClass);
-            foreach (var (name, value) in _pending)
+            var created = false;
+            try
             {
-                // The RDN attribute is already set by Children.Add. When a
-                // custom type uses a different RDN, retain the base CN value as
-                // Microsoft does for UserPrincipal/GroupPrincipal subclasses.
-                if (value is null
-                    || name.Equals(rdnPrefix, StringComparison.OrdinalIgnoreCase)
-                    || (name.Equals("cn", StringComparison.OrdinalIgnoreCase) && !writeBaseCn))
+                foreach (var (name, value) in _pending)
                 {
-                    continue;
+                    // The RDN attribute is already set by Children.Add. When a
+                    // custom type uses a different RDN, retain the base CN value as
+                    // Microsoft does for UserPrincipal/GroupPrincipal subclasses.
+                    if (value is null
+                        || name.Equals(rdnPrefix, StringComparison.OrdinalIgnoreCase)
+                        || (name.Equals("cn", StringComparison.OrdinalIgnoreCase) && !writeBaseCn))
+                    {
+                        continue;
+                    }
+
+                    child.Properties[name].Value = value;
                 }
 
-                child.Properties[name].Value = value;
+                ApplyExtensionChanges(child);
+                child.CommitChanges();
+                created = true;
+                Entry = child;
+                _pending.Clear();
+                _extensionCache.Clear();
+                _inserting = true;
+                try
+                {
+                    OnAfterSave();
+                }
+                finally
+                {
+                    _inserting = false;
+                }
             }
+            catch
+            {
+                if (created)
+                {
+                    // The add itself succeeded, so remove only that new child.
+                    // Cleanup is best effort and must never hide the save failure.
+                    try
+                    {
+                        parent.Children.Remove(child);
+                    }
+                    catch
+                    {
+                    }
 
-            ApplyExtensionChanges(child);
-            child.CommitChanges();
-            Entry = child;
-            _pending.Clear();
-            _extensionCache.Clear();
-            OnAfterSave();
+                    Entry = null;
+                    RestoreValues(_pending, pendingBeforeCreate);
+                    RestoreValues(_extensionCache, extensionsBeforeCreate);
+                }
+
+                try
+                {
+                    child.Dispose();
+                }
+                catch
+                {
+                    // Preserve the original save exception.
+                }
+
+                throw;
+            }
         }
         finally
         {
             parent.Dispose();
+        }
+    }
+
+    private static void RestoreValues<T>(
+        IDictionary<string, T> destination,
+        IEnumerable<KeyValuePair<string, T>> values)
+    {
+        destination.Clear();
+        foreach (var (name, value) in values)
+        {
+            destination[name] = value;
         }
     }
 

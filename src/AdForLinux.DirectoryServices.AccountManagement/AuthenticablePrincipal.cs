@@ -520,23 +520,33 @@ public abstract class AuthenticablePrincipal : Principal
     private protected override void OnAfterSave()
     {
         base.OnAfterSave();
+        var deferResetUntilInsertCompletes = IsInserting;
         if (_passwordToSet is not null)
         {
             ExecuteDeferredPasswordOperation(() => SetPasswordImmediate(_passwordToSet));
-            _passwordToSet = null;
+            if (!deferResetUntilInsertCompletes)
+            {
+                _passwordToSet = null;
+            }
         }
 
         if (_expirePasswordAfterSave)
         {
             Entry!.ReplaceAttributeImmediate("pwdLastSet", "0");
-            _expirePasswordAfterSave = false;
+            if (!deferResetUntilInsertCompletes)
+            {
+                _expirePasswordAfterSave = false;
+            }
         }
 
         if (_enabledAfterPassword is not null)
         {
             Enabled = _enabledAfterPassword.Value;
             Entry!.CommitChanges();
-            _enabledAfterPassword = null;
+            if (!deferResetUntilInsertCompletes)
+            {
+                _enabledAfterPassword = null;
+            }
         }
 
         if (_userCannotChangePassword is not null)
@@ -544,13 +554,24 @@ public abstract class AuthenticablePrincipal : Principal
             var descriptor = Entry!.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
             var changed = ChangePasswordAcl.SetDenied(descriptor, _userCannotChangePassword.Value);
             Entry.ReplaceSecurityDescriptorImmediate(changed, SecurityMasks.Dacl);
-            _userCannotChangePassword = null;
+            if (!deferResetUntilInsertCompletes)
+            {
+                _userCannotChangePassword = null;
+            }
         }
 
         if (_certificates is not null)
         {
             _certificateThumbprints = CertificateThumbprints(_certificates);
         }
+
+        // Clear deferred work only after every post-create operation succeeds.
+        // On a failed insert Principal restores its pre-create property state,
+        // and these values must also remain staged in the failed principal.
+        _passwordToSet = null;
+        _expirePasswordAfterSave = false;
+        _enabledAfterPassword = null;
+        _userCannotChangePassword = null;
     }
 
     private protected override void OnBeforeSave()
