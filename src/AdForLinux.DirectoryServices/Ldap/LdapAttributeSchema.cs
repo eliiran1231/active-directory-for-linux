@@ -50,65 +50,8 @@ internal static class LdapAttributeSchema
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentNullException.ThrowIfNull(attributeNames);
-
-        var names = attributeNames
-            .Select(CanonicalName)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        if (names.Length == 0)
-        {
-            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        var writable = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
-        try
-        {
-            var rootDse = RootDse.Read(connection, "schemaNamingContext");
-            if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
-                || string.IsNullOrEmpty(schemaNamingContext))
-            {
-                return writable;
-            }
-
-            var nameFilter = names.Length == 1
-                ? $"(lDAPDisplayName={EscapeFilterValue(names[0])})"
-                : $"(|{string.Concat(names.Select(name => $"(lDAPDisplayName={EscapeFilterValue(name)})"))})";
-            var request = new SearchRequest(
-                schemaNamingContext,
-                $"(&(objectClass=attributeSchema){nameFilter})",
-                ProtocolScope.OneLevel,
-                "lDAPDisplayName",
-                "systemOnly",
-                "systemFlags");
-            var response = (SearchResponse)connection.SendRequestCompatible(request);
-            foreach (SearchResultEntry entry in response.Entries)
-            {
-                var name = FirstString(entry, "lDAPDisplayName");
-                if (string.IsNullOrEmpty(name))
-                {
-                    continue;
-                }
-
-                var systemOnly = string.Equals(
-                    FirstString(entry, "systemOnly"),
-                    "TRUE",
-                    StringComparison.OrdinalIgnoreCase);
-                _ = int.TryParse(FirstString(entry, "systemFlags"), out var systemFlags);
-                const int serverManagedFlags = 0x1 | 0x4 | 0x8;
-                if (systemOnly || (systemFlags & serverManagedFlags) != 0)
-                {
-                    writable.Remove(name);
-                }
-            }
-        }
-        catch (Exception error) when (error is LdapException or DirectoryOperationException)
-        {
-            // LDAP servers are not required to publish an Active Directory
-            // schema partition. The caller still excludes RDN and security
-            // values, while unknown user attributes remain eligible.
-        }
-
-        return writable;
+        return Caches.GetValue(connection, static connection => new SchemaCache(connection))
+            .WritableOnAdd(attributeNames);
     }
 
     /// <summary>
@@ -194,6 +137,8 @@ internal static class LdapAttributeSchema
         private readonly LdapConnection _connection;
         private readonly Dictionary<string, LdapValueKind> _kinds =
             new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, bool> _writableOnAdd =
+            new(StringComparer.OrdinalIgnoreCase);
         private string? _schemaNamingContext;
         private bool _schemaUnavailable;
 
@@ -218,6 +163,27 @@ internal static class LdapAttributeSchema
                     name => name,
                     name => _kinds[name],
                     StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        public IReadOnlySet<string> WritableOnAdd(IEnumerable<string> attributeNames)
+        {
+            var names = attributeNames
+                .Select(CanonicalName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            lock (_kinds)
+            {
+                var missing = names.Where(name => !_writableOnAdd.ContainsKey(name)).ToArray();
+                if (missing.Length > 0)
+                {
+                    LoadWritableOnAdd(missing);
+                }
+
+                return names
+                    .Where(name => _writableOnAdd[name])
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -267,6 +233,65 @@ internal static class LdapAttributeSchema
             foreach (var name in names)
             {
                 _kinds.TryAdd(name, BinaryFallbackFor(name));
+            }
+        }
+
+        private void LoadWritableOnAdd(string[] names)
+        {
+            foreach (var name in names)
+            {
+                // Unknown attributes remain eligible for generic LDAP servers
+                // and custom schemas unless schema metadata says otherwise.
+                _writableOnAdd.TryAdd(name, true);
+            }
+
+            if (_schemaUnavailable)
+            {
+                return;
+            }
+
+            try
+            {
+                _schemaNamingContext ??= ReadSchemaNamingContext();
+                if (string.IsNullOrEmpty(_schemaNamingContext))
+                {
+                    _schemaUnavailable = true;
+                    return;
+                }
+
+                var nameFilter = names.Length == 1
+                    ? $"(lDAPDisplayName={EscapeFilterValue(names[0])})"
+                    : $"(|{string.Concat(names.Select(name => $"(lDAPDisplayName={EscapeFilterValue(name)})"))})";
+                var request = new SearchRequest(
+                    _schemaNamingContext,
+                    $"(&(objectClass=attributeSchema){nameFilter})",
+                    ProtocolScope.OneLevel,
+                    "lDAPDisplayName",
+                    "systemOnly",
+                    "systemFlags");
+                var response = (SearchResponse)_connection.SendRequest(request);
+                foreach (SearchResultEntry entry in response.Entries)
+                {
+                    var name = FirstString(entry, "lDAPDisplayName");
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        continue;
+                    }
+
+                    var systemOnly = string.Equals(
+                        FirstString(entry, "systemOnly"),
+                        "TRUE",
+                        StringComparison.OrdinalIgnoreCase);
+                    _ = int.TryParse(FirstString(entry, "systemFlags"), out var systemFlags);
+                    const int serverManagedFlags = 0x1 | 0x4 | 0x8;
+                    _writableOnAdd[name] = !systemOnly && (systemFlags & serverManagedFlags) == 0;
+                }
+            }
+            catch (Exception error) when (error is LdapException or DirectoryOperationException)
+            {
+                // LDAP servers are not required to publish an Active Directory
+                // schema partition. Avoid repeating a lookup that cannot work.
+                _schemaUnavailable = true;
             }
         }
 

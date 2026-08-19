@@ -1132,6 +1132,8 @@ public class DirectoryEntry : Component
         string? sourceRdnAttribute,
         string? destinationRdnAttribute) =>
         string.Equals(attributeName, "objectClass", StringComparison.OrdinalIgnoreCase)
+        // Security descriptors carry object-specific ownership and ACL state;
+        // do not replay them into a different object context.
         || string.Equals(attributeName, "nTSecurityDescriptor", StringComparison.OrdinalIgnoreCase)
         // Reusing these identity attributes would make an otherwise valid
         // Add fail because AD requires their values to be unique.
