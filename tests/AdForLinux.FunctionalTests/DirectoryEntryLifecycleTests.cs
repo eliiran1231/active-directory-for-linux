@@ -26,6 +26,7 @@ public class DirectoryEntryLifecycleTests
         AssertDisposed(entry, () => _ = entry.SchemaEntry);
         AssertDisposed(entry, () => entry.GetSchemaConnection());
         AssertDisposed(entry, () => entry.Rename("CN=renamed"));
+        AssertDisposed(entry, () => _ = entry.Name);
         AssertDisposed(entry, () => _ = entry.Parent);
         AssertDisposed(entry, () => children.Add("CN=child", "user"));
         AssertDisposed(entry, () => children.Find("CN=child"));

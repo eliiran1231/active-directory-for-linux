@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.Ldap;
 using Xunit;
 
 namespace AdForLinux.FunctionalTests;
@@ -62,9 +63,7 @@ public class DirectoryEntryReadTests
     [InlineData(@"CN=hello\\\,world,OU=Users,DC=example,DC=com", @"CN=hello\\\,world")]
     public void Name_honors_odd_and_even_backslash_runs(string distinguishedName, string expectedName)
     {
-        using var entry = new DirectoryEntry($"LDAP://server/{distinguishedName}");
-
-        Assert.Equal(expectedName, entry.Name);
+        Assert.Equal(expectedName, LdapDistinguishedName.RelativeName(distinguishedName));
     }
 
     [Theory]
@@ -73,11 +72,47 @@ public class DirectoryEntryReadTests
     [InlineData(@"CN=hello\\\,world,OU=Users,DC=example,DC=com")]
     public void Parent_honors_odd_and_even_backslash_runs(string distinguishedName)
     {
-        using var entry = new DirectoryEntry($"LDAP://server/{distinguishedName}");
+        Assert.Equal("OU=Users,DC=example,DC=com", LdapDistinguishedName.Parent(distinguishedName));
+    }
+
+    [Fact]
+    public void Parent_binds_and_inherits_connection_and_cache_settings()
+    {
+        using var entry = Open(TestSettings.AdministratorDn);
+        entry.UsePropertyCache = false;
+
         using var parent = entry.Parent;
 
         Assert.NotNull(parent);
-        Assert.Equal("OU=Users,DC=example,DC=com", parent.DistinguishedName);
+        Assert.Equal($"CN=Users,{TestSettings.BaseDn}", parent.DistinguishedName);
+        Assert.Equal("CN=Users", parent.Name);
+        Assert.Equal(entry.UsePropertyCache, parent.UsePropertyCache);
+        Assert.Equal(entry.Username, parent.Username);
+        Assert.Equal(entry.AuthenticationType, parent.AuthenticationType);
+        Assert.Equal(entry.BuildOptions().BindPassword, parent.BuildOptions().BindPassword);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Name_and_parent_bind_before_deriving_values(bool readName)
+    {
+        var missingDn = $"CN=issue107-missing-{Guid.NewGuid():N},{TestSettings.BaseDn}";
+        using var entry = Open(missingDn);
+
+        var exception = Assert.Throws<DirectoryServicesCOMException>(() =>
+        {
+            if (readName)
+            {
+                _ = entry.Name;
+            }
+            else
+            {
+                _ = entry.Parent;
+            }
+        });
+
+        Assert.Equal(unchecked((int)0x80072030), exception.ErrorCode);
     }
 
     [Fact]

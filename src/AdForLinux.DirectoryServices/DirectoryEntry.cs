@@ -27,6 +27,7 @@ public class DirectoryEntry : Component
     private LdapConnection? _connection;
     private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
+    private string? _boundDistinguishedName;
     private bool _isNew;
     private bool _usePropertyCache = true;
     private DirectoryEntryConfiguration? _options;
@@ -191,7 +192,7 @@ public class DirectoryEntry : Component
     /// The relative name of this object, e.g. <c>CN=Jeff Smith</c> — the first
     /// component of the DN, including its attribute type, like Microsoft.
     /// </summary>
-    public string Name => LdapDistinguishedName.RelativeName(_path.DistinguishedName);
+    public string Name => LdapDistinguishedName.RelativeName(BindEntry());
 
     /// <summary>
     /// The most specific structural class, e.g. <c>user</c> or <c>group</c> —
@@ -249,9 +250,15 @@ public class DirectoryEntry : Component
     {
         get
         {
-            ThrowIfDisposed();
-            var parentDn = LdapDistinguishedName.Parent(_path.DistinguishedName);
-            return parentDn is null ? null : CreateEntryForDn(parentDn);
+            var parentDn = LdapDistinguishedName.Parent(BindEntry());
+            if (parentDn is null)
+            {
+                return null;
+            }
+
+            var parent = CreateEntryForDn(parentDn);
+            parent._usePropertyCache = _usePropertyCache;
+            return parent;
         }
     }
 
@@ -847,6 +854,43 @@ public class DirectoryEntry : Component
         _properties = ReadProperties(requestedProperties, loadDefaultProperties);
     }
 
+    /// <summary>
+    /// Validates that this path identifies an accessible directory object. An
+    /// LDAP connection bind only authenticates to the server, whereas ADSI's
+    /// DirectoryEntry.Bind also resolves the object represented by the path.
+    /// </summary>
+    private string BindEntry()
+    {
+        ThrowIfDisposed();
+        if (_isNew)
+        {
+            // Children.Add already created the provider object in Microsoft's
+            // implementation, even though CommitChanges has not persisted it.
+            return _path.DistinguishedName;
+        }
+
+        if (_boundDistinguishedName is not null)
+        {
+            return _boundDistinguishedName;
+        }
+
+        var request = new SearchRequest(
+            _path.DistinguishedName,
+            "(objectClass=*)",
+            ProtocolScope.Base,
+            "1.1");
+        var response = (SearchResponse)GetConnection().SendRequestCompatible(request);
+        if (response.Entries.Count == 0)
+        {
+            throw LdapExceptionTranslator.Translate(
+                ResultCode.NoSuchObject,
+                $"The directory object '{_path.DistinguishedName}' does not exist.");
+        }
+
+        _boundDistinguishedName = response.Entries[0].DistinguishedName;
+        return _boundDistinguishedName;
+    }
+
     private PropertyCollection ReadProperties(
         string[] requestedProperties,
         bool loadDefaultProperties = false)
@@ -870,6 +914,7 @@ public class DirectoryEntry : Component
 
         if (response.Entries.Count > 0)
         {
+            _boundDistinguishedName = response.Entries[0].DistinguishedName;
             LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties);
         }
 
@@ -1197,6 +1242,7 @@ public class DirectoryEntry : Component
 
     private void ResetConnection()
     {
+        _boundDistinguishedName = null;
         _connection?.Dispose();
         _connection = null;
         _schemaConnection?.Dispose();
