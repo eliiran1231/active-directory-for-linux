@@ -122,6 +122,48 @@ public class GroupPrincipalTests
     }
 
     [Fact]
+    public void Failed_initial_membership_rolls_back_group_and_membership_can_be_retried()
+    {
+        var groupName = NewName();
+        var memberName = NewName();
+        var groupDn = DnFor(groupName);
+        var memberDn = SeedUser(memberName);
+
+        try
+        {
+            using var context = Context();
+            using var member = UserPrincipal.FindByIdentity(context, memberName)!;
+            using var group = new GroupPrincipal(context, groupName);
+            group.Members.Add(member);
+
+            // Leave the staged membership pointing at a DN that no longer
+            // exists so the LDAP add succeeds but the linked-value update fails.
+            TestDirectory.Delete(memberDn);
+
+            Assert.Throws<PrincipalOperationException>(group.Save);
+            Assert.False(group.IsPersisted);
+            Assert.Null(group.DistinguishedName);
+            Assert.Equal(groupName, group.Name);
+            Assert.Null(GroupPrincipal.FindByIdentity(context, groupName));
+
+            SeedUser(memberName);
+            using var corrected = new GroupPrincipal(context, groupName);
+            using var replacement = UserPrincipal.FindByIdentity(context, memberName)!;
+            corrected.Members.Add(replacement);
+            corrected.Save();
+
+            Assert.True(corrected.IsPersisted);
+            Assert.True(corrected.Members.Contains(replacement));
+            Assert.Single(corrected.Members);
+        }
+        finally
+        {
+            TestDirectory.Delete(groupDn);
+            TestDirectory.Delete(memberDn);
+        }
+    }
+
+    [Fact]
     public void Members_remove_takes_the_member_out()
     {
         var groupName = NewName();

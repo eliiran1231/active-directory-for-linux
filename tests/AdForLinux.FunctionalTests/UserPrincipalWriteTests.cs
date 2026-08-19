@@ -113,6 +113,56 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void Rejected_deferred_password_rolls_back_and_corrected_user_can_be_saved()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+
+        try
+        {
+            using var context = Context();
+            using var user = new UserPrincipal(context)
+            {
+                Name = name,
+                SamAccountName = name,
+                DisplayName = "Rollback retry",
+                Enabled = false,
+            };
+            user.SetPassword("short");
+
+            Assert.Throws<InvalidOperationException>(user.Save);
+            Assert.False(user.IsPersisted);
+            Assert.Null(user.DistinguishedName);
+            Assert.Null(user.Guid);
+            Assert.Equal(name, user.Name);
+            Assert.Equal(name, user.SamAccountName);
+            Assert.Equal("Rollback retry", user.DisplayName);
+            Assert.Throws<InvalidOperationException>(user.GetUnderlyingObject);
+            Assert.Null(UserPrincipal.FindByIdentity(context, name));
+
+            using var corrected = new UserPrincipal(context)
+            {
+                Name = name,
+                SamAccountName = name,
+                DisplayName = "Rollback retry",
+                Enabled = false,
+            };
+            corrected.SetPassword("Str0ng!Passw0rd#2026");
+            corrected.Save();
+
+            Assert.True(corrected.IsPersisted);
+            Assert.Equal(dn, corrected.DistinguishedName);
+            using var found = UserPrincipal.FindByIdentity(context, name);
+            Assert.NotNull(found);
+            Assert.Equal("Rollback retry", found!.DisplayName);
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void Save_updates_an_existing_user()
     {
         var name = NewName();
