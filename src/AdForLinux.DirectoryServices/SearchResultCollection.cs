@@ -8,7 +8,7 @@ namespace AdForLinux.DirectoryServices;
 /// The results of <see cref="DirectorySearcher.FindAll"/>, like Microsoft's
 /// <c>SearchResultCollection</c>.
 /// </summary>
-public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchResult>, ICollection, IDisposable
+public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchResult>, ICollection, IDisposable
 {
     private IReadOnlyList<SearchResult>? _results;
     private readonly IEnumerable<SearchResult>? _streamingResults;

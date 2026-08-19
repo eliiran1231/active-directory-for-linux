@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices;
 /// <c>DirectoryEntries</c>. Use <see cref="Add"/> to create a child and
 /// <see cref="Remove"/> to delete one.
 /// </summary>
-public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
+public class DirectoryEntries : IEnumerable<DirectoryEntry>
 {
     private readonly DirectoryEntry _parent;
     private readonly SchemaNameCollection _schemaFilter = new();
