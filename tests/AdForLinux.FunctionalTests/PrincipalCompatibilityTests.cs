@@ -44,6 +44,60 @@ public class PrincipalCompatibilityTests
         return dn;
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Required_name_setters_validate_before_principal_lifecycle_guards(string? value)
+    {
+        using var context = OfflineContext();
+        using var unsaved = new UserPrincipal(context);
+
+        AssertRequiredNameSetterExceptions(unsaved, value);
+        Assert.Null(unsaved.Name);
+        Assert.Null(unsaved.SamAccountName);
+
+        var disposed = new UserPrincipal(context);
+        disposed.Dispose();
+        AssertRequiredNameSetterExceptions(disposed, value);
+
+        using var deleted = new UserPrincipal(context);
+        typeof(Principal).GetField("_deleted", System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic)!.SetValue(deleted, true);
+        AssertRequiredNameSetterExceptions(deleted, value);
+
+        Assert.Throws<ObjectDisposedException>(() => disposed.Name = "valid");
+        Assert.Throws<ObjectDisposedException>(() => disposed.SamAccountName = "valid");
+        Assert.Throws<InvalidOperationException>(() => deleted.Name = "valid");
+        Assert.Throws<InvalidOperationException>(() => deleted.SamAccountName = "valid");
+    }
+
+    [Fact]
+    public void Required_name_setters_allow_whitespace_and_other_strings_remain_nullable()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context)
+        {
+            Name = " ",
+            SamAccountName = "\t",
+            Description = "description",
+        };
+
+        user.Description = null;
+
+        Assert.Equal(" ", user.Name);
+        Assert.Equal("\t", user.SamAccountName);
+        Assert.Null(user.Description);
+    }
+
+    private static void AssertRequiredNameSetterExceptions(UserPrincipal principal, string? value)
+    {
+        var nameException = Assert.Throws<ArgumentNullException>(() => principal.Name = value);
+        var samException = Assert.Throws<ArgumentNullException>(() => principal.SamAccountName = value);
+
+        Assert.Equal("value", nameException.ParamName);
+        Assert.Equal("value", samException.ParamName);
+    }
+
     [Fact]
     public void Extension_members_stage_values_and_validate_collections()
     {
