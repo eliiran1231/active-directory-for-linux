@@ -6,7 +6,7 @@ namespace AdForLinux.DirectoryServices;
 /// The values of one attribute in a <see cref="SearchResult"/>. Read-only,
 /// like Microsoft's type. Typical use: <c>result.Properties["cn"][0]</c>.
 /// </summary>
-public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable<object>
+public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable<object?>
 {
     internal ResultPropertyValueCollection(IReadOnlyList<object> values)
     {
@@ -20,13 +20,13 @@ public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable
     public object this[int index] => InnerList[index]!;
 
     /// <summary>True if the value is present.</summary>
-    public bool Contains(object value) => InnerList.Contains(value);
+    public bool Contains(object? value) => InnerList.Contains(value);
 
     /// <summary>Copies the values to an array.</summary>
-    public void CopyTo(object[] array, int index) => InnerList.CopyTo(array, index);
+    public void CopyTo(object?[] values, int index) => InnerList.CopyTo(values, index);
 
     /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
-    public int IndexOf(object value) => InnerList.IndexOf(value);
+    public int IndexOf(object? value) => InnerList.IndexOf(value);
 
-    public new IEnumerator<object> GetEnumerator() => InnerList.Cast<object>().GetEnumerator();
+    public new IEnumerator<object?> GetEnumerator() => InnerList.Cast<object?>().GetEnumerator();
 }

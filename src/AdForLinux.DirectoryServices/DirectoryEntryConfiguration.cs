@@ -137,9 +137,9 @@ public class DirectoryEntryConfiguration
     }
 
     /// <summary>ADSI-specific user-name quota configuration is not available over LDAP.</summary>
-    public void SetUserNameQueryQuota(string userName)
+    public void SetUserNameQueryQuota(string accountName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(userName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         throw new PlatformNotSupportedException("SetUserNameQueryQuota requires ADSI and is not available over LDAP.");
     }
 }

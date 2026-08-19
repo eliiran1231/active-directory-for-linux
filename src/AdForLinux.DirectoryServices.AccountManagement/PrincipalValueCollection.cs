@@ -25,6 +25,10 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     public bool IsSynchronized => false;
     public object SyncRoot => this;
 
+    bool ICollection.IsSynchronized => IsSynchronized;
+
+    object ICollection.SyncRoot => SyncRoot;
+
     public T this[int index]
     {
         get => _values[index];

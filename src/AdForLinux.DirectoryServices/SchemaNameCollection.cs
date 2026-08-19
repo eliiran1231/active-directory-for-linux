@@ -46,7 +46,7 @@ public class SchemaNameCollection : IList
 
     public bool Contains(string? value) => IndexOf(value) >= 0;
 
-    public void CopyTo(string?[] array, int index) => _names.CopyTo(array, index);
+    public void CopyTo(string?[] stringArray, int index) => _names.CopyTo(stringArray, index);
 
     public int IndexOf(string? value) => _names.IndexOf(value);
 

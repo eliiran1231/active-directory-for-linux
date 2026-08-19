@@ -25,7 +25,10 @@ public class DirectoryServicesCOMException : COMException
     {
     }
 
-    [Obsolete("Formatter-based serialization is obsolete and should not be used.")]
+    [Obsolete(
+        "This API supports obsolete formatter-based serialization. It should not be called or extended by application code.",
+        DiagnosticId = "SYSLIB0051",
+        UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected DirectoryServicesCOMException(SerializationInfo info, StreamingContext context)
         : base(info, context)
@@ -49,8 +52,11 @@ public class DirectoryServicesCOMException : COMException
 
     public string? ExtendedErrorMessage { get; }
 
-    [Obsolete("Formatter-based serialization is obsolete and should not be used.")]
+    [Obsolete(
+        "This API supports obsolete formatter-based serialization. It should not be called or extended by application code.",
+        DiagnosticId = "SYSLIB0051",
+        UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public override void GetObjectData(SerializationInfo info, StreamingContext context) =>
-        base.GetObjectData(info, context);
+    public override void GetObjectData(SerializationInfo serializationInfo, StreamingContext streamingContext) =>
+        base.GetObjectData(serializationInfo, streamingContext);
 }

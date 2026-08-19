@@ -23,8 +23,8 @@ public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable
         InnerHashtable[name.ToLowerInvariant()] = new ResultPropertyValueCollection(values);
 
     /// <summary>The values for an attribute, or an empty collection if absent.</summary>
-    public ResultPropertyValueCollection this[string propertyName] =>
-        InnerHashtable[propertyName.ToLowerInvariant()] is ResultPropertyValueCollection values ? values : Empty;
+    public ResultPropertyValueCollection this[string name] =>
+        InnerHashtable[name.ToLowerInvariant()] is ResultPropertyValueCollection values ? values : Empty;
 
     /// <summary>True if the attribute is present in the result.</summary>
     public bool Contains(string propertyName) => InnerHashtable.Contains(propertyName.ToLowerInvariant());
@@ -38,10 +38,6 @@ public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable
     /// <summary>Copies the property value collections to an array.</summary>
     public void CopyTo(ResultPropertyValueCollection[] array, int index) =>
         InnerHashtable.Values.CopyTo(array, index);
-
-    public new IDictionaryEnumerator GetEnumerator() => InnerHashtable.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     IEnumerator<ResultPropertyValueCollection> IEnumerable<ResultPropertyValueCollection>.GetEnumerator() =>
         InnerHashtable.Values.Cast<ResultPropertyValueCollection>().GetEnumerator();
@@ -67,7 +63,7 @@ public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable
 
     bool IDictionary.Contains(object key) => key is string name && Contains(name);
 
-    IDictionaryEnumerator IDictionary.GetEnumerator() => GetEnumerator();
+    IDictionaryEnumerator IDictionary.GetEnumerator() => InnerHashtable.GetEnumerator();
 
     void IDictionary.Remove(object key) =>
         throw new NotSupportedException("Search result properties are read-only.");

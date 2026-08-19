@@ -35,6 +35,8 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     public SearchResult this[int index] => Materialize()[index];
 
+    SearchResult IReadOnlyList<SearchResult>.this[int index] => this[index];
+
     public int Count => Materialize().Count;
 
     /// <summary>
@@ -89,19 +91,29 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
         if (_disposed)
         {
             return;
         }
 
-        (_streamingResults as IDisposable)?.Dispose();
-        _forwardOnlyResults?.Dispose();
+        if (disposing)
+        {
+            (_streamingResults as IDisposable)?.Dispose();
+            _forwardOnlyResults?.Dispose();
+        }
+
         _disposed = true;
     }
 
-    public IEnumerator GetEnumerator() => GetGenericEnumerator();
+    ~SearchResultCollection() => Dispose(false);
 
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public IEnumerator GetEnumerator() => GetGenericEnumerator();
 
     IEnumerator<SearchResult> IEnumerable<SearchResult>.GetEnumerator() => GetGenericEnumerator();
 

@@ -13,6 +13,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <c>Principal</c>. Reads its data from the underlying
 /// <see cref="DirectoryEntry"/>.
 /// </summary>
+[System.Diagnostics.DebuggerDisplay("Name = {Name}")]
 public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
@@ -25,6 +26,11 @@ public abstract class Principal : IDisposable
     private bool _inserting;
 
     private protected PrincipalContext ContextRef = null!;
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected Principal()
+    {
+    }
 
     /// <summary>The underlying directory object, or null before it is saved.</summary>
     private protected DirectoryEntry? Entry;
@@ -1167,9 +1173,9 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>Returns true when both objects represent the same stored principal.</summary>
-    public override bool Equals(object? obj)
+    public override bool Equals(object? o)
     {
-        if (obj is not Principal other)
+        if (o is not Principal other)
         {
             return false;
         }

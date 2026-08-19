@@ -10,7 +10,7 @@ namespace AdForLinux.DirectoryServices;
 /// Values are strings for text attributes and <c>byte[]</c> for binary ones,
 /// the same shapes S.DS.Protocols returns.
 /// </summary>
-public class PropertyValueCollection : CollectionBase, IEnumerable<object>
+public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
 {
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
@@ -37,7 +37,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object>
     internal void ResetChanged() => _changes.Clear();
 
     /// <summary>Gets the value at an index.</summary>
-    public object this[int index]
+    public object? this[int index]
     {
         get => List[index]!;
         set => List[index] = value;
@@ -84,11 +84,11 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object>
     }
 
     /// <summary>Adds one value. Returns its index.</summary>
-    public int Add(object value)
+    public int Add(object? value)
         => List.Add(value);
 
     /// <summary>Adds several values.</summary>
-    public void AddRange(IEnumerable<object> values)
+    public void AddRange(IEnumerable<object?> values)
     {
         ArgumentNullException.ThrowIfNull(values);
         foreach (var value in values)
@@ -98,17 +98,17 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object>
     }
 
     /// <summary>Adds several values.</summary>
-    public void AddRange(object[] values) => AddRange((IEnumerable<object>)values);
+    public void AddRange(object?[] value) => AddRange((IEnumerable<object?>)value);
 
     /// <summary>Adds every value from another property collection.</summary>
-    public void AddRange(PropertyValueCollection values)
+    public void AddRange(PropertyValueCollection value)
     {
-        ArgumentNullException.ThrowIfNull(values);
-        AddRange(values.InnerList.Cast<object>().ToArray());
+        ArgumentNullException.ThrowIfNull(value);
+        AddRange(value.InnerList.Cast<object?>().ToArray());
     }
 
     /// <summary>Removes one value.</summary>
-    public void Remove(object value)
+    public void Remove(object? value)
     {
         var index = List.IndexOf(value);
         if (index >= 0)
@@ -120,23 +120,23 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object>
         // ADSI still stages a single-value delete when a value is absent from
         // the local cache. Active Directory may have withheld it in a later
         // range of a large multi-valued attribute.
-        RecordChange(PropertyValueChangeType.Delete, new[] { value });
+        RecordChange(PropertyValueChangeType.Delete, new[] { value! });
     }
 
     /// <summary>Appends a value read from the server, without marking it changed.</summary>
     internal void AddLoaded(object value) => InnerList.Add(value);
 
     /// <summary>True if the value is present.</summary>
-    public bool Contains(object value) => List.Contains(value);
+    public bool Contains(object? value) => List.Contains(value);
 
     /// <summary>Copies the values to an array.</summary>
-    public void CopyTo(object[] array, int index) => List.CopyTo(array, index);
+    public void CopyTo(object?[] array, int index) => List.CopyTo(array, index);
 
     /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
-    public int IndexOf(object value) => List.IndexOf(value);
+    public int IndexOf(object? value) => List.IndexOf(value);
 
     /// <summary>Inserts a value at the specified index.</summary>
-    public void Insert(int index, object value)
+    public void Insert(int index, object? value)
     {
         List.Insert(index, value);
     }
@@ -177,7 +177,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object>
         _onChanged?.Invoke(this);
     }
 
-    public new IEnumerator<object> GetEnumerator() => InnerList.Cast<object>().GetEnumerator();
+    public new IEnumerator<object?> GetEnumerator() => InnerList.Cast<object?>().GetEnumerator();
 }
 
 internal enum PropertyValueChangeType

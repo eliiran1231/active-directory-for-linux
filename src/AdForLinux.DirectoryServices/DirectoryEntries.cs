@@ -63,15 +63,15 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     }
 
     /// <summary>Deletes a child object without recursively deleting its descendants.</summary>
-    public void Remove(DirectoryEntry child)
+    public void Remove(DirectoryEntry entry)
     {
         _parent.ThrowIfDisposed();
         // Microsoft asks this collection's parent container to delete the
         // entry by schema class and relative name. Reading SchemaClassName
         // preserves the observable bind/error behavior even though LDAP's
         // DeleteRequest does not carry the schema class.
-        _ = child.SchemaClassName;
-        _parent.DeleteChild(child.Name);
+        _ = entry.SchemaClassName;
+        _parent.DeleteChild(entry.Name);
     }
 
     public IEnumerator GetEnumerator()
@@ -85,8 +85,6 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
         _parent.ThrowIfDisposed();
         return Enumerate().GetEnumerator();
     }
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     private IEnumerable<DirectoryEntry> Enumerate()
     {

@@ -34,6 +34,48 @@ property that disagreed, not just the first.
 | `DirectoryEntryCopyComparisonTests` | real-AD `CopyTo` matrix for user, group, computer, and OU objects, both overloads, identity/security/source state, and failure results |
 | `ObjectSecurityComparisonTests` | live DACL round trips, partial `SecurityMasks`, and cached versus immediate `ObjectSecurity` writes |
 | `PrincipalSearcherComparisonTests` | query-by-example search, including wildcards |
+| `PublicApiSurfaceComparisonTests` | every exported type in the two claimed namespaces, including declared members, modifiers, accessors, contract attributes, generic constraints, and usable nullable metadata |
+
+### Reflection-oracle scope and allowlist
+
+`PublicApiSurfaceComparisonTests` compares every exported type whose namespace is
+exactly one of the following pairs:
+
+- `System.DirectoryServices` and `AdForLinux.DirectoryServices`
+- `System.DirectoryServices.AccountManagement` and
+  `AdForLinux.DirectoryServices.AccountManagement`
+
+The exact-namespace check deliberately excludes
+`System.DirectoryServices.ActiveDirectory`; AdForLinux does not currently claim
+that API. It also excludes the implementation-only `AdForLinux.DirectoryServices.Ldap`
+namespace.
+
+For each claimed type, the oracle compares type kind, visibility, base type,
+interfaces, abstract/sealed modifiers, generic constraints, and every declared
+externally visible constructor, method, property, event, and field. Property and
+event accessors are inspected with non-public reflection so a private or protected
+accessor change is visible. Contract custom attributes and DirectoryServices
+nullable metadata are included. The Microsoft AccountManagement reference
+assembly reports all nullable states as `Unknown`, so nullable comparison for
+that namespace is intentionally disabled until the reference provides usable
+metadata.
+
+Intentional differences live in the `IntentionalDifferences` set in the test.
+Entries are exact descriptors rather than member-name wildcards, and stale
+entries fail the test. The current groups are:
+
+- Linux/LDAP conveniences: `DirectoryEntry.DistinguishedName`, portable SID and
+  connection properties, and `PrincipalSearcher.GetLdapFilter`.
+- generic enumeration/readonly-list conveniences used by Linux and LINQ callers.
+- four documented metadata-only differences: the Windows designer converter,
+  honest nullable metadata for `DirectoryEntry.Parent`,
+  `DirectoryEntry.Options` nullability, and normalized `DirectorySearcher.Filter`
+  getter nullability. `Parent` intentionally stays nullable because an LDAP
+  naming-context root has no parent.
+
+Any new extension, including a future LINQ API, therefore requires an explicit,
+reviewable allowlist entry; unrelated public-surface drift fails with side-by-side
+Microsoft/AdForLinux descriptors.
 
 ## How to run
 
