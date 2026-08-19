@@ -17,6 +17,8 @@ public sealed class ResultPropertyCollection : DictionaryBase, IDictionary, IEnu
     {
     }
 
+    // Microsoft normalizes result-property keys before placing them in its
+    // DictionaryBase, so dictionary enumeration exposes lower-case names too.
     internal void Set(string name, IReadOnlyList<object> values) =>
         InnerHashtable[name.ToLowerInvariant()] = new ResultPropertyValueCollection(values);
 

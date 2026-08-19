@@ -228,24 +228,29 @@ public class CollectionCompatibilityTests
     public void Result_property_collections_are_read_only_dictionary_and_collection_views()
     {
         var properties = new ResultPropertyCollection();
-        properties.Set("cn", new object[] { "Alice", "Alias" });
+        properties.Set("sAMAccountName", new object[] { "Alice", "Alias" });
 
         Assert.IsAssignableFrom<DictionaryBase>(properties);
-        Assert.IsAssignableFrom<ReadOnlyCollectionBase>(properties["cn"]);
+        Assert.IsAssignableFrom<ReadOnlyCollectionBase>(properties["samAccountName"]);
 
         IDictionary dictionary = properties;
-        Assert.True(dictionary.Contains("CN"));
+        Assert.True(dictionary.Contains("SAMACCOUNTNAME"));
         Assert.True(dictionary.IsReadOnly);
         Assert.Single(properties);
-        Assert.Equal(1, properties["cn"].IndexOf("Alias"));
+        Assert.Equal(1, properties["samAccountName"].IndexOf("Alias"));
+        Assert.Equal("samaccountname", Assert.Single(properties.PropertyNames.Cast<string>()));
+
+        var enumerator = properties.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("samaccountname", enumerator.Key);
 
         var values = new object[2];
-        properties["cn"].CopyTo(values, 0);
+        properties["samAccountName"].CopyTo(values, 0);
         Assert.Equal(new object[] { "Alice", "Alias" }, values);
 
         var collections = new ResultPropertyValueCollection[1];
         properties.CopyTo(collections, 0);
-        Assert.Same(properties["cn"], collections[0]);
+        Assert.Same(properties["samAccountName"], collections[0]);
         Assert.Throws<NotSupportedException>(() => dictionary.Clear());
     }
 
