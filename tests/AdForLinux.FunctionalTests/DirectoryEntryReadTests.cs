@@ -47,7 +47,6 @@ public class DirectoryEntryReadTests
         Assert.Throws<PlatformNotSupportedException>(() => entry.InvokeGet("objectClass"));
         Assert.Throws<PlatformNotSupportedException>(() => entry.CopyTo(entry));
         Assert.Throws<PlatformNotSupportedException>(() => _ = entry.NativeObject);
-        Assert.Throws<PlatformNotSupportedException>(() => _ = entry.SchemaEntry);
     }
 
     [Fact]
@@ -99,6 +98,19 @@ public class DirectoryEntryReadTests
 
         // objectClass is top, person, organizationalPerson, user -> "user".
         Assert.Equal("user", entry.SchemaClassName);
+    }
+
+    [Fact]
+    public void SchemaEntry_resolves_the_most_specific_class_from_the_schema_partition()
+    {
+        using var entry = Open(TestSettings.AdministratorDn);
+        using var schemaEntry = entry.SchemaEntry;
+
+        Assert.Equal("classSchema", schemaEntry.SchemaClassName);
+        Assert.Equal("user", schemaEntry.Properties["lDAPDisplayName"].Value);
+        Assert.EndsWith(",CN=Schema,CN=Configuration," + TestSettings.BaseDn,
+            schemaEntry.DistinguishedName, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(entry.UsePropertyCache, schemaEntry.UsePropertyCache);
     }
 
     [Fact]

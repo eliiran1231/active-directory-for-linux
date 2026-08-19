@@ -255,9 +255,44 @@ public class DirectoryEntry : Component
         }
     }
 
-    /// <summary>ADSI schema entries are not available through the portable LDAP API.</summary>
-    public DirectoryEntry SchemaEntry => throw new PlatformNotSupportedException(
-        "DirectoryEntry.SchemaEntry requires ADSI schema-provider behavior, which is not available on Linux.");
+    /// <summary>Gets the Active Directory schema class that describes this entry.</summary>
+    public DirectoryEntry SchemaEntry
+    {
+        get
+        {
+            var schemaClassName = SchemaClassName;
+            if (string.IsNullOrEmpty(schemaClassName))
+            {
+                throw new InvalidOperationException(
+                    "The directory entry did not expose an objectClass to resolve in the schema.");
+            }
+
+            var connection = GetSchemaConnection();
+            var rootDse = RootDse.Read(connection, "schemaNamingContext");
+            if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
+                || string.IsNullOrEmpty(schemaNamingContext))
+            {
+                throw new InvalidOperationException(
+                    "The directory server did not expose a schemaNamingContext in rootDSE.");
+            }
+
+            var request = new SearchRequest(
+                schemaNamingContext,
+                $"(&(objectClass=classSchema)(lDAPDisplayName={EscapeFilterValue(schemaClassName)}))",
+                ProtocolScope.OneLevel,
+                "lDAPDisplayName");
+            var response = (SearchResponse)connection.SendRequestCompatible(request);
+            if (response.Entries.Count != 1)
+            {
+                throw new InvalidOperationException(
+                    $"The schema class '{schemaClassName}' could not be resolved under '{schemaNamingContext}'.");
+            }
+
+            var schemaEntry = CreateEntryForDn(response.Entries[0].DistinguishedName);
+            schemaEntry._usePropertyCache = _usePropertyCache;
+            return schemaEntry;
+        }
+    }
 
     /// <summary>The loaded attributes. Reading this binds and fetches on first use.</summary>
     public PropertyCollection Properties
@@ -800,6 +835,13 @@ public class DirectoryEntry : Component
         ";",
         propertyName.Split(';').Where(part =>
             !part.StartsWith("range=", StringComparison.OrdinalIgnoreCase)));
+
+    private static string EscapeFilterValue(string value) => value
+        .Replace("\\", "\\5c")
+        .Replace("*", "\\2a")
+        .Replace("(", "\\28")
+        .Replace(")", "\\29")
+        .Replace("\0", "\\00");
 
     private ActiveDirectorySecurity ReadObjectSecurity()
     {
