@@ -115,6 +115,12 @@ advanced date/count comparisons.
   provider option for returning quota information for a named security
   principal. LDAP has no equivalent interoperable option or control, so there
   is no portable fallback; this method throws `PlatformNotSupportedException`.
+- **`DirectoryEntryConfiguration.IsMutuallyAuthenticated`.** The LDAP bind is
+  performed before this member returns, but `System.DirectoryServices.Protocols`
+  exposes neither the negotiated SSPI/GSSAPI mutual-authentication flag nor an
+  equivalent portable status. The method therefore throws
+  `PlatformNotSupportedException` instead of fabricating `false`. This applies
+  to both default-credential Negotiate and explicit-credential binds.
 - **Legacy `DirectoryServicesPermission*` types.** These belonged to .NET
   Framework Code Access Security. They are absent from the modern
   `System.DirectoryServices` reference assembly and CAS is not supported by

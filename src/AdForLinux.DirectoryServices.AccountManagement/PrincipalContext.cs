@@ -25,9 +25,11 @@ public class PrincipalContext : IDisposable
     private readonly string? _userName;
     private readonly object _credentialValidationLock = new();
     private readonly object _containerDiscoveryLock = new();
+    private readonly object _connectionStateLock = new();
     private CredentialValidationMethod _lastCredentialValidationMethod =
         CredentialValidationMethod.SimpleBindOverSsl;
     private string? _container;
+    private string? _connectedServer;
     private bool _disposed;
 
     private enum CredentialValidationMethod
@@ -203,7 +205,17 @@ public class PrincipalContext : IDisposable
         get
         {
             CheckDisposed();
-            return _name;
+            if (_connectedServer is not null)
+            {
+                return _connectedServer;
+            }
+
+            lock (_connectionStateLock)
+            {
+                CheckDisposed();
+                return _connectedServer ??=
+                    AccountManagementExceptionTranslator.Execute(DiscoverConnectedServer);
+            }
         }
     }
 
@@ -479,6 +491,19 @@ public class PrincipalContext : IDisposable
 
     private string DiscoverDefaultNamingContext() =>
         AccountManagementExceptionTranslator.Execute(DiscoverDefaultNamingContextCore);
+
+    private string DiscoverConnectedServer()
+    {
+        try
+        {
+            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+            return RootDse.GetConnectedServerName(connection);
+        }
+        catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
+        {
+            throw AccountManagementExceptionTranslator.TranslateProtocol(exception);
+        }
+    }
 
     private string DiscoverDefaultNamingContextCore()
     {
