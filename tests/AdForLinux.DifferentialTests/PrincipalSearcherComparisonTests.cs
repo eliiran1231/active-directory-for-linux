@@ -306,6 +306,42 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void Changed_group_members_QBE_exception_matches()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msMember = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
+        using var ourMember = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
+        Assert.NotNull(msMember);
+        Assert.NotNull(ourMember);
+
+        using var msFilter = new Ms.GroupPrincipal(msContext);
+        using var ourFilter = new Ours.GroupPrincipal(ourContext);
+        _ = msFilter.Members;
+        _ = ourFilter.Members;
+
+        using var msSearcher = new Ms.PrincipalSearcher(msFilter);
+        using var ourSearcher = new Ours.PrincipalSearcher(ourFilter);
+        Assert.Null(Record.Exception(() => msSearcher.GetUnderlyingSearcher()));
+        Assert.Null(Record.Exception(() => ourSearcher.GetUnderlyingSearcher()));
+
+        msFilter.Members.Add(msMember!);
+        ourFilter.Members.Add(ourMember!);
+
+        new Comparison("changed GroupPrincipal.Members QBE")
+            .Check("GetUnderlyingSearcher exception",
+                Record.Exception(() => msSearcher.GetUnderlyingSearcher())?.GetType().Name,
+                Record.Exception(() => ourSearcher.GetUnderlyingSearcher())?.GetType().Name)
+            .Check("FindOne exception",
+                Record.Exception(() => msSearcher.FindOne())?.GetType().Name,
+                Record.Exception(() => ourSearcher.FindOne())?.GetType().Name)
+            .Check("FindAll exception",
+                Record.Exception(() => msSearcher.FindAll())?.GetType().Name,
+                Record.Exception(() => ourSearcher.FindAll())?.GetType().Name)
+            .Assert();
+    }
+
+    [Fact]
     public void Account_expiration_and_null_QBE_filters_match()
     {
         using var msContext = MicrosoftContext();
