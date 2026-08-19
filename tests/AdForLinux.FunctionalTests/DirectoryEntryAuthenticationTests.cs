@@ -9,6 +9,84 @@ public class DirectoryEntryAuthenticationTests
 {
     private const string Path = "LDAP://dc.example.test/DC=example,DC=test";
 
+    [Theory]
+    [InlineData("LDAP://dc.example.test/DC=example,DC=test")]
+    [InlineData("ldap://dc.example.test/DC=example,DC=test")]
+    public void Ldap_provider_paths_are_accepted(string path)
+    {
+        using var entry = new DirectoryEntry(path, null, null, AuthenticationTypes.None);
+
+        var options = entry.BuildOptions();
+
+        Assert.Equal("dc.example.test", options.Host);
+        Assert.Equal(389, options.Port);
+        Assert.False(options.UseSsl);
+    }
+
+    [Theory]
+    [InlineData("LDAP://dc.example.test/DC=example,DC=test", AuthenticationTypes.SecureSocketsLayer)]
+    [InlineData("LDAP://dc.example.test:636/DC=example,DC=test", AuthenticationTypes.None)]
+    public void Ldaps_is_configured_on_an_ldap_path(
+        string path,
+        AuthenticationTypes authenticationTypes)
+    {
+        using var entry = new DirectoryEntry(path, "user@example.test", "password", authenticationTypes);
+
+        var options = entry.BuildOptions();
+
+        Assert.Equal(636, options.Port);
+        Assert.True(options.UseSsl);
+    }
+
+    [Theory]
+    [InlineData("LDAP://gc.example.test:3268/DC=example,DC=test", AuthenticationTypes.None, 3268, false)]
+    [InlineData(
+        "LDAP://gc.example.test:3269/DC=example,DC=test",
+        AuthenticationTypes.SecureSocketsLayer,
+        3269,
+        true)]
+    public void Global_catalog_endpoints_are_available_through_explicit_ldap_ports(
+        string path,
+        AuthenticationTypes authenticationTypes,
+        int expectedPort,
+        bool expectedSsl)
+    {
+        using var entry = new DirectoryEntry(path, "user@example.test", "password", authenticationTypes);
+
+        var options = entry.BuildOptions();
+
+        Assert.Equal(expectedPort, options.Port);
+        Assert.Equal(expectedSsl, options.UseSsl);
+    }
+
+    [Theory]
+    [InlineData("WinNT://server/user", "WinNT")]
+    [InlineData("IIS://server/service", "IIS")]
+    [InlineData("GC://forest.example.test/DC=example,DC=test", "GC")]
+    [InlineData("LDAPS://dc.example.test/DC=example,DC=test", "LDAPS")]
+    [InlineData("Custom.Directory://server/object", "Custom.Directory")]
+    public void Unsupported_provider_schemes_fail_deterministically(string path, string scheme)
+    {
+        var error = Assert.Throws<PlatformNotSupportedException>(() => new DirectoryEntry(path));
+
+        Assert.Equal(
+            $"The directory provider scheme '{scheme}://' is not supported. " +
+            "Only LDAP:// paths are supported; configure LDAPS with " +
+            "AuthenticationTypes.SecureSocketsLayer or LDAP port 636.",
+            error.Message);
+    }
+
+    [Fact]
+    public void Assigning_an_unsupported_provider_does_not_replace_the_existing_path()
+    {
+        using var entry = new DirectoryEntry(Path);
+
+        Assert.Throws<PlatformNotSupportedException>(() => entry.Path = "WinNT://server/user");
+
+        Assert.Equal(Path, entry.Path);
+        Assert.Equal("dc.example.test", entry.BuildOptions().Host);
+    }
+
     [Fact]
     public void Credential_constructor_defaults_to_secure_negotiate_authentication()
     {

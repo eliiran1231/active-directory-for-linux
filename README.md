@@ -74,6 +74,20 @@ advanced date/count comparisons.
 
 ### Not supported
 
+- **Non-LDAP ADSI providers and `System.DirectoryServices.ActiveDirectory`.**
+  This project implements the LDAP-backed `System.DirectoryServices` and
+  `AccountManagement` APIs; it does not implement the `WinNT://` or `IIS://`
+  providers, or the separate `System.DirectoryServices.ActiveDirectory`
+  namespace. Unsupported provider prefixes throw `PlatformNotSupportedException`
+  instead of being treated as LDAP server names. `LDAPS://` is not an ADSI
+  provider path: use `LDAP://` with `AuthenticationTypes.SecureSocketsLayer`,
+  or an explicit LDAP port `636`.
+- **The `GC://` ADSI provider prefix.** Global Catalog queries can use AD's LDAP
+  Global Catalog endpoints explicitly as `LDAP://server:3268/...`, or port
+  `3269` together with `AuthenticationTypes.SecureSocketsLayer`. The library
+  does not map `GC://` implicitly because that ADSI provider also supplies
+  provider-specific discovery and default-root behavior that a path rewrite
+  cannot preserve. `GC://` therefore throws `PlatformNotSupportedException`.
 - **Serverless binding.** Always pass the domain controller name; there is no
   domain auto-discovery on Linux. For the same reason, `UserPrincipal.Current`
   is present for source compatibility but throws `InvalidOperationException`;

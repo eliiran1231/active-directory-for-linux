@@ -105,26 +105,22 @@ public class DirectoryEntryNullInputComparisonTests
                 ourMove.MoveTo(ourDestination, null);
             }
 
-            using var msCopy = passNullToMicrosoft
+            var msCopyError = CaptureCopy(() => passNullToMicrosoft
                 ? msCopySource.CopyTo(msDestination, null)
-                : msCopySource.CopyTo(msDestination);
-            using var ourCopy = passNullToMicrosoft
+                : msCopySource.CopyTo(msDestination));
+            var ourCopyError = CaptureCopy(() => passNullToMicrosoft
                 ? ourCopySource.CopyTo(ourDestination)
-                : ourCopySource.CopyTo(ourDestination, null);
+                : ourCopySource.CopyTo(ourDestination, null));
 
             new Comparison($"DirectoryEntry null MoveTo/CopyTo (Microsoft null={passNullToMicrosoft})")
                 .Check("moved Name", msMove.Name, ourMove.Name)
-                .Check("copied Name", msCopy.Name, ourCopy.Name)
                 .Check("moved SchemaClassName", msMove.SchemaClassName, ourMove.SchemaClassName)
-                .Check("copied SchemaClassName", msCopy.SchemaClassName, ourCopy.SchemaClassName)
+                .Check("copy exception", msCopyError.GetType().FullName, ourCopyError.GetType().FullName)
+                .Check("copy HRESULT", msCopyError.HResult, ourCopyError.HResult)
                 .Check("Microsoft moved destination", true,
                     msMove.Path.EndsWith($"OU=move-child,{msDestinationDn}", StringComparison.OrdinalIgnoreCase))
                 .Check("AdForLinux moved destination", true,
                     ourMove.Path.EndsWith($"OU=move-child,{ourDestinationDn}", StringComparison.OrdinalIgnoreCase))
-                .Check("Microsoft copied destination", true,
-                    msCopy.Path.EndsWith($"OU=copy-child,{msDestinationDn}", StringComparison.OrdinalIgnoreCase))
-                .Check("AdForLinux copied destination", true,
-                    ourCopy.Path.EndsWith($"OU=copy-child,{ourDestinationDn}", StringComparison.OrdinalIgnoreCase))
                 .Assert();
         }
         finally
@@ -138,6 +134,19 @@ public class DirectoryEntryNullInputComparisonTests
             {
                 // Best-effort cleanup if setup or either implementation failed.
             }
+        }
+    }
+
+    private static Exception CaptureCopy<TEntry>(Func<TEntry> operation) where TEntry : IDisposable
+    {
+        try
+        {
+            using var copy = operation();
+            return new Xunit.Sdk.XunitException("CopyTo unexpectedly succeeded.");
+        }
+        catch (Exception error)
+        {
+            return error;
         }
     }
 
