@@ -103,6 +103,10 @@ advanced date/count comparisons.
   ADSI/COM object, which has no Linux equivalent. The property is retained for
   source compatibility, but accessing it always throws
   `PlatformNotSupportedException` on Linux.
+- **`SearchResultCollection.Handle`.** Microsoft exposes the native ADSI
+  `IDirectorySearch::ExecuteSearch` handle. Protocol-based LDAP searches have no
+  equivalent stable native handle, so accessing this property throws
+  `PlatformNotSupportedException` rather than returning a fabricated zero value.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required

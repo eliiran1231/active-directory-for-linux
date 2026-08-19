@@ -541,6 +541,33 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Assert();
     }
 
+    [Fact]
+    public void Searcher_result_handle_documents_adsi_limitation_and_matches_disposed_contract()
+    {
+        using var msRoot = MicrosoftEntry(DifferentialSettings.UsersContainer);
+        using var ourRoot = OurEntry(DifferentialSettings.UsersContainer);
+        using var msSearcher = new Ms.DirectorySearcher(msRoot, "(objectClass=*)");
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot, "(objectClass=*)");
+
+        var msResults = msSearcher.FindAll();
+        var ourResults = ourSearcher.FindAll();
+
+        Assert.NotEqual(IntPtr.Zero, msResults.Handle);
+        Assert.Throws<PlatformNotSupportedException>(() => ourResults.Handle);
+
+        msResults.Dispose();
+        ourResults.Dispose();
+
+        var msDisposed = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = msResults.Handle));
+        var ourDisposed = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = ourResults.Handle));
+        new Comparison("SearchResultCollection.Handle disposed contract")
+            .Check("Exception", msDisposed.GetType().Name, ourDisposed.GetType().Name)
+            .Check("ObjectName", msDisposed.ObjectName, ourDisposed.ObjectName)
+            .Assert();
+    }
+
     [Theory]
     [InlineData(Ms.ExtendedDN.Standard, Ours.ExtendedDN.Standard)]
     [InlineData(Ms.ExtendedDN.HexString, Ours.ExtendedDN.HexString)]

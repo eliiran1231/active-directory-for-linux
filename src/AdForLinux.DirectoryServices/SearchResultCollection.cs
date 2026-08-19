@@ -38,12 +38,25 @@ public sealed class SearchResultCollection : MarshalByRefObject, IReadOnlyList<S
     public int Count => Materialize().Count;
 
     /// <summary>
-    /// The native ADSI search handle. Protocol-based searches do not expose a
-    /// native handle, so this is <see cref="IntPtr.Zero"/> while undisposed.
+    /// Gets the native ADSI search handle.
     /// </summary>
-    public IntPtr Handle => _disposed
-        ? throw new ObjectDisposedException(nameof(SearchResultCollection))
-        : IntPtr.Zero;
+    /// <exception cref="ObjectDisposedException">The collection has been disposed.</exception>
+    /// <exception cref="PlatformNotSupportedException">
+    /// Protocol-based searches do not expose ADSI's native search handle.
+    /// </exception>
+    public IntPtr Handle
+    {
+        get
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(SearchResultCollection));
+            }
+
+            throw new PlatformNotSupportedException(
+                "SearchResultCollection.Handle exposes an ADSI native search handle, which is not available for protocol-based searches.");
+        }
+    }
 
     /// <summary>The attributes explicitly requested from the searcher.</summary>
     public string[] PropertiesLoaded { get; }
