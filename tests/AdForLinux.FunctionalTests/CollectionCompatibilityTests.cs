@@ -145,6 +145,27 @@ public class CollectionCompatibilityTests
     }
 
     [Fact]
+    public void Collection_base_operations_preserve_property_value_deltas()
+    {
+        var values = new PropertyValueCollection("member");
+        Assert.IsAssignableFrom<CollectionBase>(values);
+
+        values.AddLoaded("first");
+        values.AddLoaded("second");
+        values.ResetChanged();
+
+        values.RemoveAt(0);
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(change, PropertyValueChangeType.Delete, "first"));
+
+        values.Clear();
+        Assert.Collection(
+            values.Changes,
+            change => AssertChange(change, PropertyValueChangeType.Clear));
+    }
+
+    [Fact]
     public void Property_value_expands_all_arrays_except_byte_arrays()
     {
         var values = new PropertyValueCollection("extensionAttribute");
@@ -208,6 +229,9 @@ public class CollectionCompatibilityTests
     {
         var properties = new ResultPropertyCollection();
         properties.Set("cn", new object[] { "Alice", "Alias" });
+
+        Assert.IsAssignableFrom<DictionaryBase>(properties);
+        Assert.IsAssignableFrom<ReadOnlyCollectionBase>(properties["cn"]);
 
         IDictionary dictionary = properties;
         Assert.True(dictionary.Contains("CN"));
