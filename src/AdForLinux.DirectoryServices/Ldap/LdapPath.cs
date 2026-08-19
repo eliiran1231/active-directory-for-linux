@@ -18,6 +18,19 @@ internal sealed record LdapPath(string? Host, int? Port, string DistinguishedNam
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
+        var schemeSeparator = path.IndexOf("://", StringComparison.Ordinal);
+        if (schemeSeparator > 0 && IsProviderScheme(path.AsSpan(0, schemeSeparator)))
+        {
+            var providerScheme = path.Substring(0, schemeSeparator);
+            if (!providerScheme.Equals("LDAP", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new PlatformNotSupportedException(
+                    $"The directory provider scheme '{providerScheme}://' is not supported. " +
+                    "Only LDAP:// paths are supported; configure LDAPS with " +
+                    "AuthenticationTypes.SecureSocketsLayer or LDAP port 636.");
+            }
+        }
+
         var rest = path.StartsWith(Scheme, StringComparison.OrdinalIgnoreCase)
             ? path.Substring(Scheme.Length)
             : path;
@@ -37,6 +50,24 @@ internal sealed record LdapPath(string? Host, int? Port, string DistinguishedNam
         var dn = rest.Substring(slash + 1);
         var (host, port) = SplitHost(authority);
         return new LdapPath(host, port, dn);
+    }
+
+    private static bool IsProviderScheme(ReadOnlySpan<char> value)
+    {
+        if (value.IsEmpty || !char.IsAsciiLetter(value[0]))
+        {
+            return false;
+        }
+
+        foreach (var character in value[1..])
+        {
+            if (!char.IsAsciiLetterOrDigit(character) && character is not '+' and not '-' and not '.')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static (string? Host, int? Port) SplitHost(string authority)
