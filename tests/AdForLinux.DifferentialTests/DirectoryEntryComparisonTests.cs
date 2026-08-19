@@ -185,6 +185,94 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CommitChanges_after_create_reloads_server_generated_properties(bool usePropertyCache)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msName = $"ms104-{suffix}";
+        var ourName = $"our104-{suffix}";
+        var msDn = $"CN={msName},{DifferentialSettings.UsersContainer}";
+        var ourDn = $"CN={ourName},{DifferentialSettings.UsersContainer}";
+
+        try
+        {
+            using var msParent = MicrosoftEntry(DifferentialSettings.UsersContainer);
+            using var ourParent = OurEntry(DifferentialSettings.UsersContainer);
+            using var ms = msParent.Children.Add($"CN={msName}", "group");
+            using var ours = ourParent.Children.Add($"CN={ourName}", "group");
+            ms.Properties["sAMAccountName"].Value = msName;
+            ours.Properties["sAMAccountName"].Value = ourName;
+            var msAddProperties = ms.Properties;
+            var ourAddProperties = ours.Properties;
+            ms.UsePropertyCache = usePropertyCache;
+            ours.UsePropertyCache = usePropertyCache;
+
+            ms.CommitChanges();
+            ours.CommitChanges();
+
+            new Comparison($"DirectoryEntry create CommitChanges cache (UsePropertyCache={usePropertyCache})")
+                .Check("PropertyCollection invalidated",
+                    !ReferenceEquals(msAddProperties, ms.Properties),
+                    !ReferenceEquals(ourAddProperties, ours.Properties))
+                .Check("GUID available", ms.Guid != Guid.Empty, ours.Guid != Guid.Empty)
+                .Check("SID available",
+                    ms.Properties["objectSid"].Value is byte[] { Length: > 0 },
+                    ours.Properties["objectSid"].Value is byte[] { Length: > 0 })
+                .Check("default sAMAccountType available",
+                    ms.Properties["sAMAccountType"].Value is not null,
+                    ours.Properties["sAMAccountType"].Value is not null)
+                .Assert();
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msDn);
+            SafeDeleteOur(ourDn);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CommitChanges_after_update_matches_cached_and_uncached_behavior(bool usePropertyCache)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msName = $"ms104u-{suffix}";
+        var ourName = $"our104u-{suffix}";
+        var msDn = $"CN={msName},{DifferentialSettings.UsersContainer}";
+        var ourDn = $"CN={ourName},{DifferentialSettings.UsersContainer}";
+
+        try
+        {
+            CreateMicrosoftGroup(msName);
+            CreateOurGroup(ourName);
+            using var ms = MicrosoftEntry(msDn);
+            using var ours = OurEntry(ourDn);
+            ms.UsePropertyCache = usePropertyCache;
+            ours.UsePropertyCache = usePropertyCache;
+            var msProperties = ms.Properties;
+            var ourProperties = ours.Properties;
+            ms.Properties["description"].Value = "issue 104 update";
+            ours.Properties["description"].Value = "issue 104 update";
+
+            ms.CommitChanges();
+            ours.CommitChanges();
+
+            new Comparison($"DirectoryEntry update CommitChanges cache (UsePropertyCache={usePropertyCache})")
+                .Check("PropertyCollection invalidated",
+                    !ReferenceEquals(msProperties, ms.Properties),
+                    !ReferenceEquals(ourProperties, ours.Properties))
+                .Check("committed value", ms.Properties["description"].Value, ours.Properties["description"].Value)
+                .Assert();
+        }
+        finally
+        {
+            SafeDeleteMicrosoft(msDn);
+            SafeDeleteOur(ourDn);
+        }
+    }
+
+    [Theory]
     [InlineData("sAMAccountName")]
     [InlineData("givenName")]
     [InlineData("sn")]
@@ -762,6 +850,22 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         var separator = distinguishedName.IndexOf(',');
         using var parent = OurEntry(distinguishedName[(separator + 1)..]);
         using var child = parent.Children.Add(distinguishedName[..separator], "organizationalUnit");
+        child.CommitChanges();
+    }
+
+    private static void CreateMicrosoftGroup(string name)
+    {
+        using var parent = MicrosoftEntry(DifferentialSettings.UsersContainer);
+        using var child = parent.Children.Add($"CN={name}", "group");
+        child.Properties["sAMAccountName"].Value = name;
+        child.CommitChanges();
+    }
+
+    private static void CreateOurGroup(string name)
+    {
+        using var parent = OurEntry(DifferentialSettings.UsersContainer);
+        using var child = parent.Children.Add($"CN={name}", "group");
+        child.Properties["sAMAccountName"].Value = name;
         child.CommitChanges();
     }
 

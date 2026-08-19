@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.DirectoryServices.Protocols;
 using System.Runtime.InteropServices;
 using AdForLinux.DirectoryServices.Ldap;
@@ -24,6 +25,7 @@ public class DirectoryEntry : Component
     private LdapConnectionOptions? _connectionOptionsOverride;
 
     private LdapPath _path;
+    private string _pathText;
     private LdapConnection? _connection;
     private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
@@ -39,6 +41,7 @@ public class DirectoryEntry : Component
     public DirectoryEntry()
     {
         _path = new LdapPath(null, null, string.Empty);
+        _pathText = string.Empty;
         _authenticationType = AuthenticationTypes.Secure;
     }
 
@@ -54,22 +57,22 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Opens an entry from an <c>LDAP://host/DN</c> path, anonymous bind.</summary>
-    public DirectoryEntry(string path)
+    public DirectoryEntry(string? path)
         : this(path, null, null, AuthenticationTypes.Secure)
     {
     }
 
     /// <summary>Opens an entry with a user and password using secure authentication.</summary>
-    public DirectoryEntry(string path, string? username, string? password)
+    public DirectoryEntry(string? path, string? username, string? password)
         : this(path, username, password, AuthenticationTypes.Secure)
     {
     }
 
     /// <summary>Opens an entry with a user, password, and bind options.</summary>
-    public DirectoryEntry(string path, string? username, string? password, AuthenticationTypes authenticationType)
+    public DirectoryEntry(string? path, string? username, string? password, AuthenticationTypes authenticationType)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        _path = LdapPath.Parse(path);
+        _path = ParsePath(path);
+        _pathText = path ?? string.Empty;
         _username = username;
         _password = password;
         _authenticationType = authenticationType;
@@ -81,6 +84,7 @@ public class DirectoryEntry : Component
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(connectionOptions);
         _path = LdapPath.Parse(path);
+        _pathText = path;
         _username = connectionOptions.BindDn;
         _password = connectionOptions.BindPassword;
         _authenticationType = connectionOptions.AuthenticationType switch
@@ -105,16 +109,20 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
+    [AllowNull]
     public string Path
     {
-        get => !_path.HasHost && string.IsNullOrEmpty(_path.DistinguishedName) ? string.Empty : _path.ToString();
+        get => _pathText;
         set
         {
-            ArgumentNullException.ThrowIfNull(value);
+            value ??= string.Empty;
+            if (string.Equals(_pathText, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             _connectionOptionsOverride = null;
-            ResetBinding(string.IsNullOrWhiteSpace(value)
-                ? new LdapPath(null, null, string.Empty)
-                : LdapPath.Parse(value));
+            ResetBinding(ParsePath(value), value);
         }
     }
 
@@ -321,8 +329,16 @@ public class DirectoryEntry : Component
     /// </summary>
     public void CommitChanges()
     {
+        ThrowIfDisposed();
+        if (!_isNew
+            && !_usePropertyCache
+            && (_objectSecurity is null
+                || (!_objectSecurityChanged && !_objectSecurity.IsModified())))
+        {
+            return;
+        }
+
         var connection = GetConnection();
-        var objectSecurityWritten = false;
 
         if (_isNew)
         {
@@ -335,7 +351,7 @@ public class DirectoryEntry : Component
                 }
             }
 
-            objectSecurityWritten = AddObjectSecurity(add);
+            AddObjectSecurity(add);
 
             connection.SendRequestCompatible(add);
             _isNew = false;
@@ -354,7 +370,7 @@ public class DirectoryEntry : Component
                 AddModifications(modify, property);
             }
 
-            objectSecurityWritten = AddObjectSecurity(modify);
+            AddObjectSecurity(modify);
 
             if (modify.Modifications.Count > 0)
             {
@@ -362,19 +378,15 @@ public class DirectoryEntry : Component
             }
         }
 
-        foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
-        {
-            property.ResetChanged();
-        }
+        // A successful SetInfo mirrors ADSI: the next managed property access
+        // must bind again and observe server-generated or normalized values.
+        // Keep the pre-commit collection intact until this point so a failed
+        // request retains local state.
+        _properties = null;
 
-        if (objectSecurityWritten)
-        {
-            // DirectoryObjectSecurity does not expose a way to clear its
-            // internal modification flags. Discard the successfully written
-            // instance so the next access reloads a clean descriptor from AD.
-            _objectSecurity = null;
-        }
-
+        // Microsoft also discards the initialized security descriptor after a
+        // successful SetInfo, regardless of whether it supplied the change.
+        _objectSecurity = null;
         _objectSecurityChanged = false;
     }
 
@@ -749,12 +761,7 @@ public class DirectoryEntry : Component
     /// The source and destination use different LDAP connection contexts. LDAP
     /// ModifyDN cannot perform a cross-server move, so no request is sent.
     /// </exception>
-    public void MoveTo(DirectoryEntry newParent)
-    {
-        ArgumentNullException.ThrowIfNull(newParent);
-        EnsureSameMoveConnectionContext(newParent);
-        MoveOrRename(newParent.DistinguishedName, LdapDistinguishedName.RelativeName(_path.DistinguishedName));
-    }
+    public void MoveTo(DirectoryEntry newParent) => MoveTo(newParent, null);
 
     /// <summary>
     /// Moves this entry beneath <paramref name="newParent"/> and renames it when
@@ -764,12 +771,18 @@ public class DirectoryEntry : Component
     /// The source and destination use different LDAP connection contexts. LDAP
     /// ModifyDN cannot perform a cross-server move, so no request is sent.
     /// </exception>
-    public void MoveTo(DirectoryEntry newParent, string newName)
+    public void MoveTo(DirectoryEntry newParent, string? newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
-        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        if (newName is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        }
+
         EnsureSameMoveConnectionContext(newParent);
-        MoveOrRename(newParent.DistinguishedName, newName);
+        MoveOrRename(
+            newParent.DistinguishedName,
+            newName ?? LdapDistinguishedName.RelativeName(_path.DistinguishedName));
     }
 
     /// <summary>
@@ -777,15 +790,21 @@ public class DirectoryEntry : Component
     /// copy operation, so client-writable attributes are read and sent in a new
     /// Add request instead.
     /// </summary>
-    public DirectoryEntry CopyTo(DirectoryEntry newParent) => CopyTo(newParent, Name);
+    public DirectoryEntry CopyTo(DirectoryEntry newParent) => CopyTo(newParent, null);
 
     /// <inheritdoc cref="CopyTo(DirectoryEntry)"/>
-    public DirectoryEntry CopyTo(DirectoryEntry newParent, string newName)
+    public DirectoryEntry CopyTo(DirectoryEntry newParent, string? newName)
     {
         ArgumentNullException.ThrowIfNull(newParent);
-        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        if (newName is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        }
+
         ThrowIfDisposed();
         newParent.ThrowIfDisposed();
+
+        newName ??= Name;
 
         var schemaClassName = SchemaClassName
             ?? throw new InvalidOperationException("The source entry does not expose a schema class.");
@@ -985,7 +1004,7 @@ public class DirectoryEntry : Component
 
     private void CommitIfNotCaching()
     {
-        if (!UsePropertyCache)
+        if (!UsePropertyCache && !_isNew)
         {
             CommitChanges();
         }
@@ -1234,9 +1253,24 @@ public class DirectoryEntry : Component
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
     }
 
-    private void ResetBinding(LdapPath path)
+    private static LdapPath ParsePath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return new LdapPath(null, null, string.Empty);
+        }
+
+        // Microsoft stores whitespace paths verbatim. Keep the parsed state
+        // serverless while _pathText preserves the caller-visible value.
+        return string.IsNullOrWhiteSpace(path)
+            ? new LdapPath(null, null, string.Empty)
+            : LdapPath.Parse(path);
+    }
+
+    private void ResetBinding(LdapPath path, string? pathText = null)
     {
         _path = path;
+        _pathText = pathText ?? path.ToString();
         _properties = null;
         _objectSecurity = null;
         _objectSecurityChanged = false;

@@ -115,13 +115,42 @@ public class DirectoryEntryWriteTests
     }
 
     [Fact]
+    public void CommitChanges_reloads_server_generated_properties_after_create()
+    {
+        var name = $"adfl-cache-{Guid.NewGuid():N}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={name}", "group");
+            child.Properties["sAMAccountName"].Value = name;
+            var addRequestProperties = child.Properties;
+
+            child.CommitChanges();
+
+            Assert.NotSame(addRequestProperties, child.Properties);
+            Assert.NotEqual(Guid.Empty, child.Guid);
+            Assert.NotEmpty(Assert.IsType<byte[]>(child.Properties["objectSid"].Value));
+            Assert.Equal(dn, child.Properties["distinguishedName"].Value);
+            Assert.NotNull(child.Properties["sAMAccountType"].Value);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
     public void CopyTo_creates_committed_copies_and_skips_server_managed_attributes()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var sourceParentDn = $"OU=adfl-copy-source-{suffix},{TestSettings.BaseDn}";
         var destinationParentDn = $"OU=adfl-copy-target-{suffix},{TestSettings.BaseDn}";
         var sourceDn = $"OU=original,{sourceParentDn}";
+        var explicitNullSourceDn = $"OU=explicit-null,{sourceParentDn}";
         var sameNameCopyDn = $"OU=original,{destinationParentDn}";
+        var explicitNullCopyDn = $"OU=explicit-null,{destinationParentDn}";
         var renamedCopyDn = $"OU=renamed,{destinationParentDn}";
         var sourceUserDn = $"CN=source-user,{sourceParentDn}";
         var copiedUserDn = $"CN=copied-user,{destinationParentDn}";
@@ -145,6 +174,13 @@ public class DirectoryEntryWriteTests
             }
 
             using (var sourceParent = Open(sourceParentDn))
+            using (var source = sourceParent.Children.Add("OU=explicit-null", "organizationalUnit"))
+            {
+                source.Properties["description"].Value = "managed CopyTo explicit null";
+                source.CommitChanges();
+            }
+
+            using (var sourceParent = Open(sourceParentDn))
             using (var sourceUser = sourceParent.Children.Add("CN=source-user", "user"))
             {
                 sourceUser.Properties["sAMAccountName"].Value = $"cp{suffix}";
@@ -155,16 +191,21 @@ public class DirectoryEntryWriteTests
             using var openedSource = Open(sourceDn);
             using var destinationParentEntry = Open(destinationParentDn);
             using var sameNameCopy = openedSource.CopyTo(destinationParentEntry);
+            using var explicitNullSource = Open(explicitNullSourceDn);
+            using var explicitNullCopy = explicitNullSource.CopyTo(destinationParentEntry, null);
             using var renamedCopy = openedSource.CopyTo(destinationParentEntry, "OU=renamed");
             using var reopenedSameNameCopy = Open(sameNameCopyDn);
+            using var reopenedExplicitNullCopy = Open(explicitNullCopyDn);
             using var reopenedRenamedCopy = Open(renamedCopyDn);
             using var openedSourceUser = Open(sourceUserDn);
             using var copiedUser = openedSourceUser.CopyTo(destinationParentEntry, "CN=copied-user");
             using var reopenedCopiedUser = Open(copiedUserDn);
 
             Assert.Equal(sameNameCopyDn, sameNameCopy.DistinguishedName);
+            Assert.Equal(explicitNullCopyDn, explicitNullCopy.DistinguishedName);
             Assert.Equal(renamedCopyDn, renamedCopy.DistinguishedName);
             Assert.Equal("managed CopyTo fallback", reopenedSameNameCopy.Properties["description"].Value);
+            Assert.Equal("managed CopyTo explicit null", reopenedExplicitNullCopy.Properties["description"].Value);
             Assert.Equal("+1 555 0100", reopenedRenamedCopy.Properties["telephoneNumber"].Value);
             Assert.NotEqual(openedSource.Guid, reopenedSameNameCopy.Guid);
             Assert.NotEqual(openedSource.Guid, reopenedRenamedCopy.Guid);
@@ -172,6 +213,9 @@ public class DirectoryEntryWriteTests
             Assert.NotEqual(
                 openedSourceUser.Properties["sAMAccountName"].Value,
                 reopenedCopiedUser.Properties["sAMAccountName"].Value);
+            Assert.NotEqual(Guid.Empty, copiedUser.Guid);
+            Assert.NotEmpty(Assert.IsType<byte[]>(copiedUser.Properties["objectSid"].Value));
+            Assert.NotNull(copiedUser.Properties["primaryGroupID"].Value);
         }
         finally
         {
@@ -200,6 +244,71 @@ public class DirectoryEntryWriteTests
 
             using var reopened = Open(dn);
             Assert.Equal("hello from adforlinux", reopened.Properties["description"].Value);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
+    public void CommitChanges_reloads_authoritative_state_after_update()
+    {
+        var name = $"adfl-cache-{Guid.NewGuid():N}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={name}", "group");
+            child.Properties["sAMAccountName"].Value = name;
+            child.CommitChanges();
+
+            child.Properties["description"].Value = "committed locally";
+            var preCommitProperties = child.Properties;
+            child.CommitChanges();
+
+            using (var concurrent = Open(dn))
+            {
+                concurrent.UsePropertyCache = false;
+                concurrent.Properties["description"].Value = "authoritative server value";
+            }
+
+            Assert.NotSame(preCommitProperties, child.Properties);
+            Assert.Equal("authoritative server value", child.Properties["description"].Value);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
+    [Fact]
+    public void Failed_create_commit_preserves_the_add_request_cache()
+    {
+        var name = $"adfl-cache-{Guid.NewGuid():N}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using (var existing = parent.Children.Add($"CN={name}", "group"))
+            {
+                existing.Properties["sAMAccountName"].Value = name;
+                existing.CommitChanges();
+            }
+
+            using var duplicate = parent.Children.Add($"CN={name}", "group");
+            duplicate.Properties["sAMAccountName"].Value = $"duplicate-{name}";
+            duplicate.Properties["description"].Value = "pending after failure";
+            var pendingProperties = duplicate.Properties;
+
+            Assert.Throws<DirectoryServicesCOMException>(duplicate.CommitChanges);
+
+            Assert.Same(pendingProperties, duplicate.Properties);
+            Assert.Equal("duplicate-" + name, duplicate.Properties["sAMAccountName"].Value);
+            Assert.Equal("pending after failure", duplicate.Properties["description"].Value);
+            Assert.Equal(Guid.Empty, duplicate.Guid);
         }
         finally
         {

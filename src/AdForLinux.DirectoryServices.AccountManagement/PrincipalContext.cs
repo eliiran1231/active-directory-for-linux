@@ -26,6 +26,9 @@ public class PrincipalContext : IDisposable
     private readonly object _credentialValidationLock = new();
     private readonly object _containerDiscoveryLock = new();
     private readonly object _connectionStateLock = new();
+    private readonly object _foreignContextLock = new();
+    private readonly Dictionary<string, PrincipalContext> _foreignContexts =
+        new(StringComparer.OrdinalIgnoreCase);
     private CredentialValidationMethod _lastCredentialValidationMethod =
         CredentialValidationMethod.SimpleBindOverSsl;
     private string? _container;
@@ -489,6 +492,39 @@ public class PrincipalContext : IDisposable
             });
     }
 
+    /// <summary>
+    /// Opens (and retains) a context for a trusted domain using the credentials
+    /// and bind policy of this context. Cross-store principals keep this context
+    /// after the membership enumerator which found them has moved on.
+    /// </summary>
+    internal PrincipalContext GetForeignDomainContext(string domainName)
+    {
+        CheckDisposed();
+        ArgumentException.ThrowIfNullOrWhiteSpace(domainName);
+        if (ForeignPrincipalResolver.TryGetDnsDomainName(DefaultNamingContext)
+            ?.Equals(domainName, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return this;
+        }
+
+        lock (_foreignContextLock)
+        {
+            if (!_foreignContexts.TryGetValue(domainName, out var context))
+            {
+                context = new PrincipalContext(
+                    ContextType.Domain,
+                    domainName,
+                    container: null,
+                    _options,
+                    _userName,
+                    _password);
+                _foreignContexts.Add(domainName, context);
+            }
+
+            return context;
+        }
+    }
+
     private string DiscoverDefaultNamingContext() =>
         AccountManagementExceptionTranslator.Execute(DiscoverDefaultNamingContextCore);
 
@@ -738,7 +774,16 @@ public class PrincipalContext : IDisposable
             return;
         }
 
-        _disposed = true;
+        lock (_foreignContextLock)
+        {
+            foreach (var context in _foreignContexts.Values)
+            {
+                context.Dispose();
+            }
+
+            _foreignContexts.Clear();
+            _disposed = true;
+        }
         GC.SuppressFinalize(this);
     }
 }

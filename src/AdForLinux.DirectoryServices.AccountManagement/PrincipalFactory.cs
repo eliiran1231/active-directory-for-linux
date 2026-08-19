@@ -34,7 +34,7 @@ internal static class PrincipalFactory
 
         if (principalType == typeof(ForeignSecurityPrincipal))
         {
-            return new ForeignSecurityPrincipal(context, entry);
+            return ForeignPrincipalResolver.ResolveOrCreateFallback(context, entry);
         }
 
         // Contacts and other non-principal directory objects are not modelled.
