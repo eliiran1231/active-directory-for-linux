@@ -45,7 +45,6 @@ public class DirectoryEntryReadTests
         Assert.Equal(AuthenticationTypes.Secure, entry.AuthenticationType);
         Assert.Equal(PasswordEncodingMethod.PasswordEncodingSsl, entry.Options.PasswordEncoding);
         Assert.Throws<PlatformNotSupportedException>(() => entry.InvokeGet("objectClass"));
-        Assert.Throws<PlatformNotSupportedException>(() => entry.CopyTo(entry));
         Assert.Throws<PlatformNotSupportedException>(() => _ = entry.NativeObject);
     }
 

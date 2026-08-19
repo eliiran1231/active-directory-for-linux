@@ -115,6 +115,72 @@ public class DirectoryEntryWriteTests
     }
 
     [Fact]
+    public void CopyTo_creates_committed_copies_and_skips_server_managed_attributes()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var sourceParentDn = $"OU=adfl-copy-source-{suffix},{TestSettings.BaseDn}";
+        var destinationParentDn = $"OU=adfl-copy-target-{suffix},{TestSettings.BaseDn}";
+        var sourceDn = $"OU=original,{sourceParentDn}";
+        var sameNameCopyDn = $"OU=original,{destinationParentDn}";
+        var renamedCopyDn = $"OU=renamed,{destinationParentDn}";
+        var sourceUserDn = $"CN=source-user,{sourceParentDn}";
+        var copiedUserDn = $"CN=copied-user,{destinationParentDn}";
+        using var domain = Open(TestSettings.BaseDn);
+
+        try
+        {
+            using (var sourceParent = domain.Children.Add($"OU=adfl-copy-source-{suffix}", "organizationalUnit"))
+            using (var destinationParent = domain.Children.Add($"OU=adfl-copy-target-{suffix}", "organizationalUnit"))
+            {
+                sourceParent.CommitChanges();
+                destinationParent.CommitChanges();
+            }
+
+            using (var sourceParent = Open(sourceParentDn))
+            using (var source = sourceParent.Children.Add("OU=original", "organizationalUnit"))
+            {
+                source.Properties["description"].Value = "managed CopyTo fallback";
+                source.Properties["telephoneNumber"].Value = "+1 555 0100";
+                source.CommitChanges();
+            }
+
+            using (var sourceParent = Open(sourceParentDn))
+            using (var sourceUser = sourceParent.Children.Add("CN=source-user", "user"))
+            {
+                sourceUser.Properties["sAMAccountName"].Value = $"cp{suffix}";
+                sourceUser.Properties["description"].Value = "copied user property";
+                sourceUser.CommitChanges();
+            }
+
+            using var openedSource = Open(sourceDn);
+            using var destinationParentEntry = Open(destinationParentDn);
+            using var sameNameCopy = openedSource.CopyTo(destinationParentEntry);
+            using var renamedCopy = openedSource.CopyTo(destinationParentEntry, "OU=renamed");
+            using var reopenedSameNameCopy = Open(sameNameCopyDn);
+            using var reopenedRenamedCopy = Open(renamedCopyDn);
+            using var openedSourceUser = Open(sourceUserDn);
+            using var copiedUser = openedSourceUser.CopyTo(destinationParentEntry, "CN=copied-user");
+            using var reopenedCopiedUser = Open(copiedUserDn);
+
+            Assert.Equal(sameNameCopyDn, sameNameCopy.DistinguishedName);
+            Assert.Equal(renamedCopyDn, renamedCopy.DistinguishedName);
+            Assert.Equal("managed CopyTo fallback", reopenedSameNameCopy.Properties["description"].Value);
+            Assert.Equal("+1 555 0100", reopenedRenamedCopy.Properties["telephoneNumber"].Value);
+            Assert.NotEqual(openedSource.Guid, reopenedSameNameCopy.Guid);
+            Assert.NotEqual(openedSource.Guid, reopenedRenamedCopy.Guid);
+            Assert.Equal("copied user property", reopenedCopiedUser.Properties["description"].Value);
+            Assert.NotEqual(
+                openedSourceUser.Properties["sAMAccountName"].Value,
+                reopenedCopiedUser.Properties["sAMAccountName"].Value);
+        }
+        finally
+        {
+            SafeDelete(sourceParentDn);
+            SafeDelete(destinationParentDn);
+        }
+    }
+
+    [Fact]
     public void CommitChanges_updates_a_changed_property()
     {
         var name = $"adfl-grp-{Guid.NewGuid():N}";
