@@ -95,10 +95,18 @@ advanced date/count comparisons.
   server, port, TLS mode, authentication type, credential, or connection
   security option. Such moves throw `PlatformNotSupportedException` before an
   LDAP request is sent; same-connection moves and renames remain supported.
+- **Nonstandard `DirectoryEntryConfiguration.PasswordPort` values.** Password
+  operations use the entry's existing SSL connection, so `PasswordPort` only
+  accepts the standard LDAPS port `636`. Setting any other value throws
+  `PlatformNotSupportedException`.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
   `System.Security.AccessControl` base classes are Windows-only in modern .NET.
+- **`DirectoryEntryConfiguration.SetUserNameQueryQuota`.** This is an ADSI
+  provider option for returning quota information for a named security
+  principal. LDAP has no equivalent interoperable option or control, so there
+  is no portable fallback; this method throws `PlatformNotSupportedException`.
 - **Legacy `DirectoryServicesPermission*` types.** These belonged to .NET
   Framework Code Access Security. They are absent from the modern
   `System.DirectoryServices` reference assembly and CAS is not supported by
@@ -110,6 +118,11 @@ Simple bind (username + password) over LDAPS is the portable explicit-credential
 path. Negotiate requests are passed through to `System.DirectoryServices.Protocols`
 without a Basic fallback; support depends on the platform runtime and GSSAPI
 configuration. A self-signed certificate can be trusted for tests.
+
+Password operations require an SSL-protected LDAP connection. Only
+`PasswordEncodingMethod.PasswordEncodingSsl` is supported by
+`DirectoryEntryConfiguration.PasswordEncoding`; `PasswordEncodingClear` throws
+`PlatformNotSupportedException`.
 
 ### Skipping a self-signed certificate on Linux
 

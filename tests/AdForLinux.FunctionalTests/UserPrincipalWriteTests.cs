@@ -185,6 +185,57 @@ public class UserPrincipalWriteTests
     }
 
     [Fact]
+    public void Failed_post_create_cleanup_retains_the_moved_orphan()
+    {
+        var name = NewName();
+        var originalDn = DnFor(name);
+        var orphanDn = $"CN={name},{TestDirectory.ComputersContainer}";
+        var saveFailure = new InvalidOperationException("post-create work failed");
+
+        try
+        {
+            using var context = Context();
+            using var user = new MoveThenFailUserPrincipal(
+                context, TestDirectory.ComputersContainer, saveFailure)
+            {
+                Name = name,
+                SamAccountName = name,
+            };
+
+            var observed = Assert.Throws<InvalidOperationException>(user.Save);
+
+            Assert.Same(saveFailure, observed);
+            Assert.True(user.IsPersisted);
+            Assert.Same(user.AttachedEntry, user.GetUnderlyingObject());
+            Assert.Equal(orphanDn, user.DistinguishedName);
+            Assert.Equal(name, user.Name);
+            Assert.NotNull(user.Guid);
+            Assert.Null(UserPrincipal.FindByIdentity(context, name));
+
+            using (var orphanContext = TestSettings.CreatePrincipalContext(
+                       TestDirectory.ComputersContainer))
+            using (var orphan = UserPrincipal.FindByIdentity(orphanContext, name))
+            {
+                Assert.NotNull(orphan);
+                Assert.Equal(orphanDn, orphan!.DistinguishedName);
+            }
+
+            // The retained entry is still usable, so the caller can explicitly
+            // remove the orphan after inspecting the failed save state.
+            user.Delete();
+            Assert.False(user.IsPersisted);
+
+            using var check = TestSettings.CreatePrincipalContext(TestDirectory.ComputersContainer);
+            Assert.Null(UserPrincipal.FindByIdentity(check, name));
+        }
+        finally
+        {
+            TestDirectory.Delete(originalDn);
+            TestDirectory.Delete(orphanDn);
+        }
+    }
+
+    [Fact]
     public void Save_updates_an_existing_user()
     {
         var name = NewName();
@@ -214,6 +265,48 @@ public class UserPrincipalWriteTests
         finally
         {
             TestDirectory.Delete(dn);
+        }
+    }
+
+    [DirectoryObjectClass("user")]
+    [DirectoryRdnPrefix("CN")]
+    private sealed class MoveThenFailUserPrincipal : UserPrincipal
+    {
+        private readonly string _destinationDn;
+        private readonly InvalidOperationException _saveFailure;
+
+        public MoveThenFailUserPrincipal(
+            PrincipalContext context,
+            string destinationDn,
+            InvalidOperationException saveFailure)
+            : base(context)
+        {
+            _destinationDn = destinationDn;
+            _saveFailure = saveFailure;
+        }
+
+        internal DirectoryEntry? AttachedEntry => Entry;
+
+        private protected override void OnAfterSave()
+        {
+            base.OnAfterSave();
+            if (!IsInserting)
+            {
+                return;
+            }
+
+            // Moving the completed add makes SaveCore's best-effort delete
+            // against the original parent fail with no-such-object, while the
+            // same live DirectoryEntry remains available at its new DN.
+            using var destination = new DirectoryEntry(
+                TestSettings.PathFor(_destinationDn),
+                TestSettings.BindDn,
+                TestSettings.BindPassword,
+                TestSettings.UseTls
+                    ? AuthenticationTypes.SecureSocketsLayer
+                    : AuthenticationTypes.None);
+            Entry!.MoveTo(destination);
+            throw _saveFailure;
         }
     }
 
