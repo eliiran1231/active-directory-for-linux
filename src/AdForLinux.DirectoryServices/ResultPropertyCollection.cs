@@ -8,7 +8,7 @@ namespace AdForLinux.DirectoryServices;
 /// <c>result.Properties["x"][0]</c> only throws when the attribute really is
 /// absent (empty), not with a KeyNotFoundException.
 /// </summary>
-public sealed class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable<ResultPropertyValueCollection>
+public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable<ResultPropertyValueCollection>
 {
     private static readonly ResultPropertyValueCollection Empty =
         new(Array.Empty<object>());

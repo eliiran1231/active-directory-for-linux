@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices;
 /// Like Microsoft's type, asking for a missing attribute returns an empty
 /// collection (it does not throw), so callers can always read <c>.Value</c>.
 /// </summary>
-public sealed class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollection>
+public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollection>
 {
     private readonly Dictionary<string, PropertyValueCollection> _byName =
         new(StringComparer.OrdinalIgnoreCase);
