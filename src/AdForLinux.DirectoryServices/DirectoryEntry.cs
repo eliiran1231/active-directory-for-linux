@@ -49,9 +49,9 @@ public class DirectoryEntry : Component
     /// Creates an entry from an ADSI native object. ADSI native objects do not
     /// exist on Linux, so use an LDAP path instead.
     /// </summary>
-    public DirectoryEntry(object nativeAdsObject)
+    public DirectoryEntry(object adsObject)
     {
-        ArgumentNullException.ThrowIfNull(nativeAdsObject);
+        ArgumentNullException.ThrowIfNull(adsObject);
         throw new PlatformNotSupportedException(
             "DirectoryEntry(object) requires an ADSI native object, which is not available on Linux. Use an LDAP path.");
     }
@@ -110,6 +110,7 @@ public class DirectoryEntry : Component
 
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
     [AllowNull]
+    [DefaultValue("")]
     public string Path
     {
         get => _pathText;
@@ -127,6 +128,7 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Gets or sets the authentication options for this entry.</summary>
+    [DefaultValue(AuthenticationTypes.Secure)]
     public AuthenticationTypes AuthenticationType
     {
         get => _authenticationType;
@@ -142,6 +144,7 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Gets or sets the user name used to bind to LDAP.</summary>
+    [DefaultValue(null)]
     public string? Username
     {
         get => _username;
@@ -157,9 +160,9 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Gets or sets the password used to bind to LDAP.</summary>
+    [DefaultValue(null)]
     public string? Password
     {
-        private get => _password;
         set
         {
             if (!string.Equals(_password, value, StringComparison.Ordinal))
@@ -172,6 +175,7 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>Gets or sets whether property changes are cached until <see cref="CommitChanges"/>.</summary>
+    [DefaultValue(true)]
     public bool UsePropertyCache
     {
         get => _usePropertyCache;
@@ -206,12 +210,12 @@ public class DirectoryEntry : Component
     /// The most specific structural class, e.g. <c>user</c> or <c>group</c> —
     /// the last value of <c>objectClass</c>, as AD orders it.
     /// </summary>
-    public string? SchemaClassName
+    public string SchemaClassName
     {
         get
         {
             var classes = Properties["objectClass"];
-            return classes.Count > 0 ? classes[classes.Count - 1]?.ToString() : null;
+            return classes.Count > 0 ? classes[classes.Count - 1]?.ToString() ?? string.Empty : string.Empty;
         }
     }
 
@@ -254,14 +258,14 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>The parent entry, or <see langword="null"/> for a naming-context root.</summary>
-    public DirectoryEntry? Parent
+    public DirectoryEntry Parent
     {
         get
         {
             var parentDn = LdapDistinguishedName.Parent(BindEntry());
             if (parentDn is null)
             {
-                return null;
+                return null!;
             }
 
             var parent = CreateEntryForDn(parentDn);
@@ -565,7 +569,7 @@ public class DirectoryEntry : Component
         var attribute = new DirectoryAttribute { Name = property.PropertyName };
         foreach (var value in property)
         {
-            AddValue(attribute, value);
+            AddValue(attribute, value!);
         }
 
         return attribute;
@@ -710,7 +714,7 @@ public class DirectoryEntry : Component
                 continue;
             }
 
-            properties.ReplaceLoaded(property.PropertyName, property);
+            properties.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
         }
 
         _properties = properties;

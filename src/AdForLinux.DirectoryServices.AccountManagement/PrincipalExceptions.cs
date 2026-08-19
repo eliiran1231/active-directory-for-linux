@@ -10,7 +10,7 @@ public abstract class PrincipalException : SystemException
     internal PrincipalException(string message) : base(message) { }
     internal PrincipalException(string message, Exception innerException) : base(message, innerException) { }
 
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PrincipalException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
@@ -21,7 +21,7 @@ public class MultipleMatchesException : PrincipalException
     public MultipleMatchesException() { }
     public MultipleMatchesException(string message) : base(message) { }
     public MultipleMatchesException(string message, Exception innerException) : base(message, innerException) { }
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected MultipleMatchesException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
@@ -32,7 +32,7 @@ public class NoMatchingPrincipalException : PrincipalException
     public NoMatchingPrincipalException() { }
     public NoMatchingPrincipalException(string message) : base(message) { }
     public NoMatchingPrincipalException(string message, Exception innerException) : base(message, innerException) { }
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected NoMatchingPrincipalException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
@@ -43,7 +43,7 @@ public class PasswordException : PrincipalException
     public PasswordException() { }
     public PasswordException(string message) : base(message) { }
     public PasswordException(string message, Exception innerException) : base(message, innerException) { }
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PasswordException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
@@ -54,7 +54,7 @@ public class PrincipalExistsException : PrincipalException
     public PrincipalExistsException() { }
     public PrincipalExistsException(string message) : base(message) { }
     public PrincipalExistsException(string message, Exception innerException) : base(message, innerException) { }
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PrincipalExistsException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }
@@ -69,12 +69,12 @@ public class PrincipalOperationException : PrincipalException
     public PrincipalOperationException(string message, Exception innerException, int errorCode) : base(message, innerException) => ErrorCode = errorCode;
     public int ErrorCode { get; }
 
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PrincipalOperationException(SerializationInfo info, StreamingContext context) : base(info, context) =>
         ErrorCode = info.GetInt32("errorCode");
 
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public override void GetObjectData(SerializationInfo info, StreamingContext context)
     {
@@ -100,7 +100,7 @@ public class PrincipalServerDownException : PrincipalException
         _serverName = serverName;
     }
 
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected PrincipalServerDownException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
@@ -108,7 +108,7 @@ public class PrincipalServerDownException : PrincipalException
         _serverName = info.GetString("serverName");
     }
 
-    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051")]
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public override void GetObjectData(SerializationInfo info, StreamingContext context)
     {

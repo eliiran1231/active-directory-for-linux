@@ -50,33 +50,33 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Creates a searcher rooted at an entry with a filter.</summary>
-    public DirectorySearcher(DirectoryEntry? searchRoot, string filter)
+    public DirectorySearcher(DirectoryEntry? searchRoot, string? filter)
     {
         SearchRoot = searchRoot;
         Filter = filter;
     }
 
     /// <summary>Creates a searcher with a filter and no root yet.</summary>
-    public DirectorySearcher(string filter)
+    public DirectorySearcher(string? filter)
         : this(null, filter)
     {
     }
 
     /// <summary>Creates a searcher with a filter and properties to retrieve.</summary>
-    public DirectorySearcher(string filter, string[]? propertiesToLoad)
+    public DirectorySearcher(string? filter, string[]? propertiesToLoad)
         : this(null, filter, propertiesToLoad, SearchScope.Subtree)
     {
         _searchScopeSpecified = false;
     }
 
     /// <summary>Creates a searcher with a filter, properties, and scope.</summary>
-    public DirectorySearcher(string filter, string[]? propertiesToLoad, SearchScope searchScope)
-        : this(null, filter, propertiesToLoad, searchScope)
+    public DirectorySearcher(string? filter, string[]? propertiesToLoad, SearchScope scope)
+        : this(null, filter, propertiesToLoad, scope)
     {
     }
 
     /// <summary>Creates a searcher with a root, filter, and properties.</summary>
-    public DirectorySearcher(DirectoryEntry? searchRoot, string filter, string[]? propertiesToLoad)
+    public DirectorySearcher(DirectoryEntry? searchRoot, string? filter, string[]? propertiesToLoad)
         : this(searchRoot, filter, propertiesToLoad, SearchScope.Subtree)
     {
         _searchScopeSpecified = false;
@@ -85,13 +85,13 @@ public class DirectorySearcher : Component
     /// <summary>Creates a searcher with a root, filter, properties, and scope.</summary>
     public DirectorySearcher(
         DirectoryEntry? searchRoot,
-        string filter,
+        string? filter,
         string[]? propertiesToLoad,
-        SearchScope searchScope)
+        SearchScope scope)
     {
         SearchRoot = searchRoot;
         Filter = filter;
-        SearchScope = searchScope;
+        SearchScope = scope;
         if (propertiesToLoad is not null)
         {
             PropertiesToLoad.AddRange(propertiesToLoad);
@@ -99,10 +99,12 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>The entry the search starts from. Required before searching.</summary>
+    [DefaultValue(null)]
     public DirectoryEntry? SearchRoot { get; set; }
 
     /// <summary>The LDAP filter, e.g. <c>(&amp;(objectClass=user)(cn=jeff))</c>.</summary>
     [AllowNull]
+    [DefaultValue("(objectClass=*)")]
     public string Filter
     {
         get => _filter;
@@ -110,6 +112,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>How deep to search. Subtree by default.</summary>
+    [DefaultValue(SearchScope.Subtree)]
     public SearchScope SearchScope
     {
         get => _searchScope;
@@ -132,9 +135,13 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Attributes to return. Empty means all.</summary>
+    [Editor(
+        "System.Windows.Forms.Design.StringCollectionEditor, System.Design, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+        "System.Drawing.Design.UITypeEditor, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
     public StringCollection PropertiesToLoad { get; } = new();
 
     /// <summary>Page size for <see cref="FindAll"/>. 0 turns paging off.</summary>
+    [DefaultValue(0)]
     public int PageSize
     {
         get => _pageSize;
@@ -156,6 +163,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Server-side cap on results. 0 means the server default.</summary>
+    [DefaultValue(0)]
     public int SizeLimit
     {
         get => _sizeLimit;
@@ -174,10 +182,12 @@ public class DirectorySearcher : Component
     /// Gets or sets whether <see cref="FindAll"/> streams LDAP results as they arrive.
     /// <see cref="FindOne"/> remains synchronous because its public contract returns one value.
     /// </summary>
+    [DefaultValue(false)]
     public bool Asynchronous { get; set; }
 
     /// <summary>Gets or sets the LDAP attribute used for ADSI attribute-scoped queries.</summary>
     [AllowNull]
+    [DefaultValue("")]
     public string AttributeScopeQuery
     {
         get => _attributeScopeQuery;
@@ -204,6 +214,7 @@ public class DirectorySearcher : Component
     /// When false, direct enumeration is forward-only; collection operations such as
     /// <see cref="SearchResultCollection.Count"/> explicitly materialize the remaining results.
     /// </summary>
+    [DefaultValue(true)]
     public bool CacheResults
     {
         get => _cacheResults;
@@ -231,6 +242,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets how LDAP aliases are dereferenced.</summary>
+    [DefaultValue(DereferenceAlias.Never)]
     public DereferenceAlias DerefAlias
     {
         get => _derefAlias;
@@ -246,6 +258,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the optional directory synchronization configuration.</summary>
+    [DefaultValue(null)]
     public DirectorySynchronization? DirectorySynchronization
     {
         get => _directorySynchronization;
@@ -261,6 +274,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the extended-DN format requested from the server.</summary>
+    [DefaultValue(ExtendedDN.None)]
     public ExtendedDN ExtendedDN
     {
         get => _extendedDn;
@@ -276,9 +290,11 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets whether only property names, rather than values, are returned.</summary>
+    [DefaultValue(false)]
     public bool PropertyNamesOnly { get; set; }
 
     /// <summary>Gets or sets the referral-chasing behavior.</summary>
+    [DefaultValue(ReferralChasingOption.External)]
     public ReferralChasingOption ReferralChasing
     {
         get => _referralChasing;
@@ -297,6 +313,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the requested security descriptor sections.</summary>
+    [DefaultValue(SecurityMasks.None)]
     public SecurityMasks SecurityMasks
     {
         get => _securityMasks;
@@ -336,6 +353,7 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets the optional server-side sort.</summary>
+    [TypeConverter(typeof(ExpandableObjectConverter))]
     public SortOption Sort
     {
         get => _sort;
@@ -343,9 +361,11 @@ public class DirectorySearcher : Component
     }
 
     /// <summary>Gets or sets whether deleted objects are included.</summary>
+    [DefaultValue(false)]
     public bool Tombstone { get; set; }
 
     /// <summary>Gets or sets the optional virtual-list-view configuration.</summary>
+    [DefaultValue(null)]
     public DirectoryVirtualListView? VirtualListView
     {
         get => _virtualListView;

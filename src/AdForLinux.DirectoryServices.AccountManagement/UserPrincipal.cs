@@ -10,6 +10,8 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 [DirectoryRdnPrefix("CN")]
 public class UserPrincipal : AuthenticablePrincipal
 {
+    public override AdvancedFilters AdvancedSearchFilter => base.AdvancedSearchFilter;
+
     /// <summary>Starts a new, unsaved user in a context. Saving arrives later.</summary>
     public UserPrincipal(PrincipalContext context) : base(context)
     {

@@ -7,7 +7,6 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <c>PrincipalSearchResult&lt;T&gt;</c>. Enumerate it to read the matches.
 /// </summary>
 public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
-    where T : Principal
 {
     private readonly IReadOnlyList<T> _results;
     private bool _disposed;

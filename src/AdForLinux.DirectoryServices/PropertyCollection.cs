@@ -87,8 +87,6 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 
     ICollection IDictionary.Keys => PropertyNames;
 
-    ICollection IDictionary.Values => Values;
-
     object? IDictionary.this[object key]
     {
         get => key is string name ? this[name] : null;
@@ -101,8 +99,6 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     void IDictionary.Clear() => throw new NotSupportedException("The property dictionary is read-only.");
 
     bool IDictionary.Contains(object key) => key is string name && Contains(name);
-
-    IDictionaryEnumerator IDictionary.GetEnumerator() => GetEnumerator();
 
     void IDictionary.Remove(object key) =>
         throw new NotSupportedException("The property dictionary is read-only.");

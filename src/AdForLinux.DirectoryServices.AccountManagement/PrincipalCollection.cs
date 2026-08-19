@@ -37,6 +37,10 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     public object SyncRoot => this;
 
+    bool ICollection.IsSynchronized => IsSynchronized;
+
+    object ICollection.SyncRoot => SyncRoot;
+
     public int Count
     {
         get

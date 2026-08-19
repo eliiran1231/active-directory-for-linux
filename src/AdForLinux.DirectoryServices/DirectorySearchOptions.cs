@@ -28,6 +28,7 @@ public enum SortDirection
 }
 
 /// <summary>Describes the server-side sort requested for a directory search.</summary>
+[TypeConverter(typeof(ExpandableObjectConverter))]
 public class SortOption
 {
     private string? _propertyName;
@@ -107,12 +108,12 @@ public class DirectorySynchronization
     }
 
     /// <summary>Creates a copy of another synchronization request.</summary>
-    public DirectorySynchronization(DirectorySynchronization? synchronization)
+    public DirectorySynchronization(DirectorySynchronization? sync)
     {
-        if (synchronization is not null)
+        if (sync is not null)
         {
-            Option = synchronization.Option;
-            ResetDirectorySynchronizationCookie(synchronization.GetDirectorySynchronizationCookie());
+            Option = sync.Option;
+            ResetDirectorySynchronizationCookie(sync.GetDirectorySynchronizationCookie());
         }
     }
 
@@ -207,11 +208,11 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>Creates an offset configuration using a prior context.</summary>
-    public DirectoryVirtualListView(int beforeCount, int afterCount, int offset, DirectoryVirtualListViewContext context)
+    public DirectoryVirtualListView(int beforeCount, int afterCount, int offset, DirectoryVirtualListViewContext? context)
         : this(beforeCount, afterCount, offset) => DirectoryVirtualListViewContext = context;
 
     /// <summary>Creates a configuration centered on a target value.</summary>
-    public DirectoryVirtualListView(int beforeCount, int afterCount, string target)
+    public DirectoryVirtualListView(int beforeCount, int afterCount, string? target)
     {
         BeforeCount = beforeCount;
         AfterCount = afterCount;
@@ -219,10 +220,11 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>Creates a target configuration using a prior context.</summary>
-    public DirectoryVirtualListView(int beforeCount, int afterCount, string target, DirectoryVirtualListViewContext context)
+    public DirectoryVirtualListView(int beforeCount, int afterCount, string? target, DirectoryVirtualListViewContext? context)
         : this(beforeCount, afterCount, target) => DirectoryVirtualListViewContext = context;
 
     /// <summary>Entries to return before the target.</summary>
+    [DefaultValue(0)]
     public int BeforeCount
     {
         get => _beforeCount;
@@ -238,6 +240,7 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>Entries to return after the target.</summary>
+    [DefaultValue(0)]
     public int AfterCount
     {
         get => _afterCount;
@@ -253,6 +256,7 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>The target offset, using LDAP's one-based convention.</summary>
+    [DefaultValue(0)]
     public int Offset
     {
         get => _offset;
@@ -271,6 +275,7 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>Approximate total entries in the server-side list.</summary>
+    [DefaultValue(0)]
     public int ApproximateTotal
     {
         get => _approximateTotal;
@@ -286,6 +291,7 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>Target percentage used when the server computes an offset.</summary>
+    [DefaultValue(0)]
     public int TargetPercentage
     {
         get => _targetPercentage;
@@ -302,6 +308,8 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>The optional target value.</summary>
+    [DefaultValue("")]
+    [AllowNull]
     public string Target
     {
         get => _target;
@@ -309,6 +317,7 @@ public class DirectoryVirtualListView
     }
 
     /// <summary>The context returned from the previous virtual-list-view request.</summary>
+    [DefaultValue(null)]
     public DirectoryVirtualListViewContext? DirectoryVirtualListViewContext { get; set; }
 
     internal System.DirectoryServices.Protocols.VlvRequestControl CreateControl()
