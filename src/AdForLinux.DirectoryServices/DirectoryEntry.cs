@@ -703,8 +703,11 @@ public class DirectoryEntry : Component
         }
     }
 
-    /// <summary>Closes this entry and releases its LDAP connection.</summary>
-    public void Close() => Dispose();
+    /// <summary>
+    /// Releases this entry's active LDAP bindings and transient cached state.
+    /// The entry remains reusable and binds again when an operation needs a connection.
+    /// </summary>
+    public void Close() => Unbind();
 
     /// <summary>Determines whether an LDAP path resolves to an entry.</summary>
     public static bool Exists(string path)
@@ -1200,6 +1203,14 @@ public class DirectoryEntry : Component
         _schemaConnection = null;
     }
 
+    private void Unbind()
+    {
+        ResetConnection();
+        _properties = null;
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
+    }
+
     internal void ThrowIfDisposed()
     {
         if (_disposed)
@@ -1215,12 +1226,15 @@ public class DirectoryEntry : Component
         {
             if (disposing)
             {
-                ResetConnection();
+                Unbind();
+            }
+            else
+            {
+                _properties = null;
+                _objectSecurity = null;
+                _objectSecurityChanged = false;
             }
 
-            _properties = null;
-            _objectSecurity = null;
-            _objectSecurityChanged = false;
             _disposed = true;
         }
 
