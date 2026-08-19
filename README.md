@@ -95,6 +95,10 @@ advanced date/count comparisons.
   server, port, TLS mode, authentication type, credential, or connection
   security option. Such moves throw `PlatformNotSupportedException` before an
   LDAP request is sent; same-connection moves and renames remain supported.
+- **Nonstandard `DirectoryEntryConfiguration.PasswordPort` values.** Password
+  operations use the entry's existing SSL connection, so `PasswordPort` only
+  accepts the standard LDAPS port `636`. Setting any other value throws
+  `PlatformNotSupportedException`.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
