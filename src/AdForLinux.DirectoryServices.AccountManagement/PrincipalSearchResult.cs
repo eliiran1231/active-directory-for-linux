@@ -6,7 +6,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// The results of a principal search, like Microsoft's
 /// <c>PrincipalSearchResult&lt;T&gt;</c>. Enumerate it to read the matches.
 /// </summary>
-public sealed class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
+public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
     where T : Principal
 {
     private readonly IReadOnlyList<T> _results;

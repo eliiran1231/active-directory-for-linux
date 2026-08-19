@@ -28,7 +28,7 @@ public enum SortDirection
 }
 
 /// <summary>Describes the server-side sort requested for a directory search.</summary>
-public sealed class SortOption
+public class SortOption
 {
     private string? _propertyName;
     private SortDirection _direction;
@@ -83,7 +83,7 @@ public enum DirectorySynchronizationOptions : long
 }
 
 /// <summary>Stores the cookie and options used by an Active Directory DirSync search.</summary>
-public sealed class DirectorySynchronization
+public class DirectorySynchronization
 {
     private DirectorySynchronizationOptions _option;
     private byte[] _cookie = Array.Empty<byte>();
@@ -163,7 +163,7 @@ public sealed class DirectorySynchronization
 }
 
 /// <summary>Context returned by a virtual-list-view search.</summary>
-public sealed class DirectoryVirtualListViewContext
+public class DirectoryVirtualListViewContext
 {
     private byte[] _contextId = Array.Empty<byte>();
 
@@ -181,7 +181,7 @@ public sealed class DirectoryVirtualListViewContext
 }
 
 /// <summary>Configures a virtual-list-view LDAP search.</summary>
-public sealed class DirectoryVirtualListView
+public class DirectoryVirtualListView
 {
     private int _beforeCount;
     private int _afterCount;
