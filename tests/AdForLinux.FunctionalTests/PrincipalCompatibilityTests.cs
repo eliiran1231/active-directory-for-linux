@@ -23,6 +23,16 @@ public class PrincipalCompatibilityTests
                 context, typeof(ExtendedUserPrincipal), identity);
     }
 
+    [DirectoryObjectClass("organizationalUnit")]
+    [DirectoryRdnPrefix("OU")]
+    private sealed class ContainerPrincipal : Principal
+    {
+        public ContainerPrincipal(PrincipalContext context)
+        {
+            ContextRaw = context;
+        }
+    }
+
     private static PrincipalContext Context(string? container = null) =>
         TestSettings.CreatePrincipalContext(container ?? TestDirectory.UsersContainer);
 
@@ -42,6 +52,54 @@ public class PrincipalCompatibilityTests
         using var organizationalUnit = domain.Children.Add($"OU={name}", "organizationalUnit");
         organizationalUnit.CommitChanges();
         return dn;
+    }
+
+    [Fact]
+    public void Delete_does_not_recursively_remove_a_custom_container_principal()
+    {
+        var name = NewName();
+        var childName = $"child-{Guid.NewGuid():N}"[..18];
+        var principalDn = $"OU={name},{TestSettings.BaseDn}";
+        var childDn = $"OU={childName},{principalDn}";
+
+        try
+        {
+            using var context = Context(TestSettings.BaseDn);
+            using var principal = new ContainerPrincipal(context) { Name = name };
+            principal.Save();
+            var attachedEntry = Assert.IsType<DirectoryEntry>(principal.GetUnderlyingObject());
+
+            using (var child = attachedEntry.Children.Add(
+                       $"OU={childName}", "organizationalUnit"))
+            {
+                child.CommitChanges();
+            }
+
+            Assert.Throws<PrincipalOperationException>(principal.Delete);
+            Assert.True(principal.IsPersisted);
+            Assert.Same(attachedEntry, principal.GetUnderlyingObject());
+            Assert.Equal(principalDn, principal.DistinguishedName);
+
+            using (var descendant = new DirectoryEntry(
+                       TestSettings.PathFor(childDn),
+                       TestSettings.BindDn,
+                       TestSettings.BindPassword,
+                       TestSettings.UseTls
+                           ? AuthenticationTypes.SecureSocketsLayer
+                           : AuthenticationTypes.None))
+            {
+                Assert.NotEqual(Guid.Empty, descendant.Guid);
+                descendant.DeleteTree();
+            }
+
+            principal.Delete();
+            Assert.False(principal.IsPersisted);
+            Assert.Throws<InvalidOperationException>(() => principal.DistinguishedName);
+        }
+        finally
+        {
+            TestDirectory.Delete(principalDn);
+        }
     }
 
     [Theory]
