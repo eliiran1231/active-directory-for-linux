@@ -1,4 +1,5 @@
 using AdForLinux.DirectoryServices.AccountManagement;
+using AdForLinux.DirectoryServices.Ldap;
 using System.DirectoryServices.Protocols;
 using Xunit;
 
@@ -81,13 +82,30 @@ public class PrincipalContextTests
     }
 
     [Fact]
-    public void ConnectedServer_is_the_host()
+    public void ConnectedServer_binds_and_reports_the_server_from_root_dse()
     {
         using var context = Authenticated();
+        using var connection = LdapConnectionFactory.CreateBound(context.BuildOptions());
+        var expected = RootDse.GetConnectedServerName(connection);
 
-        Assert.Equal(TestSettings.Host, context.ConnectedServer);
+        Assert.Equal(expected, context.ConnectedServer, ignoreCase: true);
+        Assert.Equal(context.ConnectedServer, context.ConnectedServer);
         Assert.Equal(TestSettings.Port, context.Port);
         Assert.True(context.UseSsl);
+    }
+
+    [Fact]
+    public void ConnectedServer_rejects_an_endpoint_that_cannot_be_bound()
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain,
+            "127.0.0.1:1",
+            TestSettings.BaseDn,
+            ContextOptions.SimpleBind,
+            TestSettings.BindDn,
+            TestSettings.BindPassword);
+
+        Assert.Throws<PrincipalServerDownException>(() => _ = context.ConnectedServer);
     }
 
     [Fact]

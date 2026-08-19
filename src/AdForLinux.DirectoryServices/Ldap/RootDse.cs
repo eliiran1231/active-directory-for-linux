@@ -48,4 +48,27 @@ internal static class RootDse
         var values = Read(connection, "defaultNamingContext");
         return values.TryGetValue("defaultNamingContext", out var dn) ? dn : null;
     }
+
+    /// <summary>
+    /// Gets the server backing an already-bound connection. Active Directory's
+    /// rootDSE reports the concrete DC even when the client connected through a
+    /// DNS alias. Other LDAP servers can fall back to the host name maintained
+    /// by the native LDAP session.
+    /// </summary>
+    public static string GetConnectedServerName(LdapConnection connection)
+    {
+        var values = Read(connection, "dnsHostName");
+        if (values.TryGetValue("dnsHostName", out var dnsHostName) &&
+            !string.IsNullOrWhiteSpace(dnsHostName))
+        {
+            return dnsHostName;
+        }
+
+        var sessionHostName = LdapExceptionTranslator.Execute(
+            () => connection.SessionOptions.HostName);
+        return !string.IsNullOrWhiteSpace(sessionHostName)
+            ? sessionHostName
+            : throw new InvalidOperationException(
+                "The LDAP protocol stack did not report the server backing the current connection.");
+    }
 }

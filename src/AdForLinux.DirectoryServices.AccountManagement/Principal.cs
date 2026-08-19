@@ -1035,7 +1035,8 @@ public abstract class Principal : IDisposable
             throw new InvalidOperationException("Cannot delete a principal that has not been saved.");
         }
 
-        Entry.DeleteTree();
+        using var parent = Entry.Parent;
+        parent!.Children.Remove(Entry);
         Entry.Dispose();
         Entry = null;
         _deleted = true;

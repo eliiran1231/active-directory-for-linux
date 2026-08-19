@@ -116,12 +116,25 @@ public sealed class DirectoryEntryConfiguration
         }
     }
 
-    /// <summary>Gets the connected LDAP server name.</summary>
-    public string GetCurrentServerName() => _entry.ServerHost
-        ?? throw new InvalidOperationException("A server must be present in the LDAP path.");
+    /// <summary>Gets the server backing the entry's active LDAP connection.</summary>
+    public string GetCurrentServerName() =>
+        Ldap.RootDse.GetConnectedServerName(_entry.GetConnection());
 
-    /// <summary>Returns false because this implementation uses LDAP simple bind rather than an ADSI mutual-authentication provider.</summary>
-    public bool IsMutuallyAuthenticated() => false;
+    /// <summary>
+    /// Determines whether the active LDAP authentication exchanged mutual credentials.
+    /// </summary>
+    /// <exception cref="PlatformNotSupportedException">
+    /// <c>System.DirectoryServices.Protocols</c> does not expose the negotiated mutual-
+    /// authentication status of an LDAP bind.
+    /// </exception>
+    public bool IsMutuallyAuthenticated()
+    {
+        // Bind first so this member cannot make an invalid configured endpoint
+        // appear healthy merely because the protocol limitation is known.
+        _entry.GetConnection();
+        throw new PlatformNotSupportedException(
+            "System.DirectoryServices.Protocols does not expose whether the current LDAP bind negotiated mutual authentication.");
+    }
 
     /// <summary>ADSI-specific user-name quota configuration is not available over LDAP.</summary>
     public void SetUserNameQueryQuota(string userName)
