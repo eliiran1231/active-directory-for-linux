@@ -107,6 +107,58 @@ public class DirectoryEntryMoveTests
         }
     }
 
+    [Fact]
+    public void MoveTo_null_name_matches_the_parent_only_overload()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var sourceOuName = $"adfl-null-move-source-{suffix}";
+        var destinationOuName = $"adfl-null-move-target-{suffix}";
+        var oneArgumentName = $"adfl-null-move-one-{suffix}";
+        var explicitNullName = $"adfl-null-move-null-{suffix}";
+        var sourceOuDn = $"OU={sourceOuName},{TestSettings.BaseDn}";
+        var destinationOuDn = $"OU={destinationOuName},{TestSettings.BaseDn}";
+        var oneArgumentDn = $"CN={oneArgumentName},{sourceOuDn}";
+        var explicitNullDn = $"CN={explicitNullName},{sourceOuDn}";
+
+        try
+        {
+            using (var domain = Open(TestSettings.BaseDn))
+            {
+                using var sourceOu = domain.Children.Add($"OU={sourceOuName}", "organizationalUnit");
+                sourceOu.CommitChanges();
+                using var destinationOu = domain.Children.Add($"OU={destinationOuName}", "organizationalUnit");
+                destinationOu.CommitChanges();
+            }
+
+            using (var source = Open(sourceOuDn))
+            {
+                using var oneArgument = source.Children.Add($"CN={oneArgumentName}", "group");
+                oneArgument.Properties["sAMAccountName"].Value = oneArgumentName;
+                oneArgument.CommitChanges();
+                using var explicitNull = source.Children.Add($"CN={explicitNullName}", "group");
+                explicitNull.Properties["sAMAccountName"].Value = explicitNullName;
+                explicitNull.CommitChanges();
+            }
+
+            using var destination = Open(destinationOuDn);
+            using var movedWithOneArgument = Open(oneArgumentDn);
+            using var movedWithNull = Open(explicitNullDn);
+
+            movedWithOneArgument.MoveTo(destination);
+            movedWithNull.MoveTo(destination, null);
+
+            Assert.Equal($"CN={oneArgumentName},{destinationOuDn}", movedWithOneArgument.DistinguishedName);
+            Assert.Equal($"CN={explicitNullName},{destinationOuDn}", movedWithNull.DistinguishedName);
+            Assert.Equal($"CN={oneArgumentName}", movedWithOneArgument.Name);
+            Assert.Equal($"CN={explicitNullName}", movedWithNull.Name);
+        }
+        finally
+        {
+            SafeDelete(destinationOuDn);
+            SafeDelete(sourceOuDn);
+        }
+    }
+
     private static DirectoryEntry Open(string dn) =>
         new(
             TestSettings.PathFor(dn),
