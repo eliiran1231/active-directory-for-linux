@@ -219,7 +219,14 @@ public class DirectoryEntry : Component
     /// <summary>The object GUID in the provider's string form.</summary>
     public string NativeGuid => Guid == Guid.Empty ? string.Empty : Guid.ToString("B");
 
-    /// <summary>ADSI native objects are not available through LDAP protocols.</summary>
+    /// <summary>
+    /// Gets the underlying ADSI object in Microsoft's implementation. This
+    /// LDAP-backed implementation retains the property for source compatibility,
+    /// but cannot provide an ADSI/COM object on Linux.
+    /// </summary>
+    /// <exception cref="PlatformNotSupportedException">
+    /// Always thrown because ADSI/COM is not available on Linux.
+    /// </exception>
     public object NativeObject => throw new PlatformNotSupportedException(
         "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
 

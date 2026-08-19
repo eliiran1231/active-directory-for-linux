@@ -99,6 +99,10 @@ advanced date/count comparisons.
   operations use the entry's existing SSL connection, so `PasswordPort` only
   accepts the standard LDAPS port `636`. Setting any other value throws
   `PlatformNotSupportedException`.
+- **`DirectoryEntry.NativeObject`.** Microsoft's property exposes the underlying
+  ADSI/COM object, which has no Linux equivalent. The property is retained for
+  source compatibility, but accessing it always throws
+  `PlatformNotSupportedException` on Linux.
 - `DirectoryEntry` certificate members and the COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
