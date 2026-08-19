@@ -44,9 +44,13 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
 
         new Comparison("ObjectSecurity with UsePropertyCache=false")
             .Check("visible immediately", microsoft.VisibleBeforeCommit, ours.VisibleBeforeCommit)
+            .Check("PropertyCollection invalidated after assignment",
+                microsoft.PropertyCacheInvalidatedAfterAssignment,
+                ours.PropertyCacheInvalidatedAfterAssignment)
             .Assert();
 
         Assert.True(ours.VisibleBeforeCommit);
+        Assert.True(ours.PropertyCacheInvalidatedAfterAssignment);
     }
 
     [Fact]
@@ -202,9 +206,12 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
             using var entry = MicrosoftEntry();
             entry.Options!.SecurityMasks = Ms.SecurityMasks.Dacl;
             entry.UsePropertyCache = usePropertyCache;
+            var properties = entry.Properties;
             var security = entry.ObjectSecurity;
             security.AddAccessRule(rule);
             entry.ObjectSecurity = security;
+            var propertyCacheInvalidatedAfterAssignment =
+                !ReferenceEquals(properties, entry.Properties);
 
             var visibleBeforeCommit = MicrosoftContainsRule(identity, objectType);
             if (usePropertyCache)
@@ -212,7 +219,10 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
                 entry.CommitChanges();
             }
 
-            return new CacheResult(visibleBeforeCommit, MicrosoftContainsRule(identity, objectType));
+            return new CacheResult(
+                visibleBeforeCommit,
+                MicrosoftContainsRule(identity, objectType),
+                propertyCacheInvalidatedAfterAssignment);
         }
         finally
         {
@@ -236,9 +246,12 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
             using var entry = OurEntry();
             entry.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
             entry.UsePropertyCache = usePropertyCache;
+            var properties = entry.Properties;
             var security = entry.ObjectSecurity;
             security.AddAccessRule(rule);
             entry.ObjectSecurity = security;
+            var propertyCacheInvalidatedAfterAssignment =
+                !ReferenceEquals(properties, entry.Properties);
 
             var visibleBeforeCommit = OurContainsRule(identity, objectType);
             if (usePropertyCache)
@@ -246,7 +259,10 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
                 entry.CommitChanges();
             }
 
-            return new CacheResult(visibleBeforeCommit, OurContainsRule(identity, objectType));
+            return new CacheResult(
+                visibleBeforeCommit,
+                OurContainsRule(identity, objectType),
+                propertyCacheInvalidatedAfterAssignment);
         }
         finally
         {
@@ -352,7 +368,10 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
                 ? Ours.AuthenticationTypes.SecureSocketsLayer
                 : Ours.AuthenticationTypes.None);
 
-    private sealed record CacheResult(bool VisibleBeforeCommit, bool VisibleAfterCommit);
+    private sealed record CacheResult(
+        bool VisibleBeforeCommit,
+        bool VisibleAfterCommit,
+        bool PropertyCacheInvalidatedAfterAssignment);
 
     private sealed record SecuritySections(string Owner, string Group, string Sacl);
 }

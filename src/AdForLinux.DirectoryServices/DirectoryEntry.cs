@@ -312,9 +312,7 @@ public class DirectoryEntry : Component
     /// <c>Children.Add</c>) this creates it; for an existing one it sends only
     /// the changed attributes, like Microsoft's <c>CommitChanges</c>.
     /// </summary>
-    public void CommitChanges() => CommitChanges(invalidatePropertyCache: true);
-
-    private void CommitChanges(bool invalidatePropertyCache)
+    public void CommitChanges()
     {
         ThrowIfDisposed();
         if (!_isNew
@@ -365,21 +363,11 @@ public class DirectoryEntry : Component
             }
         }
 
-        if (invalidatePropertyCache)
-        {
-            // A successful public CommitChanges mirrors ADSI SetInfo: the next
-            // managed property access must bind again and observe server-
-            // generated or normalized values. Keep the pre-commit collection
-            // intact until this point so a failed request retains local state.
-            _properties = null;
-        }
-        else
-        {
-            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
-            {
-                property.ResetChanged();
-            }
-        }
+        // A successful SetInfo mirrors ADSI: the next managed property access
+        // must bind again and observe server-generated or normalized values.
+        // Keep the pre-commit collection intact until this point so a failed
+        // request retains local state.
+        _properties = null;
 
         // Microsoft also discards the initialized security descriptor after a
         // successful SetInfo, regardless of whether it supplied the change.
@@ -955,11 +943,7 @@ public class DirectoryEntry : Component
     {
         if (!UsePropertyCache && !_isNew)
         {
-            // Immediate property writes do not represent a public
-            // CommitChanges call. In particular, an immediate ObjectSecurity
-            // write resets its security state without discarding the managed
-            // PropertyCollection.
-            CommitChanges(invalidatePropertyCache: false);
+            CommitChanges();
         }
     }
 
