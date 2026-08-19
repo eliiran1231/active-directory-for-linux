@@ -107,13 +107,14 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
 
     private string BuildSchemaFilter()
     {
-        if (_schemaFilter.Count == 0)
+        var clauses = _schemaFilter.OfType<string>()
+            .Select(name => $"(objectClass={EscapeFilterValue(name)})")
+            .ToArray();
+        if (clauses.Length == 0)
         {
             return "(objectClass=*)";
         }
 
-        var clauses = _schemaFilter.Cast<string>()
-            .Select(name => $"(objectClass={EscapeFilterValue(name)})");
         return $"(|{string.Concat(clauses)})";
     }
 

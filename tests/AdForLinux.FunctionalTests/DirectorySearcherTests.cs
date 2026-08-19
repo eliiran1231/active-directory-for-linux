@@ -455,6 +455,7 @@ public class DirectorySearcherTests
                 TestSettings.PathFor(TestDirectory.UsersContainer), TestSettings.BindDn, TestSettings.BindPassword,
                 AuthenticationTypes.SecureSocketsLayer);
             var children = users.Children;
+            children.SchemaFilter.Add(null);
             children.SchemaFilter.Add("user");
 
             using var found = children.Find($"CN={name}", "user");

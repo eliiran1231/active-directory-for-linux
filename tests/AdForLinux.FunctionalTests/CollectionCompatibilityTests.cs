@@ -81,13 +81,35 @@ public class CollectionCompatibilityTests
         IList list = schemas;
         list.Insert(1, "computer");
 
-        Assert.True(schemas.Contains("USER"));
-        Assert.Equal(1, schemas.IndexOf("COMPUTER"));
+        Assert.False(schemas.Contains("USER"));
+        Assert.Equal(-1, schemas.IndexOf("COMPUTER"));
         Assert.Equal(new[] { "user", "computer", "group" }, schemas.Cast<string>());
 
         var copy = new string[schemas.Count];
         schemas.CopyTo(copy, 0);
         Assert.Equal(new[] { "user", "computer", "group" }, copy);
+    }
+
+    [Fact]
+    public void Schema_name_collection_allows_null_and_throws_when_removing_a_missing_value()
+    {
+        using var entry = new DirectoryEntry();
+        var schemas = entry.Children.SchemaFilter;
+
+        schemas.Add("user");
+        var nullIndex = schemas.Add(null);
+        schemas.Add("USER");
+        schemas[0] = null;
+
+        Assert.Equal(1, nullIndex);
+        Assert.True(schemas.Contains(null));
+        Assert.Equal(0, schemas.IndexOf(null));
+        Assert.False(schemas.Contains("user"));
+        Assert.True(schemas.Contains("USER"));
+        Assert.Equal(2, schemas.IndexOf("USER"));
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => schemas.Remove("missing"));
+        Assert.Equal("index", exception.ParamName);
     }
 
     [Fact]
