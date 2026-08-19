@@ -841,7 +841,7 @@ public abstract class Principal : IDisposable
                 // created so generated identity values (notably objectGUID and
                 // objectSid) and the completed structural class chain are available
                 // before post-create work or the caller observes this principal.
-                child.RefreshCache();
+                child.RefreshCacheAfterCreate();
                 _pending.Clear();
                 _extensionCache.Clear();
                 _inserting = true;
