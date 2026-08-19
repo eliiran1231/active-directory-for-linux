@@ -801,9 +801,13 @@ public class DirectorySearcher : Component
         return request;
     }
 
-    private DirectoryEntry RequireRoot() =>
-        SearchRoot ?? throw new InvalidOperationException(
+    private DirectoryEntry RequireRoot()
+    {
+        var root = SearchRoot ?? throw new InvalidOperationException(
             "SearchRoot must be set before searching. Serverless search is not supported on Linux.");
+        root.ThrowIfDisposed();
+        return root;
+    }
 
     private SearchResponse SendSearch(LdapConnection connection, SearchRequest request)
     {

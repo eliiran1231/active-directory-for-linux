@@ -43,6 +43,50 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             DifferentialSettings.BindPassword,
             Ours.AuthenticationTypes.SecureSocketsLayer);
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Disposed_entry_lifecycle_matches_for_cached_and_uncached_entries(bool usePropertyCache)
+    {
+        var ms = MicrosoftEntry(_data.UserDn);
+        var ours = OurEntry(_data.UserDn);
+        ms.UsePropertyCache = usePropertyCache;
+        ours.UsePropertyCache = usePropertyCache;
+
+        _ = ms.Properties["displayName"].Value;
+        _ = ours.Properties["displayName"].Value;
+        var msPath = ms.Path;
+        var ourPath = ours.Path;
+
+        ms.Dispose();
+        ours.Dispose();
+
+        var msPropertyError = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = ms.Properties["displayName"].Value));
+        var ourPropertyError = Assert.IsType<ObjectDisposedException>(
+            Record.Exception(() => _ = ours.Properties["displayName"].Value));
+        var msCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ms.CommitChanges));
+        var ourCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ours.CommitChanges));
+
+        using var msSearcher = new Ms.DirectorySearcher(ms);
+        using var ourSearcher = new Ours.DirectorySearcher(ours);
+        var msSearchError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => msSearcher.FindOne()));
+        var ourSearchError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => ourSearcher.FindOne()));
+
+        new Comparison($"DirectoryEntry disposed lifecycle (UsePropertyCache={usePropertyCache})")
+            .Check("Properties exception", msPropertyError.GetType().Name, ourPropertyError.GetType().Name)
+            .Check("Properties object name", msPropertyError.ObjectName, ourPropertyError.ObjectName)
+            .Check("CommitChanges exception", msCommitError.GetType().Name, ourCommitError.GetType().Name)
+            .Check("CommitChanges object name", msCommitError.ObjectName, ourCommitError.ObjectName)
+            .Check("Search exception", msSearchError.GetType().Name, ourSearchError.GetType().Name)
+            .Check("Search object name", msSearchError.ObjectName, ourSearchError.ObjectName)
+            .Check("Path remains readable", msPath, ourPath)
+            .Assert();
+
+        ms.Dispose();
+        ours.Dispose();
+    }
+
     [Fact]
     public void Entry_identity_members_match()
     {

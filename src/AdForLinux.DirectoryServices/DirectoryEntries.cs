@@ -21,8 +21,11 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// Makes a new, unsaved child object, e.g. <c>Add("CN=Jeff", "user")</c>.
     /// Set its properties, then call <c>CommitChanges</c> to create it.
     /// </summary>
-    public DirectoryEntry Add(string name, string schemaClassName) =>
-        DirectoryEntry.NewChild(_parent, name, schemaClassName);
+    public DirectoryEntry Add(string name, string schemaClassName)
+    {
+        _parent.ThrowIfDisposed();
+        return DirectoryEntry.NewChild(_parent, name, schemaClassName);
+    }
 
     /// <summary>
     /// Gets the schema classes included when enumerating the children. An empty
@@ -36,6 +39,7 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// <summary>Finds a child by relative distinguished name and optional schema class.</summary>
     public DirectoryEntry Find(string name, string? schemaClassName)
     {
+        _parent.ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         var child = _parent.CreateEntryForDn($"{name},{_parent.DistinguishedName}");
@@ -61,6 +65,7 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// <summary>Deletes a child object without recursively deleting its descendants.</summary>
     public void Remove(DirectoryEntry child)
     {
+        _parent.ThrowIfDisposed();
         // Microsoft asks this collection's parent container to delete the
         // entry by schema class and relative name. Reading SchemaClassName
         // preserves the observable bind/error behavior even though LDAP's
@@ -77,6 +82,7 @@ public sealed class DirectoryEntries : IEnumerable<DirectoryEntry>
 
     private IEnumerable<DirectoryEntry> Enumerate()
     {
+        _parent.ThrowIfDisposed();
         using var searcher = new DirectorySearcher(_parent, BuildSchemaFilter())
         {
             SearchScope = SearchScope.OneLevel,
