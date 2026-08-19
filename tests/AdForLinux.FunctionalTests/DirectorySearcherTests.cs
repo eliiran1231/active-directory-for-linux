@@ -358,7 +358,7 @@ public class DirectorySearcherTests
 
         Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, results.PropertiesLoaded);
         Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, searcher.PropertiesToLoad.Cast<string>());
-        Assert.Equal(IntPtr.Zero, results.Handle);
+        Assert.Throws<PlatformNotSupportedException>(() => results.Handle);
     }
 
     [Fact]
