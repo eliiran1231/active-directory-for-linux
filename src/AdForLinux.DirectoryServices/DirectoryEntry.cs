@@ -314,8 +314,16 @@ public class DirectoryEntry : Component
     /// </summary>
     public void CommitChanges()
     {
+        ThrowIfDisposed();
+        if (!_isNew
+            && !_usePropertyCache
+            && (_objectSecurity is null
+                || (!_objectSecurityChanged && !_objectSecurity.IsModified())))
+        {
+            return;
+        }
+
         var connection = GetConnection();
-        var objectSecurityWritten = false;
 
         if (_isNew)
         {
@@ -328,7 +336,7 @@ public class DirectoryEntry : Component
                 }
             }
 
-            objectSecurityWritten = AddObjectSecurity(add);
+            AddObjectSecurity(add);
 
             connection.SendRequestCompatible(add);
             _isNew = false;
@@ -347,7 +355,7 @@ public class DirectoryEntry : Component
                 AddModifications(modify, property);
             }
 
-            objectSecurityWritten = AddObjectSecurity(modify);
+            AddObjectSecurity(modify);
 
             if (modify.Modifications.Count > 0)
             {
@@ -355,19 +363,15 @@ public class DirectoryEntry : Component
             }
         }
 
-        foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
-        {
-            property.ResetChanged();
-        }
+        // A successful SetInfo mirrors ADSI: the next managed property access
+        // must bind again and observe server-generated or normalized values.
+        // Keep the pre-commit collection intact until this point so a failed
+        // request retains local state.
+        _properties = null;
 
-        if (objectSecurityWritten)
-        {
-            // DirectoryObjectSecurity does not expose a way to clear its
-            // internal modification flags. Discard the successfully written
-            // instance so the next access reloads a clean descriptor from AD.
-            _objectSecurity = null;
-        }
-
+        // Microsoft also discards the initialized security descriptor after a
+        // successful SetInfo, regardless of whether it supplied the change.
+        _objectSecurity = null;
         _objectSecurityChanged = false;
     }
 
@@ -937,7 +941,7 @@ public class DirectoryEntry : Component
 
     private void CommitIfNotCaching()
     {
-        if (!UsePropertyCache)
+        if (!UsePropertyCache && !_isNew)
         {
             CommitChanges();
         }
