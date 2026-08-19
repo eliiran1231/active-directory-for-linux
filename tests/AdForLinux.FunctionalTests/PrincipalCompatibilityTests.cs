@@ -362,6 +362,30 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
+    public void PrincipalSearcher_rejects_changed_group_members_filters()
+    {
+        using var context = OfflineContext();
+        using var root = new DirectoryEntry("LDAP://dc.example.test/DC=example,DC=test");
+        using var memberEntry = root.Children.Add("CN=user", "user");
+        memberEntry.Properties["objectSid"].Value = new byte[] { 1 };
+        using var member = new UserPrincipal(context, memberEntry);
+        using var filter = new GroupPrincipal(context);
+        _ = filter.Members;
+        using var unchangedSearcher = new PrincipalSearcher(filter);
+        Assert.NotNull(unchangedSearcher.GetUnderlyingSearcher());
+
+        filter.GroupScope = GroupScope.Global;
+        filter.IsSecurityGroup = true;
+        Assert.Contains("groupType", unchangedSearcher.GetLdapFilter());
+
+        filter.Members.Add(member);
+
+        Assert.Throws<InvalidOperationException>(() => unchangedSearcher.GetUnderlyingSearcher());
+        Assert.Throws<InvalidOperationException>(() => unchangedSearcher.FindOne());
+        Assert.Throws<InvalidOperationException>(() => unchangedSearcher.FindAll());
+    }
+
+    [Fact]
     public void Principal_identity_sid_extensions_groups_and_membership_round_trip()
     {
         var userName = NewName();

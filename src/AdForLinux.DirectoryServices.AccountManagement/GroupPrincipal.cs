@@ -236,6 +236,8 @@ public class GroupPrincipal : Principal
 
     internal void EnsureMembersUsable() => CheckDisposedOrDeleted();
 
+    internal bool HasReferentialPropertiesSet => _members?.HasPendingChanges == true;
+
     internal bool HasPrimaryGroupMembers() => AccountManagementExceptionTranslator.Execute(
         () => PrimaryGroupMemberDns().Any());
 
