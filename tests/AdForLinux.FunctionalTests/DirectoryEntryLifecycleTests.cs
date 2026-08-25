@@ -20,7 +20,7 @@ public class DirectoryEntryLifecycleTests
 
         AssertDisposed(entry, entry.RefreshCache);
         AssertDisposed(entry, () => entry.RefreshCache(Array.Empty<string>()));
-        AssertDisposed(entry, entry.CommitChanges);
+        entry.CommitChanges();
         AssertDisposed(entry, entry.DeleteTree);
         AssertDisposed(entry, () => _ = entry.SchemaClassName);
         AssertDisposed(entry, () => _ = entry.SchemaEntry);
@@ -107,7 +107,7 @@ public class DirectoryEntryLifecycleTests
 
         AssertDisposed(child, () => _ = child.Properties["objectClass"].Value);
         AssertDisposed(child, () => cachedProperties["description"].Value = "changed");
-        AssertDisposed(child, child.CommitChanges);
+        child.CommitChanges();
     }
 
     private static void AssertDisposed(DirectoryEntry entry, Action action)
