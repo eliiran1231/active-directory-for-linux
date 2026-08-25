@@ -7,6 +7,8 @@ namespace AdForLinux.FunctionalTests;
 
 public class PrincipalCompatibilityTests
 {
+    [DirectoryObjectClass("user")]
+    [DirectoryRdnPrefix("CN")]
     public sealed class ExtendedUserPrincipal : UserPrincipal
     {
         public ExtendedUserPrincipal(PrincipalContext context)

@@ -411,6 +411,14 @@ public class PrincipalContext : IDisposable
         {
             return false;
         }
+        catch (DirectoryOperationException)
+            when ((options & (ContextOptions.Negotiate | ContextOptions.SimpleBind)) ==
+                (ContextOptions.Negotiate | ContextOptions.SimpleBind))
+        {
+            // The Microsoft explicit-options overload exposes the underlying
+            // protocol exception for this ambiguous bind combination.
+            throw;
+        }
         catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
         {
             throw AccountManagementExceptionTranslator.TranslateProtocol(ex);

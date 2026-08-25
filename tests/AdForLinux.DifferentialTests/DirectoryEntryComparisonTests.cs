@@ -67,8 +67,8 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             Record.Exception(() => _ = ms.Properties["displayName"].Value));
         var ourPropertyError = Assert.IsType<ObjectDisposedException>(
             Record.Exception(() => _ = ours.Properties["displayName"].Value));
-        var msCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ms.CommitChanges));
-        var ourCommitError = Assert.IsType<ObjectDisposedException>(Record.Exception(ours.CommitChanges));
+        var msCommitError = Record.Exception(ms.CommitChanges);
+        var ourCommitError = Record.Exception(ours.CommitChanges);
         var msNameError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ms.Name));
         var ourNameError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ours.Name));
         var msParentError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => _ = ms.Parent));
@@ -84,8 +84,11 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check("RefreshCache object name", msRefreshError.ObjectName, ourRefreshError.ObjectName)
             .Check("Properties exception", msPropertyError.GetType().Name, ourPropertyError.GetType().Name)
             .Check("Properties object name", msPropertyError.ObjectName, ourPropertyError.ObjectName)
-            .Check("CommitChanges exception", msCommitError.GetType().Name, ourCommitError.GetType().Name)
-            .Check("CommitChanges object name", msCommitError.ObjectName, ourCommitError.ObjectName)
+            .Check("CommitChanges exception", msCommitError?.GetType().Name, ourCommitError?.GetType().Name)
+            .Check(
+                "CommitChanges object name",
+                (msCommitError as ObjectDisposedException)?.ObjectName,
+                (ourCommitError as ObjectDisposedException)?.ObjectName)
             .Check("Name exception", msNameError.GetType().Name, ourNameError.GetType().Name)
             .Check("Name object name", msNameError.ObjectName, ourNameError.ObjectName)
             .Check("Parent exception", msParentError.GetType().Name, ourParentError.GetType().Name)

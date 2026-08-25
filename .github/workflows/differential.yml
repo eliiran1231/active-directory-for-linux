@@ -1,0 +1,136 @@
+name: Differential (real AD)
+
+# Compares our clone against the real Microsoft library on a real AD server.
+# Requires a self-hosted Windows runner that already trusts your lab server's
+# certificate and can reach it on the network — see setup notes at the bottom
+# of this file. Never runs on GitHub-hosted infrastructure, and never runs
+# automatically on pull requests from forks (no external PR can reach your
+# lab server or exfiltrate the secrets below).
+on:
+  schedule:
+    # Nightly at 02:00 UTC. Adjust to taste — this suite is slow by design.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why you're running this manually (shows up in the log)"
+        required: false
+        default: "manual run"
+      pr_number:
+        description: "PR number this run is validating (blank = not tied to a PR, e.g. a main-branch spot check)"
+        required: false
+        default: ""
+
+jobs:
+  differential-tests:
+    # Must match the label(s) you gave the runner when you registered it.
+    runs-on: [self-hosted, windows, ad-lab]
+
+    # Belt-and-suspenders: even if this workflow were somehow triggered from a
+    # fork's PR, forked workflows never receive repository secrets, so
+    # AD_BIND_PW simply comes through empty and the job fails closed.
+    environment: ad-lab
+
+    env:
+      AD_HOST: ${{ secrets.AD_LAB_HOST }}
+      AD_PORT: "636"
+      AD_USE_TLS: "true"
+      AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+      AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+      # Fixed root that must already exist on the lab server, one time.
+      # See setup note 5 at the bottom of this file. Every run gets its own
+      # child OU under here so parallel/back-to-back runs never collide.
+      AD_CI_ROOT_DN: ${{ secrets.AD_LAB_CI_ROOT_DN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create per-run test OU
+        id: ou
+        shell: pwsh
+        run: |
+          $ouName = if ("${{ inputs.pr_number }}" -ne "") {
+            "pr-${{ inputs.pr_number }}-run${{ github.run_id }}"
+          } else {
+            "scheduled-run${{ github.run_id }}"
+          }
+
+          Import-Module ActiveDirectory
+          New-ADOrganizationalUnit -Name $ouName -Path "$env:AD_CI_ROOT_DN" -ProtectedFromAccidentalDeletion $false
+
+          $ouDn = "OU=$ouName,$env:AD_CI_ROOT_DN"
+          Write-Host "Created test OU: $ouDn"
+          # Downstream steps (and the cleanup step) both read this via env.
+          echo "AD_BASE_DN=$ouDn" >> $env:GITHUB_ENV
+          echo "ou_dn=$ouDn" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore AdForLinux.sln
+
+      - name: Run differential tests (net8.0-windows + net10.0-windows)
+        run: |
+          dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --logger "trx;LogFileName=differential-net10.trx"
+          dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --logger "trx;LogFileName=differential-net8.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: differential-test-results
+          path: "**/differential-net*.trx"
+
+      - name: Delete per-run test OU
+        # Always clean up, even if tests failed, so a bad run doesn't leave
+        # orphaned OUs piling up on the lab server.
+        if: always()
+        shell: pwsh
+        run: |
+          Import-Module ActiveDirectory
+          Remove-ADOrganizationalUnit -Identity "${{ steps.ou.outputs.ou_dn }}" -Recursive -Confirm:$false
+
+# --- One-time self-hosted runner setup (do this once on your Windows box) ---
+#
+# 1. Repo → Settings → Actions → Runners → New self-hosted runner → Windows.
+#    Follow the download/config.cmd steps GitHub shows you, and when it asks
+#    for labels, add: ad-lab
+#    (You'll end up with the default "self-hosted" + "windows" labels plus
+#    this one — matching the runs-on list above.)
+#
+# 2. Install it as a Windows service so it's always listening:
+#      .\svc install
+#      .\svc start
+#
+# 3. Trust your lab server's self-signed certificate on that machine, once:
+#      certutil -addstore -f "Root" path\to\your-lab-ad-cert.cer
+#    (This is a one-time machine-level trust, not something CI repeats per run.)
+#
+# 4. Add repository secrets (Settings → Secrets and variables → Actions):
+#      AD_LAB_HOST            e.g. dc01.lab.local
+#      AD_LAB_BIND_DN          e.g. administrator@lab.local
+#      AD_LAB_ADMIN_PASSWORD
+#      AD_LAB_CI_ROOT_DN       e.g. OU=CI,DC=lab,DC=local
+#
+# 5. Create that CI root OU on the lab server once, manually (it just needs
+#    to exist as a parent — the workflow creates/deletes a child OU under it
+#    per run, so tests from different PRs/runs never touch the same objects):
+#      New-ADOrganizationalUnit -Name "CI" -Path "DC=lab,DC=local"
+#    The bind account in AD_LAB_BIND_DN needs Create/Delete Organizational
+#    Unit permission scoped to this OU (delegate this narrowly — it doesn't
+#    need rights over the rest of the domain).
+#
+# 6. (Recommended) Create an "ad-lab" GitHub Environment and require manual
+#    approval for it, or at minimum restrict which branches can deploy to it.
+#    That way even a compromised PAT or accidental workflow edit can't reach
+#    your lab server without a human clicking approve.
+#
+# 7. The runner needs the ActiveDirectory PowerShell module (RSAT-AD-PowerShell
+#    feature on Windows) so it can create/delete the per-run OU:
+#      Install-WindowsFeature RSAT-AD-PowerShell   # Windows Server
+#      # or, on Windows 10/11: Add-WindowsCapability -Online -Name Rsat.ActiveDirectory...
