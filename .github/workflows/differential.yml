@@ -24,7 +24,7 @@ on:
 jobs:
   differential-tests:
     # Must match the label(s) you gave the runner when you registered it.
-    runs-on: [self-hosted, windows, ad-lab]
+    runs-on: [self-hosted, windows, ad-runner]
 
     # Belt-and-suspenders: even if this workflow were somehow triggered from a
     # fork's PR, forked workflows never receive repository secrets, so
