@@ -29,6 +29,7 @@ public class DirectoryEntry : Component
     private LdapConnection? _connection;
     private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
+    private readonly HashSet<PropertyValueCollection> _pendingPropertyChanges = new();
     private string? _boundDistinguishedName;
     private bool _isNew;
     private bool _usePropertyCache = true;
@@ -333,21 +334,22 @@ public class DirectoryEntry : Component
     /// </summary>
     public void CommitChanges()
     {
-        ThrowIfDisposed();
-        if (!_isNew
-            && !_usePropertyCache
-            && (_objectSecurity is null
-                || (!_objectSecurityChanged && !_objectSecurity.IsModified())))
+        // ADSI treats SetInfo on an already disposed, clean entry as a no-op.
+        // Other operations still reject the disposed instance through their
+        // normal binding guards.
+        if (_disposed)
         {
             return;
         }
 
         var connection = GetConnection();
+        PropertyValueCollection[] committedProperties;
 
         if (_isNew)
         {
+            committedProperties = ((IEnumerable<PropertyValueCollection>)Properties).ToArray();
             var add = new AddRequest(_path.DistinguishedName);
-            foreach (var property in (IEnumerable<PropertyValueCollection>)Properties)
+            foreach (var property in committedProperties)
             {
                 if (property.Count > 0)
                 {
@@ -363,8 +365,9 @@ public class DirectoryEntry : Component
         else
         {
             EnsureLoaded();
+            committedProperties = _pendingPropertyChanges.ToArray();
             var modify = new ModifyRequest(_path.DistinguishedName);
-            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties!)
+            foreach (var property in committedProperties)
             {
                 if (!property.Changed)
                 {
@@ -381,6 +384,13 @@ public class DirectoryEntry : Component
                 connection.SendRequestCompatible(modify);
             }
         }
+
+        foreach (var property in committedProperties)
+        {
+            property.ResetChanged();
+        }
+
+        _pendingPropertyChanges.Clear();
 
         // A successful SetInfo mirrors ADSI: the next managed property access
         // must bind again and observe server-generated or normalized values.
@@ -644,6 +654,7 @@ public class DirectoryEntry : Component
     /// <summary>Re-reads this object's attributes from the server.</summary>
     public void RefreshCache()
     {
+        _pendingPropertyChanges.Clear();
         _properties = null;
         _objectSecurity = null;
         _objectSecurityChanged = false;
@@ -701,6 +712,8 @@ public class DirectoryEntry : Component
             }
 
             properties.RemoveCached(propertyName);
+            _pendingPropertyChanges.RemoveWhere(property =>
+                string.Equals(property.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
 
         }
 
@@ -754,6 +767,7 @@ public class DirectoryEntry : Component
     public void Rename(string? newName)
     {
         using var parent = Parent;
+        ValidateRenameName(newName);
         MoveTo(parent!, newName, validateNewName: false);
     }
 
@@ -1128,6 +1142,7 @@ public class DirectoryEntry : Component
         ThrowIfDisposed();
         if (_usePropertyCache || _isNew)
         {
+            _pendingPropertyChanges.Add(property);
             return;
         }
 
@@ -1183,6 +1198,28 @@ public class DirectoryEntry : Component
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
     }
 
+    private static void ValidateRenameName(string? newName)
+    {
+        if (newName is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            throw new COMException(
+                "The specified directory path is invalid.",
+                unchecked((int)0x80005000));
+        }
+
+        if (newName.IndexOf('=') <= 0)
+        {
+            throw LdapExceptionTranslator.Translate(
+                ResultCode.UnwillingToPerform,
+                "The server is unwilling to process a rename without a valid relative distinguished name.");
+        }
+    }
+
     private static LdapPath ParsePath(string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -1201,6 +1238,7 @@ public class DirectoryEntry : Component
     {
         _path = path;
         _pathText = pathText ?? path.ToString();
+        _pendingPropertyChanges.Clear();
         _properties = null;
         _objectSecurity = null;
         _objectSecurityChanged = false;
@@ -1219,6 +1257,7 @@ public class DirectoryEntry : Component
     private void Unbind()
     {
         ResetConnection();
+        _pendingPropertyChanges.Clear();
         _properties = null;
         _objectSecurity = null;
         _objectSecurityChanged = false;

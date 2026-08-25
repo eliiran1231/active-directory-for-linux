@@ -1,0 +1,50 @@
+name: CI
+
+# Fast checks on every push/PR: build both projects, run the Linux functional
+# tests against the disposable Samba (smblds) container via docker-compose.
+# No lab AD, no secrets, no self-hosted runner — this runs entirely on
+# GitHub-hosted runners and needs zero configuration to work on a fork.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore AdForLinux.sln
+
+      - name: Build
+        run: dotnet build AdForLinux.sln --no-restore --configuration Release
+
+  functional-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start smblds (Samba AD DC)
+        run: |
+          docker run -d --name smblds -p 389:389 -p 636:636 smblds/smblds:latest
+          # Give the DC a moment to finish provisioning before tests bind to it.
+          sleep 30
+
+      - name: Run functional tests (net8.0 + net10.0)
+        run: docker compose up --build --abort-on-container-exit --exit-code-from tests
+
+      - name: Tear down smblds
+        if: always()
+        run: docker rm -f smblds || true
