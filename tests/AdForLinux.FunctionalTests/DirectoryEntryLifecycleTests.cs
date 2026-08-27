@@ -34,10 +34,6 @@ public class DirectoryEntryLifecycleTests
         AssertDisposed(entry, () => children.GetEnumerator());
         AssertDisposed(entry, () => childEnumerator.MoveNext());
 
-        using var searcher = new DirectorySearcher(entry);
-        AssertDisposed(entry, () => searcher.FindOne());
-        AssertDisposed(entry, () => searcher.FindAll());
-
         // These values are stored locally and remain readable in Microsoft's implementation.
         Assert.Equal(UnreachablePath, entry.Path);
         Assert.Equal(AuthenticationTypes.Anonymous, entry.AuthenticationType);
@@ -47,6 +43,26 @@ public class DirectoryEntryLifecycleTests
         // Repeated lifecycle calls remain harmless.
         entry.Close();
         entry.Dispose();
+    }
+
+    [Fact]
+    public void DirectorySearcher_rebinds_from_a_disposed_search_root()
+    {
+        var entry = Open(TestSettings.AdministratorDn);
+        entry.Dispose();
+
+        using var searcher = new DirectorySearcher(entry, "(objectClass=*)")
+        {
+            SearchScope = AdForLinux.DirectoryServices.SearchScope.Base,
+        };
+
+        var single = searcher.FindOne();
+        Assert.NotNull(single);
+        Assert.Equal(entry.Path, single.Path);
+
+        using var all = searcher.FindAll();
+        Assert.Single(all);
+        Assert.Equal(entry.Path, all[0].Path);
     }
 
     [Fact]

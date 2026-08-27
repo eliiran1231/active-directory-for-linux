@@ -76,8 +76,10 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
 
         using var msSearcher = new Ms.DirectorySearcher(ms);
         using var ourSearcher = new Ours.DirectorySearcher(ours);
-        var msSearchError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => msSearcher.FindOne()));
-        var ourSearchError = Assert.IsType<ObjectDisposedException>(Record.Exception(() => ourSearcher.FindOne()));
+        Ms.SearchResult? msSearchResult = null;
+        Ours.SearchResult? ourSearchResult = null;
+        var msSearchError = Record.Exception(() => msSearchResult = msSearcher.FindOne());
+        var ourSearchError = Record.Exception(() => ourSearchResult = ourSearcher.FindOne());
 
         new Comparison($"DirectoryEntry disposed lifecycle (UsePropertyCache={usePropertyCache})")
             .Check("RefreshCache exception", msRefreshError.GetType().Name, ourRefreshError.GetType().Name)
@@ -93,8 +95,12 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             .Check("Name object name", msNameError.ObjectName, ourNameError.ObjectName)
             .Check("Parent exception", msParentError.GetType().Name, ourParentError.GetType().Name)
             .Check("Parent object name", msParentError.ObjectName, ourParentError.ObjectName)
-            .Check("Search exception", msSearchError.GetType().Name, ourSearchError.GetType().Name)
-            .Check("Search object name", msSearchError.ObjectName, ourSearchError.ObjectName)
+            .Check("Search exception", msSearchError?.GetType().Name, ourSearchError?.GetType().Name)
+            .Check(
+                "Search object name",
+                (msSearchError as ObjectDisposedException)?.ObjectName,
+                (ourSearchError as ObjectDisposedException)?.ObjectName)
+            .Check("Search result path", msSearchResult?.Path, ourSearchResult?.Path)
             .Check("Path remains readable", msPath, ourPath)
             .Assert();
 

@@ -451,12 +451,14 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     {
         using var msContext = MicrosoftContext();
         using var ourContext = OurContext();
+        using var msDomainContext = MicrosoftContext(DifferentialSettings.DomainDn);
+        using var ourDomainContext = OurContext(DifferentialSettings.DomainDn);
         using var msUser = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
         using var ourUser = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
         using var msDomainUsers = Ms.GroupPrincipal.FindByIdentity(
-            msContext, Ms.IdentityType.SamAccountName, "Domain Users");
+            msDomainContext, Ms.IdentityType.SamAccountName, "Domain Users");
         using var ourDomainUsers = Ours.GroupPrincipal.FindByIdentity(
-            ourContext, Ours.IdentityType.SamAccountName, "Domain Users");
+            ourDomainContext, Ours.IdentityType.SamAccountName, "Domain Users");
 
         Assert.NotNull(msUser);
         Assert.NotNull(ourUser);

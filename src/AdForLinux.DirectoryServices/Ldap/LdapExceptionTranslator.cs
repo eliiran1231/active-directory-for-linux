@@ -60,9 +60,12 @@ internal static class LdapExceptionTranslator
             ? exception.Message
             : $"{exception.Message} {serverMessage}";
 
-        return response is null
-            ? new COMException(message, errorCode)
-            : new DirectoryServicesCOMException(
+        if (response is null && protocolCode != (int)ResultCode.EntryAlreadyExists)
+        {
+            return new COMException(message, errorCode);
+        }
+
+        return new DirectoryServicesCOMException(
                 message,
                 exception,
                 errorCode,
@@ -128,6 +131,7 @@ internal static class LdapExceptionTranslator
             49 or 1326 => unchecked((int)0x8007052E),
             51 => unchecked((int)0x8007200E),
             52 => unchecked((int)0x8007200F),
+            68 => unchecked((int)0x80071392),
             81 => unchecked((int)0x8007203A),
             85 => unchecked((int)0x80072022),
             87 => unchecked((int)0x8007203E),
