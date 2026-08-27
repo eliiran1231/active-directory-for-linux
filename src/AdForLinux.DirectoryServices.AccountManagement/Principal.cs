@@ -270,7 +270,7 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         return Entry is null
             ? new PrincipalSearchResult<Principal>(Array.Empty<Principal>())
-            : GetGroups(ContextRef);
+            : GetGroups(ContextRef, resolvePrimaryGroupOutsideContainer: true);
     }
 
     /// <summary>
@@ -280,16 +280,18 @@ public abstract class Principal : IDisposable
     {
         ArgumentNullException.ThrowIfNull(contextToQuery);
         CheckDisposedOrDeleted();
+        return GetGroups(contextToQuery, resolvePrimaryGroupOutsideContainer: false);
+    }
+
+    private PrincipalSearchResult<Principal> GetGroups(
+        PrincipalContext contextToQuery,
+        bool resolvePrimaryGroupOutsideContainer)
+    {
         var distinguishedName = DistinguishedName;
         if (distinguishedName is null)
         {
-#if NET10_0_OR_GREATER
             throw new InvalidOperationException(
                 "The principal must be saved before its groups can be read.");
-#else
-            throw new PrincipalOperationException(
-                "The principal must be saved before its groups can be read.");
-#endif
         }
         var objectSid = Entry?.Properties["objectSid"].Value as byte[]
             ?? throw new InvalidOperationException(
@@ -314,10 +316,13 @@ public abstract class Principal : IDisposable
                 dn => $"(member={LdapFilter.EscapeValue(dn)})"))})";
         var primaryGroupSid = TryGetPrimaryGroupSid(targetPrincipal);
         targetPrincipal?.Dispose();
+        var scopedMembershipFilter = primaryGroupSid is null || resolvePrimaryGroupOutsideContainer
+            ? memberFilter
+            : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
         return FindGroups(
             contextToQuery,
-            memberFilter,
-            primaryGroupSid);
+            scopedMembershipFilter,
+            resolvePrimaryGroupOutsideContainer ? primaryGroupSid : null);
     }
 
     private protected PrincipalSearchResult<Principal> GetAuthorizationGroupsCore() =>
