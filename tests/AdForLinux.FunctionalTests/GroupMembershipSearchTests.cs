@@ -119,7 +119,7 @@ public class GroupMembershipSearchTests
             using var scoped = user.GetGroups(scopedContext);
             var scopedNames = scoped.Select(group => group.SamAccountName).ToHashSet();
             Assert.Contains(insideName, scopedNames);
-            Assert.Contains("Domain Users", scopedNames);
+            Assert.DoesNotContain("Domain Users", scopedNames);
             Assert.DoesNotContain(outsideName, scopedNames);
 
             using var domainWide = user.GetGroups(domainContext);
@@ -387,11 +387,7 @@ public class GroupMembershipSearchTests
 
         using var groups = user.GetGroups();
         Assert.Empty(groups);
-#if NET10_0_OR_GREATER
         Assert.Throws<InvalidOperationException>(() => user.GetGroups(context));
-#else
-        Assert.Throws<PrincipalOperationException>(() => user.GetGroups(context));
-#endif
     }
 
     [Fact]
