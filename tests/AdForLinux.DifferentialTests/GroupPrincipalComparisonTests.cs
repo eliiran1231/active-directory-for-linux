@@ -515,8 +515,9 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var primaryOuDn = $"OU=adfl-primary-{suffix},{DifferentialSettings.BaseDn}";
         var siblingOuDn = $"OU=adfl-sibling-{suffix},{DifferentialSettings.BaseDn}";
-        var userName = $"adfl-primary-u-{suffix}";
-        var groupName = $"adfl-primary-g-{suffix}";
+        // Keep sAMAccountName values within Active Directory's 20-character limit.
+        var userName = $"adfl-pu-{suffix}";
+        var groupName = $"adfl-pg-{suffix}";
         var userDn = $"CN={userName},{primaryOuDn}";
         var groupDn = $"CN={groupName},{primaryOuDn}";
 
