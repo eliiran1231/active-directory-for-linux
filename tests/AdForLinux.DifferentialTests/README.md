@@ -88,8 +88,13 @@ Microsoft/AdForLinux descriptors.
    $env:AD_USE_TLS = "true"
    $env:AD_BIND_DN = "administrator@example.com"
    $env:AD_BIND_PW = "yourPassword"
-   $env:AD_BASE_DN = "DC=example,DC=com"
+   $env:AD_BASE_DN = "OU=MyIsolatedRun,OU=CI,DC=example,DC=com"
    ```
+
+   Use an isolated writable OU for `AD_BASE_DN`; mutation tests create their
+   temporary objects directly below it. For a legacy domain-root run, the suite
+   instead uses `CN=Users,<AD_BASE_DN>`. Set `AD_USERS_CONTAINER_DN` explicitly
+   only when a different writable principal container is required.
 
    Set `AD_USE_TLS=false` with port 389 for a disposable test DC that permits
    simple LDAP binds. The ObjectSecurity fixture does not set a password, so it
@@ -102,8 +107,8 @@ Microsoft/AdForLinux descriptors.
    dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows
    ```
 
-The tests create their own temporary user and two groups under `CN=Users`, and
-delete them at the end.
+The tests create their own temporary user and two groups in the configured
+writable container and delete them at the end.
 
 ## `DirectoryEntry.CopyTo` protocol limitation
 
@@ -128,9 +133,10 @@ library therefore matches the observed LDAP provider by throwing
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
-  `CN=Users`, to set a password, and to read the SACL for the disposable ACL
-  test object. The SACL read is required to prove that a DACL-only update does not
-  replace security-descriptor sections that were not requested.
+  the configured writable container, to set a password, and to read the SACL for
+  the disposable ACL test object. The SACL read is required to prove that a
+  DACL-only update does not replace security-descriptor sections that were not
+  requested.
 - **`GetAuthorizationGroups` has two independent checks.** The differential
   comparison verifies that every directory-backed group we return also appears
   in Microsoft's answer. The Linux functional suite separately compares the

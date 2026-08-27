@@ -1,4 +1,8 @@
 name: Differential (real AD)
+run-name: Differential - ${{ inputs.reason || github.event_name }}
+
+permissions:
+  contents: read
 
 # Compares our clone against the real Microsoft library on a real AD server.
 # Requires a self-hosted Windows runner that already trusts your lab server's
@@ -17,67 +21,92 @@ on:
         required: false
         default: "manual run"
       pr_number:
-        description: "PR number this run is validating (blank = not tied to a PR, e.g. a main-branch spot check)"
+        description: "Optional PR number for the run name; dispatch from that trusted PR branch separately"
         required: false
         default: ""
 
 jobs:
   differential-tests:
     # Must match the label(s) you gave the runner when you registered it.
-    runs-on: [self-hosted, windows, ad-lab]
+    runs-on: [self-hosted, windows, ad-runner]
+    timeout-minutes: 180
 
     # Belt-and-suspenders: even if this workflow were somehow triggered from a
     # fork's PR, forked workflows never receive repository secrets, so
     # AD_BIND_PW simply comes through empty and the job fails closed.
     environment: ad-lab
 
-    env:
-      AD_HOST: ${{ secrets.AD_LAB_HOST }}
-      AD_PORT: "636"
-      AD_USE_TLS: "true"
-      AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
-      AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
-      # Fixed root that must already exist on the lab server, one time.
-      # See setup note 5 at the bottom of this file. Every run gets its own
-      # child OU under here so parallel/back-to-back runs never collide.
-      AD_CI_ROOT_DN: ${{ secrets.AD_LAB_CI_ROOT_DN }}
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Create per-run test OU
         id: ou
-        shell: pwsh
+        shell: powershell
+        env:
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+          # Fixed root that must already exist on the lab server. Each run gets
+          # a unique child OU below it.
+          AD_CI_ROOT_DN: ${{ secrets.AD_LAB_CI_ROOT_DN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
         run: |
-          $ouName = if ("${{ inputs.pr_number }}" -ne "") {
-            "pr-${{ inputs.pr_number }}-run${{ github.run_id }}"
+          $ErrorActionPreference = "Stop"
+
+          foreach ($name in "AD_BIND_DN", "AD_BIND_PW", "AD_CI_ROOT_DN") {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Required GitHub secret for $name is not configured."
+            }
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER) -and $env:PR_NUMBER -notmatch '^\d+$') {
+            throw "pr_number must contain digits only."
+          }
+
+          $runSuffix = "run$env:GITHUB_RUN_ID-attempt$env:GITHUB_RUN_ATTEMPT"
+          $ouName = if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER)) {
+            "pr-$env:PR_NUMBER-$runSuffix"
           } else {
-            "scheduled-run${{ github.run_id }}"
+            "scheduled-$runSuffix"
           }
 
           Import-Module ActiveDirectory
-          New-ADOrganizationalUnit -Name $ouName -Path "$env:AD_CI_ROOT_DN" -ProtectedFromAccidentalDeletion $false
+          $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
+          $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
+          New-ADOrganizationalUnit `
+            -Name $ouName `
+            -Path $env:AD_CI_ROOT_DN `
+            -Server "localhost" `
+            -Credential $credential `
+            -ProtectedFromAccidentalDeletion $false
 
           $ouDn = "OU=$ouName,$env:AD_CI_ROOT_DN"
           Write-Host "Created test OU: $ouDn"
           # Downstream steps (and the cleanup step) both read this via env.
-          echo "AD_BASE_DN=$ouDn" >> $env:GITHUB_ENV
-          echo "ou_dn=$ouDn" >> $env:GITHUB_OUTPUT
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
+          "AD_BASE_DN=$ouDn" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ou_dn=$ouDn" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Restore
+        id: restore
         run: dotnet restore AdForLinux.sln
 
-      - name: Run differential tests (net8.0-windows + net10.0-windows)
-        run: |
-          dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --logger "trx;LogFileName=differential-net10.trx"
-          dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --logger "trx;LogFileName=differential-net8.trx"
+      - name: Run differential tests (net10.0-windows)
+        env:
+          AD_HOST: ${{ secrets.AD_LAB_HOST }}
+          AD_PORT: "636"
+          AD_USE_TLS: "true"
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+        run: dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --no-restore --logger "trx;LogFileName=differential-net10.trx"
+
+      - name: Run differential tests (net8.0-windows)
+        if: ${{ always() && steps.ou.outcome == 'success' && steps.restore.outcome == 'success' }}
+        env:
+          AD_HOST: ${{ secrets.AD_LAB_HOST }}
+          AD_PORT: "636"
+          AD_USE_TLS: "true"
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+        run: dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --no-restore --logger "trx;LogFileName=differential-net8.trx"
 
       - name: Upload test results
         if: always()
@@ -89,17 +118,28 @@ jobs:
       - name: Delete per-run test OU
         # Always clean up, even if tests failed, so a bad run doesn't leave
         # orphaned OUs piling up on the lab server.
-        if: always()
-        shell: pwsh
+        if: ${{ always() && steps.ou.outputs.ou_dn != '' }}
+        shell: powershell
+        env:
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
         run: |
+          $ErrorActionPreference = "Stop"
           Import-Module ActiveDirectory
-          Remove-ADOrganizationalUnit -Identity "${{ steps.ou.outputs.ou_dn }}" -Recursive -Confirm:$false
+          $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
+          $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
+          Remove-ADOrganizationalUnit `
+            -Identity "${{ steps.ou.outputs.ou_dn }}" `
+            -Server "localhost" `
+            -Credential $credential `
+            -Recursive `
+            -Confirm:$false
 
 # --- One-time self-hosted runner setup (do this once on your Windows box) ---
 #
 # 1. Repo → Settings → Actions → Runners → New self-hosted runner → Windows.
 #    Follow the download/config.cmd steps GitHub shows you, and when it asks
-#    for labels, add: ad-lab
+#    for labels, add: ad-runner
 #    (You'll end up with the default "self-hosted" + "windows" labels plus
 #    this one — matching the runs-on list above.)
 #
@@ -121,9 +161,12 @@ jobs:
 #    to exist as a parent — the workflow creates/deletes a child OU under it
 #    per run, so tests from different PRs/runs never touch the same objects):
 #      New-ADOrganizationalUnit -Name "CI" -Path "DC=lab,DC=local"
-#    The bind account in AD_LAB_BIND_DN needs Create/Delete Organizational
-#    Unit permission scoped to this OU (delegate this narrowly — it doesn't
-#    need rights over the rest of the domain).
+#    The bind account in AD_LAB_BIND_DN needs permission to create/delete the
+#    per-run OU and inherited rights inside it for the users, groups, computers,
+#    passwords, and security descriptors exercised by the differential suite.
+#    Delegate those rights only on this CI root. The workflow passes this
+#    account explicitly to the AD PowerShell cmdlets, so the runner service
+#    identity needs no AD write permissions.
 #
 # 6. (Recommended) Create an "ad-lab" GitHub Environment and require manual
 #    approval for it, or at minimum restrict which branches can deploy to it.
@@ -134,3 +177,6 @@ jobs:
 #    feature on Windows) so it can create/delete the per-run OU:
 #      Install-WindowsFeature RSAT-AD-PowerShell   # Windows Server
 #      # or, on Windows 10/11: Add-WindowsCapability -Online -Name Rsat.ActiveDirectory...
+#    OU management targets the runner's local AD Web Services endpoint with
+#    -Server "localhost". AD_LAB_HOST remains the LDAP/LDAPS endpoint used by
+#    the differential test processes.

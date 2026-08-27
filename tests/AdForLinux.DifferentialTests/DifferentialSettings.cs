@@ -25,8 +25,21 @@ public static class DifferentialSettings
     public static string BaseDn =>
         Environment.GetEnvironmentVariable("AD_BASE_DN") ?? "DC=samdom,DC=example,DC=com";
 
+    /// <summary>The domain naming context containing the isolated test OU.</summary>
+    public static string DomainDn =>
+        string.Join(",", BaseDn
+            .Split(',')
+            .Select(part => part.Trim())
+            .SkipWhile(part => !part.StartsWith("DC=", StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>Whether mutations are confined below an organizational unit.</summary>
+    public static bool HasIsolatedBaseDn =>
+        BaseDn.TrimStart().StartsWith("OU=", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Where the tests create their temporary objects.</summary>
-    public static string UsersContainer => $"CN=Users,{BaseDn}";
+    public static string UsersContainer =>
+        Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
+        ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
 
     /// <summary>
     /// Server name for PrincipalContext. Microsoft credential validation and

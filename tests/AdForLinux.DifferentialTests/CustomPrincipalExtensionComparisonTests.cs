@@ -115,7 +115,11 @@ public sealed class CustomPrincipalExtensionComparisonTests
     [Fact]
     public void Custom_creation_round_trip_identity_QBE_and_ToString_match_microsoft()
     {
-        Assert.Equal("OU=Issue44,OU=AoTesting,DC=adlab,DC=local", DifferentialSettings.BaseDn);
+        if (!DifferentialSettings.HasIsolatedBaseDn)
+        {
+            throw Xunit.Sdk.SkipException.ForSkip(
+                "Set AD_BASE_DN to an isolated writable OU before running this test.");
+        }
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var microsoftName = $"i44-ms-{suffix}";

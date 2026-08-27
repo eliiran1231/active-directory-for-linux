@@ -11,7 +11,6 @@ namespace AdForLinux.DifferentialTests;
 
 public class DirectoryEntryOptionsLiveTests
 {
-    private const string RequiredBaseDn = "OU=Issue62,OU=AoTesting,DC=adlab,DC=local";
     private const int ChildCount = 1005;
 
     [Fact]
@@ -57,17 +56,14 @@ public class DirectoryEntryOptionsLiveTests
     {
         // This destructive, high-volume regression is deliberately opt-in and confined to
         // the issue's dedicated OU. Never fall back to the domain root or CN=Users.
-        if (!string.Equals(
-                Environment.GetEnvironmentVariable("AD_BASE_DN"),
-                RequiredBaseDn,
-                StringComparison.OrdinalIgnoreCase))
+        if (!DifferentialSettings.HasIsolatedBaseDn)
         {
             throw Xunit.Sdk.SkipException.ForSkip(
-                $"Set AD_BASE_DN to the isolated test OU '{RequiredBaseDn}' before running this test.");
+                "Set AD_BASE_DN to an isolated writable OU before running this test.");
         }
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        var containerDn = $"OU=Page-{suffix},{RequiredBaseDn}";
+        var containerDn = $"OU=Page-{suffix},{DifferentialSettings.BaseDn}";
 
         using var connection = CreateConnection();
         try

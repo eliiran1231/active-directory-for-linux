@@ -277,8 +277,10 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     [Fact]
     public void Primary_group_mutation_guards_match()
     {
-        using var msContext = MicrosoftContext();
-        using var ourContext = OurContext();
+        // Built-in accounts live outside the isolated mutation OU. Search the
+        // domain naming context for this read-only compatibility comparison.
+        using var msContext = MicrosoftContext(DifferentialSettings.DomainDn);
+        using var ourContext = OurContext(DifferentialSettings.DomainDn);
         using var msGroup = Ms.GroupPrincipal.FindByIdentity(
             msContext, Ms.IdentityType.SamAccountName, "Domain Users");
         using var ourGroup = Ours.GroupPrincipal.FindByIdentity(
