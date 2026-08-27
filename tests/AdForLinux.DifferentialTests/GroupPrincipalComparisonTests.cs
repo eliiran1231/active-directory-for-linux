@@ -510,6 +510,91 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    public void GetGroups_with_context_scopes_primary_group_to_the_query_container()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var primaryOuDn = $"OU=adfl-primary-{suffix},{DifferentialSettings.BaseDn}";
+        var siblingOuDn = $"OU=adfl-sibling-{suffix},{DifferentialSettings.BaseDn}";
+        var userName = $"adfl-primary-u-{suffix}";
+        var groupName = $"adfl-primary-g-{suffix}";
+        var userDn = $"CN={userName},{primaryOuDn}";
+        var groupDn = $"CN={groupName},{primaryOuDn}";
+
+        try
+        {
+            CreateOrganizationalUnit(primaryOuDn);
+            CreateOrganizationalUnit(siblingOuDn);
+            CreateUser(userDn, userName);
+
+            using (var container = Open(primaryOuDn))
+            using (var group = container.Children.Add($"CN={groupName}", "group"))
+            {
+                group.Properties["sAMAccountName"].Value = groupName;
+                group.Properties["groupType"].Value = unchecked((int)0x80000002);
+                group.CommitChanges();
+            }
+
+            using (var group = Open(groupDn))
+            {
+                group.Properties["member"].Add(userDn);
+                group.CommitChanges();
+                group.RefreshCache(new[] { "primaryGroupToken" });
+
+                using var user = Open(userDn);
+                user.Properties["primaryGroupID"].Value =
+                    Convert.ToInt32(group.Properties["primaryGroupToken"].Value);
+                user.CommitChanges();
+            }
+
+            using (var group = Open(groupDn))
+            {
+                group.RefreshCache(new[] { "member" });
+                Assert.DoesNotContain(
+                    userDn,
+                    group.Properties["member"].Cast<object>().Select(value => value.ToString()),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+
+            using var msPrimaryContext = MicrosoftContext(primaryOuDn);
+            using var ourPrimaryContext = OurContext(primaryOuDn);
+            using var msSiblingContext = MicrosoftContext(siblingOuDn);
+            using var ourSiblingContext = OurContext(siblingOuDn);
+            using var msUser = Ms.UserPrincipal.FindByIdentity(msPrimaryContext, userName);
+            using var ourUser = Ours.UserPrincipal.FindByIdentity(ourPrimaryContext, userName);
+
+            Assert.NotNull(msUser);
+            Assert.NotNull(ourUser);
+
+            using var msInside = msUser!.GetGroups(msPrimaryContext);
+            using var ourInside = ourUser!.GetGroups(ourPrimaryContext);
+            using var msOutside = msUser.GetGroups(msSiblingContext);
+            using var ourOutside = ourUser.GetGroups(ourSiblingContext);
+
+            var msInsideDns = msInside.Select(group => group.DistinguishedName).ToArray();
+            var ourInsideDns = ourInside.Select(group => group.DistinguishedName).ToArray();
+            var msOutsideDns = msOutside.Select(group => group.DistinguishedName).ToArray();
+            var ourOutsideDns = ourOutside.Select(group => group.DistinguishedName).ToArray();
+
+            new Comparison("GetGroups(context) primary-group container scope")
+                .CheckSet("inside-container group DNs", msInsideDns, ourInsideDns)
+                .CheckSet("outside-container group DNs", msOutsideDns, ourOutsideDns)
+                .Assert();
+
+            Assert.Contains(groupDn, msInsideDns, StringComparer.OrdinalIgnoreCase);
+            Assert.Contains(groupDn, ourInsideDns, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain(groupDn, msOutsideDns, StringComparer.OrdinalIgnoreCase);
+            Assert.DoesNotContain(groupDn, ourOutsideDns, StringComparer.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Delete(userDn);
+            Delete(groupDn);
+            Delete(siblingOuDn);
+            Delete(primaryOuDn);
+        }
+    }
+
+    [Fact]
     public void GetAuthorizationGroups_matches_for_the_user()
     {
         // The nested group is only reachable by following the group chain, so
