@@ -388,7 +388,11 @@ public class DirectorySearcher : Component
     /// <summary>Returns the first match, or null if there is none.</summary>
     public SearchResult? FindOne()
     {
-        var root = RequireRoot();
+        var configuredRoot = RequireRoot();
+        using var reboundRoot = configuredRoot.IsDisposed
+            ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
+            : null;
+        var root = reboundRoot ?? configuredRoot;
         if (HasAttributeScopeQuery)
         {
             return FindAttributeScoped(root, maximumResults: 1).FirstOrDefault();
@@ -411,7 +415,11 @@ public class DirectorySearcher : Component
     /// <summary>Returns every match. Pages automatically when PageSize &gt; 0.</summary>
     public SearchResultCollection FindAll()
     {
-        var root = RequireRoot();
+        var configuredRoot = RequireRoot();
+        using var reboundRoot = configuredRoot.IsDisposed
+            ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
+            : null;
+        var root = reboundRoot ?? configuredRoot;
         if (HasAttributeScopeQuery)
         {
             var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
@@ -611,6 +619,13 @@ public class DirectorySearcher : Component
     private SearchRequest BuildRequest()
     {
         var root = RequireRoot();
+#if NET10_0_OR_GREATER
+        if (!IsStructurallyValidFilter(Filter))
+        {
+            var protocol = new LdapException(87, "The search filter is invalid.");
+            throw new ArgumentException(protocol.Message, nameof(Filter), protocol);
+        }
+#endif
         var attributes = PropertiesToLoad.Count > 0
             ? PropertiesToLoad.Cast<string>().ToArray()
             : Array.Empty<string>();
@@ -857,11 +872,75 @@ public class DirectorySearcher : Component
 
     private DirectoryEntry RequireRoot()
     {
-        var root = SearchRoot ?? throw new InvalidOperationException(
+        return SearchRoot ?? throw new InvalidOperationException(
             "SearchRoot must be set before searching. Serverless search is not supported on Linux.");
-        root.ThrowIfDisposed();
-        return root;
     }
+
+#if NET10_0_OR_GREATER
+    private static bool IsStructurallyValidFilter(string filter)
+    {
+        var index = 0;
+        return ParseFilter(filter, ref index) && index == filter.Length;
+    }
+
+    private static bool ParseFilter(string filter, ref int index)
+    {
+        if (index >= filter.Length || filter[index++] != '(' || index >= filter.Length)
+        {
+            return false;
+        }
+
+        if (filter[index] is '&' or '|')
+        {
+            index++;
+            var operands = 0;
+            while (index < filter.Length && filter[index] == '(')
+            {
+                if (!ParseFilter(filter, ref index))
+                {
+                    return false;
+                }
+
+                operands++;
+            }
+
+            return operands > 0 && index < filter.Length && filter[index++] == ')';
+        }
+
+        if (filter[index] == '!')
+        {
+            index++;
+            return ParseFilter(filter, ref index) &&
+                index < filter.Length && filter[index++] == ')';
+        }
+
+        var hasComparison = false;
+        while (index < filter.Length && filter[index] != ')')
+        {
+            if (filter[index] == '(')
+            {
+                return false;
+            }
+
+            if (filter[index] == '\\')
+            {
+                index++;
+                if (index >= filter.Length)
+                {
+                    return false;
+                }
+
+                index++;
+                continue;
+            }
+
+            hasComparison |= filter[index] == '=';
+            index++;
+        }
+
+        return hasComparison && index < filter.Length && filter[index++] == ')';
+    }
+#endif
 
     private SearchResponse SendSearch(LdapConnection connection, SearchRequest request)
     {

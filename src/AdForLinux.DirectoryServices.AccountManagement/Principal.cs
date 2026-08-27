@@ -280,7 +280,17 @@ public abstract class Principal : IDisposable
     {
         ArgumentNullException.ThrowIfNull(contextToQuery);
         CheckDisposedOrDeleted();
-        var distinguishedName = RequireDistinguishedName();
+        var distinguishedName = DistinguishedName;
+        if (distinguishedName is null)
+        {
+#if NET10_0_OR_GREATER
+            throw new InvalidOperationException(
+                "The principal must be saved before its groups can be read.");
+#else
+            throw new PrincipalOperationException(
+                "The principal must be saved before its groups can be read.");
+#endif
+        }
         var objectSid = Entry?.Properties["objectSid"].Value as byte[]
             ?? throw new InvalidOperationException(
                 "The principal must have a security identifier before its groups can be queried in another context.");
@@ -304,12 +314,10 @@ public abstract class Principal : IDisposable
                 dn => $"(member={LdapFilter.EscapeValue(dn)})"))})";
         var primaryGroupSid = TryGetPrimaryGroupSid(targetPrincipal);
         targetPrincipal?.Dispose();
-        var membershipFilter = primaryGroupSid is null
-            ? memberFilter
-            : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
         return FindGroups(
             contextToQuery,
-            membershipFilter);
+            memberFilter,
+            primaryGroupSid);
     }
 
     private protected PrincipalSearchResult<Principal> GetAuthorizationGroupsCore() =>
@@ -343,9 +351,8 @@ public abstract class Principal : IDisposable
                 var primaryGroupSid = TryGetPrimaryGroupSid();
                 return FindGroups(
                     ContextRef,
-                    primaryGroupSid is null
-                        ? memberFilter
-                        : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))");
+                    memberFilter,
+                    primaryGroupSid);
             }
 
             var objectSid = Entry?.Properties["objectSid"].Value as byte[]
@@ -361,12 +368,14 @@ public abstract class Principal : IDisposable
 
     private PrincipalSearchResult<Principal> FindGroups(
         PrincipalContext contextToQuery,
-        string membershipFilter) => AccountManagementExceptionTranslator.Execute(
-            () => FindGroupsCore(contextToQuery, membershipFilter));
+        string membershipFilter,
+        byte[]? primaryGroupSid = null) => AccountManagementExceptionTranslator.Execute(
+            () => FindGroupsCore(contextToQuery, membershipFilter, primaryGroupSid));
 
     private PrincipalSearchResult<Principal> FindGroupsCore(
         PrincipalContext contextToQuery,
-        string membershipFilter)
+        string membershipFilter,
+        byte[]? primaryGroupSid)
     {
         var filter = $"(&(objectCategory=group){membershipFilter})";
         var root = contextToQuery.CreateDirectoryEntry(contextToQuery.QueryContainer);
@@ -378,6 +387,30 @@ public abstract class Principal : IDisposable
             foreach (var result in results.Cast<SearchResult>())
             {
                 groups.Add(new GroupPrincipal(contextToQuery, result.GetDirectoryEntry()));
+            }
+
+            // Microsoft applies the supplied context container to ordinary
+            // member links, but still resolves the principal's primary group
+            // from the domain naming context (for example, Domain Users).
+            if (primaryGroupSid is not null)
+            {
+                var primaryGroup = FindBySid(contextToQuery, primaryGroupSid);
+                if (primaryGroup is not null)
+                {
+                    var primaryGroupDn = primaryGroup.DistinguishedName;
+                    if (primaryGroup.Properties["objectClass"].Contains("group") &&
+                        groups.All(group => !string.Equals(
+                            group.DistinguishedName,
+                            primaryGroupDn,
+                            StringComparison.OrdinalIgnoreCase)))
+                    {
+                        groups.Add(new GroupPrincipal(contextToQuery, primaryGroup));
+                    }
+                    else
+                    {
+                        primaryGroup.Dispose();
+                    }
+                }
             }
 
             return new PrincipalSearchResult<Principal>(groups);

@@ -42,6 +42,19 @@ public class ExceptionTranslationTests
         Assert.Contains("protocol message", translated.Message);
     }
 
+    [Fact]
+    public void RawEntryAlreadyExistsUsesTheAdsiDuplicateObjectContract()
+    {
+        var protocol = new LdapException((int)ResultCode.EntryAlreadyExists, "already exists");
+
+        var translated = LdapExceptionTranslator.Translate(protocol);
+
+        var compatible = Assert.IsType<DirectoryServicesCOMException>(translated);
+        Assert.Equal(unchecked((int)0x80071392), compatible.ErrorCode);
+        Assert.Equal((int)ResultCode.EntryAlreadyExists, compatible.ExtendedError);
+        Assert.Same(protocol, compatible.InnerException);
+    }
+
     [Theory]
     [InlineData(unchecked((int)0x80070005), typeof(UnauthorizedAccessException))]
     [InlineData(unchecked((int)0x8007052E), typeof(AuthenticationException))]

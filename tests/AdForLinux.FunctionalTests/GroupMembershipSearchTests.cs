@@ -117,18 +117,23 @@ public class GroupMembershipSearchTests
             using var user = UserPrincipal.FindByIdentity(userContext, userName)!;
 
             using var scoped = user.GetGroups(scopedContext);
-            Assert.Equal(new[] { insideName }, scoped.Select(group => group.SamAccountName));
+            var scopedNames = scoped.Select(group => group.SamAccountName).ToHashSet();
+            Assert.Contains(insideName, scopedNames);
+            Assert.Contains("Domain Users", scopedNames);
+            Assert.DoesNotContain(outsideName, scopedNames);
 
             using var domainWide = user.GetGroups(domainContext);
             var domainNames = domainWide.Select(group => group.SamAccountName).ToHashSet();
             Assert.Contains(insideName, domainNames);
             Assert.Contains(outsideName, domainNames);
+            Assert.Contains("Domain Users", domainNames);
 
             // The no-argument overload is constrained by the principal's own
             // explicitly configured context (CN=Users here).
             using var ownContext = user.GetGroups();
             Assert.Contains(outsideName, ownContext.Select(group => group.SamAccountName));
             Assert.DoesNotContain(insideName, ownContext.Select(group => group.SamAccountName));
+            Assert.Contains("Domain Users", ownContext.Select(group => group.SamAccountName));
         }
         finally
         {
@@ -375,14 +380,18 @@ public class GroupMembershipSearchTests
     }
 
     [Fact]
-    public void GetGroups_on_an_unsaved_principal_is_empty()
+    public void GetGroups_on_an_unsaved_principal_matches_the_target_framework_contract()
     {
         using var context = Context();
         using var user = new UserPrincipal(context) { Name = NewName() };
 
         using var groups = user.GetGroups();
         Assert.Empty(groups);
+#if NET10_0_OR_GREATER
         Assert.Throws<InvalidOperationException>(() => user.GetGroups(context));
+#else
+        Assert.Throws<PrincipalOperationException>(() => user.GetGroups(context));
+#endif
     }
 
     [Fact]

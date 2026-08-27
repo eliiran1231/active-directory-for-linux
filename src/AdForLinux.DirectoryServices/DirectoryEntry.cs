@@ -1055,6 +1055,8 @@ public class DirectoryEntry : Component
 
     internal int? ServerPort => _path.Port;
 
+    internal bool IsDisposed => _disposed;
+
     /// <summary>
     /// Builds a new entry for another DN on the same server, carrying the same
     /// credentials and bind options. Used for search results, parents, children.
