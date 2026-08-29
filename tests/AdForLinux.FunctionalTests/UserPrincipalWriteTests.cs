@@ -10,6 +10,20 @@ namespace AdForLinux.FunctionalTests;
 /// </summary>
 public class UserPrincipalWriteTests
 {
+    [DirectoryObjectClass("user")]
+    [DirectoryRdnPrefix("CN")]
+    private sealed class CustomAuthenticablePrincipal : AuthenticablePrincipal
+    {
+        public CustomAuthenticablePrincipal(
+            PrincipalContext context,
+            string samAccountName,
+            string password,
+            bool enabled)
+            : base(context, samAccountName, password, enabled)
+        {
+        }
+    }
+
     private static PrincipalContext Context() =>
         TestSettings.CreatePrincipalContext(TestDirectory.UsersContainer);
 
@@ -38,6 +52,28 @@ public class UserPrincipalWriteTests
             Assert.True(found!.Enabled);
             Assert.True(context.ValidateCredentials(
                 $"{name}@samdom.example.com", "Str0ng!Passw0rd#2026"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
+    public void Custom_authenticable_principal_can_attempt_a_password_change()
+    {
+        var name = NewName();
+        var dn = DnFor(name);
+
+        try
+        {
+            using var context = Context();
+            using var principal = new CustomAuthenticablePrincipal(
+                context, name, "Str0ng!Passw0rd#2026", enabled: true);
+            principal.Save();
+
+            Assert.Throws<PasswordException>(() => principal.ChangePassword(
+                "Wr0ng!OldPass#2026", "Str0ng!NewPass#2026"));
         }
         finally
         {

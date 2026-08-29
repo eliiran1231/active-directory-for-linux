@@ -365,15 +365,24 @@ public class AuthenticablePrincipal : Principal
         ExecuteSetPasswordOperation(() => SetPasswordImmediate(newPassword));
     }
 
+    /// <summary>
+    /// Changes this principal's password using its current password. Active
+    /// Directory does not expose this operation for computer principals, but
+    /// custom <see cref="AuthenticablePrincipal"/> subclasses are supported.
+    /// </summary>
     public void ChangePassword(string oldPassword, string newPassword)
     {
         CheckDisposedOrDeleted();
         ArgumentNullException.ThrowIfNull(oldPassword);
         ArgumentNullException.ThrowIfNull(newPassword);
         var entry = RequireSaved();
-        if (this is not UserPrincipal)
+        // Microsoft rejects ComputerPrincipal (including subclasses) in its AD
+        // store, rather than requiring every supported type to derive from
+        // UserPrincipal. In particular, a custom AuthenticablePrincipal mapped
+        // to a user-compatible directory class may change its password.
+        if (this is ComputerPrincipal)
         {
-            throw new NotSupportedException("Changing a password is supported only for user principals.");
+            throw new NotSupportedException("Changing a password is not supported for computer principals.");
         }
 
         ExecutePasswordOperation(
