@@ -98,6 +98,13 @@ advanced date/count comparisons.
   `System.DirectoryServices.Protocols` rejects an explicit credential at bind
   time even with `gss-ntlmssp` installed; default-credential GSSAPI behavior is
   runtime and machine configuration dependent.
+- **Invalid `AuthenticationTypes` combinations.** `Anonymous` cannot be
+  combined with `Secure`, and `Signing` or `Sealing` requires `Secure`. On
+  Linux, `DirectoryEntry` rejects these combinations with
+  `PlatformNotSupportedException` before sending an LDAP request. A Windows
+  real-AD comparison confirmed that the LDAP ADSI provider enforces the same
+  validity rules, although it reports native COM/directory-service errors
+  instead of `PlatformNotSupportedException`.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
   within one AD naming context, including when the source and destination

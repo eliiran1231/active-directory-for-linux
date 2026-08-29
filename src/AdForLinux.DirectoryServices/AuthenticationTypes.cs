@@ -5,6 +5,13 @@ namespace AdForLinux.DirectoryServices;
 /// with the flags that matter for a Linux LDAP client. Values match Microsoft's
 /// so existing code that passes them keeps working.
 /// </summary>
+/// <remarks>
+/// <see cref="Anonymous"/> cannot be combined with <see cref="Secure"/>.
+/// <see cref="Signing"/> and <see cref="Sealing"/> require
+/// <see cref="Secure"/>. A <see cref="DirectoryEntry"/> configured with one of
+/// these invalid combinations throws <see cref="PlatformNotSupportedException"/>
+/// on Linux before an LDAP request is sent.
+/// </remarks>
 [Flags]
 public enum AuthenticationTypes
 {
