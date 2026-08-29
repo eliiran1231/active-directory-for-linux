@@ -98,6 +98,13 @@ advanced date/count comparisons.
   `System.DirectoryServices.Protocols` rejects an explicit credential at bind
   time even with `gss-ntlmssp` installed; default-credential GSSAPI behavior is
   runtime and machine configuration dependent.
+- **`DirectoryEntry` authentication flags.** Supported `AuthenticationTypes`
+  values are `None`, `Secure`, `Encryption`/`SecureSocketsLayer`, `Anonymous`,
+  `ServerBind`, `Signing`, and `Sealing`. `Signing` and `Sealing` require
+  `Secure`, while `Anonymous` cannot be combined with `Secure`. `FastBind`,
+  `ReadonlyServer`, `Delegation`, and unknown flag values have no faithful
+  `System.DirectoryServices.Protocols` equivalent and throw
+  `PlatformNotSupportedException` when the entry attempts to bind.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
   within one AD naming context, including when the source and destination
