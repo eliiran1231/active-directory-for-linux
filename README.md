@@ -127,10 +127,12 @@ advanced date/count comparisons.
   operations use the entry's existing SSL connection, so `PasswordPort` only
   accepts the standard LDAPS port `636`. Setting any other value throws
   `PlatformNotSupportedException`.
-- **`DirectoryEntry.NativeObject`.** Microsoft's property exposes the underlying
-  ADSI/COM object, which has no Linux equivalent. The property is retained for
-  source compatibility, but accessing it always throws
-  `PlatformNotSupportedException` on Linux.
+- **`DirectoryEntry(object)` and `DirectoryEntry.NativeObject`.** Microsoft's
+  constructor and property accept or expose an underlying ADSI/COM object,
+  which has no Linux equivalent. The APIs are retained for source compatibility,
+  but the constructor cannot wrap an ADSI object and throws
+  `PlatformNotSupportedException`; accessing `NativeObject` does the same. Create
+  entries from an `LDAP://host/DN` path instead.
 - **`SearchResultCollection.Handle`.** Microsoft exposes the native ADSI
   `IDirectorySearch::ExecuteSearch` handle. Protocol-based LDAP searches have no
   equivalent stable native handle, so accessing this property throws
