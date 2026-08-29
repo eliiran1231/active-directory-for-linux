@@ -31,6 +31,7 @@ property that disagreed, not just the first.
 | `UserPrincipalComparisonTests` | user properties, account state (dates, flags, lockout), `FindByIdentity`, date-based finders, `ValidateCredentials` |
 | `GroupPrincipalComparisonTests` | group properties, `Members`, `GetMembers`, `GetGroups`, `GetAuthorizationGroups` |
 | `DirectoryEntryComparisonTests` | `DirectoryEntry` properties, `DirectorySearcher` `FindOne`/`FindAll` |
+| `DirectoryEntryAuthenticationComparisonTests` | invalid `AuthenticationTypes` combinations against the Windows LDAP ADSI provider |
 | `DirectoryEntryCopyComparisonTests` | real-AD `CopyTo` matrix for user, group, computer, and OU objects, both overloads, identity/security/source state, and failure results |
 | `ObjectSecurityComparisonTests` | live DACL round trips, partial `SecurityMasks`, and cached versus immediate `ObjectSecurity` writes |
 | `PrincipalSearcherComparisonTests` | query-by-example search, including wildcards |

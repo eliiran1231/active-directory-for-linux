@@ -105,6 +105,13 @@ advanced date/count comparisons.
   `ReadonlyServer`, `Delegation`, and unknown flag values have no faithful
   `System.DirectoryServices.Protocols` equivalent and throw
   `PlatformNotSupportedException` when the entry attempts to bind.
+- **Invalid `AuthenticationTypes` combinations.** `Anonymous` cannot be
+  combined with `Secure`, and `Signing` or `Sealing` requires `Secure`. On
+  Linux, `DirectoryEntry` rejects these combinations with
+  `PlatformNotSupportedException` before sending an LDAP request. A Windows
+  real-AD comparison confirmed that the LDAP ADSI provider enforces the same
+  validity rules, although it reports native COM/directory-service errors
+  instead of `PlatformNotSupportedException`.
 - **`ContextType.Machine` and `ApplicationDirectory`.** Domain only.
 - **Cross-domain `Principal.Save(PrincipalContext)` moves.** LDAP supports moves
   within one AD naming context, including when the source and destination
