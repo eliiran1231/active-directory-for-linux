@@ -137,7 +137,11 @@ advanced date/count comparisons.
   `IDirectorySearch::ExecuteSearch` handle. Protocol-based LDAP searches have no
   equivalent stable native handle, so accessing this property throws
   `PlatformNotSupportedException` rather than returning a fabricated zero value.
-- `DirectoryEntry` certificate members and the COM/event surface.
+- **ADSI provider invocation through `DirectoryEntry.Invoke`, `InvokeGet`, and
+  `InvokeSet`.** These methods require an underlying ADSI/COM provider object,
+  which protocol-based LDAP does not expose. All three methods therefore throw
+  `PlatformNotSupportedException` on Linux.
+- `DirectoryEntry` certificate members and the remaining COM/event surface.
 - **Active Directory ACL manipulation on Linux.** The public rule types are
   available for source compatibility, but their required
   `System.Security.AccessControl` base classes are Windows-only in modern .NET.
