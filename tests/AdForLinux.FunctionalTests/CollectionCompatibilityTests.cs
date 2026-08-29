@@ -140,7 +140,11 @@ public class CollectionCompatibilityTests
         Assert.Same(properties["cn"], enumerator.Current);
         Assert.Equal("cn", (string)enumerator.Key, ignoreCase: true);
 
-        Assert.Throws<NotSupportedException>(() => dictionary.Add("mail", properties["mail"]));
+        Assert.Throws<NotSupportedException>(() => dictionary.Add("mail", properties["cn"]));
+        Assert.Throws<NotSupportedException>(() => dictionary["mail"] = properties["cn"]);
+        Assert.Throws<NotSupportedException>(() => dictionary.Remove("cn"));
+        Assert.Throws<NotSupportedException>(() => dictionary.Clear());
+        Assert.Single(properties);
     }
 
     [Fact]
@@ -247,7 +251,7 @@ public class CollectionCompatibilityTests
     }
 
     [Fact]
-    public void Result_property_collections_are_read_only_dictionary_and_collection_views()
+    public void Result_property_collections_inherit_mutable_dictionary_base_contracts()
     {
         var properties = new ResultPropertyCollection();
         properties.Set("sAMAccountName", new object[] { "Alice", "Alias" });
@@ -256,8 +260,11 @@ public class CollectionCompatibilityTests
         Assert.IsAssignableFrom<ReadOnlyCollectionBase>(properties["samAccountName"]);
 
         IDictionary dictionary = properties;
-        Assert.True(dictionary.Contains("SAMACCOUNTNAME"));
-        Assert.True(dictionary.IsReadOnly);
+        Assert.True(properties.Contains("SAMACCOUNTNAME"));
+        Assert.False(dictionary.Contains("SAMACCOUNTNAME"));
+        Assert.True(dictionary.Contains("samaccountname"));
+        Assert.False(dictionary.IsFixedSize);
+        Assert.False(dictionary.IsReadOnly);
         Assert.Single(properties);
         Assert.Equal(1, properties["samAccountName"].IndexOf("Alias"));
         Assert.Equal("samaccountname", Assert.Single(properties.PropertyNames.Cast<string>()));
@@ -273,7 +280,17 @@ public class CollectionCompatibilityTests
         var collections = new ResultPropertyValueCollection[1];
         properties.CopyTo(collections, 0);
         Assert.Same(properties["samAccountName"], collections[0]);
-        Assert.Throws<NotSupportedException>(() => dictionary.Clear());
+
+        dictionary.Add("mail", "alice@example.test");
+        dictionary["displayname"] = "Alice";
+        Assert.Equal("alice@example.test", dictionary["mail"]);
+        Assert.Equal("Alice", dictionary["displayname"]);
+
+        dictionary.Remove("mail");
+        Assert.False(dictionary.Contains("mail"));
+
+        dictionary.Clear();
+        Assert.Empty(properties);
     }
 
     [Fact]

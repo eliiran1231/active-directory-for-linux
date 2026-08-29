@@ -8,7 +8,7 @@ namespace AdForLinux.DirectoryServices;
 /// <c>result.Properties["x"][0]</c> only throws when the attribute really is
 /// absent (empty), not with a KeyNotFoundException.
 /// </summary>
-public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable<ResultPropertyValueCollection>
+public class ResultPropertyCollection : DictionaryBase, IEnumerable<ResultPropertyValueCollection>
 {
     private static readonly ResultPropertyValueCollection Empty =
         new(Array.Empty<object>());
@@ -41,36 +41,4 @@ public class ResultPropertyCollection : DictionaryBase, IDictionary, IEnumerable
 
     IEnumerator<ResultPropertyValueCollection> IEnumerable<ResultPropertyValueCollection>.GetEnumerator() =>
         InnerHashtable.Values.Cast<ResultPropertyValueCollection>().GetEnumerator();
-
-    bool IDictionary.IsFixedSize => true;
-
-    bool IDictionary.IsReadOnly => true;
-
-    ICollection IDictionary.Keys => PropertyNames;
-
-    ICollection IDictionary.Values => Values;
-
-    object? IDictionary.this[object key]
-    {
-        get => key is string name ? this[name] : null;
-        set => throw new NotSupportedException("Search result properties are read-only.");
-    }
-
-    void IDictionary.Add(object key, object? value) =>
-        throw new NotSupportedException("Search result properties are read-only.");
-
-    void IDictionary.Clear() => throw new NotSupportedException("Search result properties are read-only.");
-
-    bool IDictionary.Contains(object key) => key is string name && Contains(name);
-
-    IDictionaryEnumerator IDictionary.GetEnumerator() => InnerHashtable.GetEnumerator();
-
-    void IDictionary.Remove(object key) =>
-        throw new NotSupportedException("Search result properties are read-only.");
-
-    bool ICollection.IsSynchronized => false;
-
-    object ICollection.SyncRoot => this;
-
-    void ICollection.CopyTo(Array array, int index) => InnerHashtable.CopyTo(array, index);
 }
