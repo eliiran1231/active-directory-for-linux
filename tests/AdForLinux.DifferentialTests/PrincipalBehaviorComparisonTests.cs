@@ -38,6 +38,42 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         public void Write(string attribute, object? value) => ExtensionSet(attribute, value);
     }
 
+    [Ms.DirectoryObjectClass("user")]
+    [Ms.DirectoryRdnPrefix("CN")]
+    private sealed class MicrosoftCustomAuthenticablePrincipal : Ms.AuthenticablePrincipal
+    {
+        public MicrosoftCustomAuthenticablePrincipal(Ms.PrincipalContext context)
+            : base(context)
+        {
+        }
+
+        public static MicrosoftCustomAuthenticablePrincipal? Find(
+            Ms.PrincipalContext context,
+            string identityValue) =>
+            (MicrosoftCustomAuthenticablePrincipal?)FindByIdentityWithType(
+                context,
+                typeof(MicrosoftCustomAuthenticablePrincipal),
+                identityValue);
+    }
+
+    [Ours.DirectoryObjectClass("user")]
+    [Ours.DirectoryRdnPrefix("CN")]
+    private sealed class OurCustomAuthenticablePrincipal : Ours.AuthenticablePrincipal
+    {
+        public OurCustomAuthenticablePrincipal(Ours.PrincipalContext context)
+            : base(context)
+        {
+        }
+
+        public static OurCustomAuthenticablePrincipal? Find(
+            Ours.PrincipalContext context,
+            string identityValue) =>
+            (OurCustomAuthenticablePrincipal?)FindByIdentityWithType(
+                context,
+                typeof(OurCustomAuthenticablePrincipal),
+                identityValue);
+    }
+
     private static Ms.PrincipalContext MicrosoftContext() =>
         new(Ms.ContextType.Domain,
             DifferentialSettings.ServerName,
@@ -367,6 +403,22 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             Record.Exception(() => msComputer.ChangePassword("old", "new")));
         Assert.IsType<NotSupportedException>(
             Record.Exception(() => ourComputer.ChangePassword("old", "new")));
+    }
+
+    [Fact]
+    public void Saved_custom_authenticable_principal_can_attempt_password_change_like_microsoft()
+    {
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var msPrincipal = MicrosoftCustomAuthenticablePrincipal.Find(msContext, _data.UserName);
+        using var ourPrincipal = OurCustomAuthenticablePrincipal.Find(ourContext, _data.UserName);
+        Assert.NotNull(msPrincipal);
+        Assert.NotNull(ourPrincipal);
+
+        Assert.IsType<Ms.PasswordException>(Record.Exception(
+            () => msPrincipal!.ChangePassword("Wr0ng!OldPass#2026", "Str0ng!NewPass#2026")));
+        Assert.IsType<Ours.PasswordException>(Record.Exception(
+            () => ourPrincipal!.ChangePassword("Wr0ng!OldPass#2026", "Str0ng!NewPass#2026")));
     }
 
     [Fact]
