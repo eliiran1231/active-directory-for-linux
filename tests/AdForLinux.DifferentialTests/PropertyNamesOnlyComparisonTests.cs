@@ -5,7 +5,7 @@ using Xunit;
 namespace AdForLinux.DifferentialTests;
 
 [Collection("differential")]
-public sealed class PropertyNamesOnlyComparisonTests
+public sealed class PropertyNamesOnlyComparisonTests : IClassFixture<TestDataFixture>
 {
     private readonly TestDataFixture _data;
 
