@@ -111,6 +111,25 @@ Microsoft/AdForLinux descriptors.
 The tests create their own temporary user and two groups in the configured
 writable container and delete them at the end.
 
+### Fixture registration check without AD
+
+The fixture registration guard can run on both runtimes on Linux or Windows. It
+checks that every test class requesting `TestDataFixture` registers it with
+xUnit, without constructing a fixture or calling either directory API:
+
+```sh
+dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~FixtureRegistrationTests
+```
+
+The full differential suite still requires Windows and the AD lab. If the
+workflow fails in **Create per-run test OU** with rejected client credentials,
+no comparison tests have run. Verify the `ad-lab` environment's
+`AD_LAB_BIND_DN` and `AD_LAB_ADMIN_PASSWORD`, account status, and access to the
+configured CI root OU before rerunning. Use a UPN or `DOMAIN\username` identity
+that also works with Windows authentication; a successful LDAP simple bind
+alone does not verify the credentials used by AD Web Services or Microsoft's
+forest discovery.
+
 ## `DirectoryEntry.CopyTo` protocol limitation
 
 The real-AD matrix found that Microsoft's Windows LDAP ADSI provider returns

@@ -94,6 +94,52 @@ public class DirectorySearcherTimeLimitTests
         Assert.Equal(TimeSpan.FromSeconds(4), request.TimeLimit);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Unlimited_page_limit_preserves_remaining_overall_budget(int pageLimitSeconds)
+    {
+        var clock = new ManualTimeProvider();
+        var budget = new ServerSearchTimeLimitBudget(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(pageLimitSeconds),
+            isPaged: true,
+            clock);
+
+        var firstPage = new SearchRequest();
+        Assert.True(budget.TryApply(firstPage));
+        Assert.Equal(TimeSpan.FromSeconds(5), firstPage.TimeLimit);
+
+        clock.Advance(TimeSpan.FromSeconds(4));
+        var lastPage = new SearchRequest();
+        Assert.True(budget.TryApply(lastPage));
+        Assert.Equal(TimeSpan.FromSeconds(1), lastPage.TimeLimit);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.False(budget.TryApply(new SearchRequest()));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(0, -1)]
+    [InlineData(-1, 0)]
+    [InlineData(-1, -1)]
+    public void Unlimited_overall_and_page_limits_allow_later_pages(
+        int overallLimitSeconds, int pageLimitSeconds)
+    {
+        var clock = new ManualTimeProvider();
+        var budget = new ServerSearchTimeLimitBudget(
+            TimeSpan.FromSeconds(overallLimitSeconds),
+            TimeSpan.FromSeconds(pageLimitSeconds),
+            isPaged: true,
+            clock);
+
+        clock.Advance(TimeSpan.FromDays(1));
+        var request = new SearchRequest();
+        Assert.True(budget.TryApply(request));
+        Assert.Equal(TimeSpan.Zero, request.TimeLimit);
+    }
+
     [Fact]
     public void Unpaged_search_uses_only_server_time_limit()
     {
