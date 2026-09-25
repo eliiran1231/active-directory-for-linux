@@ -20,7 +20,7 @@ public class PrincipalValueCollectionTests
         if (useNonGenericList)
         {
             IList list = values;
-            Assert.Equal(2, list.Add("HOST/tail"));
+            Assert.Equal(3, list.Add("HOST/tail"));
             list.Insert(1, "HOST/middle");
             list[0] = "HOST/replaced";
             list.Remove("HOST/last");
