@@ -30,12 +30,9 @@ public class DirectoryEntryConfiguration
     }
 
     /// <summary>
-    /// Gets or sets how passwords are encoded for password changes. Portable LDAP password
-    /// operations support only SSL encoding; clear-text password encoding is rejected.
+    /// Gets or sets the requested password encoding. Both defined values are stored for
+    /// compatibility; password operations reject clear-text encoding when invoked.
     /// </summary>
-    /// <exception cref="PlatformNotSupportedException">
-    /// The requested encoding is <see cref="PasswordEncodingMethod.PasswordEncodingClear"/>.
-    /// </exception>
     public PasswordEncodingMethod PasswordEncoding
     {
         get => _passwordEncoding;
@@ -47,33 +44,32 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(PasswordEncodingMethod));
             }
 
-            if (value == PasswordEncodingMethod.PasswordEncodingClear)
-            {
-                throw new PlatformNotSupportedException(
-                    "Clear-text password encoding is not supported. Password operations require an SSL-protected LDAP connection.");
-            }
-
             _passwordEncoding = value;
         }
     }
 
     /// <summary>
-    /// Gets or sets the port used for password operations. Portable LDAP password operations
-    /// use the entry's existing SSL connection, so only the standard LDAPS port 636 is supported.
+    /// Gets or sets the requested password-operation port. Values are stored for compatibility;
+    /// password operations reject nondefault ports because separate password connections are unsupported.
     /// </summary>
-    /// <exception cref="PlatformNotSupportedException">The requested port is not 636.</exception>
     public int PasswordPort
     {
         get => _passwordPort;
-        set
-        {
-            if (value != 636)
-            {
-                throw new PlatformNotSupportedException(
-                    "A separate password-operation port is not supported. Use the entry's SSL connection on port 636.");
-            }
+        set => _passwordPort = value;
+    }
 
-            _passwordPort = value;
+    internal void ValidatePasswordOperation()
+    {
+        if (_passwordEncoding == PasswordEncodingMethod.PasswordEncodingClear)
+        {
+            throw new PlatformNotSupportedException(
+                "Clear-text password encoding is not supported. Password operations require an SSL-protected LDAP connection.");
+        }
+
+        if (_passwordPort != 636)
+        {
+            throw new PlatformNotSupportedException(
+                "A separate password-operation port is not supported. PasswordPort must be 636 for password operations.");
         }
     }
 
