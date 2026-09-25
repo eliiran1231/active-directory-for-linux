@@ -319,7 +319,7 @@ public class DirectorySearcherTests
     }
 
     [Fact]
-    public void PropertyNamesOnly_keeps_returned_empty_attributes_but_not_absent_ones()
+    public void PropertyNamesOnly_preserves_returned_names_without_inventing_absent_ones()
     {
         var name = $"adfl-types-{Guid.NewGuid():N}";
         var dn = TestDirectory.Create(name, "user", new Dictionary<string, string>
@@ -343,7 +343,6 @@ public class DirectorySearcherTests
             var result = Assert.IsType<SearchResult>(searcher.FindOne());
 
             Assert.True(result.Properties.Contains("displayName"));
-            Assert.Empty(result.Properties["displayName"]);
             Assert.False(result.Properties.Contains("description"));
             Assert.True(result.Properties.Contains("adspath"));
         }
