@@ -24,9 +24,9 @@ public class AccountManagementPublicTypesTests
         values.Add("HOST/server.example.test");
         values.Insert(0, "RestrictedKrbHost/server.example.test");
         IList list = values;
-        var returnedIndex = list.Add("TERMSRV/server.example.test");
+        var returnedCount = list.Add("TERMSRV/server.example.test");
 
-        Assert.Equal(2, returnedIndex);
+        Assert.Equal(3, returnedCount);
         Assert.Equal(3, values.Count);
         Assert.Equal("RestrictedKrbHost/server.example.test", values[0]);
         Assert.False(values.IsFixedSize);
