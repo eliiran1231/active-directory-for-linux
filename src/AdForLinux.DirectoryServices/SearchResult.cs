@@ -18,6 +18,13 @@ public class SearchResult
 
         var properties = new ResultPropertyCollection();
         var grouped = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
+        // Types-only LDAP responses include attribute names without values.
+        // Start from the names actually returned, not the requested names.
+        foreach (string name in entry.Attributes.AttributeNames)
+        {
+            grouped[name] = new List<object>();
+        }
+
         foreach (var (name, value) in SearchEntryReader.Read(entry, searchRoot.GetSchemaConnection()))
         {
             if (!grouped.TryGetValue(name, out var list))

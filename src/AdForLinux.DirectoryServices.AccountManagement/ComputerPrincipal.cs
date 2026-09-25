@@ -1,5 +1,3 @@
-using AdForLinux.DirectoryServices;
-
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>An Active Directory computer account.</summary>

@@ -53,6 +53,53 @@ public sealed class PropertyNamesOnlyComparisonTests : IClassFixture<TestDataFix
         {
             Assert.Equal(microsoftShape[propertyName], ourShape[propertyName]);
         }
+
+        Assert.Equal(0, ourShape["displayname"]);
+        Assert.Equal(0, ourShape["description"]);
+    }
+
+    [Fact]
+    public void PropertyNamesOnly_does_not_include_absent_requested_attributes()
+    {
+        using var microsoftRoot = new Ms.DirectoryEntry(
+            DifferentialSettings.PathFor(_data.UnsetUserDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.MicrosoftAuthenticationTypes);
+        using var ourRoot = new Ours.DirectoryEntry(
+            DifferentialSettings.PathFor(_data.UnsetUserDn),
+            DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword,
+            DifferentialSettings.OurAuthenticationTypes);
+        using var microsoftSearcher = new Ms.DirectorySearcher(microsoftRoot)
+        {
+            Filter = "(objectClass=*)",
+            SearchScope = Ms.SearchScope.Base,
+            PropertyNamesOnly = true,
+        };
+        using var ourSearcher = new Ours.DirectorySearcher(ourRoot)
+        {
+            Filter = "(objectClass=*)",
+            SearchScope = Ours.SearchScope.Base,
+            PropertyNamesOnly = true,
+        };
+
+        microsoftSearcher.PropertiesToLoad.AddRange(new[] { "sAMAccountName", "description" });
+        ourSearcher.PropertiesToLoad.AddRange(new[] { "sAMAccountName", "description" });
+
+        var microsoft = Assert.IsType<Ms.SearchResult>(microsoftSearcher.FindOne());
+        var ours = Assert.IsType<Ours.SearchResult>(ourSearcher.FindOne());
+        var microsoftShape = Snapshot(microsoft.Properties);
+        var ourShape = Snapshot(ours.Properties);
+
+        Assert.Equal(microsoftShape.Keys, ourShape.Keys);
+        foreach (var propertyName in microsoftShape.Keys)
+        {
+            Assert.Equal(microsoftShape[propertyName], ourShape[propertyName]);
+        }
+
+        Assert.Equal(0, ourShape["samaccountname"]);
+        Assert.False(ours.Properties.Contains("description"));
     }
 
     private static SortedDictionary<string, int> Snapshot(Ms.ResultPropertyCollection properties) =>

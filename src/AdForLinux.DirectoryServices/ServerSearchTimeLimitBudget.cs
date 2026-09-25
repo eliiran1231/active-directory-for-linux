@@ -60,8 +60,10 @@ internal sealed class ServerSearchTimeLimitBudget
             requestTimeLimit = TimeSpan.Zero;
         }
 
+        // A zero page limit means unlimited, so it must not replace a finite
+        // overall budget with LDAP's zero (unlimited) sentinel.
         if (_isPaged &&
-            _serverPageTimeLimit >= TimeSpan.Zero &&
+            _serverPageTimeLimit > TimeSpan.Zero &&
             (requestTimeLimit is null || _serverPageTimeLimit < requestTimeLimit.Value))
         {
             requestTimeLimit = _serverPageTimeLimit;
