@@ -411,6 +411,11 @@ public class DirectoryEntry : Component
     /// </summary>
     internal void ReplaceAttributeImmediate(string attributeName, object value)
     {
+        if (string.Equals(attributeName, "unicodePwd", StringComparison.OrdinalIgnoreCase))
+        {
+            Options.ValidatePasswordOperation();
+        }
+
         var connection = GetConnection();
         var modification = new DirectoryAttributeModification
         {
@@ -430,6 +435,8 @@ public class DirectoryEntry : Component
     /// </summary>
     internal void ChangePasswordImmediate(byte[] oldPassword, byte[] newPassword)
     {
+        Options.ValidatePasswordOperation();
+
         var deletion = new DirectoryAttributeModification
         {
             Name = "unicodePwd",

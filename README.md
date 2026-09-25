@@ -123,10 +123,14 @@ advanced date/count comparisons.
   server, port, TLS mode, authentication type, credential, or connection
   security option. Such moves throw `PlatformNotSupportedException` before an
   LDAP request is sent; same-connection moves and renames remain supported.
-- **Nonstandard `DirectoryEntryConfiguration.PasswordPort` values.** Password
-  operations use the entry's existing SSL connection, so `PasswordPort` only
-  accepts the standard LDAPS port `636`. Setting any other value throws
-  `PlatformNotSupportedException`.
+- **Password transport options.** `DirectoryEntryConfiguration.PasswordPort`
+  stores nondefault values, and `PasswordEncoding` accepts both defined enum
+  values, matching Microsoft's setter/getter behavior. Portable password
+  operations use the entry's existing connection; separate password connections
+  and clear-text encoding are unsupported. Requesting a port other than `636`
+  or `PasswordEncodingClear` causes password reset/change operations to throw
+  `PlatformNotSupportedException` before binding or sending the password request.
+  Setting these options does not enable ADSI password calls through `Invoke`.
 - **`DirectoryEntry(object)` and `DirectoryEntry.NativeObject`.** Microsoft's
   constructor and property accept or expose an underlying ADSI/COM object,
   which has no Linux equivalent. The APIs are retained for source compatibility,
@@ -167,10 +171,11 @@ path. Negotiate requests are passed through to `System.DirectoryServices.Protoco
 without a Basic fallback; support depends on the platform runtime and GSSAPI
 configuration. A self-signed certificate can be trusted for tests.
 
-Password operations require an SSL-protected LDAP connection. Only
-`PasswordEncodingMethod.PasswordEncodingSsl` is supported by
-`DirectoryEntryConfiguration.PasswordEncoding`; `PasswordEncodingClear` throws
-`PlatformNotSupportedException`.
+Password operations require an SSL-protected LDAP connection. Setting
+`DirectoryEntryConfiguration.PasswordEncoding` to `PasswordEncodingClear`
+stores the preference but does not enable clear-text password operations;
+password reset/change operations throw `PlatformNotSupportedException` when
+invoked with that preference.
 
 ### Skipping a self-signed certificate on Linux
 

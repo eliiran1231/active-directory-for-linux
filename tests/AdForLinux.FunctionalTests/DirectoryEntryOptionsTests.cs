@@ -66,7 +66,7 @@ public class DirectoryEntryOptionsTests
     }
 
     [Fact]
-    public void Unsupported_password_options_fail_when_configured()
+    public void Password_options_store_requested_values_and_preserve_enum_validation()
     {
         using var entry = new DirectoryEntry();
 
@@ -74,12 +74,49 @@ public class DirectoryEntryOptionsTests
         Assert.Equal(636, entry.Options.PasswordPort);
         Assert.Throws<InvalidEnumArgumentException>(
             () => entry.Options.PasswordEncoding = (PasswordEncodingMethod)2);
-        Assert.Throws<PlatformNotSupportedException>(
-            () => entry.Options.PasswordEncoding = PasswordEncodingMethod.PasswordEncodingClear);
-        Assert.Throws<PlatformNotSupportedException>(() => entry.Options.PasswordPort = 389);
+        entry.Options.PasswordEncoding = PasswordEncodingMethod.PasswordEncodingClear;
+        entry.Options.PasswordPort = 1636;
+        Assert.Equal(PasswordEncodingMethod.PasswordEncodingClear, entry.Options.PasswordEncoding);
+        Assert.Equal(1636, entry.Options.PasswordPort);
+        Assert.Throws<InvalidEnumArgumentException>(
+            () => entry.Options.PasswordEncoding = (PasswordEncodingMethod)(-1));
+        Assert.Equal(PasswordEncodingMethod.PasswordEncodingClear, entry.Options.PasswordEncoding);
 
         entry.Options.PasswordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;
         entry.Options.PasswordPort = 636;
+        Assert.Equal(PasswordEncodingMethod.PasswordEncodingSsl, entry.Options.PasswordEncoding);
+        Assert.Equal(636, entry.Options.PasswordPort);
+    }
+
+    [Theory]
+    [InlineData(PasswordEncodingMethod.PasswordEncodingClear, 636, "Clear-text")]
+    [InlineData(PasswordEncodingMethod.PasswordEncodingSsl, 1636, "port")]
+    [InlineData(PasswordEncodingMethod.PasswordEncodingSsl, 389, "port")]
+    public void Unsupported_password_options_fail_before_password_operations_bind(
+        PasswordEncodingMethod encoding, int port, string message)
+    {
+        using var entry = new DirectoryEntry("LDAP://localhost:1/CN=test");
+        entry.Options.PasswordEncoding = encoding;
+        entry.Options.PasswordPort = port;
+
+        var resetError = Assert.Throws<PlatformNotSupportedException>(
+            () => entry.ReplaceAttributeImmediate("UNICODEpwd", new byte[] { 1 }));
+        var changeError = Assert.Throws<PlatformNotSupportedException>(
+            () => entry.ChangePasswordImmediate(new byte[] { 1 }, new byte[] { 2 }));
+        Assert.Contains(message, resetError.Message, StringComparison.Ordinal);
+        Assert.Contains(message, changeError.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("SetPassword")]
+    [InlineData("ChangePassword")]
+    public void Password_options_do_not_enable_unsupported_ADSI_password_invocation(string method)
+    {
+        using var entry = new DirectoryEntry();
+        entry.Options.PasswordEncoding = PasswordEncodingMethod.PasswordEncodingClear;
+        entry.Options.PasswordPort = 1636;
+
+        Assert.Throws<PlatformNotSupportedException>(() => entry.Invoke(method, "old", "new"));
     }
 
     [Fact]
