@@ -319,6 +319,41 @@ public class DirectorySearcherTests
     }
 
     [Fact]
+    public void PropertyNamesOnly_keeps_returned_empty_attributes_but_not_absent_ones()
+    {
+        var name = $"adfl-types-{Guid.NewGuid():N}";
+        var dn = TestDirectory.Create(name, "user", new Dictionary<string, string>
+        {
+            ["sAMAccountName"] = name,
+            ["displayName"] = "Types Only User",
+        });
+
+        try
+        {
+            using var root = new DirectoryEntry(TestSettings.PathFor(dn), TestSettings.BindDn,
+                TestSettings.BindPassword, AuthenticationTypes.SecureSocketsLayer);
+            using var searcher = new DirectorySearcher(root)
+            {
+                SearchScope = SearchScope.Base,
+                PropertyNamesOnly = true,
+            };
+            searcher.PropertiesToLoad.Add("displayName");
+            searcher.PropertiesToLoad.Add("description");
+
+            var result = Assert.IsType<SearchResult>(searcher.FindOne());
+
+            Assert.True(result.Properties.Contains("displayName"));
+            Assert.Empty(result.Properties["displayName"]);
+            Assert.False(result.Properties.Contains("description"));
+            Assert.True(result.Properties.Contains("adspath"));
+        }
+        finally
+        {
+            TestDirectory.Delete(dn);
+        }
+    }
+
+    [Fact]
     public void GetDirectoryEntry_reopens_the_matched_object()
     {
         using var root = Root();
