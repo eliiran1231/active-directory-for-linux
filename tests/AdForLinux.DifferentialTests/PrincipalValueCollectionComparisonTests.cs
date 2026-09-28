@@ -27,8 +27,8 @@ public sealed class PrincipalValueCollectionComparisonTests
         var ourResult = ((IList)ours).Add("HOST/new");
 
         Assert.Equal(microsoft.ToArray(), ours.ToArray());
-        // Microsoft's IList.Add returns the new Count, even though the usual
-        // IList convention (and our implementation) returns the zero-based index.
+        // Microsoft's IList.Add returns the new Count rather than the
+        // zero-based index used by the usual IList convention.
         new Comparison("PrincipalValueCollection<string>.IList.Add")
             .Check("return value", microsoftResult, ourResult)
             .Check("Count", microsoft.Count, ours.Count)
