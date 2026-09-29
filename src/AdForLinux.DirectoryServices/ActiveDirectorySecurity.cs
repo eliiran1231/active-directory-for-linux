@@ -286,11 +286,11 @@ internal static class ActiveDirectoryInheritance
         };
     }
 
-    private static void Validate(ActiveDirectorySecurityInheritance value)
+    private static void Validate(ActiveDirectorySecurityInheritance inheritanceType)
     {
-        if (value < ActiveDirectorySecurityInheritance.None || value > ActiveDirectorySecurityInheritance.Children)
+        if (inheritanceType < ActiveDirectorySecurityInheritance.None || inheritanceType > ActiveDirectorySecurityInheritance.Children)
         {
-            throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ActiveDirectorySecurityInheritance));
+            throw new InvalidEnumArgumentException(nameof(inheritanceType), (int)inheritanceType, typeof(ActiveDirectorySecurityInheritance));
         }
     }
 }

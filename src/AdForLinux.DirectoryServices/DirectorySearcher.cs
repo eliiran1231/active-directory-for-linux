@@ -126,7 +126,7 @@ public class DirectorySearcher : Component
             if (!string.IsNullOrEmpty(_attributeScopeQuery) && value != SearchScope.Base)
             {
                 throw new ArgumentException(
-                    "SearchScope must be Base when AttributeScopeQuery is set.", nameof(value));
+                    "SearchScope must be Base when AttributeScopeQuery is set.");
             }
 
             _searchScope = value;
@@ -171,7 +171,7 @@ public class DirectorySearcher : Component
         {
             if (value < 0)
             {
-                throw new ArgumentException("SizeLimit must be greater than or equal to 0.", nameof(value));
+                throw new ArgumentException("SizeLimit must be greater than or equal to 0.");
             }
 
             _sizeLimit = value;
@@ -199,7 +199,7 @@ public class DirectorySearcher : Component
                 if (_searchScopeSpecified && SearchScope != SearchScope.Base)
                 {
                     throw new ArgumentException(
-                        "SearchScope must be Base when AttributeScopeQuery is set.", nameof(value));
+                        "SearchScope must be Base when AttributeScopeQuery is set.");
                 }
 
                 _searchScope = SearchScope.Base;
