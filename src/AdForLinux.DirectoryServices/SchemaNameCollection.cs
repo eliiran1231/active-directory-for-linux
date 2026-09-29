@@ -7,13 +7,15 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public class SchemaNameCollection : IList
 {
-    private readonly List<string?> _names = new();
+    // Structural changes replace the array, while indexer writes update it in
+    // place. Existing enumerators therefore retain their original array.
+    private string?[] _names = Array.Empty<string?>();
 
     internal SchemaNameCollection()
     {
     }
 
-    public int Count => _names.Count;
+    public int Count => _names.Length;
 
     public string? this[int index]
     {
@@ -23,8 +25,9 @@ public class SchemaNameCollection : IList
 
     public int Add(string? value)
     {
-        _names.Add(value);
-        return _names.Count - 1;
+        var index = Count;
+        Insert(index, value);
+        return index;
     }
 
     public void AddRange(string?[] value)
@@ -42,17 +45,26 @@ public class SchemaNameCollection : IList
         AddRange(value._names.ToArray());
     }
 
-    public void Clear() => _names.Clear();
+    public void Clear() => _names = Array.Empty<string?>();
 
     public bool Contains(string? value) => IndexOf(value) >= 0;
 
     public void CopyTo(string?[] stringArray, int index) => _names.CopyTo(stringArray, index);
 
-    public int IndexOf(string? value) => _names.IndexOf(value);
+    public int IndexOf(string? value) => Array.IndexOf(_names, value);
 
     public void Insert(int index, string? value)
     {
-        _names.Insert(index, value);
+        if ((uint)index > (uint)Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        var names = new string?[Count + 1];
+        Array.Copy(_names, 0, names, 0, index);
+        names[index] = value;
+        Array.Copy(_names, index, names, index + 1, Count - index);
+        _names = names;
     }
 
     public void Remove(string? value)
@@ -61,7 +73,18 @@ public class SchemaNameCollection : IList
         RemoveAt(index);
     }
 
-    public void RemoveAt(int index) => _names.RemoveAt(index);
+    public void RemoveAt(int index)
+    {
+        if ((uint)index >= (uint)Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        var names = new string?[Count - 1];
+        Array.Copy(_names, 0, names, 0, index);
+        Array.Copy(_names, index + 1, names, index, Count - index - 1);
+        _names = names;
+    }
 
     public IEnumerator GetEnumerator() => _names.GetEnumerator();
 
