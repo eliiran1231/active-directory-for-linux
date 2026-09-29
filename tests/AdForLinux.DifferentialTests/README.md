@@ -111,6 +111,38 @@ Microsoft/AdForLinux descriptors.
 The tests create their own temporary user and two groups in the configured
 writable container and delete them at the end.
 
+### Offline compatibility regressions
+
+The following comparisons require Windows but no domain controller or `AD_*`
+environment variables. They were verified against the referenced Microsoft
+9.0.0 package on both `net8.0-windows` and `net10.0-windows`.
+
+| Trigger | Microsoft behavior | Current AdForLinux behavior |
+| --- | --- | --- |
+| Mutate `SchemaNameCollection` after starting enumeration (add, replace, remove, clear) | Existing enumerator remains usable | Next `MoveNext()` throws `InvalidOperationException` |
+| Read/write schema-filter index -1 or Count | `IndexOutOfRangeException` | `ArgumentOutOfRangeException` |
+| Negative `DirectorySearcher.SizeLimit`, or incompatible `AttributeScopeQuery` / `SearchScope` assignment | `ArgumentException.ParamName` is null | `ParamName` is `value` |
+| Access/audit rule construction with inheritance -1 or 5 | `InvalidEnumArgumentException.ParamName` is `inheritanceType` | `ParamName` is `value` |
+
+The schema collection tests reuse the existing delegate-backed Microsoft fixture,
+so they isolate collection behavior from ADSI. Structural mutations replace its
+backing array; an existing enumerator retains the old contents. Indexer replacement
+updates the array in place in this fixture and is visible to that enumerator.
+These tests do not establish how a particular live ADSI provider marshals arrays.
+The validation tests compare exception types and parameter names, not localized
+exception messages, and the searcher tests also compare state after rejection.
+
+Run just these classes (repeat with `net8.0-windows`):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~SchemaNameCollectionComparisonTests|FullyQualifiedName~SearcherValidationContractComparisonTests|FullyQualifiedName~SecurityRuleValidationComparisonTests"
+```
+
+At the time these regressions were added, each framework reported 15 new failing
+cases exposing the differences above and 3 passing existing schema-collection
+cases. The tests intentionally assert compatibility, so the new cases remain red
+until the implementation is corrected.
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It

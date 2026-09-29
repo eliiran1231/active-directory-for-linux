@@ -40,6 +40,86 @@ public sealed class SchemaNameCollectionComparisonTests
             () => ours.Remove("missing"));
     }
 
+    [Theory]
+    [InlineData("add")]
+    [InlineData("replace")]
+    [InlineData("remove")]
+    [InlineData("clear")]
+    public void Existing_enumerator_remains_usable_after_collection_mutation(string mutation)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+
+        var expected = EnumerateAcrossMutation(microsoft, mutation);
+        var actual = EnumerateAcrossMutation(ours, mutation);
+
+        // Structural changes replace Microsoft's backing array; the enumerator
+        // retains the old array. Indexer assignment instead updates that array
+        // in place in this delegate-backed fixture. Neither invalidates it.
+        Assert.Equal(mutation == "replace" ? "user|computer" : "user|group", expected.OldValues);
+        Assert.Null(expected.ExceptionType);
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(1, false)]
+    [InlineData(-1, true)]
+    [InlineData(1, true)]
+    public void Invalid_indexer_access_matches_exception_and_preserves_contents(int index, bool write)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+        microsoft.Add("user");
+        ours.Add("user");
+
+        var expected = Record.Exception(() => AccessIndexer(microsoft, index, write));
+        var actual = Record.Exception(() => AccessIndexer(ours, index, write));
+
+        Assert.Equal("user", Snapshot(microsoft));
+        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        Assert.IsType<IndexOutOfRangeException>(expected);
+        Assert.NotNull(actual);
+        Assert.Equal(expected.GetType(), actual.GetType());
+    }
+
+    private static void AccessIndexer(IList collection, int index, bool write)
+    {
+        if (write)
+            collection[index] = "computer";
+        else
+            _ = collection[index];
+    }
+
+    private static EnumerationResult EnumerateAcrossMutation(IList collection, string mutation)
+    {
+        collection.Add("user");
+        collection.Add("group");
+        var enumerator = collection.GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        var values = new List<string> { (string)enumerator.Current };
+
+        switch (mutation)
+        {
+            case "add": collection.Add("computer"); break;
+            case "replace": collection[1] = "computer"; break;
+            case "remove": collection.RemoveAt(1); break;
+            case "clear": collection.Clear(); break;
+            default: throw new ArgumentOutOfRangeException(nameof(mutation));
+        }
+
+        var exception = Record.Exception(() =>
+        {
+            while (enumerator.MoveNext())
+                values.Add((string)enumerator.Current);
+        });
+        return new EnumerationResult(string.Join("|", values), Snapshot(collection), exception?.GetType());
+    }
+
+    private sealed record EnumerationResult(string OldValues, string NewValues, Type? ExceptionType);
+
     private static Ms.SchemaNameCollection CreateMicrosoftCollection()
     {
         // Microsoft's public collection can only be obtained from a bound ADSI
