@@ -1,4 +1,5 @@
 using System.Collections;
+using Xunit;
 using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
 
