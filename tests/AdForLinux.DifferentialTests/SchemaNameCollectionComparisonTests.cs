@@ -40,6 +40,106 @@ public sealed class SchemaNameCollectionComparisonTests
             () => ours.Remove("missing"));
     }
 
+    [Theory]
+    [InlineData("add", false)]
+    [InlineData("add", true)]
+    [InlineData("remove", false)]
+    [InlineData("remove", true)]
+    [InlineData("clear", false)]
+    [InlineData("clear", true)]
+    public void Enumerator_keeps_its_snapshot_after_structural_mutation(string mutation, bool started)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+        microsoft.AddRange(new[] { "user", "group", "computer" });
+        ours.AddRange(new[] { "user", "group", "computer" });
+        var microsoftEnumerator = microsoft.GetEnumerator();
+        var ourEnumerator = ours.GetEnumerator();
+
+        try
+        {
+            if (started)
+            {
+                Assert.True(microsoftEnumerator.MoveNext());
+                Assert.True(ourEnumerator.MoveNext());
+                Assert.Equal(microsoftEnumerator.Current, ourEnumerator.Current);
+            }
+
+            Mutate(microsoft, mutation);
+            Mutate(ours, mutation);
+            Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+
+            // Microsoft enumerates the array captured by GetEnumerator. A live
+            // List<T> enumerator instead throws as soon as the collection changes.
+            new Comparison($"SchemaNameCollection enumerator: {mutation}, started={started}")
+                .Check("remaining values", ReadRemaining(microsoftEnumerator), ReadRemaining(ourEnumerator))
+                .Assert();
+        }
+        finally
+        {
+            (microsoftEnumerator as IDisposable)?.Dispose();
+            (ourEnumerator as IDisposable)?.Dispose();
+        }
+    }
+
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(-1, true)]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    public void Invalid_indexer_exception_type_matches_microsoft(int index, bool write)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+        microsoft.Add("user");
+        ours.Add("user");
+
+        var microsoftException = Record.Exception(() => AccessIndex(microsoft, index, write));
+        var ourException = Record.Exception(() => AccessIndex(ours, index, write));
+
+        Assert.Equal("user", Snapshot(microsoft));
+        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        new Comparison($"SchemaNameCollection indexer: index={index}, write={write}")
+            .Check("exception type", microsoftException?.GetType().FullName, ourException?.GetType().FullName)
+            .Check("parameter", (microsoftException as ArgumentException)?.ParamName,
+                (ourException as ArgumentException)?.ParamName)
+            .Assert();
+    }
+
+    private static void AccessIndex(IList collection, int index, bool write)
+    {
+        if (write)
+            collection[index] = "group";
+        else
+            _ = collection[index];
+    }
+
+    private static void Mutate(IList collection, string mutation)
+    {
+        switch (mutation)
+        {
+            case "add": collection.Add("organizationalUnit"); break;
+            case "remove": collection.RemoveAt(1); break;
+            case "clear": collection.Clear(); break;
+            default: throw new ArgumentException("Unknown mutation", nameof(mutation));
+        }
+    }
+
+    private static EnumerationResult ReadRemaining(IEnumerator enumerator)
+    {
+        var values = new List<string>();
+        var exception = Record.Exception(() =>
+        {
+            while (enumerator.MoveNext())
+                values.Add((string)enumerator.Current);
+        });
+        return new EnumerationResult(string.Join("|", values), exception?.GetType().FullName);
+    }
+
+    private sealed record EnumerationResult(string Values, string? ExceptionType);
+
     private static Ms.SchemaNameCollection CreateMicrosoftCollection()
     {
         // Microsoft's public collection can only be obtained from a bound ADSI

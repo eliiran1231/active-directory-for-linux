@@ -34,6 +34,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         get => _values[index];
         set
         {
+            // The typed API validates the index before rejecting a null value.
+            _ = _values[index];
             ThrowIfNull(value);
             _values[index] = value;
             Changed();
@@ -90,8 +92,13 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         Changed();
     }
 
-    public void CopyTo(T[] array, int index) => _values.CopyTo(array, index);
-    public IEnumerator<T> GetEnumerator() => _values.GetEnumerator();
+    public void CopyTo(T[] array, int index)
+    {
+        ValidateCopyBoundary(array, index);
+        _values.CopyTo(array, index);
+    }
+
+    public IEnumerator<T> GetEnumerator() => new Enumerator(_values.GetEnumerator());
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     private void Changed() => _onChanged?.Invoke(_values);
@@ -115,14 +122,67 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     int IList.Add(object? value)
     {
         Add(Cast(value));
-        return Count - 1;
+        // Microsoft returns the new count, unlike the usual IList convention.
+        return Count;
     }
 
     bool IList.Contains(object? value) => Contains(Cast(value));
     int IList.IndexOf(object? value) => IndexOf(Cast(value));
     void IList.Insert(int index, object? value) => Insert(index, Cast(value));
     void IList.Remove(object? value) => Remove(Cast(value));
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_values).CopyTo(array, index);
+    void ICollection.CopyTo(Array array, int index)
+    {
+        ValidateCopyBoundary(array, index);
+        ((ICollection)_values).CopyTo(array, index);
+    }
+
+    private static void ValidateCopyBoundary(Array array, int index)
+    {
+        // Even an empty collection requires a position inside the target array.
+        if (array is not null && index == array.Length)
+        {
+            throw new ArgumentException("Index must be less than the array length.");
+        }
+    }
+
+    private sealed class Enumerator : IEnumerator<T>
+    {
+        private readonly IEnumerator<T> _inner;
+        private bool _disposed;
+
+        internal Enumerator(IEnumerator<T> inner) => _inner = inner;
+
+        public T Current
+        {
+            get
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                // List's non-generic Current checks both invalid positions.
+                return (T)((IEnumerator)_inner).Current;
+            }
+        }
+
+        object? IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _inner.MoveNext();
+        }
+
+        public void Reset()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _inner.Reset();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _inner.Dispose();
+            _disposed = true;
+        }
+    }
 
     private static T Cast(object? value)
     {

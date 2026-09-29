@@ -17,8 +17,16 @@ public class SchemaNameCollection : IList
 
     public string? this[int index]
     {
-        get => _names[index];
-        set => _names[index] = value;
+        get
+        {
+            ValidateIndex(index);
+            return _names[index];
+        }
+        set
+        {
+            ValidateIndex(index);
+            _names[index] = value;
+        }
     }
 
     public int Add(string? value)
@@ -63,7 +71,16 @@ public class SchemaNameCollection : IList
 
     public void RemoveAt(int index) => _names.RemoveAt(index);
 
-    public IEnumerator GetEnumerator() => _names.GetEnumerator();
+    // Microsoft enumerates the captured schema array across later mutations.
+    public IEnumerator GetEnumerator() => _names.ToArray().GetEnumerator();
+
+    private void ValidateIndex(int index)
+    {
+        if ((uint)index >= (uint)_names.Count)
+        {
+            throw new IndexOutOfRangeException();
+        }
+    }
 
     bool IList.IsFixedSize => false;
 

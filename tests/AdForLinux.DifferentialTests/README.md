@@ -111,6 +111,51 @@ Microsoft/AdForLinux descriptors.
 The tests create their own temporary user and two groups in the configured
 writable container and delete them at the end.
 
+### Collection compatibility regressions without AD
+
+`PrincipalValueCollectionComparisonTests` and `SchemaNameCollectionComparisonTests`
+exercise managed collection behavior without a domain controller or environment
+variables. Run just these classes on Windows:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --filter "FullyQualifiedName~PrincipalValueCollectionComparisonTests|FullyQualifiedName~SchemaNameCollectionComparisonTests"
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~PrincipalValueCollectionComparisonTests|FullyQualifiedName~SchemaNameCollectionComparisonTests"
+```
+
+The regression cases expose these differences against Microsoft package 9.0.0:
+
+| Operation | Microsoft | AdForLinux before fixes |
+| --- | --- | --- |
+| `PrincipalValueCollection<T>` through `IList.Add` | Returns the new count | Returns the inserted index (one less) |
+| Generic enumerator `Current` before the first item or after the last | Throws `InvalidOperationException` | Returns `default(T)` |
+| Disposed principal-value enumerator: `Current`, `MoveNext`, `Reset` | Throws `ObjectDisposedException` | Still allows operations |
+| Empty principal-value collection copied at `index == array.Length` | Throws `ArgumentException` | Succeeds |
+| Typed principal-value indexer assigned null at an invalid index | Throws `ArgumentOutOfRangeException` for `index` | Throws `ArgumentNullException` for `value` |
+| Schema-name enumeration after add, remove, or clear | Continues over its captured array | Throws `InvalidOperationException` |
+| Schema-name indexer read/write outside bounds | Throws `IndexOutOfRangeException` | Throws `ArgumentOutOfRangeException` |
+
+These are equality tests against the actual Microsoft implementation, so they
+intentionally fail until compatibility is restored. The cases also check matching
+collection contents and include valid-position, non-generic, and in-bounds copy
+controls. They do not assert localized exception messages.
+
+On Windows, the September 25, 2026 run against the implementation at `af949cc`
+produced the same result on both target frameworks: 25 failing regression cases
+and 13 passing cases across these two classes. All eight fixture-registration
+checks also passed. This change adds 35 cases and leaves production code unchanged.
+
+Construction is isolated from AD: reflection invokes the normal internal
+principal-value constructors and supplies in-memory getter/setter delegates to
+Microsoft's schema-name constructor, as in the existing schema tests. All tested
+operations use public APIs. These tests establish managed collection behavior;
+they do not exercise ADSI binding, schema filtering on a server, or persistence.
+
+Reference implementations for the pinned package are
+[ValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs),
+[TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs),
+[TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs), and
+[SchemaNameCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SchemaNameCollection.cs).
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
