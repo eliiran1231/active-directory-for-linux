@@ -37,14 +37,19 @@ public class PrincipalSearcher : IDisposable
     /// <summary>The example principal whose set properties must all match.</summary>
     public Principal? QueryFilter
     {
-        get => _queryFilter;
-        set
+        get
         {
             ThrowIfDisposed();
+            return _queryFilter;
+        }
+        set
+        {
             if (value is null)
             {
                 throw new ArgumentNullException(nameof(QueryFilter));
             }
+
+            ThrowIfDisposed();
 
             if (value.IsPersisted)
             {
