@@ -521,6 +521,49 @@ Run these comparisons on both target frameworks without configuring AD:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalExtensionCacheComparisonTests|FullyQualifiedName~PrincipalEqualityDisposalComparisonTests"
 ```
 
+### Rejected null mutations and principals without a context
+
+The added cases in `PrincipalValueCollectionEdgeCaseComparisonTests` and the new
+`PrincipalMissingContextComparisonTests` add **14 offline comparisons**. Against
+Microsoft 9.0.0 on Windows, both target frameworks produced **9 failing new cases
+and 5 passing controls**. Running both complete classes plus
+`FixtureRegistrationTests` produced 9 failures and 43 passes per framework.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Generic `PrincipalValueCollection<string>.Add(null)` or `Remove(null)`, followed by `MoveNext` or `Reset` on an existing enumerator | Rejects the mutation with `ArgumentNullException`; traversal remains usable | Rejects the mutation but invalidates traversal with `InvalidOperationException` | 4 |
+| Read `ContextType` on a custom principal before assigning a context | `InvalidOperationException` | `NullReferenceException` | 1 |
+| Set `Description`, `DisplayName`, `UserPrincipalName`, or `SamAccountName` before assigning a context | Setter and subsequent getter throw `NullReferenceException` | Accepts and returns the staged value | 4 |
+
+The null-mutation cases also compare the mutation exception and unchanged
+collection contents. Equivalent non-generic `IList` calls are four passing
+controls. The fifth control checks that disposal takes precedence over the
+missing context when reading `ContextType`.
+
+The custom principals invoke the normal protected constructor and expose only
+inherited public behavior. These cases describe observable compatibility at an
+incomplete initialization boundary, not a recommendation to use Microsoft's
+contextless property setters. No private fields or uninitialized objects are
+used. The collection fixture invokes the normal internal constructor as in the
+existing offline tests. No domain controller or `AD_*` settings are required.
+
+The source paths responsible are `PrincipalValueCollection.cs` (`Add` and
+`Remove` increment `_version` before checking null) and `Principal.cs`
+(`ContextType` dereferences `ContextRef`; property setters stage values without
+consulting a store context). Reference implementations:
+[ValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs)
+and
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs).
+
+Run the comparisons on both target frameworks:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalMissingContextComparisonTests|FullyQualifiedName~PrincipalValueCollectionEdgeCaseComparisonTests"
+```
+
+These assertions require parity and intentionally remain red until the
+implementation is corrected. This change contains tests and documentation only.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
