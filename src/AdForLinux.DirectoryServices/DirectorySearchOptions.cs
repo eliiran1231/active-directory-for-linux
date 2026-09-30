@@ -140,7 +140,7 @@ public class DirectorySynchronization
     }
 
     /// <summary>Returns an independent copy of the current synchronization cookie.</summary>
-    public byte[] GetDirectorySynchronizationCookie() => _cookie.ToArray();
+    public byte[] GetDirectorySynchronizationCookie() => (byte[])_cookie.Clone();
 
     /// <summary>Creates an independent copy of this synchronization state.</summary>
     public DirectorySynchronization Copy() => new(this);
