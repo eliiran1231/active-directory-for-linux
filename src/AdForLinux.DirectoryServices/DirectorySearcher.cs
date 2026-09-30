@@ -620,6 +620,13 @@ public class DirectorySearcher : Component
 
     private SearchRequest BuildRequest()
     {
+        // ADSI adds the canonical spelling to nonempty projections, even when
+        // another casing is already present. StringCollection is case-sensitive.
+        if (PropertiesToLoad.Count > 0 && !PropertiesToLoad.Contains("ADsPath"))
+        {
+            PropertiesToLoad.Add("ADsPath");
+        }
+
         var root = RequireRoot();
         var effectiveFilter = string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter;
 #if NET10_0_OR_GREATER
