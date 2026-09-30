@@ -621,8 +621,9 @@ public class DirectorySearcher : Component
     private SearchRequest BuildRequest()
     {
         var root = RequireRoot();
+        var effectiveFilter = string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter;
 #if NET10_0_OR_GREATER
-        if (!IsStructurallyValidFilter(Filter))
+        if (!IsStructurallyValidFilter(effectiveFilter))
         {
             var protocol = new LdapException(87, "The search filter is invalid.");
             throw new ArgumentException(protocol.Message, nameof(Filter), protocol);
@@ -634,7 +635,7 @@ public class DirectorySearcher : Component
 
         var request = new SearchRequest(
             root.DistinguishedName,
-            string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter,
+            effectiveFilter,
             ToProtocolScope(SearchScope),
             attributes);
 
