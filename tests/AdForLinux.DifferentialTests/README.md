@@ -271,6 +271,42 @@ dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "Full
 Repeat with `net8.0-windows`. The tests assert compatibility and intentionally
 remain red until the implementation is corrected.
 
+### Searcher disposal and synchronization cookie identity
+
+`PrincipalSearcherDisposalComparisonTests` and
+`SynchronizationCookieIdentityComparisonTests` add 16 offline comparisons using
+only public constructors and APIs. On Windows with the Microsoft 9.0.0 packages,
+both `net8.0-windows` and `net10.0-windows` reported **8 failing cases and 8 passing
+controls**. They require no AD configuration and intentionally assert equality
+with Microsoft, so the incompatibilities remain red until fixed.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Read `PrincipalSearcher.QueryFilter` after `Dispose()` | Throws `ObjectDisposedException` | Returns null | 1 |
+| Assign null to `PrincipalSearcher.QueryFilter` after `Dispose()` | Throws `ArgumentNullException` for `QueryFilter` | Throws `ObjectDisposedException` | 1 |
+| Read an empty `DirectorySynchronization` cookie twice | Returns distinct empty arrays | Returns the same empty array | 6 |
+
+The disposal cases use an ordinary, unconfigured searcher. Controls check the
+same getter and null assignment before disposal, plus five other members after
+disposal. The cookie cases cover default construction, empty/null input, and
+parameterless/null/empty reset after a nonempty cookie. Nonempty cookie reads
+are a passing control. Both returned cookie contents and reference identity are
+compared: the empty-cookie difference is observable via `ReferenceEquals`, not
+a difference in bytes or evidence of data corruption.
+
+The relevant Microsoft sources are
+[PrincipalSearcher.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs)
+and
+[DirectorySynchronization.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySynchronization.cs).
+The tests use the actual assemblies as their oracle. No production code changes
+accompany these tests.
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~PrincipalSearcherDisposalComparisonTests|FullyQualifiedName~SynchronizationCookieIdentityComparisonTests"
+```
+
+Repeat with `net8.0-windows`.
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
