@@ -113,6 +113,59 @@ public class CollectionCompatibilityTests
     }
 
     [Fact]
+    public void Missing_property_wrapper_is_cached_without_membership_until_written()
+    {
+        var changes = new List<PropertyValueCollection>();
+        var properties = new PropertyCollection(changes.Add);
+        var missing = properties["description"];
+
+        Assert.Same(missing, properties["DESCRIPTION"]);
+        Assert.Null(missing.Value);
+        Assert.False(properties.Contains("description"));
+        Assert.Equal(0, properties.Count);
+        Assert.Empty(properties.PropertyNames);
+        Assert.Empty(properties.Values);
+        Assert.False(properties.GetEnumerator().MoveNext());
+        properties.CopyTo(Array.Empty<PropertyValueCollection>(), 0);
+        Assert.Empty(changes);
+
+        missing.Value = "written";
+
+        Assert.True(properties.Contains("DESCRIPTION"));
+        Assert.Equal(1, properties.Count);
+        Assert.Same(missing, Assert.Single(properties.Values.Cast<PropertyValueCollection>()));
+        Assert.Same(missing, Assert.Single(changes));
+    }
+
+    [Fact]
+    public void Refresh_invalidates_missing_wrappers_and_preserves_loaded_membership()
+    {
+        var properties = new PropertyCollection();
+        var stale = properties["description"];
+        properties.RemoveCached("DESCRIPTION");
+        var current = properties["description"];
+        Assert.NotSame(stale, current);
+
+        stale.Value = "stale write";
+        Assert.False(properties.Contains("description"));
+
+        properties.ReplaceLoaded("description", new object[] { "server value" });
+        var loaded = properties["DESCRIPTION"];
+        Assert.NotSame(current, loaded);
+        Assert.False(loaded.Changed);
+        current.Value = "another stale write";
+        Assert.Same(loaded, Assert.Single(properties.Values.Cast<PropertyValueCollection>()));
+        Assert.Equal("server value", loaded.Value);
+
+        properties.RemoveCached("description");
+        Assert.Equal(0, properties.Count);
+        properties.GetOrAdd("description").AddLoaded("reloaded");
+        Assert.True(properties.Contains("description"));
+        Assert.Equal("reloaded", properties["description"].Value);
+        Assert.False(properties["description"].Changed);
+    }
+
+    [Fact]
     public void Property_collection_supports_dictionary_and_copy_contracts()
     {
         var properties = new PropertyCollection();
