@@ -31,10 +31,9 @@ public class AdvancedFilters
 
     public void LastLogonTime(DateTime logonTime, MatchType match)
     {
-        ValidateMatchType(match);
         _principal.SetAdvancedFilter(
             "lastLogon",
-            $"(|{ToLdapDateCondition("lastLogon", logonTime, match)}" +
+            () => $"(|{ToLdapDateCondition("lastLogon", logonTime, match)}" +
             $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, requirePresenceForNotEquals: true)})");
     }
 
@@ -47,8 +46,7 @@ public class AdvancedFilters
         MatchType match,
         bool excludeDefaultValue = false)
     {
-        ValidateMatchType(match);
-        _principal.SetAdvancedFilter(attribute, ToLdapDateCondition(attribute, value, match, excludeDefaultValue));
+        _principal.SetAdvancedFilter(attribute, () => ToLdapDateCondition(attribute, value, match, excludeDefaultValue));
     }
 
     protected void AdvancedFilterSet(string attribute, object value, Type objectType, MatchType mt)
@@ -56,22 +54,16 @@ public class AdvancedFilters
         ArgumentException.ThrowIfNullOrEmpty(attribute);
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(objectType);
-        ValidateMatchType(mt);
 
-        var text = objectType == typeof(DateTime) && value is DateTime date
-            ? date.ToUniversalTime().ToFileTimeUtc().ToString(CultureInfo.InvariantCulture)
-            : Convert.ToString(value, CultureInfo.InvariantCulture)
-                ?? throw new ArgumentException("The filter value cannot be converted to text.", nameof(value));
-
-        _principal.SetAdvancedFilter(attribute, text, mt);
-    }
-
-    private static void ValidateMatchType(MatchType match)
-    {
-        if (!Enum.IsDefined(match))
+        _principal.SetAdvancedFilter(attribute, () =>
         {
-            throw new InvalidEnumArgumentException(nameof(match), (int)match, typeof(MatchType));
-        }
+            var text = objectType == typeof(DateTime) && value is DateTime date
+                ? date.ToUniversalTime().ToFileTimeUtc().ToString(CultureInfo.InvariantCulture)
+                : Convert.ToString(value, CultureInfo.InvariantCulture)
+                    ?? throw new ArgumentException("The filter value cannot be converted to text.", nameof(value));
+
+            return ToLdapCondition(attribute, text, mt);
+        });
     }
 
     internal static string ToLdapDateCondition(
