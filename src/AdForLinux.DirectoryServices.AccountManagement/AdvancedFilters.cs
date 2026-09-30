@@ -27,7 +27,8 @@ public class AdvancedFilters
         AdvancedDateFilterSet("lockoutTime", lockoutTime, match);
 
     public void BadLogonCount(int badLogonCount, MatchType match) =>
-        AdvancedFilterSet("badPwdCount", badLogonCount, typeof(int), match);
+        _principal.SetAdvancedFilter("badPwdCount", () =>
+            ToLdapCondition("badPwdCount", badLogonCount.ToString(CultureInfo.InvariantCulture), match));
 
     public void LastLogonTime(DateTime logonTime, MatchType match)
     {
@@ -51,11 +52,7 @@ public class AdvancedFilters
 
     protected void AdvancedFilterSet(string attribute, object value, Type objectType, MatchType mt)
     {
-        ArgumentException.ThrowIfNullOrEmpty(attribute);
-        ArgumentNullException.ThrowIfNull(value);
-        ArgumentNullException.ThrowIfNull(objectType);
-
-        _principal.SetAdvancedFilter(attribute, () =>
+        _principal.SetAdvancedExtensionFilter(attribute, value, () =>
         {
             var text = objectType == typeof(DateTime) && value is DateTime date
                 ? date.ToUniversalTime().ToFileTimeUtc().ToString(CultureInfo.InvariantCulture)

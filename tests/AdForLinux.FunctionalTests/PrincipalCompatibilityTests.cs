@@ -2,6 +2,7 @@ using System.ComponentModel;
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.AccountManagement;
 using Xunit;
+using MatchType = AdForLinux.DirectoryServices.AccountManagement.MatchType;
 
 namespace AdForLinux.FunctionalTests;
 
@@ -33,6 +34,12 @@ public class PrincipalCompatibilityTests
         {
             ContextRaw = context;
         }
+    }
+
+    private sealed class CustomFilters(Principal principal) : AdvancedFilters(principal)
+    {
+        public void Set(string attribute, object value) =>
+            AdvancedFilterSet(attribute, value, typeof(string), MatchType.Equals);
     }
 
     private static PrincipalContext Context(string? container = null) =>
@@ -678,6 +685,84 @@ public class PrincipalCompatibilityTests
         Assert.Contains("(description=replacement)", filter);
         Assert.Contains("(Description=separate)", filter);
         Assert.DoesNotContain("returned", filter);
+    }
+
+    [Fact]
+    public void Custom_filters_and_extension_values_replace_each_other_in_queries()
+    {
+        using var context = OfflineContext();
+        using var user = new ExtendedUserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        var filters = new CustomFilters(user);
+        user.WriteExtension("description", "original");
+        user.WriteExtension("Description", "separate");
+
+        filters.Set("description", "criterion");
+        Assert.Null(user.ReadExtension("description"));
+        Assert.Contains("(description=criterion)", searcher.GetLdapFilter());
+        Assert.Contains("(Description=separate)", searcher.GetLdapFilter());
+        Assert.DoesNotContain("original", searcher.GetLdapFilter());
+
+        Assert.Throws<ArgumentException>(() => filters.Set("description", Array.Empty<object>()));
+        Assert.Contains("(description=criterion)", searcher.GetLdapFilter());
+
+        user.WriteExtension("description", "replacement");
+        Assert.Equal(new object[] { "replacement" }, user.ReadExtension("description"));
+        Assert.Contains("(description=replacement)", searcher.GetLdapFilter());
+        Assert.DoesNotContain("criterion", searcher.GetLdapFilter());
+    }
+
+    [Fact]
+    public void Configuring_retained_filters_does_not_allow_searching_a_disposed_principal()
+    {
+        using var context = OfflineContext();
+        using var user = new ExtendedUserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        var filters = new CustomFilters(user);
+        var builtIn = user.AdvancedSearchFilter;
+        user.Dispose();
+
+        filters.Set("description", "criterion");
+        builtIn.BadLogonCount(3, MatchType.Equals);
+        Assert.Null(user.ReadExtension("description"));
+        Assert.Throws<ObjectDisposedException>(() => searcher.GetLdapFilter());
+        Assert.Throws<ObjectDisposedException>(() => user.Save());
+    }
+
+    [Fact]
+    public void Custom_filter_entries_are_not_persisted_as_extension_values()
+    {
+        var userName = NewName();
+        var userDn = DnFor(userName, TestDirectory.UsersContainer);
+        try
+        {
+            using var context = Context();
+            using var user = new ExtendedUserPrincipal(context)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            };
+            var filters = new CustomFilters(user);
+            user.WriteExtension("description", "replaced-before-insert");
+            filters.Set("description", "criterion");
+            user.Save();
+            using (var found = ExtendedUserPrincipal.Find(context, userName)!)
+            {
+                Assert.Empty(found.ReadExtension("description"));
+            }
+
+            user.WriteExtension("description", "persisted");
+            user.Save();
+            user.WriteExtension("description", "replaced-before-update");
+            filters.Set("description", "criterion");
+            user.Save();
+            using var updated = ExtendedUserPrincipal.Find(context, userName)!;
+            Assert.Equal(new object[] { "persisted" }, updated.ReadExtension("description"));
+        }
+        finally
+        {
+            TestDirectory.Delete(userDn);
+        }
     }
 
     [Fact]
