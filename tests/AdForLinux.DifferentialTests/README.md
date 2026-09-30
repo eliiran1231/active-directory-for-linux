@@ -307,6 +307,55 @@ dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "Full
 
 Repeat with `net8.0-windows`.
 
+### Extension attributes and property collection regressions
+
+`ExtensionAttributeConstructionComparisonTests` and
+`PropertyCollectionValidationComparisonTests` add 18 offline comparisons. With
+the Microsoft 9.0.0 packages on Windows, both target frameworks reported
+**10 failing cases and 8 passing controls**:
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Null constructor argument for `DirectoryPropertyAttribute`, `DirectoryRdnPrefixAttribute`, or `DirectoryObjectClassAttribute` | Stores null | Throws `ArgumentNullException` | 3 |
+| Integer or object key for `PropertyCollection` through `IDictionary` indexer or `Contains` | Throws `InvalidCastException` | Returns null or false | 4 |
+| Null key for `PropertyCollection` through `IDictionary` indexer | Throws `ArgumentNullException` for `propertyName` | Returns null | 1 |
+| Null key for the typed property indexer | `ArgumentNullException.ParamName` is `propertyName` | Parameter is `key` | 1 |
+| Negative index for `PropertyCollection`'s `ICollection.CopyTo` | `ArgumentOutOfRangeException.ParamName` contains the localized lower-bound error text | Parameter is `index` | 1 |
+
+Controls cover empty and nonempty attribute constructor values, null CopyTo
+destinations, and multidimensional destinations. Exception types and parameter
+names are compared directly against Microsoft in the same process; localized
+text is not hardcoded. The Microsoft property collection comes from an unbound
+`DirectoryEntry`. These invalid operations fail before binding. Our collection
+uses its normal internal constructor, following the existing dictionary tests,
+to isolate validation from our eager-binding `DirectoryEntry.Properties` getter.
+No private fields are changed.
+
+`PropertyCollectionMissingLookupComparisonTests` adds **3 live AD cases** for
+`Contains`, `Count`, and `PropertyNames` after reading an absent attribute. The
+Microsoft source keeps cached value wrappers separate from the provider's
+property list; our implementation adds the empty wrapper to the dictionary that
+also supplies membership, count, and names. These cases build on both frameworks
+but **have not been run against AD locally**. They reuse the registered fixture,
+perform only reads, and compare count/name changes relative to each library's own
+baseline so unrelated initial projection differences cannot cause a failure.
+
+Source references:
+[ExtensionAttributes.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ExtensionAttributes.cs)
+and
+[PropertyCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyCollection.cs).
+
+Run all new comparisons with AD configured (repeat with `net8.0-windows`):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~ExtensionAttributeConstructionComparisonTests|FullyQualifiedName~PropertyCollectionValidationComparisonTests|FullyQualifiedName~PropertyCollectionMissingLookupComparisonTests"
+```
+
+For an offline run, omit `PropertyCollectionMissingLookupComparisonTests` from
+the filter. These tests assert compatibility and intentionally remain red until
+the implementation is corrected. This change adds tests only, with no production
+fixes.
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
