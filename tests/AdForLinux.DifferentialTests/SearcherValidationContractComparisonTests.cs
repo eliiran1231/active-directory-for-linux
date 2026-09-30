@@ -9,6 +9,7 @@ public sealed class SearcherValidationContractComparisonTests
 {
     [Theory]
     [InlineData("SizeLimit")]
+    [InlineData("PageSize")]
     [InlineData("AttributeScopeQuery")]
     [InlineData("SearchScope")]
     public void Rejected_setter_matches_exception_parameter_and_preserves_state(string property)
@@ -19,6 +20,11 @@ public sealed class SearcherValidationContractComparisonTests
         Action ourAction;
         switch (property)
         {
+            case "PageSize":
+                microsoft.PageSize = ours.PageSize = 12;
+                microsoftAction = () => microsoft.PageSize = -1;
+                ourAction = () => ours.PageSize = -1;
+                break;
             case "SizeLimit":
                 microsoft.SizeLimit = ours.SizeLimit = 12;
                 microsoftAction = () => microsoft.SizeLimit = -1;
@@ -42,6 +48,7 @@ public sealed class SearcherValidationContractComparisonTests
         var actual = Record.Exception(ourAction);
 
         Assert.Equal(microsoft.SizeLimit, ours.SizeLimit);
+        Assert.Equal(microsoft.PageSize, ours.PageSize);
         Assert.Equal(microsoft.AttributeScopeQuery, ours.AttributeScopeQuery);
         Assert.Equal((int)microsoft.SearchScope, (int)ours.SearchScope);
         var expectedArgument = Assert.IsType<ArgumentException>(expected);

@@ -232,6 +232,45 @@ dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "Full
 To run without AD, filter only `PrincipalValueCollectionEdgeCaseComparisonTests`.
 The tests assert compatibility and intentionally remain red until fixes land.
 
+### Result-property lookup and PageSize regressions
+
+`ResultPropertyLookupComparisonTests` and the new `PageSize` case in
+`SearcherValidationContractComparisonTests` add nine offline cases. Against the
+Microsoft 9.0.0 package on Windows, both `net8.0-windows` and `net10.0-windows`
+reported **7 new failures and 2 passing controls**. Including the three existing
+searcher validation cases, the command below reports 7 failures and 5 passes.
+
+| Trigger | Microsoft behavior | AdForLinux behavior |
+| --- | --- | --- |
+| Assign null through `ResultPropertyCollection`'s public `IDictionary`, then read the typed indexer | Returns null for the present key | Returns an empty collection |
+| Assign a string or integer through `IDictionary`, then read the typed indexer | Throws `InvalidCastException` | Silently returns an empty collection |
+| Read missing properties repeatedly, under different keys, or from different result collections | Returns distinct empty collections | Returns the same static empty collection |
+| Set `DirectorySearcher.PageSize` to -1 after a valid assignment | Throws `ArgumentException` with null `ParamName` | Throws `ArgumentException` with `ParamName == "value"` |
+
+The first two behaviors share the same type-test fallback in AdForLinux's
+indexer. The missing-property identity difference is observable through
+`ReferenceEquals`; these tests do not claim that empty values differ in content.
+Controls cover a correctly typed dictionary value and lookup after removal.
+The PageSize case also checks that rejection preserves searcher state.
+
+The result fixture invokes Microsoft's normal internal empty constructor, as
+the existing dictionary mutation tests do; it does not modify private fields.
+All operations under comparison are public. This establishes collection behavior
+after caller mutation, not which payloads a directory server returns. No domain
+controller or `AD_*` variables are needed, and no production code was changed.
+
+Source references:
+[ResultPropertyCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/ResultPropertyCollection.cs)
+and
+[DirectorySearcher.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs).
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~ResultPropertyLookupComparisonTests|FullyQualifiedName~SearcherValidationContractComparisonTests"
+```
+
+Repeat with `net8.0-windows`. The tests assert compatibility and intentionally
+remain red until the implementation is corrected.
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
