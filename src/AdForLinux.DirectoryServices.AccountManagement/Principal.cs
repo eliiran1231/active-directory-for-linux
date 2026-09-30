@@ -19,7 +19,7 @@ public abstract class Principal : IDisposable
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, string> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Func<string>> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
@@ -1326,13 +1326,9 @@ public abstract class Principal : IDisposable
         }
     }
 
-    internal void SetAdvancedFilter(string attribute, string value, MatchType match)
-    {
-        CheckDisposedOrDeleted();
-        _advancedFilters[attribute] = AdvancedFilters.ToLdapCondition(attribute, value, match);
-    }
-
-    internal void SetAdvancedFilter(string key, string condition)
+    // Convert criteria only when building a query, so callers can replace
+    // placeholder values before their match type or FILETIME is evaluated.
+    internal void SetAdvancedFilter(string key, Func<string> condition)
     {
         CheckDisposedOrDeleted();
         _advancedFilters[key] = condition;
@@ -1343,7 +1339,7 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return _advancedFilters.Values;
+            return _advancedFilters.Values.Select(condition => condition());
         }
     }
 

@@ -231,7 +231,14 @@ public class DirectoryEntry : Component
     }
 
     /// <summary>The object GUID in the provider's string form.</summary>
-    public string NativeGuid => Guid == Guid.Empty ? string.Empty : Guid.ToString("B");
+    public string NativeGuid
+    {
+        get
+        {
+            var guid = Guid;
+            return guid == Guid.Empty ? string.Empty : Convert.ToHexString(guid.ToByteArray()).ToLowerInvariant();
+        }
+    }
 
     /// <summary>Retained for source compatibility; ADSI native objects are not available on Linux.</summary>
     public object NativeObject => throw new PlatformNotSupportedException(

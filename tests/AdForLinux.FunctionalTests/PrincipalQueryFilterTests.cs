@@ -175,7 +175,7 @@ public class PrincipalQueryFilterTests
     }
 
     [Fact]
-    public void Replacing_an_advanced_filter_keeps_other_attributes_and_invalid_edits_keep_previous_query()
+    public void Replacing_an_advanced_filter_keeps_other_attributes_and_defers_invalid_edits_until_query_conversion()
     {
         using var context = OfflineContext();
         using var user = new UserPrincipal(context);
@@ -186,8 +186,44 @@ public class PrincipalQueryFilterTests
 
         var expected = UserCategory + "(badPwdCount>=3)(pwdLastSet=123456789))";
         Assert.Equal(expected, searcher.GetLdapFilter());
-        Assert.Throws<InvalidEnumArgumentException>(() =>
-            user.AdvancedSearchFilter.BadLogonCount(99, (MatchType)int.MaxValue));
+        user.AdvancedSearchFilter.BadLogonCount(99, (MatchType)int.MaxValue);
+        Assert.Throws<InvalidEnumArgumentException>(() => searcher.GetLdapFilter());
+        user.AdvancedSearchFilter.BadLogonCount(3, MatchType.GreaterThanOrEquals);
         Assert.Equal(expected, searcher.GetLdapFilter());
+    }
+
+    [Theory]
+    [InlineData("badPasswordTime")]
+    [InlineData("accountExpires")]
+    [InlineData("lockoutTime")]
+    [InlineData("lastLogon")]
+    [InlineData("pwdLastSet")]
+    public void Date_criteria_are_converted_only_when_building_the_current_query(string attribute)
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        Action<DateTime, MatchType> configure = attribute switch
+        {
+            "badPasswordTime" => user.AdvancedSearchFilter.LastBadPasswordAttempt,
+            "accountExpires" => user.AdvancedSearchFilter.AccountExpirationDate,
+            "lockoutTime" => user.AdvancedSearchFilter.AccountLockoutTime,
+            "lastLogon" => user.AdvancedSearchFilter.LastLogonTime,
+            "pwdLastSet" => user.AdvancedSearchFilter.LastPasswordSetTime,
+            _ => throw new ArgumentOutOfRangeException(nameof(attribute)),
+        };
+
+        configure(new DateTime(1600, 1, 1, 0, 0, 0, DateTimeKind.Utc), MatchType.Equals);
+        Assert.Throws<ArgumentOutOfRangeException>(() => searcher.GetLdapFilter());
+
+        var date = DateTime.FromFileTimeUtc(123456789);
+        configure(date, (MatchType)(-1));
+        Assert.Throws<InvalidEnumArgumentException>(() => searcher.GetLdapFilter());
+
+        configure(date, MatchType.Equals);
+        var condition = attribute == "lastLogon"
+            ? "(|(lastLogon=123456789)(lastLogonTimestamp=123456789))"
+            : $"({attribute}=123456789)";
+        Assert.Equal(UserCategory + condition + ")", searcher.GetLdapFilter());
     }
 }
