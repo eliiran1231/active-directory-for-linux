@@ -185,6 +185,53 @@ Run just these new comparisons (repeat with `net8.0-windows`):
 dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~SearcherConstructorFilterComparisonTests|FullyQualifiedName~PrincipalValueCollectionOfflineComparisonTests|FullyQualifiedName~ResultPropertyDeferredErrorComparisonTests"
 ```
 
+### Principal collection edge cases and search projection state
+
+`PrincipalValueCollectionEdgeCaseComparisonTests` runs without AD. Against the
+Microsoft 9.0.0 package, both `net8.0-windows` and `net10.0-windows` reported
+**14 failing cases and 13 passing controls (27 total)**. These are additional
+regressions beyond the collection tests above:
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Copy an empty collection at `index == array.Length`, including a zero-length array, through either CopyTo API | Throws `ArgumentException` | Succeeds | 4 |
+| CopyTo with both a null array and negative index | Throws `ArgumentOutOfRangeException` for `index` | Throws `ArgumentNullException` | 2 |
+| Generic indexer assignment with both an invalid index and null value | Throws `ArgumentOutOfRangeException` for `index` | Throws `ArgumentNullException` for `value` | 2 |
+| Continue enumeration after Remove of a missing value, invalid Insert/RemoveAt, or null Insert/indexer assignment | Invalidates the enumerator; subsequent MoveNext/Reset throws `InvalidOperationException` | Enumerator remains usable | 6 |
+
+Each comparison checks exception type and parameter name, or the returned value,
+and checks collection/destination contents where applicable. Controls cover
+ordinary copying, nonzero array lower bounds, numeric widening, non-generic
+indexer validation, and successful mutation/read behavior. Microsoft collection
+instances use the normal internal empty constructor, as in the existing offline
+tests. No private fields are changed. The enumerator tests wait for a UTC clock
+tick before mutation because Microsoft's change tracking uses timestamps.
+
+`SearcherProjectionStateComparisonTests` adds **8 live AD cases**, covering
+FindOne and FindAll with an explicit projection, lowercase `adspath`, already
+present `ADsPath`, and an empty projection. Each search runs twice and compares
+`PropertiesToLoad`; FindAll also compares `PropertiesLoaded`. Microsoft's source
+adds canonical `ADsPath` to a nonempty projection if that exact spelling is
+absent, while AdForLinux leaves the projection unchanged. These tests build on
+both frameworks but **have not been run against AD locally**; the four explicit
+and lowercase-projection cases are expected to expose that difference. The
+existing fixture supplies the temporary user; the searches do not modify it.
+
+Source references:
+[ValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs),
+[TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs),
+[TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs), and
+[DirectorySearcher.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs).
+
+Run the new comparisons (repeat with `net8.0-windows`):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~PrincipalValueCollectionEdgeCaseComparisonTests|FullyQualifiedName~SearcherProjectionStateComparisonTests"
+```
+
+To run without AD, filter only `PrincipalValueCollectionEdgeCaseComparisonTests`.
+The tests assert compatibility and intentionally remain red until fixes land.
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
