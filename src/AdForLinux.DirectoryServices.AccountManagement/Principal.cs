@@ -79,7 +79,8 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return ContextRef.ContextType;
+            return (ContextRef ?? throw new InvalidOperationException(
+                "The principal must have a context before its context type can be read.")).ContextType;
         }
     }
 
@@ -1241,6 +1242,8 @@ public abstract class Principal : IDisposable
     private protected string? GetString(string attributeName)
     {
         CheckDisposedOrDeleted();
+        // Microsoft requires an initialized context even for unsaved properties.
+        if (ContextRef is null) throw new NullReferenceException();
         if (Entry is not null)
         {
             return AccountManagementExceptionTranslator.Execute(
@@ -1371,6 +1374,8 @@ public abstract class Principal : IDisposable
     private protected void SetString(string attributeName, string? value)
     {
         CheckDisposedOrDeleted();
+        // Reject an incomplete principal before staging any value or query filter.
+        if (ContextRef is null) throw new NullReferenceException();
         if (Entry is not null)
         {
             if (value is null)

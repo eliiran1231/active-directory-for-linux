@@ -45,8 +45,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
 
     public void Add(T value)
     {
-        _version++;
         ThrowIfNull(value);
+        _version++;
         _values.Add(value);
         Changed();
     }
@@ -80,8 +80,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
 
     public bool Remove(T value)
     {
-        _version++;
         ThrowIfNull(value);
+        _version++;
         var removed = _values.Remove(value);
         if (removed)
         {
@@ -108,8 +108,9 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     public IEnumerator<T> GetEnumerator() => new Enumerator(this);
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    // Mutation attempts invalidate traversal even when validation fails or no
-    // value is removed. Current also validates position and disposal.
+    // Mutation attempts invalidate traversal even when no value is removed or
+    // index validation fails. Add/Remove reject null before invalidating it.
+    // Current also validates position and disposal.
     private sealed class Enumerator : IEnumerator<T>
     {
         private readonly PrincipalValueCollection<T> _owner;
