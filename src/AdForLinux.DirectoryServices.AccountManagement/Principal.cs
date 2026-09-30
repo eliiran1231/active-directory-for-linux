@@ -18,7 +18,9 @@ public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.Ordinal);
+    private sealed record ExtensionCacheEntry(object?[]? Values, Func<string>? FilterCondition = null);
+
+    private readonly Dictionary<string, ExtensionCacheEntry> _extensionCache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Func<string>> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
@@ -261,8 +263,9 @@ public abstract class Principal : IDisposable
     internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
 
     internal virtual IEnumerable<PrincipalQueryFilter> QueryFilters => _queryFilters.Values.Concat(
-        _extensionCache.Select(pair => new PrincipalQueryFilter(
-            $"extension:{pair.Key}", PrincipalQueryFilterKind.Extension, pair.Key, pair.Value)));
+        _extensionCache.Where(pair => pair.Value.FilterCondition is null)
+            .Select(pair => new PrincipalQueryFilter(
+                $"extension:{pair.Key}", PrincipalQueryFilterKind.Extension, pair.Key, pair.Value.Values)));
 
     /// <summary>
     /// The groups this principal is a direct member of. Nested groups are not
@@ -1131,7 +1134,8 @@ public abstract class Principal : IDisposable
 
         if (_extensionCache.TryGetValue(attribute, out var staged))
         {
-            return staged;
+            // Filter entries replace ordinary values but are not attribute data.
+            return staged.Values!;
         }
 
         CheckDisposedOrDeleted();
@@ -1165,15 +1169,17 @@ public abstract class Principal : IDisposable
         ValidateExtensionValue(value);
         // Microsoft shares the supplied array (or the scalar wrapper) with
         // callers. Queries and saves must consume these same current values.
-        _extensionCache[attribute] = value is object?[] array
+        _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
             ? array
-            : new object?[] { value };
+            : new object?[] { value });
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
     {
-        foreach (var (attribute, values) in _extensionCache)
+        foreach (var (attribute, cached) in _extensionCache)
         {
+            if (cached.FilterCondition is not null) continue;
+            var values = cached.Values!;
             if (values.Length == 1 && values[0] is null)
             {
                 entry.Properties[attribute].Clear();
@@ -1345,8 +1351,22 @@ public abstract class Principal : IDisposable
     // placeholder values before their match type or FILETIME is evaluated.
     internal void SetAdvancedFilter(string key, Func<string> condition)
     {
-        CheckDisposedOrDeleted();
+        if (_deleted) CheckDisposedOrDeleted();
         _advancedFilters[key] = condition;
+    }
+
+    internal void SetAdvancedExtensionFilter(string attribute, object? value, Func<string> condition)
+    {
+        if (_deleted) CheckDisposedOrDeleted();
+        if (attribute is null)
+        {
+            throw new ArgumentException("The attribute cannot be null.");
+        }
+
+        ValidateExtensionValue(value);
+        // A retained filter can still be configured after disposal, just like
+        // an ordinary cached extension. Query execution remains guarded.
+        _extensionCache[attribute] = new ExtensionCacheEntry(null, condition);
     }
 
     internal IEnumerable<string> AdvancedFilterConditions
@@ -1354,7 +1374,11 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return _advancedFilters.Values.Select(condition => condition());
+            return _advancedFilters.Values
+                .Concat(_extensionCache.Values
+                    .Where(entry => entry.FilterCondition is not null)
+                    .Select(entry => entry.FilterCondition!))
+                .Select(condition => condition());
         }
     }
 
