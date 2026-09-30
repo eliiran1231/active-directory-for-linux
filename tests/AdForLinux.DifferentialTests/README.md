@@ -622,6 +622,42 @@ Reference implementations:
 [Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs),
 and [FindResultEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/FindResultEnumerator.cs).
 
+### Custom advanced-filter validation, cache state, and disposal
+
+`AdvancedFilterExtensionComparisonTests` adds 20 offline cases using normal
+protected constructors and the supported subclass APIs. Against Microsoft 9.0.0,
+both `net8.0-windows` and `net10.0-windows` reported **17 failures and 3 passing
+controls**. The assertions require compatibility and intentionally remain red.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Cases |
+| --- | --- | --- | --- |
+| `AdvancedFilterSet` with a null attribute | `ArgumentException`, null `ParamName` | `ArgumentNullException`, `ParamName` = `attribute` | 1 |
+| Empty attribute, null value, or null object type | Accepts configuration | Rejects configuration | 3 |
+| Empty object array, byte array, or list; nested object array | Rejects immediately with `ArgumentException` | Accepts configuration | 4 |
+| Read `ExtensionGet` after configuring a custom filter, with or without a prior extension value | Returns null because the cache entry now represents a filter | Returns the old value or an empty array | 2 |
+| Configure a retained filter after disposing its principal (six built-in methods and the custom setter) | Accepts configuration | Throws `ObjectDisposedException` | 7 |
+
+The three controls configure a scalar, nonempty object array, and nonempty byte
+array. Argument tests also check that a subsequent valid assignment succeeds;
+disposal tests first verify the same operations on the same live instances.
+These tests compare configuration and cache behavior only, not whether a server
+will accept or execute the resulting query. No AD settings or private-state
+manipulation are needed.
+
+The relevant implementation is `AdvancedFilters.AdvancedFilterSet` and
+`Principal.SetAdvancedFilter`: AdForLinux keeps custom criteria separately from
+the extension cache and checks disposal while storing them. Microsoft's
+[AdvancedFilters.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AdvancedFilters.cs)
+and [Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs)
+show the reference validation and shared-cache behavior. The tests use the
+loaded Microsoft assembly as the oracle.
+
+Run just these comparisons on both targets:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~AdvancedFilterExtensionComparisonTests
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
