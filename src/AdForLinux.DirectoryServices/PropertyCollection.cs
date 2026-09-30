@@ -11,6 +11,8 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 {
     private readonly Dictionary<string, PropertyValueCollection> _byName =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PropertyValueCollection> _cachedValues =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly Action<PropertyValueCollection>? _onChanged;
 
     internal PropertyCollection(Action<PropertyValueCollection>? onChanged = null)
@@ -26,10 +28,11 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     {
         get
         {
-            if (!_byName.TryGetValue(propertyName, out var values))
+            ArgumentNullException.ThrowIfNull(propertyName);
+            if (!_cachedValues.TryGetValue(propertyName, out var values))
             {
-                values = new PropertyValueCollection(propertyName, _onChanged);
-                _byName[propertyName] = values;
+                values = new PropertyValueCollection(propertyName, OnChanged);
+                _cachedValues[propertyName] = values;
             }
 
             return values;
@@ -50,9 +53,27 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 
     /// <summary>Copies the property value collections to an array.</summary>
     public void CopyTo(PropertyValueCollection[] array, int index) =>
-        _byName.Values.CopyTo(array, index);
+        ((ICollection)this).CopyTo(array, index);
 
-    internal PropertyValueCollection GetOrAdd(string propertyName) => this[propertyName];
+    internal PropertyValueCollection GetOrAdd(string propertyName)
+    {
+        var values = this[propertyName];
+        _byName[propertyName] = values;
+        return values;
+    }
+
+    private void OnChanged(PropertyValueCollection values)
+    {
+        // A read only caches a wrapper. A write makes it a property, but an
+        // old wrapper retained across refresh must not replace the fresh one.
+        if (_cachedValues.TryGetValue(values.PropertyName, out var current)
+            && ReferenceEquals(current, values))
+        {
+            _byName[values.PropertyName] = values;
+        }
+
+        _onChanged?.Invoke(values);
+    }
 
     /// <summary>
     /// Removes one managed property-cache entry. Existing callers that hold the
@@ -60,18 +81,23 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     /// a newly loaded collection, matching DirectoryEntry's partial-refresh
     /// behavior.
     /// </summary>
-    internal void RemoveCached(string propertyName) => _byName.Remove(propertyName);
+    internal void RemoveCached(string propertyName)
+    {
+        _byName.Remove(propertyName);
+        _cachedValues.Remove(propertyName);
+    }
 
     /// <summary>Replaces one managed property-cache entry with server values.</summary>
     internal void ReplaceLoaded(string propertyName, IEnumerable<object> values)
     {
-        var replacement = new PropertyValueCollection(propertyName, _onChanged);
+        var replacement = new PropertyValueCollection(propertyName, OnChanged);
         foreach (var value in values)
         {
             replacement.AddLoaded(value);
         }
 
         _byName[propertyName] = replacement;
+        _cachedValues[propertyName] = replacement;
     }
 
     public IDictionaryEnumerator GetEnumerator() => new PropertyEnumerator(_byName.GetEnumerator());
@@ -89,7 +115,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 
     object? IDictionary.this[object key]
     {
-        get => key is string name ? this[name] : null;
+        get => this[(string)key];
         set => throw new NotSupportedException("The property dictionary is read-only.");
     }
 
@@ -98,7 +124,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 
     void IDictionary.Clear() => throw new NotSupportedException("The property dictionary is read-only.");
 
-    bool IDictionary.Contains(object key) => key is string name && Contains(name);
+    bool IDictionary.Contains(object key) => Contains((string)key);
 
     void IDictionary.Remove(object key) =>
         throw new NotSupportedException("The property dictionary is read-only.");
@@ -117,7 +143,8 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
 
         if (index < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(index));
+            // Microsoft passes its lower-bound message as the parameter name.
+            throw new ArgumentOutOfRangeException("Number was less than the array's lower bound in the first dimension.", nameof(index));
         }
 
         if (index > array.Length - Count)
