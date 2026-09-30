@@ -654,6 +654,67 @@ public class PrincipalCompatibilityTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Extension_array_mutations_are_used_by_current_queries(bool stringArray)
+    {
+        using var context = OfflineContext();
+        using var user = new ExtendedUserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        object[] values = stringArray ? new string[] { "original" } : new object[] { "original" };
+        user.WriteExtension("description", values);
+        user.WriteExtension("Description", "separate");
+        Assert.Contains("(description=original)", searcher.GetLdapFilter());
+
+        values[0] = "changed";
+        Assert.Contains("(description=changed)", searcher.GetLdapFilter());
+        Assert.Contains("(Description=separate)", searcher.GetLdapFilter());
+
+        user.ReadExtension("description")[0] = "returned";
+        Assert.Contains("(description=returned)", searcher.GetLdapFilter());
+        user.WriteExtension("description", "replacement");
+        var filter = searcher.GetLdapFilter();
+        Assert.Contains("(description=replacement)", filter);
+        Assert.Contains("(Description=separate)", filter);
+        Assert.DoesNotContain("returned", filter);
+    }
+
+    [Fact]
+    public void Extension_array_mutations_are_persisted_on_insert_and_update()
+    {
+        var userName = NewName();
+        var userDn = DnFor(userName, TestDirectory.UsersContainer);
+        try
+        {
+            using var context = Context();
+            using var user = new ExtendedUserPrincipal(context)
+            {
+                Name = userName,
+                SamAccountName = userName,
+            };
+            var phones = new[] { "original", "second" };
+            user.WriteExtension("otherTelephone", phones);
+            phones[0] = "inserted";
+            user.Save();
+            using (var found = ExtendedUserPrincipal.Find(context, userName)!)
+            {
+                Assert.Equal(new[] { "inserted", "second" },
+                    found.ReadExtension("otherTelephone").Cast<string>().Order(StringComparer.Ordinal));
+            }
+
+            user.ReadExtension("otherTelephone")[0] = "updated";
+            user.Save();
+            using var updated = ExtendedUserPrincipal.Find(context, userName)!;
+            Assert.Equal(new[] { "second", "updated" },
+                updated.ReadExtension("otherTelephone").Cast<string>().Order(StringComparer.Ordinal));
+        }
+        finally
+        {
+            TestDirectory.Delete(userDn);
+        }
+    }
+
     [Fact]
     public void Extension_changes_are_cached_until_save_and_deleted_principals_are_rejected()
     {
@@ -681,6 +742,8 @@ public class PrincipalCompatibilityTests
             Assert.Equal("staged", entry.Properties["telephoneNumber"].Value);
 
             user.Delete();
+            Assert.Throws<InvalidOperationException>(() => user.ReadExtension("telephoneNumber"));
+            Assert.Throws<InvalidOperationException>(() => user.WriteExtension("telephoneNumber", "deleted"));
             Assert.Throws<InvalidOperationException>(() => user.Save());
             Assert.Throws<InvalidOperationException>(() => user.GetGroups());
             Assert.Throws<InvalidOperationException>(() => user.GetUnderlyingObject());

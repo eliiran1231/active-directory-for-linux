@@ -18,7 +18,7 @@ public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?[]> _extensionCache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Func<string>> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
@@ -259,7 +259,9 @@ public abstract class Principal : IDisposable
     /// <summary>The values staged before the object is saved, by LDAP attribute.</summary>
     internal IReadOnlyDictionary<string, object?> StagedValues => _pending;
 
-    internal virtual IEnumerable<PrincipalQueryFilter> QueryFilters => _queryFilters.Values;
+    internal virtual IEnumerable<PrincipalQueryFilter> QueryFilters => _queryFilters.Values.Concat(
+        _extensionCache.Select(pair => new PrincipalQueryFilter(
+            $"extension:{pair.Key}", PrincipalQueryFilterKind.Extension, pair.Key, pair.Value)));
 
     /// <summary>
     /// The groups this principal is a direct member of. Nested groups are not
@@ -1115,17 +1117,18 @@ public abstract class Principal : IDisposable
     /// <summary>Reads an arbitrary directory attribute for an extension class.</summary>
     protected object?[] ExtensionGet(string attribute)
     {
-        CheckDisposedOrDeleted();
+        if (_deleted) CheckDisposedOrDeleted();
         if (attribute is null)
         {
-            throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
+            throw new ArgumentException("The attribute cannot be null.");
         }
 
         if (_extensionCache.TryGetValue(attribute, out var staged))
         {
-            return staged.ToArray();
+            return staged;
         }
 
+        CheckDisposedOrDeleted();
         if (Entry is not null)
         {
             return Entry.Properties[attribute].Cast<object?>().ToArray();
@@ -1147,21 +1150,18 @@ public abstract class Principal : IDisposable
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
     protected void ExtensionSet(string attribute, object? value)
     {
-        CheckDisposedOrDeleted();
+        if (_deleted) CheckDisposedOrDeleted();
         if (attribute is null)
         {
-            throw new ArgumentException("The attribute cannot be null.", nameof(attribute));
+            throw new ArgumentException("The attribute cannot be null.");
         }
 
         ValidateExtensionValue(value);
+        // Microsoft shares the supplied array (or the scalar wrapper) with
+        // callers. Queries and saves must consume these same current values.
         _extensionCache[attribute] = value is object?[] array
-            ? array.ToArray()
+            ? array
             : new object?[] { value };
-        SetQueryFilter(
-            $"extension:{attribute}",
-            PrincipalQueryFilterKind.Extension,
-            attribute,
-            _extensionCache[attribute]);
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
@@ -1185,7 +1185,7 @@ public abstract class Principal : IDisposable
         {
             if (bytes.Length == 0)
             {
-                throw new ArgumentException("An extension collection cannot be empty.", nameof(value));
+                throw new ArgumentException("An extension collection cannot be empty.");
             }
 
             return;
@@ -1198,14 +1198,14 @@ public abstract class Principal : IDisposable
 
         if (collection.Count == 0)
         {
-            throw new ArgumentException("An extension collection cannot be empty.", nameof(value));
+            throw new ArgumentException("An extension collection cannot be empty.");
         }
 
         foreach (var item in collection)
         {
             if (item is ICollection)
             {
-                throw new ArgumentException("Nested extension collections are not supported.", nameof(value));
+                throw new ArgumentException("Nested extension collections are not supported.");
             }
         }
     }
@@ -1221,6 +1221,13 @@ public abstract class Principal : IDisposable
         if (ReferenceEquals(this, other))
         {
             return true;
+        }
+
+        // Distinct unsaved principals have no stored identity, even after
+        // disposal. Do not enter the guarded identity getters in that case.
+        if (Entry is null || other.Entry is null)
+        {
+            return false;
         }
 
         var guid = Guid;
