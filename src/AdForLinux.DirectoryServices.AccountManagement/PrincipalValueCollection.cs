@@ -36,6 +36,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         set
         {
             _version++;
+            _ = _values[index];
             ThrowIfNull(value);
             _values[index] = value;
             Changed();
@@ -100,6 +101,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     public void CopyTo(T[] array, int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ValidateCopyBoundary(array, index);
         _values.CopyTo(array, index);
     }
 
@@ -107,12 +109,13 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     // Mutation attempts invalidate traversal even when validation fails or no
-    // value is removed. Keep Current's cached-value behavior from List<T>.
+    // value is removed. Current also validates position and disposal.
     private sealed class Enumerator : IEnumerator<T>
     {
         private readonly PrincipalValueCollection<T> _owner;
         private readonly int _version;
         private readonly IEnumerator<T> _inner;
+        private bool _disposed;
 
         internal Enumerator(PrincipalValueCollection<T> owner)
         {
@@ -121,22 +124,37 @@ public class PrincipalValueCollection<T> : IList<T>, IList
             _inner = owner._values.GetEnumerator();
         }
 
-        public T Current => _inner.Current;
-        object? IEnumerator.Current => ((IEnumerator)_inner).Current;
+        public T Current
+        {
+            get
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                return (T)((IEnumerator)_inner).Current;
+            }
+        }
+
+        object? IEnumerator.Current => Current;
 
         public bool MoveNext()
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             CheckVersion();
             return _inner.MoveNext();
         }
 
         public void Reset()
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             CheckVersion();
             _inner.Reset();
         }
 
-        public void Dispose() => _inner.Dispose();
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _inner.Dispose();
+            _disposed = true;
+        }
 
         private void CheckVersion()
         {
@@ -168,7 +186,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     int IList.Add(object? value)
     {
         Add(Cast(value));
-        return Count - 1;
+        // Microsoft returns the new count, unlike the usual IList convention.
+        return Count;
     }
 
     bool IList.Contains(object? value) => Contains(Cast(value));
@@ -178,7 +197,17 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     void ICollection.CopyTo(Array array, int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ValidateCopyBoundary(array, index);
         ((ICollection)_values).CopyTo(array, index);
+    }
+
+    private static void ValidateCopyBoundary(Array array, int index)
+    {
+        // Even an empty collection requires a position inside the target array.
+        if (array is not null && index == array.Length)
+        {
+            throw new ArgumentException("Index must be less than the array length.");
+        }
     }
 
     private static T Cast(object? value)
