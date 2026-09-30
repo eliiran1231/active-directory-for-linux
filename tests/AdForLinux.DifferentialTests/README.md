@@ -483,6 +483,44 @@ For an offline run, use only `FullyQualifiedName~AdvancedFilterDeferralCompariso
 The assertions intentionally require parity, so the confirmed incompatibilities
 remain red. This change adds tests and documentation only.
 
+### Principal extension cache and equality after disposal
+
+`PrincipalExtensionCacheComparisonTests` and
+`PrincipalEqualityDisposalComparisonTests` add 21 offline comparisons. On Windows,
+with the pinned Microsoft 9.0.0 packages, both `net8.0-windows` and
+`net10.0-windows` produced **17 failing cases and 4 passing controls**.
+The 11 existing fixture-registration checks also passed on both targets.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Mutate an array supplied to `ExtensionSet`, or an array returned by `ExtensionGet` | Later reads observe the mutation | Copies isolate the cache from the mutation | 5 |
+| Write `description`, then `Description` or `DESCRIPTION` | Keeps separate cached values for the two spellings | Case-insensitive cache overwrites the first value | 2 |
+| Read an already cached extension, or write an extension, after disposal | Accepts the cached operation | Throws `ObjectDisposedException` | 2 |
+| Null attribute name, empty collection, or nested collection passed to the extension API | Throws `ArgumentException` with null `ParamName` | Supplies `attribute` or `value` as `ParamName` | 6 |
+| Compare two distinct principals when the left operand is disposed | Returns `false` for these principals without stored identities | Throws `ObjectDisposedException` when reading the left operand's `Guid` | 2 |
+
+The tests use small subclasses exposing normal protected `Principal`
+constructors and `ExtensionGet`/`ExtensionSet`. No reflection, private-field
+mutation, `PrincipalContext`, directory discovery, or AD connection is needed.
+The cache tests establish managed staging behavior, not server attribute-name
+matching or persistence. The disposal control for an uncached read confirms that
+both libraries still throw when that read would need the underlying object.
+Exact-spelling replacement and comparisons with a live left operand are the
+other passing controls.
+
+Each assertion compares the actual Microsoft result with the clone. Failures are
+intentional compatibility regressions; this change does not fix production code.
+Reference implementation:
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs)
+and
+[ExtensionCache.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ExtensionCache.cs).
+
+Run these comparisons on both target frameworks without configuring AD:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalExtensionCacheComparisonTests|FullyQualifiedName~PrincipalEqualityDisposalComparisonTests"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
