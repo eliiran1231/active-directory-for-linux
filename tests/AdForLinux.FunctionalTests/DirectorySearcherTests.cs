@@ -390,8 +390,8 @@ public class DirectorySearcherTests
 
         using var results = searcher.FindAll();
 
-        Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, results.PropertiesLoaded);
-        Assert.Equal(new[] { "sAMAccountName", "distinguishedName" }, searcher.PropertiesToLoad.Cast<string>());
+        Assert.Equal(new[] { "sAMAccountName", "distinguishedName", "ADsPath" }, results.PropertiesLoaded);
+        Assert.Equal(new[] { "sAMAccountName", "distinguishedName", "ADsPath" }, searcher.PropertiesToLoad.Cast<string>());
         Assert.Throws<PlatformNotSupportedException>(() => results.Handle);
     }
 
