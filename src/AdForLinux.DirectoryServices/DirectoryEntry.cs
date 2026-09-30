@@ -52,10 +52,18 @@ public class DirectoryEntry : Component
     /// </summary>
     public DirectoryEntry(object adsObject)
     {
-        ArgumentNullException.ThrowIfNull(adsObject);
+        if (adsObject is not IAds)
+        {
+            throw new ArgumentException("The object does not implement the ADSI IADs interface.");
+        }
         throw new PlatformNotSupportedException(
             "DirectoryEntry(object) requires an ADSI native object, which is not available on Linux. Use an LDAP path.");
     }
+
+    // Only used for interface identity validation; no native ADSI calls are made.
+    [ComImport, Guid("FD8256D0-FD15-11CE-ABC4-02608C9E7553")]
+    [InterfaceType(ComInterfaceType.InterfaceIsDual)]
+    private interface IAds { }
 
     /// <summary>Opens an entry from an <c>LDAP://host/DN</c> path, anonymous bind.</summary>
     public DirectoryEntry(string? path)

@@ -135,7 +135,9 @@ advanced date/count comparisons.
   constructor and property accept or expose an underlying ADSI/COM object,
   which has no Linux equivalent. The APIs are retained for source compatibility,
   but the constructor cannot wrap an ADSI object and throws
-  `PlatformNotSupportedException`; accessing `NativeObject` does the same. Create
+  `PlatformNotSupportedException` for a valid ADSI object; null and non-IADs inputs
+  throw `ArgumentException` without a parameter name. Accessing `NativeObject`
+  throws `PlatformNotSupportedException`. Create
   entries from an `LDAP://host/DN` path instead.
 - **`SearchResultCollection.Handle`.** Microsoft exposes the native ADSI
   `IDirectorySearch::ExecuteSearch` handle. Protocol-based LDAP searches have no

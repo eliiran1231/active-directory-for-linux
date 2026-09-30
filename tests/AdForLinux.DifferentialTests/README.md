@@ -566,17 +566,24 @@ implementation is corrected. This change contains tests and documentation only.
 
 ### Object-constructor validation and principal result boundaries
 
-These additions contain **19 offline cases and 6 live-directory cases**. The
-offline additions produced **5 failures and 14 passing controls** against the
-pinned Microsoft 9.0.0 packages on both .NET 8 and .NET 10 on Windows. Running
-the complete affected offline classes plus `FixtureRegistrationTests` produced
-5 failures and 32 passes per framework. No production code was changed.
+These tests contain **19 offline cases and 6 live-directory cases**. Before the
+#179 fixes, AD workflow run 36774963542 reported **11 failures and 510 passes**
+per framework: ten direct comparison failures and one incorrect assertion about
+the Microsoft oracle. The table below records the behavior before the fixes.
 
 | Trigger | Microsoft behavior | AdForLinux behavior |
 | --- | --- | --- |
 | `DirectoryEntry(object)` with null | `ArgumentException`, null `ParamName` | `ArgumentNullException`, `ParamName` = `adsObject` |
 | Same overload with a plain object, boxed integer, or string typed as object | `ArgumentException`, null `ParamName` | `PlatformNotSupportedException` |
-| `GetUnderlyingObjectType()` on a custom principal before assigning a context | `InvalidOperationException` | Returns `DirectoryEntry` |
+| `GetUnderlyingObjectType()` on a custom principal before assigning a context | `NullReferenceException` observed on the AD runner for both frameworks | Returns `DirectoryEntry` |
+
+The earlier `InvalidOperationException` oracle assumption for this last case was
+incorrect on the AD runner (run 36774963542). The test now compares the actual
+Microsoft exception and returned type directly and records both libraries'
+outcomes, the loaded Microsoft assembly identity/location, and runtime details.
+The fixes for #179 reject non-IADs constructor inputs, validate search-result
+enumerator positions independently of storage, and match the observed missing-context
+exception while preserving disposal precedence.
 
 `DirectoryEntryObjectValidationComparisonTests` passes only inputs that do not
 implement ADSI's IADs interface. It does not require COM-object support or make a
@@ -593,12 +600,12 @@ lifecycle tests; it does not fabricate fields or use uninitialized objects.
 `PrincipalSearchResultLivePositionComparisonTests` adds six corresponding cases
 for a **populated** `PrincipalSearcher.FindAll()` result. Each verifies the seeded
 user and single-row result before asserting the boundary behavior. These cases
-compile on both frameworks but **have not been run against AD locally**. Source
-inspection predicts a difference: Microsoft's `FindResultEnumerator.Current`
-explicitly rejects invalid positions, whereas AdForLinux delegates to generic
-`List<Principal>.Enumerator.Current`, which returns null at those positions for
-a nonempty list. Empty-list enumeration uses a different enumerator, explaining
-why the offline controls pass. Your AD run is needed to confirm these six cases.
+failed on both frameworks in run 36774963542: Microsoft's
+`FindResultEnumerator.Current` explicitly rejects invalid positions, whereas the
+old AdForLinux implementation delegated to generic `List<Principal>.Enumerator.Current`,
+which returns null at those positions for a nonempty list. Empty-list enumeration
+uses a different enumerator, explaining why the offline controls passed. The fix
+tracks valid position explicitly for both generic and non-generic access.
 
 Run just the new cases on both targets (the live class requires the AD settings
 documented above):
@@ -608,8 +615,7 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Dire
 ```
 
 For an offline-only run, omit the `PrincipalSearchResultLivePositionComparisonTests`
-filter term. The tests assert parity and intentionally remain red for confirmed
-incompatibilities.
+filter term. All 19 offline cases pass on both frameworks with the #179 fixes.
 
 Reference implementations:
 [DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs),
