@@ -13,6 +13,31 @@ public sealed class PrincipalMissingContextComparisonTests
 
     [Theory]
     [InlineData(false)]
+    [InlineData(true)] // Control: disposal takes precedence in both libraries.
+    public void Underlying_object_type_without_context_matches_microsoft(bool disposed)
+    {
+        using var microsoft = new MicrosoftPrincipal();
+        using var ours = new OurPrincipal();
+        Assert.Null(microsoft.Context);
+        Assert.Null(ours.Context);
+        if (disposed)
+        {
+            microsoft.Dispose();
+            ours.Dispose();
+        }
+
+        Type? expectedType = null;
+        Type? actualType = null;
+        var expected = Record.Exception(() => { expectedType = microsoft.GetUnderlyingObjectType(); });
+        var actual = Record.Exception(() => { actualType = ours.GetUnderlyingObjectType(); });
+
+        Assert.Equal(disposed ? typeof(ObjectDisposedException) : typeof(InvalidOperationException),
+            expected?.GetType());
+        Assert.Equal((expected?.GetType(), expectedType), (actual?.GetType(), actualType));
+    }
+
+    [Theory]
+    [InlineData(false)]
     [InlineData(true)] // Control: disposal takes precedence over missing context.
     public void ContextType_without_context_matches_microsoft(bool disposed)
     {
