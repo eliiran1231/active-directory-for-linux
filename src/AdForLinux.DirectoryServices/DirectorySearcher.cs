@@ -152,7 +152,7 @@ public class DirectorySearcher : Component
             if (value < 0)
             {
                 throw new ArgumentException(
-                    "The PageSize must be greater than 0 or set to 0 for no paging.", nameof(value));
+                    "The PageSize must be greater than 0 or set to 0 for no paging.");
             }
 
             if (value != 0 && DirectorySynchronization is not null)

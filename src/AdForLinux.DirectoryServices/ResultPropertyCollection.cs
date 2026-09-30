@@ -10,9 +10,6 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public class ResultPropertyCollection : DictionaryBase, IEnumerable<ResultPropertyValueCollection>
 {
-    private static readonly ResultPropertyValueCollection Empty =
-        new(Array.Empty<object>());
-
     internal ResultPropertyCollection()
     {
     }
@@ -23,8 +20,18 @@ public class ResultPropertyCollection : DictionaryBase, IEnumerable<ResultProper
         InnerHashtable[name.ToLowerInvariant()] = new ResultPropertyValueCollection(values);
 
     /// <summary>The values for an attribute, or an empty collection if absent.</summary>
-    public ResultPropertyValueCollection this[string name] =>
-        InnerHashtable[name.ToLowerInvariant()] is ResultPropertyValueCollection values ? values : Empty;
+    public ResultPropertyValueCollection this[string name]
+    {
+        get
+        {
+            var key = name.ToLowerInvariant();
+            // A present key can contain null or an incompatible value after
+            // public IDictionary mutation. Preserve the normal cast behavior.
+            return InnerHashtable.Contains(key)
+                ? (ResultPropertyValueCollection)InnerHashtable[key]!
+                : new ResultPropertyValueCollection(Array.Empty<object>());
+        }
+    }
 
     /// <summary>True if the attribute is present in the result.</summary>
     public bool Contains(string propertyName) => InnerHashtable.Contains(propertyName.ToLowerInvariant());
