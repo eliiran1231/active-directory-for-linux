@@ -703,6 +703,9 @@ public class PrincipalCompatibilityTests
                     found.ReadExtension("otherTelephone").Cast<string>().Order(StringComparer.Ordinal));
             }
 
+            // A successful save resets change tracking. Stage a new update,
+            // then mutate its shared wrapper before the next save.
+            user.WriteExtension("otherTelephone", new[] { "staged", "second" });
             user.ReadExtension("otherTelephone")[0] = "updated";
             user.Save();
             using var updated = ExtendedUserPrincipal.Find(context, userName)!;
