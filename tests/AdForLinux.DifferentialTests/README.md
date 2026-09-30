@@ -440,6 +440,49 @@ security descriptor inheritance, or transactional/subtree behavior. The
 library therefore matches the observed LDAP provider by throwing
 `NotImplementedException` instead of creating a materially different object.
 
+### Advanced-filter deferral and native GUID representation
+
+`AdvancedFilterDeferralComparisonTests` adds 33 offline comparisons using the
+Microsoft 9.0.0 package as the oracle. Both `net8.0-windows` and
+`net10.0-windows` produced **22 failing cases and 11 passing controls**:
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Configure any of the six built-in advanced filters with `MatchType` -1 or 6 | Accepts the criterion during configuration | Immediately throws `InvalidEnumArgumentException` | 12 |
+| Configure any of the five date filters with UTC January 1 in year 1 or 1600 | Stores the date during configuration | Immediately converts to FILETIME and throws `ArgumentOutOfRangeException` | 10 |
+
+The controls use `MatchType.Equals` and the UTC FILETIME epoch (1601-01-01).
+Every case also compares replacing the criterion with a valid value. Normal
+protected constructors are exposed through small test subclasses; no reflection,
+private-field mutation, PrincipalContext, or directory connection is involved.
+These tests establish when configuration throws, not whether a later search
+accepts the criterion. The clone's eager conversion also prevents callers from
+replacing a placeholder date before executing a query.
+
+`NativeGuidRepresentationComparisonTests` adds **3 live AD comparisons** for
+the fixture's user, group, and computer. They first verify equal nonempty `Guid`
+values, then compare `NativeGuid` verbatim. The clone uses `Guid.ToString("B")`,
+whereas Microsoft's LDAP provider returns its native hexadecimal string. Parsing
+or normalizing the strings would hide the suspected representation mismatch.
+These cases compile on both targets but **have not been run against AD locally**.
+They only read existing fixture objects and register `TestDataFixture` normally;
+the offline fixture-registration checks passed on .NET 8.
+
+Source references:
+[AdvancedFilters.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AdvancedFilters.cs)
+and
+[DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs).
+
+Run the new comparisons with AD configured (repeat with `net8.0-windows`):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~AdvancedFilterDeferralComparisonTests|FullyQualifiedName~NativeGuidRepresentationComparisonTests"
+```
+
+For an offline run, use only `FullyQualifiedName~AdvancedFilterDeferralComparisonTests`.
+The assertions intentionally require parity, so the confirmed incompatibilities
+remain red. This change adds tests and documentation only.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
