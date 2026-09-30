@@ -1,4 +1,6 @@
 using Xunit;
+using Xunit.Abstractions;
+using System.Runtime.InteropServices;
 using Ms = System.DirectoryServices.AccountManagement;
 using Ours = AdForLinux.DirectoryServices.AccountManagement;
 
@@ -8,6 +10,10 @@ namespace AdForLinux.DifferentialTests;
 // assigned. No fabricated contexts, private-field changes, or AD are involved.
 public sealed class PrincipalMissingContextComparisonTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public PrincipalMissingContextComparisonTests(ITestOutputHelper output) => _output = output;
+
     private sealed class MicrosoftPrincipal : Ms.Principal { }
     private sealed class OurPrincipal : Ours.Principal { }
 
@@ -31,8 +37,15 @@ public sealed class PrincipalMissingContextComparisonTests
         var expected = Record.Exception(() => { expectedType = microsoft.GetUnderlyingObjectType(); });
         var actual = Record.Exception(() => { actualType = ours.GetUnderlyingObjectType(); });
 
-        Assert.Equal(disposed ? typeof(ObjectDisposedException) : typeof(InvalidOperationException),
-            expected?.GetType());
+        var assembly = typeof(Ms.Principal).Assembly;
+        _output.WriteLine($"Microsoft assembly: {assembly.FullName}; location: {assembly.Location}");
+        _output.WriteLine($"Runtime: {RuntimeInformation.FrameworkDescription}; OS: {RuntimeInformation.OSDescription}; architecture: {RuntimeInformation.ProcessArchitecture}");
+        _output.WriteLine($"Microsoft: exception={expected?.GetType()}, returnedType={expectedType}");
+        _output.WriteLine($"AdForLinux: exception={actual?.GetType()}, returnedType={actualType}");
+        if (disposed)
+        {
+            Assert.IsType<ObjectDisposedException>(expected);
+        }
         Assert.Equal((expected?.GetType(), expectedType), (actual?.GetType(), actualType));
     }
 

@@ -47,6 +47,7 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
     {
         private readonly IEnumerator<TPrincipal> _inner;
         private bool _disposed;
+        private bool _hasCurrent;
 
         internal FindResultEnumerator(IEnumerator<TPrincipal> inner)
         {
@@ -58,6 +59,10 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
             get
             {
                 CheckDisposed();
+                if (!_hasCurrent)
+                {
+                    throw new InvalidOperationException("Enumeration has not started or has already finished.");
+                }
                 return _inner.Current;
             }
         }
@@ -67,13 +72,15 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
         public bool MoveNext()
         {
             CheckDisposed();
-            return _inner.MoveNext();
+            _hasCurrent = false;
+            return _hasCurrent = _inner.MoveNext();
         }
 
         public void Reset()
         {
             CheckDisposed();
             _inner.Reset();
+            _hasCurrent = false;
         }
 
         public void Dispose()

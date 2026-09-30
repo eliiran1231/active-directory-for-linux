@@ -1112,6 +1112,11 @@ public abstract class Principal : IDisposable
     public Type GetUnderlyingObjectType()
     {
         CheckDisposedOrDeleted();
+        // Microsoft dereferences the context here, even for an unsaved principal.
+        if (ContextRef is null)
+        {
+            throw new NullReferenceException();
+        }
         return typeof(DirectoryEntry);
     }
 
