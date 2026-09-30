@@ -143,6 +143,48 @@ cases exposing the differences above and 3 passing existing schema-collection
 cases. The tests intentionally assert compatibility, so the new cases remain red
 until the implementation is corrected.
 
+### Constructor, principal collection, and deferred-error regressions
+
+These additional offline comparisons were run on Windows against the referenced
+Microsoft 9.0.0 packages on both `net8.0-windows` and `net10.0-windows`.
+Each framework reported **23 failing cases and 7 passing controls (30 total)**.
+They assert equality with Microsoft, so failures are intentional until the
+implementation is corrected. No production implementation changes accompany them.
+
+| Test class / trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| `SearcherConstructorFilterComparisonTests`: pass null or empty filter to any of the six filter-taking constructors | Preserves the supplied null/empty value; a later setter assignment normalizes it to `(objectClass=*)` | Normalizes during construction as well | 12 |
+| `PrincipalValueCollectionOfflineComparisonTests`: call non-generic `IList.Add` on a string collection | Returns the new Count (1, 2, 4 in these cases) | Returns the zero-based index (0, 1, 3) | 3 |
+| Same class: read generic enumerator `Current` before starting, after finishing, or after Reset | Throws `InvalidOperationException` | Returns null | 3 |
+| Same class: read `Current`, call `MoveNext`, or call `Reset` after enumerator disposal | Throws `ObjectDisposedException` | Allows the operation | 3 |
+| `ResultPropertyDeferredErrorComparisonTests`: index a result value containing a deferred exception | Rethrows the stored exception instance | Returns the exception as an ordinary value | 2 |
+
+The six nonempty constructor-filter cases and the positioned-enumerator case
+are passing controls. The deferred-error tests also check adjacent readable
+values, Contains, IndexOf, and CopyTo before comparing indexed error access.
+
+The collection fixtures invoke Microsoft's normal non-public constructors,
+as other offline collection tests do. They do not edit private fields or use
+uninitialized objects. Operations under comparison are public APIs. In
+particular, the deferred-error fixture supplies the payload normally produced by
+ADSI value decoding; it proves collection behavior, not which live directory
+attributes will trigger a conversion failure. The principal collection fixture
+avoids PrincipalContext discovery and does not test persistence to AD.
+
+The relevant Microsoft source is
+[DirectorySearcher.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs),
+[ValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs),
+[TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs), and
+[ResultPropertyValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/ResultPropertyValueCollection.cs).
+The tests use the actual Microsoft assembly as the oracle rather than hardcoding
+replacement behavior from these sources.
+
+Run just these new comparisons (repeat with `net8.0-windows`):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~SearcherConstructorFilterComparisonTests|FullyQualifiedName~PrincipalValueCollectionOfflineComparisonTests|FullyQualifiedName~ResultPropertyDeferredErrorComparisonTests"
+```
+
 ### Fixture registration check without AD
 
 The fixture registration guard can run on both runtimes on Linux or Windows. It
