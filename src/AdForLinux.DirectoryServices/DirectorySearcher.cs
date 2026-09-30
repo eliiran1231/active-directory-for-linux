@@ -53,7 +53,8 @@ public class DirectorySearcher : Component
     public DirectorySearcher(DirectoryEntry? searchRoot, string? filter)
     {
         SearchRoot = searchRoot;
-        Filter = filter;
+        // Constructors preserve null/empty filters; only the setter normalizes them.
+        _filter = filter!;
     }
 
     /// <summary>Creates a searcher with a filter and no root yet.</summary>
@@ -90,7 +91,8 @@ public class DirectorySearcher : Component
         SearchScope scope)
     {
         SearchRoot = searchRoot;
-        Filter = filter;
+        // Constructors preserve null/empty filters; only the setter normalizes them.
+        _filter = filter!;
         SearchScope = scope;
         if (propertiesToLoad is not null)
         {
