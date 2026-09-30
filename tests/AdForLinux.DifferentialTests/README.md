@@ -564,6 +564,58 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Prin
 These assertions require parity and intentionally remain red until the
 implementation is corrected. This change contains tests and documentation only.
 
+### Object-constructor validation and principal result boundaries
+
+These additions contain **19 offline cases and 6 live-directory cases**. The
+offline additions produced **5 failures and 14 passing controls** against the
+pinned Microsoft 9.0.0 packages on both .NET 8 and .NET 10 on Windows. Running
+the complete affected offline classes plus `FixtureRegistrationTests` produced
+5 failures and 32 passes per framework. No production code was changed.
+
+| Trigger | Microsoft behavior | AdForLinux behavior |
+| --- | --- | --- |
+| `DirectoryEntry(object)` with null | `ArgumentException`, null `ParamName` | `ArgumentNullException`, `ParamName` = `adsObject` |
+| Same overload with a plain object, boxed integer, or string typed as object | `ArgumentException`, null `ParamName` | `PlatformNotSupportedException` |
+| `GetUnderlyingObjectType()` on a custom principal before assigning a context | `InvalidOperationException` | Returns `DirectoryEntry` |
+
+`DirectoryEntryObjectValidationComparisonTests` passes only inputs that do not
+implement ADSI's IADs interface. It does not require COM-object support or make a
+directory connection. The new `PrincipalMissingContextComparisonTests` method
+uses normal protected constructors; its disposed-principal case is a passing
+control.
+
+`PrincipalSearchResultPositionComparisonTests` checks generic and non-generic
+`Current` before traversal, after exhaustion, and after reset. Its empty-result
+cases all pass, including both array and list storage. The Microsoft fixture
+uses the normal internal `EmptySet` and result constructors, as in the existing
+lifecycle tests; it does not fabricate fields or use uninitialized objects.
+
+`PrincipalSearchResultLivePositionComparisonTests` adds six corresponding cases
+for a **populated** `PrincipalSearcher.FindAll()` result. Each verifies the seeded
+user and single-row result before asserting the boundary behavior. These cases
+compile on both frameworks but **have not been run against AD locally**. Source
+inspection predicts a difference: Microsoft's `FindResultEnumerator.Current`
+explicitly rejects invalid positions, whereas AdForLinux delegates to generic
+`List<Principal>.Enumerator.Current`, which returns null at those positions for
+a nonempty list. Empty-list enumeration uses a different enumerator, explaining
+why the offline controls pass. Your AD run is needed to confirm these six cases.
+
+Run just the new cases on both targets (the live class requires the AD settings
+documented above):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~DirectoryEntryObjectValidationComparisonTests|FullyQualifiedName~Underlying_object_type_without_context|FullyQualifiedName~PrincipalSearchResultPositionComparisonTests|FullyQualifiedName~PrincipalSearchResultLivePositionComparisonTests"
+```
+
+For an offline-only run, omit the `PrincipalSearchResultLivePositionComparisonTests`
+filter term. The tests assert parity and intentionally remain red for confirmed
+incompatibilities.
+
+Reference implementations:
+[DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs),
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs),
+and [FindResultEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/FindResultEnumerator.cs).
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
