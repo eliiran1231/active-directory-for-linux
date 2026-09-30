@@ -17,7 +17,19 @@ public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable
     }
 
     /// <summary>Gets the value at an index.</summary>
-    public object this[int index] => InnerList[index]!;
+    public object this[int index]
+    {
+        get
+        {
+            var value = InnerList[index];
+            if (value is Exception exception)
+            {
+                throw exception;
+            }
+
+            return value!;
+        }
+    }
 
     /// <summary>True if the value is present.</summary>
     public bool Contains(object? value) => InnerList.Contains(value);
