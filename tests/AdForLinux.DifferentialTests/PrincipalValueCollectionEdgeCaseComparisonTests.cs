@@ -103,6 +103,14 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
     [InlineData("invalid-remove-at", "MoveNext")]
     [InlineData("null-insert", "MoveNext")]
     [InlineData("null-replace", "MoveNext")]
+    [InlineData("null-add", "MoveNext")]
+    [InlineData("null-add", "Reset")]
+    [InlineData("null-remove", "MoveNext")]
+    [InlineData("null-remove", "Reset")]
+    [InlineData("non-generic-null-add", "MoveNext")] // Controls: IList rejects before mutation tracking.
+    [InlineData("non-generic-null-add", "Reset")]
+    [InlineData("non-generic-null-remove", "MoveNext")]
+    [InlineData("non-generic-null-remove", "Reset")]
     [InlineData("contains", "Current")] // Controls: reads preserve enumerators.
     [InlineData("contains", "MoveNext")]
     [InlineData("add", "MoveNext")] // Control: both reject structural changes.
@@ -169,6 +177,10 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
             case "invalid-remove-at": values.RemoveAt(-1); break;
             case "null-insert": values.Insert(0, null!); break;
             case "null-replace": values[0] = null!; break;
+            case "null-add": values.Add(null!); break;
+            case "null-remove": values.Remove(null!); break;
+            case "non-generic-null-add": ((IList)values).Add(null); break;
+            case "non-generic-null-remove": ((IList)values).Remove(null); break;
             case "contains": Assert.True(values.Contains("first")); break;
             default: throw new ArgumentOutOfRangeException(nameof(operation));
         }
