@@ -1032,6 +1032,48 @@ Run these cases on both configured target frameworks:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~DirectoryEntryDisposedWrapperComparisonTests|FullyQualifiedName~DirectoryEntryPathEquivalenceComparisonTests" --logger "trx;LogFilePrefix=entry-path-disposal"
 ```
 
+### Credential cache invalidation and unbound commits
+
+`DirectoryEntryCredentialCacheComparisonTests` and
+`DirectoryEntryUnboundCommitComparisonTests` use public APIs only and need Windows
+but no domain controller or `AD_*` variables. Local runs against Microsoft 9.0.0
+on .NET 8.0.29 and .NET 10.0.10 each produced **15 failures and 5 passing controls
+(20 cases)**. They assert compatibility and intentionally remain red until the
+implementation is corrected.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Failing cases |
+| --- | --- | --- | --- |
+| Change `Username`, `Password`, or `AuthenticationType` after obtaining `Properties` | Invalidates the wrapper; the next getter returns a new collection | Keeps returning the old collection | 9 |
+| Call `CommitChanges()` on a fresh, wrapper-accessed, or closed unbound entry | Returns without binding | Attempts binding and throws for incomplete authentication configuration | 3 |
+| Set `UsePropertyCache = false` in those unbound states | Succeeds and stores `false` | Attempts binding, throws, and leaves the flag `true` | 3 |
+
+The credential cases cover replacement, empty, and null credentials, plus changed
+authentication flags. Reassigning the original username, password, or flags gives
+three passing controls. The other two controls perform the commit/cache-mode
+operations after disposal. Wrapper tests establish public collection identity;
+they do not claim to verify cached attribute contents or persistence to AD.
+
+The unbound tests use `Signing` without `Secure`, which the clone rejects locally
+before network access. Microsoft's unbound operations never need to validate
+binding configuration. This exposes premature binding without relying on DNS,
+connection timeouts, or an available directory server.
+
+The source-level causes are in `DirectoryEntry`: the clone's credential and
+authentication setters call `ResetConnection()` without clearing `_properties`,
+whereas Microsoft's setters call `Unbind()`. The clone's `CommitChanges()` calls
+`GetConnection()` on a clean unbound entry; Microsoft returns when `Bound` is
+false. `UsePropertyCache` invokes `CommitChanges()` before storing the new flag.
+See Microsoft's
+[DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs).
+The tests use the actual assembly as their oracle, not hardcoded replacement
+behavior from the source.
+
+Run both configured frameworks:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~DirectoryEntryCredentialCacheComparisonTests|FullyQualifiedName~DirectoryEntryUnboundCommitComparisonTests" --logger "trx;LogFilePrefix=entry-cache-compatibility"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
