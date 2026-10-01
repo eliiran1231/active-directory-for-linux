@@ -54,6 +54,43 @@ Source-backed hypotheses, not runtime-confirmed findings:
   update sequence. These cases use real response controls, unlike the existing
   synthetic setter-sequence test, and retain the exact 3/3 control.
 
+## Batch 3: constructor precedence and exception contracts
+
+| Class | New cases | Execution requirement | Coverage |
+| --- | ---: | --- | --- |
+| `CompatibilityContextValidationComparisonTests` | 16 | Windows, no AD | Full PrincipalContext constructor's competing invalid credentials/type/options/name; exception type and parameter precedence |
+| `CompatibilityExceptionSerializationComparisonTests` | 7 | Windows, no AD | Protected NoMatchingPrincipalException deserialization constructor with populated/empty/null info; sibling exception metadata round-trip controls |
+
+The existing `GroupPrincipalComparisonTests.Members_collection_contract_matches`
+is also strengthened, without replacing its existing comparisons: CopyTo now
+compares ParamName and HResult as well as exception type, and covers combined
+null-array/negative-index precedence. It is included in the live category and
+still requires the isolated lab. This is **one enhanced existing case**, not a
+new case.
+
+Cumulative: **236 new cases (103 offline, 133 live), plus one enhanced live
+case**. Category discovery therefore selects **237 cases**. Batch 3 builds both
+target frameworks with zero warnings/errors. Runtime oracle validation remains
+unrun. The constructors use source-audited invalid inputs that fail before
+Microsoft server verification; they never attempt valid context construction.
+Serialization probes call the public/protected API directly without binary
+formatters or serialized byte input.
+
+Pinned Microsoft 9.0.0 source identifies three specific differences that await
+runtime confirmation:
+
+- [Context.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Context.cs)
+  checks credential/option errors before ContextType/server verification. The
+  clone checks context type and unsupported serverless binding earlier, and
+  names the options parameter for invalid Domain bind-mode combinations.
+- [exceptions.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/exceptions.cs)
+  unconditionally rejects NoMatchingPrincipalException's serialization
+  constructor; the clone calls the base deserialization constructor instead.
+- [PrincipalCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalCollection.cs)
+  leaves the parameter name absent for array-rank and index-at-length errors;
+  the clone supplies array/index parameter names. Existing type-only checks
+  could not detect these differences.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
