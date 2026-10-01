@@ -154,7 +154,7 @@ public class DirectoryEntry : Component
             {
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
-                Unbind();
+                ResetCredentialBinding();
             }
         }
     }
@@ -170,7 +170,7 @@ public class DirectoryEntry : Component
             {
                 _username = value;
                 _connectionOptionsOverride = null;
-                Unbind();
+                ResetCredentialBinding();
             }
         }
     }
@@ -185,7 +185,7 @@ public class DirectoryEntry : Component
             {
                 _password = value;
                 _connectionOptionsOverride = null;
-                Unbind();
+                ResetCredentialBinding();
             }
         }
     }
@@ -1273,6 +1273,14 @@ public class DirectoryEntry : Component
         _objectSecurity = null;
         _objectSecurityChanged = false;
         ResetConnection();
+    }
+
+    private void ResetCredentialBinding()
+    {
+        ResetConnection();
+        // Recreate the property wrapper for the new bind identity, but retain
+        // pending property/security writes so a later commit can retry them.
+        _properties = null;
     }
 
     private void ResetConnection()
