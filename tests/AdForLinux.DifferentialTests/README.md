@@ -893,6 +893,53 @@ Run only these 18 new cases on both frameworks:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~ResultValueEnumeratorComparisonTests|FullyQualifiedName~CopyTo_element_conversion_and_partial_writes_match"
 ```
 
+### Property-value cache failures and empty schema appends
+
+These additions contain **16 cases per framework** and no production changes.
+All compile for `net8.0-windows` and `net10.0-windows` against Microsoft 9.0.0.
+
+`SchemaNameCollectionComparisonTests.AddRange_detaches_existing_enumerator_before_later_indexer_write`
+has four offline cases. Local Windows runs on .NET 8.0.29 and .NET 10.0.10 each
+confirmed **two failures and two passing controls**. Both empty `AddRange`
+overloads leave an existing enumerator attached to the clone's current array.
+Changing index zero afterward changes that enumerator's result from `user` to
+`computer`. Microsoft replaces the array even for an empty append, so its old
+enumerator still returns `user`. Nonempty appends pass. This uses the existing
+delegate-backed fixture and establishes collection behavior independently of
+live ADSI array marshaling.
+
+`PropertyValueCacheComparisonTests` has **12 AD-dependent cases, compiled but
+not run locally**. The following predictions require confirmation by the live run:
+
+| Trigger | Microsoft source behavior | AdForLinux source behavior |
+| --- | --- | --- |
+| Concrete property-value enumerator `Current` before starting or after exhaustion | Throws `InvalidOperationException` | LINQ iterator does not validate position |
+| Concrete enumerator `Reset` | Restarts enumeration | Throws `NotSupportedException` |
+| Create concrete enumerator, append a value, then call its first `MoveNext` | Detects mutation and throws | Defers capturing the underlying enumerator until first `MoveNext`, so traversal succeeds |
+| `AddRange((object[])null)` | `ArgumentNullException.ParamName` is `value` | Parameter name is `values` |
+| Assign a multidimensional array to a previously persisted property, catch the error, then commit | Clears the cached attribute before array conversion fails; commit persists that clear | Clears the local list without recording a change; conversion fails and commit leaves the old server value |
+
+The four non-generic `IEnumerable` cases, null collection-overload case, and
+explicit-clear persistence case supply six controls. Tests log both outcomes
+and assert compatibility, including exception parameter names and cache state.
+The persistence tests create two disabled temporary users, seed both through
+Microsoft, compare fresh Microsoft reads after each library commits, and
+attempt cleanup of both users in `finally`. Other cases modify only cached
+values on the standard fixture user and never commit those changes.
+
+The reference source is
+[PropertyValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyValueCollection.cs)
+and [SchemaNameCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SchemaNameCollection.cs).
+
+Run only these additions on both target frameworks with the usual AD settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PropertyValueCacheComparisonTests|FullyQualifiedName~AddRange_detaches_existing_enumerator_before_later_indexer_write"
+```
+
+For an offline-only run, filter to the `AddRange_detaches_existing_enumerator_before_later_indexer_write`
+method.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in

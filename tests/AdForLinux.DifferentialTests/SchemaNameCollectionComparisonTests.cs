@@ -9,6 +9,53 @@ namespace AdForLinux.DifferentialTests;
 public sealed class SchemaNameCollectionComparisonTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)] // Controls: a nonempty append already replaces the array.
+    [InlineData(true, true)]
+    public void AddRange_detaches_existing_enumerator_before_later_indexer_write(bool collectionOverload, bool nonempty)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        using var ourSourceEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+        microsoft.Add("user");
+        ours.Add("user");
+        var expected = microsoft.GetEnumerator();
+        var actual = ours.GetEnumerator();
+        try
+        {
+            var additions = nonempty ? new[] { "group" } : Array.Empty<string>();
+            if (collectionOverload)
+            {
+                var source = CreateMicrosoftCollection();
+                source.AddRange(additions);
+                var ourSource = ourSourceEntry.Children.SchemaFilter;
+                ourSource.AddRange(additions);
+                microsoft.AddRange(source);
+                ours.AddRange(ourSource);
+            }
+            else
+            {
+                microsoft.AddRange(additions);
+                ours.AddRange(additions);
+            }
+
+            microsoft[0] = "computer";
+            ours[0] = "computer";
+            Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+            // The delegate-backed reference fixture exposes the array captured
+            // by enumeration. This does not model live ADSI array marshaling.
+            Assert.Equal(ReadRemaining(expected), ReadRemaining(actual));
+        }
+        finally
+        {
+            (expected as IDisposable)?.Dispose();
+            (actual as IDisposable)?.Dispose();
+        }
+    }
+
+    [Theory]
     [InlineData("empty", "int")]
     [InlineData("null", "int")]
     [InlineData("string", "int")]
