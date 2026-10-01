@@ -303,6 +303,30 @@ enumerators even when the appended collection is empty.
 Local validation also passed all 31 schema comparison cases and all 14 functional
 collection compatibility tests on each of .NET 8 and .NET 10.
 
+### Validated property binding, dictionary enumeration, and shared schema filters
+
+[Real-AD workflow 36918907090](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36918907090)
+validated the [#195](https://github.com/eliiran1231/active-directory-for-linux/issues/195)
+fix on October 1, 2026: **676/676 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+All 26 focused cases passed, resolving the 23 failures reported in
+[run 36917161792](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36917161792)
+and preserving the three passing controls. Artifact upload and test-OU cleanup
+succeeded. The existing Microsoft-oracle assertions are unchanged.
+
+Property collection, name, and value wrappers defer loading until directory
+data is needed, while invalid keys are still rejected before binding.
+Dictionary enumerators validate all four positioned accessors, return fresh
+value wrappers with change tracking, and retain their captured attributes
+across pending additions. Fresh schema-filter wrappers share their parent
+entry's binding state, while independently opened entries remain independent.
+
+[Linux CI 36918911178](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36918911178)
+also passed the build and all **480 functional tests per target** against Samba,
+with no skips. Local checks passed 46 offline differential comparisons and
+17 functional collection tests on each target. The functional enumerator
+identity assertion now agrees with the existing Microsoft-oracle expectation.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):

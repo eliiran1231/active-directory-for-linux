@@ -10,7 +10,6 @@ namespace AdForLinux.DirectoryServices;
 public class DirectoryEntries : IEnumerable<DirectoryEntry>
 {
     private readonly DirectoryEntry _parent;
-    private readonly SchemaNameCollection _schemaFilter = new();
 
     internal DirectoryEntries(DirectoryEntry parent)
     {
@@ -31,7 +30,7 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// Gets the schema classes included when enumerating the children. An empty
     /// collection includes children of every class.
     /// </summary>
-    public SchemaNameCollection SchemaFilter => _schemaFilter;
+    public SchemaNameCollection SchemaFilter => new(_parent);
 
     /// <summary>Finds a child by relative distinguished name.</summary>
     public DirectoryEntry Find(string name) => Find(name, null);
@@ -105,7 +104,7 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
 
     private string BuildSchemaFilter()
     {
-        var clauses = _schemaFilter.OfType<string>()
+        var clauses = SchemaFilter.OfType<string>()
             .Select(name => $"(objectClass={EscapeFilterValue(name)})")
             .ToArray();
         if (clauses.Length == 0)

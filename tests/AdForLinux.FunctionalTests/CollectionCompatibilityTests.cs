@@ -13,6 +13,74 @@ public class CollectionCompatibilityTests
     }
 
     [Fact]
+    public void Deferred_property_views_load_once_and_retry_after_failed_binding()
+    {
+        var attempts = 0;
+        var properties = new PropertyCollection(_ => { }, () =>
+        {
+            if (++attempts == 1) throw new InvalidOperationException("Bind failed");
+            var loaded = new PropertyCollection();
+            loaded.ReplaceLoaded("description", new object[] { "server value" });
+            return loaded;
+        });
+        var names = properties.PropertyNames;
+        var values = properties.Values;
+        Assert.True(((IDictionary)properties).IsReadOnly);
+        Assert.Throws<ArgumentNullException>(() => properties[null!]);
+        Assert.Equal(0, attempts);
+        Assert.Throws<InvalidOperationException>(() => properties.Count);
+        Assert.Equal("server value", properties["description"].Value);
+        Assert.Single(names);
+        Assert.Single(values);
+        Assert.Equal(2, attempts);
+    }
+
+    [Fact]
+    public void Property_enumerator_snapshots_values_and_tracks_fresh_wrapper_changes()
+    {
+        var changes = new List<PropertyValueCollection>();
+        var properties = new PropertyCollection(changes.Add);
+        properties.ReplaceLoaded("description", new object[] { "original" });
+        var enumerator = properties.GetEnumerator();
+        properties["info"].Value = "pending";
+        properties["description"].Value = "updated";
+        Assert.True(enumerator.MoveNext());
+        var first = Assert.IsType<PropertyValueCollection>(enumerator.Value);
+        var second = Assert.IsType<PropertyValueCollection>(enumerator.Value);
+        Assert.NotSame(first, second);
+        Assert.Equal("original", first.Value);
+        first.Value = "enumerated write";
+        Assert.Same(first, changes.Last());
+        Assert.True(first.Changed);
+        Assert.Equal("updated", properties["description"].Value);
+        Assert.False(enumerator.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => enumerator.Key);
+        enumerator.Reset();
+        Assert.Throws<InvalidOperationException>(() => enumerator.Value);
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("description", enumerator.Key);
+    }
+
+    [Fact]
+    public void Schema_filter_wrappers_share_entry_state_and_reset_on_close()
+    {
+        using var entry = new DirectoryEntry();
+        var first = entry.Children.SchemaFilter;
+        var second = entry.Children.SchemaFilter;
+        Assert.NotSame(first, second);
+        first.Add("group");
+        Assert.Equal("group", second[0]);
+        var enumerator = first.GetEnumerator();
+        second.Add("user");
+        Assert.True(enumerator.MoveNext());
+        Assert.Equal("group", enumerator.Current);
+        Assert.False(enumerator.MoveNext());
+        entry.Close();
+        Assert.Empty(first);
+        Assert.Empty(entry.Children.SchemaFilter);
+    }
+
+    [Fact]
     public void Property_values_track_ordered_add_delete_replace_and_clear_changes()
     {
         var values = new PropertyValueCollection("member");
@@ -190,7 +258,9 @@ public class CollectionCompatibilityTests
 
         var enumerator = properties.GetEnumerator();
         Assert.True(enumerator.MoveNext());
-        Assert.Same(properties["cn"], enumerator.Current);
+        var enumerated = Assert.IsType<PropertyValueCollection>(enumerator.Current);
+        Assert.NotSame(properties["cn"], enumerated);
+        Assert.Equal(properties["cn"].Value, enumerated.Value);
         Assert.Equal("cn", (string)enumerator.Key, ignoreCase: true);
 
         Assert.Throws<NotSupportedException>(() => dictionary.Add("mail", properties["cn"]));
