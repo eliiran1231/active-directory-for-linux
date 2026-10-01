@@ -282,6 +282,27 @@ tested cases. Existing schema enumeration and mutation behavior is preserved.
 Local validation also passed all 39 affected differential cases and all 14
 functional collection compatibility tests on each of .NET 8 and .NET 10.
 
+### Validated property-value cache and schema snapshot findings
+
+[Real-AD workflow 36914709498](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36914709498)
+validated the [#193](https://github.com/eliiran1231/active-directory-for-linux/issues/193)
+fix on October 1, 2026: **649/649 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+All 16 focused cases passed, resolving the eight failures reported in
+[run 36913251938](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36913251938)
+while retaining the eight passing controls. Artifact upload and test-OU cleanup
+succeeded; the Microsoft-oracle tests are unchanged.
+
+Property-value enumerators validate their position, support `Reset`, and capture
+the collection version when created. The array `AddRange` overload reports
+`value` for a null argument. A rejected array replacement preserves its clear
+for subsequent persistence, while successful replacements retain a single
+whole-attribute operation. Both schema `AddRange` overloads detach existing
+enumerators even when the appended collection is empty.
+
+Local validation also passed all 31 schema comparison cases and all 14 functional
+collection compatibility tests on each of .NET 8 and .NET 10.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):
