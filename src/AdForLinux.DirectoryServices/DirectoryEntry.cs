@@ -154,7 +154,7 @@ public class DirectoryEntry : Component
             {
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                Unbind();
             }
         }
     }
@@ -170,7 +170,7 @@ public class DirectoryEntry : Component
             {
                 _username = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                Unbind();
             }
         }
     }
@@ -185,7 +185,7 @@ public class DirectoryEntry : Component
             {
                 _password = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                Unbind();
             }
         }
     }
@@ -362,6 +362,14 @@ public class DirectoryEntry : Component
         // Other operations still reject the disposed instance through their
         // normal binding guards.
         if (_disposed)
+        {
+            return;
+        }
+
+        // A clean, unbound entry has no provider state to commit. New children
+        // and pending writes must still bind even if their connection was reset.
+        if (_connection is null && !_isNew && _pendingPropertyChanges.Count == 0
+            && !_objectSecurityChanged && !(_objectSecurity?.IsModified() ?? false))
         {
             return;
         }
