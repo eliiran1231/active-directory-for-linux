@@ -124,6 +124,35 @@ independently, and reads both persisted attributes through fresh Microsoft
 entries to isolate serialization from decoding. No production behavior was
 changed to accommodate these hypotheses.
 
+## Batch 5: query escaping, scalar culture and qualified identities
+
+| Class | New cases | Coverage |
+| --- | ---: | --- |
+| `CompatibilityQueryEscapingComparisonTests` | 14 | PAPI quoting of wildcard/backslash/ordinary characters, dangling escape, parentheses and RFC-looking text; scalar, workstation, SPN and extension paths; subsequent replacement control |
+| `CompatibilityExtensionQueryCultureComparisonTests` | 6 | Decimal/double/numeric-array translation under en-US and fr-FR; refresh after changing ambient culture |
+| `CompatibilityIdentityQualificationComparisonTests` | 5 | Explicit SamAccountName qualification, empty/trailing/repeated separators, with independent value-only lookup controls |
+
+Cumulative: **290 new cases (112 offline, 178 live), plus one enhanced existing
+live case**; category discovery selects **291 cases**. Both frameworks build
+without warnings/errors, and fixture registration passes 21/21. Windows runtime
+validation is unrun. All batch-5 cases are classified live: even the 20
+translation-only comparisons initialize a PrincipalContext that can bind.
+Translation cases do not execute searches or mutate directory data. Identity
+cases reuse the fixture's existing user and compare returned DNs and exceptions.
+
+[ADUtils.PAPIQueryToLdapQueryString](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADUtils.cs)
+interprets PAPI backslash quoting, unlike the clone's unconditional backslash
+escaping. Generated filters are observed through each library's public native
+searcher; a second ordinary assignment checks recovery and stale-filter behavior.
+These cases do not implement a competing escaping algorithm as their oracle.
+
+[ADStoreCtx_Query.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_Query.cs)
+uses current-culture ToString for numeric extension assertions, whereas the clone
+formats IFormattable values invariantly. The same source strips a qualifier at
+the first backslash for explicit SAM identities; the clone currently normalizes
+qualifiers only in its value-only inference path. These are source-identified
+differences awaiting Windows runtime confirmation, not reported test failures.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -154,9 +183,9 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 266 selected cases (265 new plus one enhanced existing case).
+discovery reports 291 selected cases (290 new plus one enhanced existing case).
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
-registration checks pass 20/20 without constructing AD fixtures. These checks
+registration checks pass 21/21 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
 
 Windows differential execution and live AD behavior are **unrun** here. On Windows,
