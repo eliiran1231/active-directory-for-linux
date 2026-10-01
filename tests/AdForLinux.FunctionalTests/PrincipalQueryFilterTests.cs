@@ -41,6 +41,32 @@ public class PrincipalQueryFilterTests
     }
 
     [Fact]
+    public void Queued_password_disables_creation_without_assigning_enabled_or_its_query()
+    {
+        using var context = OfflineContext();
+        using var user = new StagedUser(context) { PasswordNeverExpires = true };
+        using var searcher = new PrincipalSearcher(user);
+
+        user.SetPassword("Str0ng!Passw0rd#2026");
+        Assert.Null(user.Enabled);
+        Assert.True((user.StagedAccountControl & 2) != 0);
+        Assert.True((user.StagedAccountControl & 0x10000) != 0);
+        Assert.Equal(UserCategory + $"(userAccountControl:{BitRule}:=65536))", searcher.GetLdapFilter());
+
+        // Replacing the queued password must not mistake the internal disabled
+        // state for a public Enabled assignment.
+        user.SetPassword("Another!Password42");
+        Assert.Null(user.Enabled);
+        Assert.True((user.StagedAccountControl & 2) != 0);
+        Assert.Equal(UserCategory + $"(userAccountControl:{BitRule}:=65536))", searcher.GetLdapFilter());
+    }
+
+    private sealed class StagedUser(PrincipalContext context) : UserPrincipal(context)
+    {
+        internal int StagedAccountControl => int.Parse((string)PendingValues["userAccountControl"]!);
+    }
+
+    [Fact]
     public void Account_flags_remain_independent_when_one_property_is_reassigned()
     {
         using var context = OfflineContext();
@@ -104,6 +130,32 @@ public class PrincipalQueryFilterTests
         user.AccountExpirationDate = DateTime.FromFileTimeUtc(123456789);
         Assert.Equal(UserCategory + "(accountExpires=123456789))", searcher.GetLdapFilter());
         user.AccountExpirationDate = null;
+        Assert.Equal(UserCategory + "(|(accountExpires=9223372036854775807)(accountExpires=0)))",
+            searcher.GetLdapFilter());
+    }
+
+    [Fact]
+    public void Expiration_conversion_failure_preserves_assignment_and_replacement_query()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        var beforeEpoch = new DateTime(1500, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        user.AccountExpirationDate = beforeEpoch;
+        Assert.Throws<ArgumentOutOfRangeException>(user.Save);
+        Assert.Equal(beforeEpoch.Ticks, user.AccountExpirationDate!.Value.Ticks);
+        Assert.Equal(beforeEpoch.Kind, user.AccountExpirationDate.Value.Kind);
+
+        user.AccountExpirationDate = DateTime.FromFileTimeUtc(123456789);
+        // No name was assigned, so Save stops after staging the valid date,
+        // without connecting to a directory. It must not add a raw LDAP filter.
+        Assert.Throws<InvalidOperationException>(user.Save);
+        Assert.Equal(UserCategory + "(accountExpires=123456789))", searcher.GetLdapFilter());
+
+        user.AccountExpirationDate = null;
+        Assert.Throws<InvalidOperationException>(user.Save);
+        Assert.Null(user.AccountExpirationDate);
         Assert.Equal(UserCategory + "(|(accountExpires=9223372036854775807)(accountExpires=0)))",
             searcher.GetLdapFilter());
     }
