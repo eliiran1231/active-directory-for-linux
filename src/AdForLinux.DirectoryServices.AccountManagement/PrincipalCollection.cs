@@ -17,6 +17,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private bool _clearCompleted;
     private bool _clearPending;
     private bool _disposed;
+    private int _version;
     private List<string>? _primaryGroupMemberDns;
     private readonly Dictionary<string, MemberReference> _memberSources =
         new(StringComparer.OrdinalIgnoreCase);
@@ -79,6 +80,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             AddValue(_insertedValuesPending, value);
             RemoveValue(_removedValuesCompleted, value);
         }
+        _version++;
     }
 
     public void Add(
@@ -117,6 +119,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         if (RemoveValue(_insertedValuesPending, value))
         {
             AddValue(_removedValuesCompleted, value);
+            _version++;
             return true;
         }
 
@@ -127,6 +130,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
         AddValue(_removedValuesPending, value);
         RemoveValue(_insertedValuesCompleted, value);
+        _version++;
         return true;
     }
 
@@ -188,6 +192,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         _insertedValuesCompleted.Clear();
         _removedValuesCompleted.Clear();
         _clearPending = true;
+        _version++;
     }
 
     public void CopyTo(Principal[] array, int index) =>
@@ -268,7 +273,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
-        return new PrincipalCollectionEnumerator(EnumerateMembers().GetEnumerator(), CheckDisposed);
+        return new PrincipalCollectionEnumerator(this);
     }
 
     private IEnumerable<Principal> EnumerateMembers()
@@ -304,16 +309,17 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     private sealed class PrincipalCollectionEnumerator : IEnumerator<Principal>
     {
-        private readonly IEnumerator<Principal> _inner;
-        private readonly Action _checkCollection;
+        private IEnumerator<Principal> _inner;
+        private readonly PrincipalCollection _collection;
+        private readonly int _version;
+        private bool _hasCurrent;
         private bool _disposed;
 
-        internal PrincipalCollectionEnumerator(
-            IEnumerator<Principal> inner,
-            Action checkCollection)
+        internal PrincipalCollectionEnumerator(PrincipalCollection collection)
         {
-            _inner = inner;
-            _checkCollection = checkCollection;
+            _collection = collection;
+            _version = collection._version;
+            _inner = collection.EnumerateMembers().GetEnumerator();
         }
 
         public Principal Current
@@ -321,7 +327,11 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             get
             {
                 CheckDisposed();
-                _checkCollection();
+                _collection.CheckDisposed();
+                if (!_hasCurrent)
+                {
+                    throw new InvalidOperationException("The enumerator is not positioned on a member.");
+                }
                 return _inner.Current;
             }
         }
@@ -331,15 +341,22 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         public bool MoveNext()
         {
             CheckDisposed();
-            _checkCollection();
-            return _inner.MoveNext();
+            _collection.CheckDisposed();
+            CheckChanged();
+            _hasCurrent = _inner.MoveNext();
+            return _hasCurrent;
         }
 
         public void Reset()
         {
             CheckDisposed();
-            _checkCollection();
-            _inner.Reset();
+            _collection.CheckDisposed();
+            CheckChanged();
+            // Compiler-generated iterators do not support Reset. Start a new
+            // traversal without taking ownership of previously yielded principals.
+            _inner.Dispose();
+            _inner = _collection.EnumerateMembers().GetEnumerator();
+            _hasCurrent = false;
         }
 
         public void Dispose()
@@ -351,6 +368,14 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
             _inner.Dispose();
             _disposed = true;
+        }
+
+        private void CheckChanged()
+        {
+            if (_version != _collection._version)
+            {
+                throw new InvalidOperationException("The collection changed during enumeration.");
+            }
         }
 
         private void CheckDisposed()

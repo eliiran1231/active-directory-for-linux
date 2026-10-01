@@ -243,6 +243,24 @@ Its underlying cause remains unconfirmed. Local validation also passed 96
 offline collection comparisons and 49 relevant functional checks on each of
 .NET 8 and .NET 10.
 
+### Validated group constructor and member enumerator findings
+
+[Real-AD workflow 36907164882](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36907164882)
+validated the [#189](https://github.com/eliiran1231/active-directory-for-linux/issues/189)
+fix on October 1, 2026: **614/614 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+All 17 focused cases and the 597 other comparisons passed; artifact upload
+and test-OU cleanup succeeded. The existing Microsoft-oracle tests are unchanged.
+
+Both public `GroupPrincipal` constructors reject a null context with an
+`ArgumentException` without a parameter name, before assigning the group name.
+Member enumerators reject `Current` before traversal and after exhaustion,
+support `Reset`, and detect collection changes on `MoveNext` and `Reset`,
+including clearing an empty collection after exhaustion. Enumerator and group
+disposal checks remain intact. Local validation also passed all four offline
+constructor comparisons and 27 functional compatibility/disposal checks on
+each of .NET 8 and .NET 10.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):
