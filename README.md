@@ -221,6 +221,28 @@ Microsoft-oracle assertions were retained unchanged. Local checks also passed
 all 63 offline principal-collection comparisons and all 12 functional
 principal-collection tests on each of .NET 8 and .NET 10.
 
+### Validated CopyTo and mutable logon-hours findings
+
+[Real-AD workflow 36903609971](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36903609971)
+validated the [#187](https://github.com/eliiran1231/active-directory-for-linux/issues/187)
+fix on October 1, 2026: **597/597 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+All 12 focused cases and the 585 other comparisons passed; artifact upload
+and test-OU cleanup succeeded. The existing Microsoft-oracle tests are unchanged.
+
+Non-generic `CopyTo` checks element compatibility while copying, so an empty
+collection accepts an incompatible destination element type and a nonempty
+collection throws the same exception as Microsoft, preserving partial writes.
+In-place `PermittedLogonTimes` edits now persist through successive saves on
+both newly saved and reloaded principals. Tracking belongs to the principal;
+low-level `DirectoryEntry` cache invalidation is unchanged.
+
+The earlier .NET 10 SourceLink allocation failure did not recur in this run:
+build and full test execution succeeded without build configuration changes.
+Its underlying cause remains unconfirmed. Local validation also passed 96
+offline collection comparisons and 49 relevant functional checks on each of
+.NET 8 and .NET 10.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):
