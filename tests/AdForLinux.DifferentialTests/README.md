@@ -848,6 +848,51 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Grou
 
 For an offline run, filter to `GroupConstructorValidationComparisonTests` only.
 
+### Result-value enumeration and schema-name array copying
+
+`ResultValueEnumeratorComparisonTests` adds 12 offline comparisons, and
+`SchemaNameCollectionComparisonTests.CopyTo_element_conversion_and_partial_writes_match`
+adds six. Local Windows runs against Microsoft 9.0.0 on .NET 8.0.29 and
+.NET 10.0.10 confirmed **9 failures and 9 passing controls per framework**
+among these 18 additions. The tests assert compatibility and intentionally
+remain red; no production implementation changes accompany them.
+Running both complete classes also passed all 21 pre-existing schema cases,
+for a combined result of 9 failures and 30 passes per framework.
+
+| Trigger | Microsoft | AdForLinux |
+| --- | --- | --- |
+| Direct result-value enumerator `Current` before starting | Throws `InvalidOperationException` | Returns null |
+| Direct result-value enumerator `Current` after exhaustion | Throws `InvalidOperationException` | Returns the last value on .NET 8, null on .NET 10 |
+| Direct result-value enumerator `Reset`, before starting, while positioned, or after exhaustion | Resets and allows replay of all values | Throws `NotSupportedException` |
+| Copy an empty schema-name collection to `int[]` through `ICollection.CopyTo` | Succeeds | Throws `ArrayTypeMismatchException` |
+| Copy schema names containing a string or null to `int[]` | Throws `InvalidCastException` | Throws `ArrayTypeMismatchException` |
+
+The enumeration tests preserve concrete `GetEnumerator()` call sites because
+the clone hides the inherited method with a LINQ iterator. Casting the collection
+to non-generic `IEnumerable` takes the inherited path and passes all six control
+cases. A positioned direct enumerator also passes. Reset tests compare subsequent
+position validation and the remaining values, as well as the reset exception.
+
+The schema tests compare exception types, parameter names, source contents, and
+destination contents after success or failure. String and object destinations
+are passing controls. Microsoft's collection stores an `object[]`, while the
+clone stores a `string[]`, changing array-copy conversion behavior.
+
+These tests need no AD settings. They use the existing delegate-backed schema
+fixture and the normal internal result-value constructor; reflection only sets
+up the collections, and all operations under comparison are public APIs. They
+establish collection behavior independently of live ADSI provider marshaling.
+
+Reference implementation:
+[ResultPropertyValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/ResultPropertyValueCollection.cs)
+and [SchemaNameCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SchemaNameCollection.cs).
+
+Run only these 18 new cases on both frameworks:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~ResultValueEnumeratorComparisonTests|FullyQualifiedName~CopyTo_element_conversion_and_partial_writes_match"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in

@@ -8,6 +8,48 @@ namespace AdForLinux.DifferentialTests;
 
 public sealed class SchemaNameCollectionComparisonTests
 {
+    [Theory]
+    [InlineData("empty", "int")]
+    [InlineData("null", "int")]
+    [InlineData("string", "int")]
+    [InlineData("null-then-string", "int")]
+    [InlineData("string", "string")]
+    [InlineData("null-then-string", "object")]
+    public void CopyTo_element_conversion_and_partial_writes_match(string payload, string destinationType)
+    {
+        var microsoft = CreateMicrosoftCollection();
+        using var ourEntry = OurEntry();
+        var ours = ourEntry.Children.SchemaFilter;
+        string?[] values = payload switch
+        {
+            "empty" => Array.Empty<string?>(),
+            "null" => new string?[] { null },
+            "string" => new[] { "user" },
+            _ => new[] { null, "user" },
+        };
+        microsoft.AddRange(values);
+        ours.AddRange(values);
+        Array Destination() => destinationType switch
+        {
+            "int" => new[] { 17, 18, 19, 20 },
+            "string" => new[] { "a", "b", "c", "d" },
+            _ => new object[] { "a", "b", "c", "d" },
+        };
+        var expectedArray = Destination();
+        var actualArray = Destination();
+        var expectedError = Record.Exception(() => ((ICollection)microsoft).CopyTo(expectedArray, 1));
+        var actualError = Record.Exception(() => ((ICollection)ours).CopyTo(actualArray, 1));
+
+        // Capture the destination even on failure so an exception mismatch
+        // cannot hide any difference in writes performed before rejection.
+        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        var expected = (expectedError?.GetType().FullName,
+            (expectedError as ArgumentException)?.ParamName, string.Join("|", expectedArray.Cast<object>()));
+        var actual = (actualError?.GetType().FullName,
+            (actualError as ArgumentException)?.ParamName, string.Join("|", actualArray.Cast<object>()));
+        Assert.Equal(expected, actual);
+    }
+
     [Fact]
     public void Add_contains_index_of_remove_and_indexer_assignment_match()
     {
