@@ -211,7 +211,18 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ValidateCopyBoundary(array, index);
-        ((ICollection)_values).CopyTo(array, index);
+        ArgumentNullException.ThrowIfNull(array);
+        if (array.Rank != 1)
+        {
+            throw new ArgumentException("The destination array must have one dimension.");
+        }
+
+        // Validate element compatibility only as each value is copied, including
+        // partial writes on failure and no type check for an empty collection.
+        foreach (var value in _values)
+        {
+            array.SetValue(value, index++);
+        }
     }
 
     private void ValidateCopyBoundary(Array array, int index)

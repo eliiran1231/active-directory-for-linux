@@ -33,6 +33,9 @@ public class AuthenticablePrincipal : Principal
     private DateTime? _accountExpirationDate;
     private bool _accountExpirationDateAssigned;
     private bool _accountExpirationDateChanged;
+    private byte[]? _permittedLogonTimes;
+    private byte[]? _permittedLogonTimesBaseline;
+    private bool _permittedLogonTimesLoaded;
 
     protected internal AuthenticablePrincipal(PrincipalContext context)
     {
@@ -240,8 +243,24 @@ public class AuthenticablePrincipal : Principal
 
     public byte[]? PermittedLogonTimes
     {
-        get => GetValue("logonHours") as byte[];
-        set => SetValue("logonHours", value);
+        get
+        {
+            CheckDisposedOrDeleted();
+            if (!_permittedLogonTimesLoaded)
+            {
+                _permittedLogonTimes = GetValue("logonHours") as byte[];
+                _permittedLogonTimesBaseline = _permittedLogonTimes?.ToArray();
+                _permittedLogonTimesLoaded = true;
+            }
+
+            return _permittedLogonTimes;
+        }
+        set
+        {
+            SetValue("logonHours", value);
+            _permittedLogonTimes = value;
+            _permittedLogonTimesLoaded = true;
+        }
     }
 
     public PrincipalValueCollection<string> PermittedWorkstations
@@ -620,11 +639,21 @@ public class AuthenticablePrincipal : Principal
         _enabledAfterPassword = null;
         _userCannotChangePassword = null;
         _accountExpirationDateChanged = false;
+        _permittedLogonTimesBaseline = _permittedLogonTimes?.ToArray();
     }
 
     private protected override void OnBeforeSave()
     {
         base.OnBeforeSave();
+        if (_permittedLogonTimesLoaded
+            && !(_permittedLogonTimes ?? Array.Empty<byte>()).SequenceEqual(
+                _permittedLogonTimesBaseline ?? Array.Empty<byte>()))
+        {
+            // Array mutations bypass DirectoryEntry's property collection. Stage
+            // them before commit and retain the public array across cache resets.
+            SetValue("logonHours", _permittedLogonTimes);
+        }
+
         if (_accountExpirationDateChanged)
         {
             // Keep the public value intact, including Kind and FILETIME-zero.
