@@ -204,6 +204,23 @@ Two test projects:
 - **`tests/AdForLinux.DifferentialTests`** — runs on **Windows**. Compares the
   real Microsoft library with our clone, side by side. See its README.
 
+### Validated principal collection compatibility
+
+[Real-AD workflow 36900315548](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36900315548)
+validated the [#185](https://github.com/eliiran1231/active-directory-for-linux/issues/185)
+fix on October 1, 2026: **585/585 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+This includes all 18 traversal/copy regressions and all 567 other comparisons.
+Artifact upload and test-OU cleanup also succeeded.
+
+`PrincipalValueCollection<T>` enumerators preserve their cached `Current` value
+after the collection shrinks and reject `Current` after exhaustion, even if
+values are appended. Both `CopyTo` APIs reject insufficient destination space with an
+`ArgumentException` without a parameter name, matching Microsoft. The existing
+Microsoft-oracle assertions were retained unchanged. Local checks also passed
+all 63 offline principal-collection comparisons and all 12 functional
+principal-collection tests on each of .NET 8 and .NET 10.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):

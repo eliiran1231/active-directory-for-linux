@@ -116,6 +116,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         private readonly PrincipalValueCollection<T> _owner;
         private readonly int _version;
         private readonly IEnumerator<T> _inner;
+        private T _current = default!;
+        private bool _hasCurrent;
         private bool _disposed;
 
         internal Enumerator(PrincipalValueCollection<T> owner)
@@ -130,7 +132,13 @@ public class PrincipalValueCollection<T> : IList<T>, IList
             get
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
-                return (T)((IEnumerator)_inner).Current;
+                if (!_hasCurrent)
+                {
+                    throw new InvalidOperationException("Enumeration has either not started or has already finished.");
+                }
+
+                // Current remains cached even if the collection changes size.
+                return _current;
             }
         }
 
@@ -140,7 +148,9 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             CheckVersion();
-            return _inner.MoveNext();
+            _hasCurrent = _inner.MoveNext();
+            _current = _hasCurrent ? _inner.Current : default!;
+            return _hasCurrent;
         }
 
         public void Reset()
@@ -148,6 +158,8 @@ public class PrincipalValueCollection<T> : IList<T>, IList
             ObjectDisposedException.ThrowIf(_disposed, this);
             CheckVersion();
             _inner.Reset();
+            _hasCurrent = false;
+            _current = default!;
         }
 
         public void Dispose()
@@ -202,12 +214,13 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         ((ICollection)_values).CopyTo(array, index);
     }
 
-    private static void ValidateCopyBoundary(Array array, int index)
+    private void ValidateCopyBoundary(Array array, int index)
     {
         // Even an empty collection requires a position inside the target array.
-        if (array is not null && index == array.Length)
+        // Validate capacity here so both CopyTo paths omit the parameter name.
+        if (array is not null && (index >= array.Length || Count > array.Length - index))
         {
-            throw new ArgumentException("Index must be less than the array length.");
+            throw new ArgumentException("The destination array has insufficient space at the specified index.");
         }
     }
 
