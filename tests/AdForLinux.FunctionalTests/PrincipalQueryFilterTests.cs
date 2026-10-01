@@ -109,6 +109,32 @@ public class PrincipalQueryFilterTests
     }
 
     [Fact]
+    public void Expiration_conversion_failure_preserves_assignment_and_replacement_query()
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context);
+        using var searcher = new PrincipalSearcher(user);
+        var beforeEpoch = new DateTime(1500, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        user.AccountExpirationDate = beforeEpoch;
+        Assert.Throws<ArgumentOutOfRangeException>(user.Save);
+        Assert.Equal(beforeEpoch.Ticks, user.AccountExpirationDate!.Value.Ticks);
+        Assert.Equal(beforeEpoch.Kind, user.AccountExpirationDate.Value.Kind);
+
+        user.AccountExpirationDate = DateTime.FromFileTimeUtc(123456789);
+        // No name was assigned, so Save stops after staging the valid date,
+        // without connecting to a directory. It must not add a raw LDAP filter.
+        Assert.Throws<InvalidOperationException>(user.Save);
+        Assert.Equal(UserCategory + "(accountExpires=123456789))", searcher.GetLdapFilter());
+
+        user.AccountExpirationDate = null;
+        Assert.Throws<InvalidOperationException>(user.Save);
+        Assert.Null(user.AccountExpirationDate);
+        Assert.Equal(UserCategory + "(|(accountExpires=9223372036854775807)(accountExpires=0)))",
+            searcher.GetLdapFilter());
+    }
+
+    [Fact]
     public void Workstation_edits_replace_predicates_and_clear_removes_the_constraint()
     {
         using var context = OfflineContext();

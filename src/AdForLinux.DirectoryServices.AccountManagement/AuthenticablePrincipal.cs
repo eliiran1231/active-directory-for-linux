@@ -28,10 +28,18 @@ public class AuthenticablePrincipal : Principal
     private bool? _enabledAfterPassword;
     private bool _expirePasswordAfterSave;
     private bool? _userCannotChangePassword;
+    private bool? _unsavedEnabled;
+    private bool? _unsavedDelegationPermitted;
+    private DateTime? _accountExpirationDate;
+    private bool _accountExpirationDateAssigned;
+    private bool _accountExpirationDateChanged;
 
     protected internal AuthenticablePrincipal(PrincipalContext context)
     {
-        ArgumentNullException.ThrowIfNull(context);
+        if (context is null)
+        {
+            throw new ArgumentException("The context cannot be null.");
+        }
         ContextRef = context;
     }
 
@@ -67,13 +75,18 @@ public class AuthenticablePrincipal : Principal
     /// <summary>
     /// Whether the account is enabled. Reads and writes the ACCOUNTDISABLE bit
     /// of <c>userAccountControl</c>. Setting it needs a <see cref="Principal.Save"/>.
-    /// Null before the object is saved.
+    /// Null until assigned on a new object.
     /// </summary>
     public bool? Enabled
     {
         get
         {
             CheckDisposedOrDeleted();
+            if (Entry is null)
+            {
+                return _unsavedEnabled;
+            }
+
             var flags = ReadUserAccountControl();
             return flags is null ? null : (flags.Value & AccountDisabled) == 0;
         }
@@ -98,20 +111,35 @@ public class AuthenticablePrincipal : Principal
                 SetUserAccountControlBit(AccountDisabled, on: !value.Value);
             }
 
+            if (Entry is null)
+            {
+                _unsavedEnabled = value;
+            }
+
             SetUserAccountControlQuery(nameof(Enabled), AccountDisabled, bitMustBeSet: !value.Value);
         }
     }
 
     /// <summary>
     /// When the account expires, or null if it never does. Setting it needs a
-    /// <see cref="Principal.Save"/>. Times are UTC.
+    /// <see cref="Principal.Save"/>. Assignments retain their DateTime kind;
+    /// values read from the directory are UTC.
     /// </summary>
     public DateTime? AccountExpirationDate
     {
-        get => AdFileTime.ToDateTime(GetString("accountExpires"));
+        get
+        {
+            CheckDisposedOrDeleted();
+            return _accountExpirationDateAssigned
+                ? _accountExpirationDate
+                : AdFileTime.ToDateTime(GetString("accountExpires"));
+        }
         set
         {
-            SetString("accountExpires", AdFileTime.FromDateTime(value));
+            CheckDisposedOrDeleted();
+            _accountExpirationDate = value;
+            _accountExpirationDateAssigned = true;
+            _accountExpirationDateChanged = true;
             RemoveQueryFilter("accountExpires");
             SetQueryFilter(
                 nameof(AccountExpirationDate),
@@ -172,10 +200,20 @@ public class AuthenticablePrincipal : Principal
     public bool DelegationPermitted
     {
         // Stored inverted: the NOT_DELEGATED bit means delegation is blocked.
-        get => !HasUserAccountControlBit(NotDelegated);
+        get
+        {
+            CheckDisposedOrDeleted();
+            return Entry is null
+                ? _unsavedDelegationPermitted ?? false
+                : !HasUserAccountControlBit(NotDelegated);
+        }
         set
         {
             SetUserAccountControlBit(NotDelegated, !value);
+            if (Entry is null)
+            {
+                _unsavedDelegationPermitted = value;
+            }
             SetUserAccountControlQuery(nameof(DelegationPermitted), NotDelegated, !value);
         }
     }
@@ -580,11 +618,20 @@ public class AuthenticablePrincipal : Principal
         _expirePasswordAfterSave = false;
         _enabledAfterPassword = null;
         _userCannotChangePassword = null;
+        _accountExpirationDateChanged = false;
     }
 
     private protected override void OnBeforeSave()
     {
         base.OnBeforeSave();
+        if (_accountExpirationDateChanged)
+        {
+            // Keep the public value intact, including Kind and FILETIME-zero.
+            // Conversion (and its validation) belongs to persistence, not assignment.
+            SetString("accountExpires", AdFileTime.FromDateTime(_accountExpirationDate));
+            RemoveQueryFilter("accountExpires");
+        }
+
         if (_certificates is not null
             && !_certificateThumbprints.SequenceEqual(CertificateThumbprints(_certificates), StringComparer.OrdinalIgnoreCase))
         {
