@@ -153,6 +153,51 @@ the first backslash for explicit SAM identities; the clone currently normalizes
 qualifiers only in its value-only inference path. These are source-identified
 differences awaiting Windows runtime confirmation, not reported test failures.
 
+## Batch 6: result-derived entries and expiration persistence
+
+| Class | New cases | Coverage |
+| --- | ---: | --- |
+| `CompatibilityResultPathMutationComparisonTests` | 10 | Public ADsPath dictionary replacement/removal/invalid values and repair; GetDirectoryEntry after mutable root path/authentication changes for FindOne and FindAll |
+| `CompatibilityExpirationPersistenceComparisonTests` | 3 | UTC/Local/Unspecified expiration Save, raw accountExpires and fresh principal ticks/Kind |
+
+Cumulative: **303 new cases (112 offline, 191 live), plus one enhanced existing
+live case**; category discovery selects **304 cases**. Both frameworks build
+without warnings/errors; fixture registration passes 22/22. Windows/AD execution
+remains unrun. All 13 cases need the isolated lab; after changing a result's local
+path or the search root to a synthetic authority, tests only construct entries
+and read local properties, never bind those paths.
+
+[SearchResult.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SearchResult.cs)
+reads Path through the public ADsPath property collection and stores the search's
+authentication flags. The clone captures Path separately and uses its retained
+mutable root to create entries. Tests combine the already-supported public
+dictionary mutation contract with Path/GetDirectoryEntry and preserve a
+same-value control and repair checks.
+
+Microsoft [ADUtils.DateTimeToADFileTime](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADUtils.cs)
+calls ToFileTimeUtc directly; the clone calls ToUniversalTime first. This matters
+for Unspecified timestamps on non-UTC hosts. The tests log the host timezone and
+offset at the fixed test date. **A UTC-host pass does not validate the nonzero
+offset distinction.** No test changes the machine timezone or silently skips.
+
+### Inventory decisions after six batches
+
+| Area surveyed | Decision |
+| --- | --- |
+| Collection copy bounds/type/rank/lower bounds and partial writes | Existing coverage plus batches 1–3 already exercise these; no duplicate matrix added |
+| Collection mutation invalidation, null inputs, self-AddRange and replacement-failure state | Existing differential coverage and source agreement made further cases low value |
+| Logon-hours in-place edits, reassignment and repeated Save | Already covered by prior differential regressions; not duplicated |
+| Certificate persistence, malformed-certificate filtering and change tracking | Existing functional/QBE coverage; thumbprint multiset tracking and malformed input handling agree in source |
+| Security-rule enum/inheritance validation and constructor ordering | Existing coverage and source agreement; no speculative expansion |
+| DirectoryServicesCOMException public constructors/serialization | Source contracts agree; no redundant sibling serialization matrix |
+| LastLogon fallback for a present zero lastLogonTimestamp | Source lead retained, but controlled AD seeding is unresolved; no invented fixture behavior |
+| Custom generic equality dispatch | Requires deliberately inconsistent object/IEquatable semantics; omitted as low-priority synthetic coverage |
+
+Further high-value work should prioritize Windows oracle results for these
+source-backed candidates and realistic additional lifecycle transitions. The
+missing Windows/disposable-AD runtime is a validation limit, not evidence of a
+test failure or a reason to weaken an oracle comparison.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -183,9 +228,9 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 291 selected cases (290 new plus one enhanced existing case).
+discovery reports 304 selected cases (303 new plus one enhanced existing case).
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
-registration checks pass 21/21 without constructing AD fixtures. These checks
+registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
 
 Windows differential execution and live AD behavior are **unrun** here. On Windows,
