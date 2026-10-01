@@ -759,6 +759,52 @@ Reference implementation:
 [TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs)
 and [TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs).
 
+### Copy failures and in-place logon-hours changes
+
+`PrincipalValueCollectionCopyFailureComparisonTests` adds eight offline cases.
+Local Windows runs against Microsoft 9.0.0 confirmed **two failures and six
+passing controls per framework**, on .NET 8.0.29 and .NET 10.0.10:
+
+| Trigger | Microsoft | AdForLinux |
+| --- | --- | --- |
+| Copy an empty `PrincipalValueCollection<string>` to an `int[]` through `ICollection.CopyTo` | Succeeds without changing the destination | Throws `ArgumentException` |
+| Copy a nonempty string collection to an `int[]` | Throws `InvalidCastException` | Throws `ArgumentException` |
+
+The reference copies individual elements with `Array.SetValue`, while the clone
+delegates to `List<T>.CopyTo`. The controls check both copy interfaces with
+covariant arrays (including partial writes before failure), successful copying,
+and multidimensional destination rejection. Reflection only invokes the normal
+internal Microsoft collection constructor, as in the existing offline tests.
+
+`PermittedLogonTimesMutationComparisonTests` adds four **AD-dependent cases that
+have been compiled but not run locally**. They create two disabled temporary
+users in `DifferentialSettings.UsersContainer`, save a 21-byte logon-hours
+bitmap, edit the returned array in place, save twice, and read each result using
+a fresh principal. Both the original saved principal and a newly loaded
+principal are exercised. Explicit setter reassignment supplies two controls.
+Both temporary users are deleted in `finally`.
+
+The suspected incompatibility is missing change tracking for in-place
+`PermittedLogonTimes` edits. Microsoft compares the mutable bitmap against its
+previous contents. The clone returns the entry's cached array, but its save path
+only writes property collections marked changed by a setter or collection
+mutation. Editing a byte does not mark that collection changed. The AD run is
+needed to confirm the resulting persistence difference; these tests do not
+claim a locally verified server result.
+
+Reference source:
+[TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs)
+and [AccountInfo.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AccountInfo.cs).
+No production code changes accompany these comparisons.
+
+Run both new classes on both target frameworks with the usual AD settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalValueCollectionCopyFailureComparisonTests|FullyQualifiedName~PermittedLogonTimesMutationComparisonTests"
+```
+
+For an offline-only run, filter to `PrincipalValueCollectionCopyFailureComparisonTests`.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
