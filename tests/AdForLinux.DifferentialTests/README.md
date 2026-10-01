@@ -805,6 +805,49 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Prin
 
 For an offline-only run, filter to `PrincipalValueCollectionCopyFailureComparisonTests`.
 
+### Group constructor validation and member enumeration
+
+`GroupConstructorValidationComparisonTests` adds four offline comparisons.
+Local Windows runs against Microsoft 9.0.0 confirmed **four failures on each
+target framework**, `net8.0-windows` and `net10.0-windows`:
+
+| Null-context constructor call | Microsoft | AdForLinux |
+| --- | --- | --- |
+| `new GroupPrincipal(null)` | `ArgumentException`, null parameter name | Succeeds |
+| Named overload with null or empty name | `ArgumentException`, null parameter name | `ArgumentNullException`, parameter `value` |
+| Named overload with a nonempty name | `ArgumentException`, null parameter name | `NullReferenceException` |
+
+`GroupMemberEnumeratorComparisonTests` adds 13 AD-dependent comparisons,
+**compiled but not run locally**. They use normally constructed Domain contexts
+and unsaved, empty groups. They never save a group or modify directory objects.
+The following differences are predicted from the two implementations and await
+the AD differential run:
+
+| Operation | Microsoft source behavior | AdForLinux source behavior |
+| --- | --- | --- |
+| Generic or non-generic `Current` before starting or after exhaustion | Throws `InvalidOperationException` | Returns null from its underlying C# iterator |
+| `Reset` before starting or after exhaustion | Resets traversal successfully | Throws `NotSupportedException` from its underlying C# iterator |
+| `MoveNext` after clearing the collection, including after exhaustion | Throws `InvalidOperationException` | Does not detect the mutation and returns false |
+
+Five controls cover unchanged empty enumeration and operations after enumerator
+disposal. Clear tests wait for the clock to advance after enumerator construction
+because Microsoft's change detection compares UTC timestamps. All tests log both
+observations and assert compatibility; they are intended to fail until the
+implementation is corrected. No production changes accompany them.
+
+Reference implementation:
+[Group.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Group.cs),
+[PrincipalCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalCollection.cs),
+and [PrincipalCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalCollectionEnumerator.cs).
+
+Run both classes on both frameworks with the usual AD settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~GroupConstructorValidationComparisonTests|FullyQualifiedName~GroupMemberEnumeratorComparisonTests"
+```
+
+For an offline run, filter to `GroupConstructorValidationComparisonTests` only.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
