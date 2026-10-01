@@ -666,9 +666,10 @@ property validation, but never saves an object or modifies the directory.
 `AuthenticableConstructorComparisonTests` adds two offline cases exposing the
 protected constructors through ordinary subclasses.
 
-The tests compare the actual Microsoft assembly with AdForLinux. Source review
-identified the following differences; the AD-dependent cases still need the
-Windows differential runner to confirm them:
+The tests compare the actual Microsoft assembly with AdForLinux. The original
+[AD run 36884032891](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36884032891)
+confirmed 22 failures and two passing expiration controls on each framework.
+The table records the behavior before the #183 fix:
 
 | Trigger | Microsoft reference behavior | AdForLinux implementation |
 | --- | --- | --- |
@@ -698,9 +699,17 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Unsa
 ```
 
 For an offline-only run, filter to `AuthenticableConstructorComparisonTests`.
-Both offline cases were run against Microsoft 9.0.0 on `net8.0-windows` and
-`net10.0-windows`; each framework reported the two expected compatibility
-failures (`ArgumentException` versus `ArgumentNullException("context")`).
+Both offline cases now pass against Microsoft 9.0.0 on `net8.0-windows` and
+`net10.0-windows`. The fix keeps unsaved Enabled and delegation assignments
+independent from the shared UAC flags, preserves the requested Enabled value
+while a password is queued, and defers expiration conversion until persistence.
+The create-disabled / set-password / enable sequence remains unchanged.
+
+The complete [validating AD run 36887208728](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36887208728)
+passed on both `net8.0-windows` and `net10.0-windows`: **565 passed, zero failed,
+zero skipped per framework**. Its TRX artifacts confirm all 24 cases in these
+two classes pass, including the two expiration controls, along with all 541
+other comparisons. Test OU creation, artifact upload, and cleanup also passed.
 
 ## Things to know before you read a failure
 
