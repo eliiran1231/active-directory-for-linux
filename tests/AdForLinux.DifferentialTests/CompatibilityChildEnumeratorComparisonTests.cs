@@ -28,6 +28,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
         var rdn = $"CN={data.UserName}-enum-{Guid.NewGuid():N}";
         using var microsoftRoot = parent.Children.Add(rdn, "container");
         var committed = false;
+        Exception? primaryError = null;
         try
         {
             microsoftRoot.CommitChanges();
@@ -40,13 +41,15 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
             using var ourRoot = new Ours.DirectoryEntry(
                 DifferentialSettings.PathFor($"{rdn},{DifferentialSettings.UsersContainer}"),
                 DifferentialSettings.BindDn, DifferentialSettings.BindPassword, DifferentialSettings.OurAuthenticationTypes);
-            var microsoft = microsoftRoot.Children.GetEnumerator();
-            var ours = ourRoot.Children.GetEnumerator();
+            IEnumerator? microsoft = null;
+            IEnumerator? ours = null;
             // Keep returned entries alive until the enumerators have finished:
             // disposing Current during positioning could change the experiment.
             var entries = new HashSet<IDisposable>(ReferenceEqualityComparer.Instance);
             try
             {
+                microsoft = microsoftRoot.Children.GetEnumerator();
+                ours = ourRoot.Children.GetEnumerator();
                 var comparison = new Comparison($"DirectoryEntries count={count}, position={position}, operation={operation}");
                 Position(microsoft, position, count, entries);
                 Position(ours, position, count, entries);
@@ -59,6 +62,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     var actual = ReadRemaining(ours, entries);
                     // The Microsoft oracle must actually replay the seeded rows;
                     // a pair of empty or failed enumerations is not parity.
+                    Assert.Null(expected.Error);
                     Assert.Equal(count, expected.Count);
                     comparison.Check("replayed names", expected.Names, actual.Names)
                         .Check("replayed count", expected.Count, actual.Count)
@@ -66,6 +70,8 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     Reset(comparison, "second reset", microsoft, ours);
                     expected = ReadRemaining(microsoft, entries);
                     actual = ReadRemaining(ours, entries);
+                    Assert.Null(expected.Error);
+                    Assert.Equal(count, expected.Count);
                     comparison.Check("second replay names", expected.Names, actual.Names)
                         .Check("second replay count", expected.Count, actual.Count)
                         .Check("second replay exception", expected.Error, actual.Error);
@@ -77,6 +83,8 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     comparison.Check("Current repeated", Current(microsoft, entries), Current(ours, entries));
                     var expected = ReadRemaining(microsoft, entries);
                     var actual = ReadRemaining(ours, entries);
+                    Assert.Null(expected.Error);
+                    Assert.Equal(position == "before" ? count : position == "partial" ? count - 1 : 0, expected.Count);
                     comparison.Check("remaining count", expected.Count, actual.Count)
                         .Check("remaining exception", expected.Error, actual.Error);
                     // With partial traversal, the skipped child can differ by
@@ -95,9 +103,42 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                 foreach (var entry in entries) entry.Dispose();
             }
         }
+        catch (Exception error)
+        {
+            primaryError = error;
+            throw;
+        }
         finally
         {
-            if (committed) microsoftRoot.DeleteTree();
+            try
+            {
+                if (committed)
+                {
+                    microsoftRoot.DeleteTree();
+                }
+                else
+                {
+                    // A failed CommitChanges can still have created the object
+                    // server-side. Probe only this test-owned exact DN, using
+                    // the configured credentials rather than DirectoryEntry.Exists.
+                    using var uncertainRoot = OpenMicrosoft($"{rdn},{DifferentialSettings.UsersContainer}");
+                    var exists = true;
+                    try { uncertainRoot.RefreshCache(new[] { "distinguishedName" }); }
+                    catch (System.Runtime.InteropServices.COMException error)
+                        when (error.ErrorCode == unchecked((int)0x80072030)) // ERROR_DS_NO_SUCH_OBJECT
+                    {
+                        exists = false;
+                    }
+                    if (exists) uncertainRoot.DeleteTree();
+                }
+            }
+            catch (Exception cleanupError)
+            {
+                // Keep the actual test/setup failure when cleanup also fails.
+                if (primaryError is not null)
+                    throw new AggregateException("Child enumeration test and owned-subtree cleanup both failed.", primaryError, cleanupError);
+                throw;
+            }
         }
     }
 

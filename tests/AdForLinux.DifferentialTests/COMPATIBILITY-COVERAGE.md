@@ -198,6 +198,31 @@ source-backed candidates and realistic additional lifecycle transitions. The
 missing Windows/disposable-AD runtime is a validation limit, not evidence of a
 test failure or a reason to weaken an oracle comparison.
 
+## Batch 7: retained membership and oracle audit
+
+`CompatibilityRetainedMembershipComparisonTests` adds **5 live cases** for a
+membership collection retained before its owner group is deleted: Count,
+enumerator creation, and null Add/Remove/CopyTo argument precedence. Each case
+uses two independently Microsoft-seeded, empty groups, primes the collection,
+and compares Microsoft outcomes with the clone after deletion. Cleanup targets
+only each invocation's exact unique group DNs.
+
+Microsoft [PrincipalCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalCollection.cs)
+checks the collection's own disposed state; Principal.Delete marks the owner
+deleted without disposing its membership collection. The clone checks owner
+deleted state on collection operations. These are source-backed hypotheses,
+not runtime-confirmed failures.
+
+The audit also strengthens the existing ten child-enumerator cases: each
+Microsoft traversal must complete without error and return the expected row
+count, including both reset replays. Enumerator acquisition is inside cleanup
+protection; an uncertain subtree commit is checked at its exact owned DN, and
+cleanup errors preserve the primary failure.
+
+Cumulative: **308 new cases (112 offline, 196 live), plus one enhanced existing
+live case**; discovery selects **309 cases**. No Windows oracle or AD operation
+has run here.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -228,7 +253,7 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 304 selected cases (303 new plus one enhanced existing case).
+discovery reports 309 selected cases (308 new plus one enhanced existing case).
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
