@@ -41,10 +41,11 @@ public class SchemaNameCollection : IList
     public void AddRange(string?[] value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        foreach (var name in value)
-        {
-            Add(name);
-        }
+        // Even an empty append detaches enumerators from later indexer writes.
+        var names = new string?[Count + value.Length];
+        _names.CopyTo(names, 0);
+        value.CopyTo(names, Count);
+        _names = names;
     }
 
     public void AddRange(SchemaNameCollection value)

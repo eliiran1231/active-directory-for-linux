@@ -69,7 +69,17 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
                 // Match ADSI: every array except byte[] represents multiple
                 // attribute values. Array.CopyTo boxes value-type elements.
                 var many = new object[array.Length];
-                array.CopyTo(many, 0);
+                try
+                {
+                    array.CopyTo(many, 0);
+                }
+                catch
+                {
+                    // ADSI clears before converting the replacement. Preserve
+                    // that change even when conversion rejects the array.
+                    RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
+                    throw;
+                }
                 InnerList.AddRange(many);
             }
             else if (value is not null)
@@ -98,7 +108,11 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     }
 
     /// <summary>Adds several values.</summary>
-    public void AddRange(object?[] value) => AddRange((IEnumerable<object?>)value);
+    public void AddRange(object?[] value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        AddRange((IEnumerable<object?>)value);
+    }
 
     /// <summary>Adds every value from another property collection.</summary>
     public void AddRange(PropertyValueCollection value)
@@ -177,7 +191,18 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         _onChanged?.Invoke(this);
     }
 
-    public new IEnumerator<object?> GetEnumerator() => InnerList.Cast<object?>().GetEnumerator();
+    public new IEnumerator<object?> GetEnumerator() => new ValueEnumerator(InnerList.GetEnumerator());
+
+    // Capture ArrayList's version immediately and retain its position and Reset
+    // contract while exposing the generic enumeration convenience.
+    private sealed class ValueEnumerator(IEnumerator inner) : IEnumerator<object?>
+    {
+        public object? Current => inner.Current;
+        object? IEnumerator.Current => Current;
+        public bool MoveNext() => inner.MoveNext();
+        public void Reset() => inner.Reset();
+        public void Dispose() { }
+    }
 }
 
 internal enum PropertyValueChangeType
