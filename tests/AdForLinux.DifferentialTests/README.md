@@ -940,6 +940,60 @@ dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~Prop
 For an offline-only run, filter to the `AddRange_detaches_existing_enumerator_before_later_indexer_write`
 method.
 
+### Property binding, dictionary enumeration, and shared schema filters
+
+These three classes add **26 cases** using public operations on both libraries.
+They assert compatibility and deliberately remain red when behavior differs;
+there are no production changes.
+
+| Test class | Behavior under comparison | Validation status |
+| --- | --- | --- |
+| `PropertyCollectionBindingComparisonTests` (6 cases) | Access `Properties`, `PropertyNames`, `Values`, `IDictionary.IsReadOnly`, or a null property key before completing connection configuration | Run on both target frameworks: 5 failures, 1 passing control each |
+| `PropertyDictionaryEnumeratorComparisonTests` (17 cases) | Read `Current`, `Entry`, `Key`, and `Value` before starting, after finishing, and after Reset; compare wrapper identity on repeated positioned reads; continue enumeration after an uncommitted attribute addition | Builds on both frameworks; live AD run pending |
+| `SchemaFilterBindingComparisonTests` (3 cases) | Read and mutate filters through multiple wrappers for the same parent, with independently opened entries as a control | Builds on both frameworks; live AD run pending |
+
+The offline binding test uses `Signing` without `Secure`, an intentionally
+incomplete configuration that AdForLinux rejects locally before making any
+network request. Microsoft allows all four wrapper/metadata reads and rejects
+the null key with `ArgumentNullException("propertyName")`. AdForLinux instead
+throws `PlatformNotSupportedException` from its eager `Properties` getter in
+all five cases. Constructing and reading connection settings passes on both.
+No AD environment variables are needed for this class.
+
+The live enumeration tests target these source-level differences:
+
+- Microsoft's property dictionary enumerator rejects unpositioned reads;
+  AdForLinux exposes the default key/value of its backing dictionary enumerator.
+- Microsoft constructs a fresh `PropertyValueCollection` for each positioned
+  value read; AdForLinux returns the cached collection, also shared by its indexer.
+- Microsoft enumerates through a separately bound clone; AdForLinux enumerates
+  its mutable dictionary, so adding a pending attribute invalidates traversal.
+
+Those tests reuse `TestDataFixture` and locate the seeded `description` by name
+instead of relying on LDAP attribute order. The pending `info` write is cached
+and never committed. The positioned key/value case is a passing control expected
+to distinguish collection semantics from fixture or connection failures.
+
+Microsoft's `SchemaFilter` getter creates new wrappers over the parent ADSI
+container's filter. AdForLinux keeps one independent filter on each `Children`
+wrapper. The live filter tests compare wrapper identity and propagation of Add
+and Clear in both directions, including a newly requested `Children` wrapper.
+They require access to `AD_USERS_CONTAINER_DN` (or the configured default), but
+only modify local enumeration settings, not directory data. The independent-entry
+control guards against treating the filter as globally shared by directory path.
+
+Source references for the pending live findings:
+[PropertyCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyCollection.cs),
+[DirectoryEntries.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntries.cs), and
+[SchemaNameCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SchemaNameCollection.cs).
+The actual Microsoft 9.0.0 assembly supplies the oracle for every test.
+
+Run only these new cases (omit `-f` to run both configured frameworks):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~PropertyCollectionBindingComparisonTests|FullyQualifiedName~PropertyDictionaryEnumeratorComparisonTests|FullyQualifiedName~SchemaFilterBindingComparisonTests" --logger "trx;LogFilePrefix=property-schema-compatibility"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
