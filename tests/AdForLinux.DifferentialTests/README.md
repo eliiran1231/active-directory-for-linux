@@ -723,6 +723,42 @@ validated commit `993a206`: **567 passed, zero failed or skipped per framework**
 including both new persistence cases and all 565 previous comparisons. Test OU
 cleanup also succeeded.
 
+### Principal collection traversal state and copy bounds
+
+`PrincipalValueCollectionTraversalAndCopyComparisonTests` adds 18 offline cases.
+They invoke the normal internal collection constructor (as the other offline
+collection tests do), then compare only public operations against Microsoft 9.0.0.
+No AD configuration is required, and no implementation changes accompany them.
+
+| Trigger | Microsoft behavior | AdForLinux behavior | Affected targets |
+| --- | --- | --- | --- |
+| Read a positioned enumerator's `Current` after clearing the collection or removing its last/current element | Returns the cached element | Throws `InvalidOperationException` | net8.0-windows |
+| Exhaust an enumerator, append an element, then read `Current` without advancing again | Throws `InvalidOperationException` | Returns null | net8.0-windows |
+| `CopyTo` with an index beyond the destination length, or insufficient remaining space | `ArgumentException` with null `ParamName` | `ArgumentException` with `ParamName = destinationArray` | Both targets |
+
+The enumeration mismatch depends on the underlying runtime's `List<T>`
+enumerator behavior: the clone delegates position validation to it, whereas
+Microsoft tracks its own cached value and end state. Both generic and
+non-generic `Current` are checked. The tests deliberately do not advance or
+reset after mutation, so timestamp-based mutation detection is not involved.
+
+Copy tests exercise both public copy interfaces and also check the destination
+and unchanged source contents. Passing controls cover appending while positioned,
+a valid copy, negative indices, and the exact destination boundary. Each test
+logs both libraries' observations; assertions require equality and intentionally
+remain red for the differences above.
+
+Local validation on Windows with Microsoft 9.0.0: **10 failed / 8 passed** on
+.NET 8.0.29, and **4 failed / 14 passed** on .NET 10.0.10. Both targets build.
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~PrincipalValueCollectionTraversalAndCopyComparisonTests
+```
+
+Reference implementation:
+[TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs)
+and [TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs).
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
