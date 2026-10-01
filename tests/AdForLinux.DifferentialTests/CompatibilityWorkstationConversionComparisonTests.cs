@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using Xunit;
 using Ms = System.DirectoryServices.AccountManagement;
@@ -32,6 +33,8 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
         var suffix = Guid.NewGuid().ToString("N")[..10];
         var names = new[] { $"ws-ms-{suffix}", $"ws-our-{suffix}" };
         var created = new List<MsDirectory.DirectoryEntry>();
+        Exception? primaryFailure = null;
+        var cleanupErrors = new List<Exception>();
         try
         {
             foreach (var name in names)
@@ -85,11 +88,14 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             comparison.Assert();
             if (scenario == "clear") Assert.Null(expectedError);
         }
+        catch (Exception error)
+        {
+            primaryFailure = error;
+        }
         finally
         {
             // Try every cleanup even if one account deletion fails. If a commit
             // failed after server creation, lookup still finds that account.
-            var cleanupErrors = new List<Exception>();
             foreach (var name in names)
             {
                 try
@@ -103,9 +109,18 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
                 }
                 catch (Exception error) { cleanupErrors.Add(error); }
             }
-            foreach (var entry in created) entry.Dispose();
-            if (cleanupErrors.Count > 0) throw new AggregateException("Disposable workstation accounts could not all be deleted.", cleanupErrors);
+            foreach (var entry in created)
+            {
+                try { entry.Dispose(); }
+                catch (Exception error) { cleanupErrors.Add(error); }
+            }
         }
+        if (cleanupErrors.Count > 0)
+        {
+            if (primaryFailure is not null) cleanupErrors.Insert(0, primaryFailure);
+            throw new AggregateException("Account conversion test and/or cleanup failed; primary test failure is first when present.", cleanupErrors);
+        }
+        if (primaryFailure is not null) ExceptionDispatchInfo.Capture(primaryFailure).Throw();
     }
 
     private static string ReadRaw(string name)

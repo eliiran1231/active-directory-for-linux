@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Globalization;
 using Xunit;
 using Xunit.Abstractions;
@@ -38,6 +39,8 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
         var suffix = Guid.NewGuid().ToString("N")[..10];
         var names = new[] { $"ex-ms-{suffix}", $"ex-our-{suffix}" };
         var created = new List<MsDirectory.DirectoryEntry>();
+        Exception? primaryFailure = null;
+        var errors = new List<Exception>();
         try
         {
             foreach (var name in names)
@@ -78,9 +81,12 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
             CompareDate(comparison, "fresh principal", expectedReload.AccountExpirationDate, actualReload.AccountExpirationDate);
             comparison.Assert();
         }
+        catch (Exception error)
+        {
+            primaryFailure = error;
+        }
         finally
         {
-            var errors = new List<Exception>();
             foreach (var name in names)
             {
                 try
@@ -94,9 +100,18 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
                 }
                 catch (Exception error) { errors.Add(error); }
             }
-            foreach (var entry in created) entry.Dispose();
-            if (errors.Count > 0) throw new AggregateException("Disposable expiration accounts could not all be deleted.", errors);
+            foreach (var entry in created)
+            {
+                try { entry.Dispose(); }
+                catch (Exception error) { errors.Add(error); }
+            }
         }
+        if (errors.Count > 0)
+        {
+            if (primaryFailure is not null) errors.Insert(0, primaryFailure);
+            throw new AggregateException("Account conversion test and/or cleanup failed; primary test failure is first when present.", errors);
+        }
+        if (primaryFailure is not null) ExceptionDispatchInfo.Capture(primaryFailure).Throw();
     }
 
     private static long? ReadRawFileTime(string name)

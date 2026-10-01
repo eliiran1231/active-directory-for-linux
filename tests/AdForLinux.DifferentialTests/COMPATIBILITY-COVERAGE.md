@@ -220,8 +220,41 @@ protection; an uncertain subtree commit is checked at its exact owned DN, and
 cleanup errors preserve the primary failure.
 
 Cumulative: **308 new cases (112 offline, 196 live), plus one enhanced existing
-live case**; discovery selects **309 cases**. No Windows oracle or AD operation
+live case**; discovery selects **309 cases (112 offline, 197 live)**. No Windows oracle or AD operation
 has run here.
+
+## Batch 8: insertion names, advanced date queries and cleanup audit
+
+| Class | New cases | Coverage |
+| --- | ---: | --- |
+| `CompatibilityInsertionRdnComparisonTests` | 8 | Save with leading/trailing/both spaces, leading #, punctuation, slash and plain control; immediate Name/DN and Microsoft-read persisted cn/name/DN |
+| `CompatibilityAdvancedDateQueryComparisonTests` | 9 | Inclusive ranges for bad-password/password-set/last-logon/expiration criteria, last-logon inequality presence, and replacement with Equals on the same searcher |
+
+All 17 cases require the isolated lab. Insertion creates a unique private CN
+container beneath the configured UsersContainer and deletes that exact owned
+subtree, including partial saves. Microsoft insertion and one-row readback must
+succeed; only independently generated account tokens are normalized. Query
+cases only inspect public native-searcher Filter strings: they do not execute
+searches or write objects, but initialization can bind.
+
+Microsoft [ADUtils.EscapeDNComponent](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADUtils.cs)
+escapes boundary spaces and leading #; the clone's insertion RDN helper omits
+those boundaries. Microsoft [ADStoreCtx_Query.DateTimeFilterBuilder](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_Query.cs)
+adds default-value exclusions for selected date ranges; clone advanced queries
+currently omit those exclusions. The tests compare the literal Microsoft Filter
+surface without assuming the emitted LDAP syntax is valid or semantically
+canonical. Expiration ranges and last-logon NotEquals are controls. Each query
+case also checks replacement, with UTC timestamps to avoid host-timezone effects.
+
+The audit repairs workstation/expiration cleanup diagnostics: all cleanup steps
+are attempted and their errors retain the original test failure. No case count
+changed for these repairs.
+
+Cumulative: **325 new cases (112 offline, 213 live)** plus **one enhanced existing
+live case**. Full category selection is **326 cases (112 offline, 214 live)**.
+Both frameworks build without warnings/errors; fixture registration passes
+22/22. Windows oracle and AD execution remain unrun; all source leads remain
+unconfirmed at runtime.
 
 ## Findings and prior-work check
 
@@ -253,7 +286,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 309 selected cases (308 new plus one enhanced existing case).
+discovery reports 326 selected cases (325 new plus one enhanced existing case):
+112 offline and 214 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
