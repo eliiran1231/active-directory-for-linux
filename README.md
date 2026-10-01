@@ -204,6 +204,28 @@ Two test projects:
 - **`tests/AdForLinux.DifferentialTests`** — runs on **Windows**. Compares the
   real Microsoft library with our clone, side by side. See its README.
 
+### Validated credential cache and unbound commit findings
+
+[Real-AD workflow 36926835252](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36926835252)
+validated the [#199](https://github.com/eliiran1231/active-directory-for-linux/issues/199)
+fix: **713/713 differential cases passed on each of `net8.0-windows` and
+`net10.0-windows`**, with no failures or skipped cases. All 20 focused cases
+passed, resolving the 15 reported failures while retaining the five controls.
+The existing tests and Microsoft-oracle assertions are unchanged. Artifact
+upload and test-OU cleanup also succeeded.
+
+Changing `Username`, `Password`, or `AuthenticationType` invalidates the cached
+property wrapper; assigning the same value preserves it. Pending property and
+security-descriptor writes survive the connection reset, including a failed
+security commit. Clean unbound commits and disabling `UsePropertyCache` no
+longer bind unnecessarily. New entries and pending writes still commit, and
+authentication validation remains enforced when binding is required.
+
+[Linux CI 36926839279](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36926839279)
+passed the build and all **490 functional tests on each of .NET 8 and .NET 10**
+against Samba, including create/update commits and credential/authentication
+configuration. Local focused comparisons also passed all 20 cases per target.
+
 ### Validated principal collection compatibility
 
 [Real-AD workflow 36900315548](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36900315548)
