@@ -256,6 +256,28 @@ Both frameworks build without warnings/errors; fixture registration passes
 22/22. Windows oracle and AD execution remain unrun; all source leads remain
 unconfirmed at runtime.
 
+## Batch 9: custom advanced-filter value conversion
+
+`CompatibilityAdvancedExtensionQueryComparisonTests` adds **7 live, translation-only
+cases**: true/false booleans, UTC DateTime declared as DateTime/object, string
+object arrays, integer object-array ranges, and a scalar string control. Each
+case replaces the same criterion and checks successful, changed Microsoft output
+before comparing both native-searcher Filter strings. No rendered filter executes;
+even replacement values are tested as translation inputs, not schema-valid queries.
+
+Microsoft [Principal.AdvancedFilterSet](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs)
+stores these inputs as object arrays. Its extension converter uses each element's
+runtime type for boolean/FILETIME formatting and per-element clauses. The clone's
+custom advanced-filter path converts the entire supplied value to text and uses
+the supplied type metadata for DateTime conversion. Ordinary ExtensionSet numeric
+culture conversion was already covered in batch 5; these cases exercise the
+separate protected AdvancedFilterSet path. UTC dates remove the timezone dependency.
+
+Cumulative: **332 new cases (112 offline, 220 live)** plus **one enhanced existing
+live case**. Full selection is **333 cases (112 offline, 221 live)**. Both frameworks
+build without warnings/errors and fixture registration passes 22/22. Windows/AD
+execution remains unrun. The branch still contains only tests and documentation.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -286,8 +308,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 326 selected cases (325 new plus one enhanced existing case):
-112 offline and 214 live selections.
+discovery reports 333 selected cases (332 new plus one enhanced existing case):
+112 offline and 221 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
