@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.DirectoryServices.Protocols;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using AdForLinux.DirectoryServices.Ldap;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
@@ -127,7 +128,12 @@ public class DirectoryEntry : Component
         set
         {
             value ??= string.Empty;
-            if (string.Equals(_pathText, value, StringComparison.OrdinalIgnoreCase))
+            // Match ADSI's fixed en-US linguistic comparison (Utils.Compare),
+            // including accents, width and kana, without requiring Windows NLS.
+            if (CultureInfo.GetCultureInfo("en-US").CompareInfo.Compare(_pathText, value,
+                CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace |
+                CompareOptions.IgnoreKanaType | CompareOptions.IgnoreWidth |
+                CompareOptions.StringSort) == 0)
             {
                 return;
             }
@@ -335,7 +341,8 @@ public class DirectoryEntry : Component
     {
         get
         {
-            ThrowIfDisposed();
+            // The wrapper itself does not bind, even after disposal. Loading
+            // directory values still checks disposal through GetConnection().
             return _properties ??= new PropertyCollection(OnPropertyChanged,
                 () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true));
         }
