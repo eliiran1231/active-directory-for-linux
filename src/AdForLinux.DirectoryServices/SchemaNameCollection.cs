@@ -9,7 +9,19 @@ public class SchemaNameCollection : IList
 {
     // Structural changes replace the array, while indexer writes update it in
     // place. Existing enumerators therefore retain their original array.
-    private string?[] _names = Array.Empty<string?>();
+    private string?[] _localNames = Array.Empty<string?>();
+    private readonly DirectoryEntry? _parent;
+    private string?[] _names
+    {
+        get => _parent?.SchemaFilterNames ?? _localNames;
+        set
+        {
+            if (_parent is null) _localNames = value;
+            else _parent.SchemaFilterNames = value;
+        }
+    }
+
+    internal SchemaNameCollection(DirectoryEntry parent) => _parent = parent;
 
     internal SchemaNameCollection()
     {

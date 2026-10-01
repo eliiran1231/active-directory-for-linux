@@ -20,6 +20,22 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         _onChanged = onChanged;
     }
 
+    private Func<PropertyCollection>? _load;
+
+    internal PropertyCollection(Action<PropertyValueCollection> onChanged, Func<PropertyCollection> load)
+        : this(onChanged) => _load = load;
+
+    internal void MarkLoaded() => _load = null;
+
+    internal void EnsureLoaded()
+    {
+        if (_load is null) return;
+        var loaded = _load();
+        foreach (var property in loaded._byName.Values)
+            ReplaceLoaded(property.PropertyName, property.Select(value => value!));
+        _load = null;
+    }
+
     /// <summary>
     /// The values for one attribute. Creates an empty collection on first use
     /// of an unknown name, matching Microsoft, so writes can start from nothing.
@@ -29,6 +45,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         get
         {
             ArgumentNullException.ThrowIfNull(propertyName);
+            EnsureLoaded();
             if (!_cachedValues.TryGetValue(propertyName, out var values))
             {
                 values = new PropertyValueCollection(propertyName, OnChanged);
@@ -40,16 +57,21 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     }
 
     /// <summary>True if the attribute has been loaded and exists.</summary>
-    public bool Contains(string propertyName) => _byName.ContainsKey(propertyName);
+    public bool Contains(string propertyName)
+    {
+        ArgumentNullException.ThrowIfNull(propertyName);
+        EnsureLoaded();
+        return _byName.ContainsKey(propertyName);
+    }
 
     /// <summary>Number of distinct attributes.</summary>
-    public int Count => _byName.Count;
+    public int Count { get { EnsureLoaded(); return _byName.Count; } }
 
     /// <summary>All attribute names.</summary>
-    public ICollection PropertyNames => _byName.Keys;
+    public ICollection PropertyNames => new PropertyView(this, names: true);
 
     /// <summary>All property value collections.</summary>
-    public ICollection Values => _byName.Values;
+    public ICollection Values => new PropertyView(this, names: false);
 
     /// <summary>Copies the property value collections to an array.</summary>
     public void CopyTo(PropertyValueCollection[] array, int index) =>
@@ -100,12 +122,19 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         _cachedValues[propertyName] = replacement;
     }
 
-    public IDictionaryEnumerator GetEnumerator() => new PropertyEnumerator(_byName.GetEnumerator());
+    public IDictionaryEnumerator GetEnumerator()
+    {
+        EnsureLoaded();
+        return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged);
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    IEnumerator<PropertyValueCollection> IEnumerable<PropertyValueCollection>.GetEnumerator() =>
-        _byName.Values.GetEnumerator();
+    IEnumerator<PropertyValueCollection> IEnumerable<PropertyValueCollection>.GetEnumerator()
+    {
+        EnsureLoaded();
+        return _byName.Values.GetEnumerator();
+    }
 
     bool IDictionary.IsFixedSize => true;
 
@@ -158,27 +187,64 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         }
     }
 
+    private sealed class PropertyView(PropertyCollection owner, bool names) : ICollection
+    {
+        private ICollection Items
+        {
+            get
+            {
+                owner.EnsureLoaded();
+                return names ? owner._byName.Keys : owner._byName.Values;
+            }
+        }
+
+        public int Count => owner.Count;
+        public bool IsSynchronized => false;
+        public object SyncRoot => owner;
+        public void CopyTo(Array array, int index) => Items.CopyTo(array, index);
+        public IEnumerator GetEnumerator() => Items.GetEnumerator();
+    }
+
     private sealed class PropertyEnumerator : IDictionaryEnumerator, IDisposable
     {
-        private readonly IEnumerator<KeyValuePair<string, PropertyValueCollection>> _inner;
+        private readonly (string Name, object[] Values)[] _snapshot;
+        private readonly Action<PropertyValueCollection>? _onChanged;
+        private int _index = -1;
 
-        internal PropertyEnumerator(IEnumerator<KeyValuePair<string, PropertyValueCollection>> inner)
+        internal PropertyEnumerator(PropertyValueCollection[] properties, Action<PropertyValueCollection>? onChanged)
         {
-            _inner = inner;
+            _snapshot = properties.Select(property =>
+                (property.PropertyName, property.Select(value => value!).ToArray())).ToArray();
+            _onChanged = onChanged;
+        }
+
+        private void ValidatePosition()
+        {
+            if (_index < 0 || _index >= _snapshot.Length)
+                throw new InvalidOperationException("Enumeration has either not started or has already finished.");
         }
 
         public object Current => Value;
-
         public DictionaryEntry Entry => new(Key, Value);
+        public object Key { get { ValidatePosition(); return _snapshot[_index].Name; } }
+        public object Value
+        {
+            get
+            {
+                ValidatePosition();
+                var property = _snapshot[_index];
+                var values = new PropertyValueCollection(property.Name, _onChanged);
+                foreach (var value in property.Values) values.AddLoaded(value);
+                return values;
+            }
+        }
 
-        public object Key => _inner.Current.Key;
-
-        public object Value => _inner.Current.Value;
-
-        public bool MoveNext() => _inner.MoveNext();
-
-        public void Reset() => _inner.Reset();
-
-        public void Dispose() => _inner.Dispose();
+        public bool MoveNext()
+        {
+            if (_index < _snapshot.Length) _index++;
+            return _index < _snapshot.Length;
+        }
+        public void Reset() => _index = -1;
+        public void Dispose() { }
     }
 }

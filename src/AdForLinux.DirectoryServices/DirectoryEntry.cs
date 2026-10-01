@@ -29,6 +29,7 @@ public class DirectoryEntry : Component
     private LdapConnection? _connection;
     private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
+    internal string?[] SchemaFilterNames { get; set; } = Array.Empty<string?>();
     private readonly HashSet<PropertyValueCollection> _pendingPropertyChanges = new();
     private string? _boundDistinguishedName;
     private bool _isNew;
@@ -329,13 +330,14 @@ public class DirectoryEntry : Component
         }
     }
 
-    /// <summary>The loaded attributes. Reading this binds and fetches on first use.</summary>
+    /// <summary>The property wrapper. Operations needing values bind and fetch on first use.</summary>
     public PropertyCollection Properties
     {
         get
         {
-            EnsureLoaded();
-            return _properties!;
+            ThrowIfDisposed();
+            return _properties ??= new PropertyCollection(OnPropertyChanged,
+                () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true));
         }
     }
 
@@ -726,6 +728,7 @@ public class DirectoryEntry : Component
 
         var refreshed = ReadProperties(propertyNames);
         var properties = _properties ?? new PropertyCollection(OnPropertyChanged);
+        properties.MarkLoaded();
         foreach (var propertyName in propertyNames)
         {
             if (propertyName is null)
@@ -866,19 +869,7 @@ public class DirectoryEntry : Component
     public void InvokeSet(string propertyName, params object?[]? args) =>
         throw new PlatformNotSupportedException("DirectoryEntry.InvokeSet requires ADSI/COM and is not available on Linux.");
 
-    private void EnsureLoaded(string[]? propertyNames = null)
-    {
-        if (_properties is not null)
-        {
-            return;
-        }
-
-        var loadDefaultProperties = propertyNames is not { Length: > 0 };
-        var requestedProperties = loadDefaultProperties
-            ? new[] { "*", "nTSecurityDescriptor" }
-            : propertyNames!;
-        _properties = ReadProperties(requestedProperties, loadDefaultProperties);
-    }
+    private void EnsureLoaded() => Properties.EnsureLoaded();
 
     /// <summary>
     /// Validates that this path identifies an accessible directory object. An
@@ -1271,6 +1262,7 @@ public class DirectoryEntry : Component
 
     private void ResetConnection()
     {
+        SchemaFilterNames = Array.Empty<string?>();
         _boundDistinguishedName = null;
         _connection?.Dispose();
         _connection = null;
