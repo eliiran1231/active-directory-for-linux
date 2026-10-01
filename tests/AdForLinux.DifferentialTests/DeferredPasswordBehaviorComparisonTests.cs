@@ -24,6 +24,64 @@ public class DeferredPasswordBehaviorComparisonTests
             DifferentialSettings.BindPassword);
 
     [Fact]
+    public void Unassigned_enabled_with_flag_then_password_saves_like_microsoft() =>
+        AssertUnassignedEnabledPasswordSave(passwordFirst: false);
+
+    [Fact]
+    public void Unassigned_enabled_with_password_then_flag_saves_like_microsoft() =>
+        AssertUnassignedEnabledPasswordSave(passwordFirst: true);
+
+    private static void AssertUnassignedEnabledPasswordSave(bool passwordFirst)
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var msName = $"d183-ms-{suffix}";
+        var ourName = $"d183-our-{suffix}";
+        const string password = "Str0ng!Passw0rd#2026";
+        using var msContext = MicrosoftContext();
+        using var ourContext = OurContext();
+        using var microsoft = new Ms.UserPrincipal(msContext) { Name = msName, SamAccountName = msName };
+        using var ours = new Ours.UserPrincipal(ourContext) { Name = ourName, SamAccountName = ourName };
+
+        try
+        {
+            if (passwordFirst)
+            {
+                microsoft.SetPassword(password);
+                ours.SetPassword(password);
+            }
+
+            microsoft.PasswordNeverExpires = ours.PasswordNeverExpires = true;
+            if (!passwordFirst)
+            {
+                microsoft.SetPassword(password);
+                ours.SetPassword(password);
+            }
+
+            Assert.Null(microsoft.Enabled);
+            Assert.Null(ours.Enabled);
+            var expectedError = Record.Exception(microsoft.Save);
+            var actualError = Record.Exception(ours.Save);
+            Assert.Null(expectedError);
+            Assert.Null(actualError);
+
+            using var savedMicrosoft = Ms.UserPrincipal.FindByIdentity(msContext, msName);
+            using var savedOurs = Ours.UserPrincipal.FindByIdentity(ourContext, ourName);
+            Assert.NotNull(savedMicrosoft);
+            Assert.NotNull(savedOurs);
+            Assert.Equal(savedMicrosoft.Enabled, savedOurs.Enabled);
+            Assert.True(savedMicrosoft.PasswordNeverExpires);
+            Assert.Equal(savedMicrosoft.PasswordNeverExpires, savedOurs.PasswordNeverExpires);
+            Assert.NotNull(savedMicrosoft.LastPasswordSet);
+            Assert.NotNull(savedOurs.LastPasswordSet);
+        }
+        finally
+        {
+            DeleteMicrosoftUser(msContext, msName);
+            DeleteOurUser(ourContext, ourName);
+        }
+    }
+
+    [Fact]
     public void Save_surfaces_a_rejected_deferred_password_like_microsoft()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];

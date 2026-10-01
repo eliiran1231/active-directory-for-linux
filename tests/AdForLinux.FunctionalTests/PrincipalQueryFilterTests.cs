@@ -41,6 +41,32 @@ public class PrincipalQueryFilterTests
     }
 
     [Fact]
+    public void Queued_password_disables_creation_without_assigning_enabled_or_its_query()
+    {
+        using var context = OfflineContext();
+        using var user = new StagedUser(context) { PasswordNeverExpires = true };
+        using var searcher = new PrincipalSearcher(user);
+
+        user.SetPassword("Str0ng!Passw0rd#2026");
+        Assert.Null(user.Enabled);
+        Assert.True((user.StagedAccountControl & 2) != 0);
+        Assert.True((user.StagedAccountControl & 0x10000) != 0);
+        Assert.Equal(UserCategory + $"(userAccountControl:{BitRule}:=65536))", searcher.GetLdapFilter());
+
+        // Replacing the queued password must not mistake the internal disabled
+        // state for a public Enabled assignment.
+        user.SetPassword("Another!Password42");
+        Assert.Null(user.Enabled);
+        Assert.True((user.StagedAccountControl & 2) != 0);
+        Assert.Equal(UserCategory + $"(userAccountControl:{BitRule}:=65536))", searcher.GetLdapFilter());
+    }
+
+    private sealed class StagedUser(PrincipalContext context) : UserPrincipal(context)
+    {
+        internal int StagedAccountControl => int.Parse((string)PendingValues["userAccountControl"]!);
+    }
+
+    [Fact]
     public void Account_flags_remain_independent_when_one_property_is_reassigned()
     {
         using var context = OfflineContext();

@@ -389,12 +389,13 @@ public class AuthenticablePrincipal : Principal
         if (Entry is null)
         {
             _passwordToSet = newPassword;
-            var requestedEnabled = Enabled;
-            if (requestedEnabled is not null)
-            {
-                _enabledAfterPassword = requestedEnabled.Value;
-                SetUserAccountControlBit(AccountDisabled, on: true);
-            }
+            // An unrelated flag may already have staged an enabled UAC even
+            // though the public Enabled property remains unassigned. Always
+            // create disabled before setting a password; only an explicit
+            // Enabled assignment requests a later enable operation.
+            _enabledAfterPassword = Enabled;
+            SetUserAccountControlBit(AccountDisabled, on: true);
+            RemoveQueryFilter("userAccountControl");
             return;
         }
 
