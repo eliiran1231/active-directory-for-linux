@@ -658,6 +658,50 @@ Run just these comparisons on both targets:
 dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~AdvancedFilterExtensionComparisonTests
 ```
 
+### Unsaved account state and authenticable-principal construction
+
+`UnsavedAccountStateComparisonTests` adds 22 cases for public property state
+before `Save`. It uses the configured AD context for Microsoft's discovery and
+property validation, but never saves an object or modifies the directory.
+`AuthenticableConstructorComparisonTests` adds two offline cases exposing the
+protected constructors through ordinary subclasses.
+
+The tests compare the actual Microsoft assembly with AdForLinux. Source review
+identified the following differences; the AD-dependent cases still need the
+Windows differential runner to confirm them:
+
+| Trigger | Microsoft reference behavior | AdForLinux implementation |
+| --- | --- | --- |
+| Read unassigned `DelegationPermitted` on a new user/computer | Returns false from independent property state | Returns true by negating an absent `NOT_DELEGATED` bit |
+| Assign another account flag before assigning `Enabled` | `Enabled` remains null | Initializes `userAccountControl`, making `Enabled` true |
+| Assign `Enabled = true` with a queued password, including the credential constructor | Getter returns the requested true value | Getter exposes the temporary disabled creation state |
+| Assign a local/unspecified expiration date | Preserves ticks and `DateTime.Kind` before save | Immediately converts through UTC FILETIME |
+| Assign the FILETIME epoch as expiration | Preserves the assigned date before save | Reads FILETIME zero as null |
+| Assign a pre-1601 expiration date | Caches the date before save | Throws during assignment and retains the previous date |
+| Pass a null context to either protected `AuthenticablePrincipal` constructor | `ArgumentException`, null parameter name | `ArgumentNullException`, parameter `context` |
+
+The expiration tests compare ticks **and Kind**, capture exception type and
+parameter name, and verify recovery with a valid assignment. Ordinary UTC dates
+and clearing the date are controls. Flag tests also exercise explicit false/true
+`Enabled` assignments. No assumptions about server acceptance of unusual dates
+or password persistence are made.
+
+Reference source: Microsoft's
+[AuthenticablePrincipal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AuthenticablePrincipal.cs)
+and [AccountInfo.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AccountInfo.cs).
+The corresponding clone code is in `AuthenticablePrincipal.cs` and `AdFileTime.cs`.
+
+Run both new classes on both target frameworks with the usual AD settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~UnsavedAccountStateComparisonTests|FullyQualifiedName~AuthenticableConstructorComparisonTests"
+```
+
+For an offline-only run, filter to `AuthenticableConstructorComparisonTests`.
+Both offline cases were run against Microsoft 9.0.0 on `net8.0-windows` and
+`net10.0-windows`; each framework reported the two expected compatibility
+failures (`ArgumentException` versus `ArgumentNullException("context")`).
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
@@ -671,10 +715,10 @@ dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~Advan
   result exactly with every `tokenGroups` SID that resolves to a group object;
   well-known SIDs without directory objects are intentionally outside that LDAP
   result.
-- **Times.** We return `DateTime` values in UTC (`Kind = Utc`), which is what
-  `DateTime.FromFileTimeUtc` gives, matching Microsoft's own conversion. The
-  comparison compares the instant rather than the `Kind`, so a difference here
-  means a real difference in the moment, not just the kind.
+- **Times.** Directory-read comparisons generally compare the instant rather
+  than `DateTime.Kind`. The unsaved expiration tests explicitly compare Kind
+  as well: an in-memory assignment must preserve Microsoft's public property
+  state before any conversion for persistence.
 - **Self-signed certificates.** Against a test server with a self-signed
   certificate, Windows may refuse the TLS connection for *both* libraries. Use a
   DC with a trusted certificate, or install the test CA on the Windows machine.
