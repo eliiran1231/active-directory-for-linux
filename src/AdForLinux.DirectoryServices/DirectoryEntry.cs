@@ -1280,6 +1280,19 @@ public class DirectoryEntry : Component
         ResetConnection();
         // Recreate the property wrapper for the new bind identity, but retain
         // pending property/security writes so a later commit can retry them.
+        if (_isNew && _properties is not null)
+        {
+            // An unsaved child has no server object to reload. Carry its staged
+            // attributes (including objectClass) into a non-loading wrapper.
+            var replacement = new PropertyCollection(OnPropertyChanged);
+            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
+            {
+                replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+            }
+            _properties = replacement;
+            return;
+        }
+
         _properties = null;
     }
 

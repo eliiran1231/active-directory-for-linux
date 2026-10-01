@@ -193,6 +193,35 @@ public class DirectoryEntryAuthenticationTests
         Assert.Throws<PlatformNotSupportedException>(() => entry.BuildOptions());
     }
 
+    [Theory]
+    [InlineData("Username")]
+    [InlineData("Password")]
+    [InlineData("AuthenticationType")]
+    public void Unsaved_child_retains_staged_attributes_after_credential_changes(string property)
+    {
+        // Invalid bind flags make an accidental fetch deterministic without a DC.
+        using var parent = new DirectoryEntry(Path, "original", "original", AuthenticationTypes.Signing);
+        using var child = parent.Children.Add("CN=new", "user");
+        child.Properties["sAMAccountName"].Value = "new-account";
+        child.Properties["description"].Value = "pending";
+        var before = child.Properties;
+
+        switch (property)
+        {
+            case "Username": child.Username = "replacement"; break;
+            case "Password": child.Password = "replacement"; break;
+            case "AuthenticationType": child.AuthenticationType = AuthenticationTypes.Sealing; break;
+        }
+
+        Assert.NotSame(before, child.Properties);
+        Assert.Same(child.Properties, child.Properties);
+        Assert.Equal("user", child.Properties["objectClass"].Value);
+        Assert.Equal("new-account", child.Properties["sAMAccountName"].Value);
+        Assert.Equal("pending", child.Properties["description"].Value);
+        child.Properties["description"].Value = "edited after reset";
+        Assert.Equal("edited after reset", child.Properties["description"].Value);
+    }
+
     [Fact]
     public void Linux_negotiate_with_explicit_credentials_is_decided_by_the_runtime_bind()
     {
