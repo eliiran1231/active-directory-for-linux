@@ -52,6 +52,18 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             Assert.NotNull(actual);
             Assert.Equal(new[] { "BASELINE" }, expected.PermittedWorkstations.ToArray());
             Assert.Equal(new[] { "BASELINE" }, actual.PermittedWorkstations.ToArray());
+            // Every row proves post-creation write access with a real change
+            // before comparing potentially rejected values. Matching Save
+            // failures must not hide a generally unwritable test account.
+            expected.PermittedWorkstations.Clear();
+            actual.PermittedWorkstations.Clear();
+            expected.PermittedWorkstations.Add("CONTROL");
+            actual.PermittedWorkstations.Add("CONTROL");
+            Assert.Null(Record.Exception(expected.Save));
+            Assert.Null(Record.Exception(actual.Save));
+            Assert.Equal(JsonSerializer.Serialize(new[] { "CONTROL" }), ReadRaw(names[0]));
+            Assert.Equal(JsonSerializer.Serialize(new[] { "CONTROL" }), ReadRaw(names[1]));
+
             expected.PermittedWorkstations.Clear();
             actual.PermittedWorkstations.Clear();
             var replacement = scenario switch
@@ -86,7 +98,10 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             comparison.Check("fresh principal values", JsonSerializer.Serialize(expectedReload.PermittedWorkstations.ToArray()),
                 JsonSerializer.Serialize(actualReload.PermittedWorkstations.ToArray()));
             comparison.Assert();
-            if (scenario == "clear") Assert.Null(expectedError);
+            // Microsoft serializes both empty-list forms to null. For comma
+            // cases retain the observed server outcome rather than prescribing
+            // acceptance of empty/embedded workstation tokens.
+            if (scenario is "clear" or "one-empty") Assert.Null(expectedError);
         }
         catch (Exception error)
         {
@@ -95,17 +110,12 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
         finally
         {
             // Try every cleanup even if one account deletion fails. If a commit
-            // failed after server creation, lookup still finds that account.
+            // failed before SAM was written, the exact-DN probe still finds it.
             foreach (var name in names)
             {
                 try
                 {
-                    var dn = $"CN={name},{DifferentialSettings.UsersContainer}";
-                    using var entry = Open(dn);
-                    // Find through the authenticated context rather than using
-                    // DirectoryEntry.Exists, which would use default credentials.
-                    using var principal = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, name);
-                    if (principal is not null) entry.DeleteTree();
+                    CleanupOwnedAccount($"CN={name},{DifferentialSettings.UsersContainer}");
                 }
                 catch (Exception error) { cleanupErrors.Add(error); }
             }
@@ -127,6 +137,20 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
     {
         using var entry = Open($"CN={name},{DifferentialSettings.UsersContainer}");
         return JsonSerializer.Serialize(entry.Properties["userWorkstations"].Cast<object?>().ToArray());
+    }
+
+    private static void CleanupOwnedAccount(string distinguishedName)
+    {
+        // Probe the exact test-owned DN using configured credentials. SAM may
+        // be absent after a partial creation; only no-such-object is ignorable.
+        using var entry = Open(distinguishedName);
+        try { entry.RefreshCache(new[] { "distinguishedName" }); }
+        catch (System.Runtime.InteropServices.COMException error)
+            when (error.HResult == unchecked((int)0x80072030))
+        {
+            return;
+        }
+        entry.DeleteTree();
     }
 
     private static MsDirectory.DirectoryEntry Open(string dn) => new(DifferentialSettings.PathFor(dn),

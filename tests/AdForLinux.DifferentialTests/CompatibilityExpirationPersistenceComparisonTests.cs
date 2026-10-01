@@ -91,12 +91,7 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
             {
                 try
                 {
-                    using var principal = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, name);
-                    if (principal is not null)
-                    {
-                        using var entry = Open($"CN={name},{DifferentialSettings.UsersContainer}");
-                        entry.DeleteTree();
-                    }
+                    CleanupOwnedAccount($"CN={name},{DifferentialSettings.UsersContainer}");
                 }
                 catch (Exception error) { errors.Add(error); }
             }
@@ -132,6 +127,20 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
     {
         comparison.Check($"{label}: ticks", expected?.Ticks, actual?.Ticks)
             .Check($"{label}: kind", expected?.Kind, actual?.Kind);
+    }
+
+    private static void CleanupOwnedAccount(string distinguishedName)
+    {
+        // Probe the exact test-owned DN using configured credentials. SAM may
+        // be absent after a partial creation; only no-such-object is ignorable.
+        using var entry = Open(distinguishedName);
+        try { entry.RefreshCache(new[] { "distinguishedName" }); }
+        catch (System.Runtime.InteropServices.COMException error)
+            when (error.HResult == unchecked((int)0x80072030))
+        {
+            return;
+        }
+        entry.DeleteTree();
     }
 
     private static MsDirectory.DirectoryEntry Open(string dn) => new(DifferentialSettings.PathFor(dn),

@@ -278,6 +278,60 @@ live case**. Full selection is **333 cases (112 offline, 221 live)**. Both frame
 build without warnings/errors and fixture registration passes 22/22. Windows/AD
 execution remains unrun. The branch still contains only tests and documentation.
 
+## Batch 10: disposed-entry validation and cumulative audit
+
+`CompatibilityDisposedEntryValidationComparisonTests` adds **9 Windows offline
+cases** for RefreshCache null/null-element/empty/valid arrays and MoveTo/CopyTo
+argument precedence after disposal. Both source and destination entries are
+disposed before any provider-sensitive operation. Microsoft Bind checks disposal
+before ADSI or default-domain discovery; null-parent paths fail before binding.
+Tests compare repeated exceptions, parameter names, HRESULTs, disposed object
+names and preserved paths. Valid arrays/names and null CopyTo supply controls.
+
+Microsoft [DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs)
+binds before reading RefreshCache arguments and dereferences the MoveTo parent
+before checking the source. The clone validates several arguments first. These
+are source-supported precedence differences, not runtime-confirmed failures.
+
+The cumulative audit found no un-restored culture/environment/timezone changes
+or new parallel execution. Culture is restored in finally; assembly-level test
+parallelism is already disabled. Write tests use distinct generated identities
+under the configured UsersContainer. Workstation/expiration cleanup now probes
+the exact owned DN rather than depending on a successful SAM lookup, covering
+partial creates. Workstation cases establish successful normal Save controls;
+clear and one-empty also require successful Microsoft mutation because the
+reference converter maps both to null. Other inputs retain real error parity.
+
+Cumulative: **341 new cases (121 offline, 220 live)** plus **one enhanced existing
+live case**, selecting **342 cases (121 offline, 221 live)**. Both frameworks build
+without warnings/errors; fixture registration passes 22/22. Oracle execution is
+still unrun.
+
+### Remaining-area inventory and selection rules
+
+Candidates require a reachable public behavior, a distinct source difference or
+meaningful untested transition, and an actual Microsoft observation with a
+positive prerequisite/control. Existing regression coverage is checked before
+adding cases. Shared environmental failures, fabricated private state and large
+redundant argument matrices are not counted as useful parity evidence.
+
+| Public area examined | Current decision / untested limit |
+| --- | --- |
+| SortOption defaults, null/invalid setters, constructor order | Source agrees; existing DirectorySearchOptionsComparisonTests cover validation. No added rows. |
+| VLVContext public constructor and Copy | Source agrees on independent wrappers. Internal context bytes have no public accessor; no private-field probe added. |
+| DirectorySynchronization options/cookies/copy/reset | Batch 1 and existing cookie-identity tests cover observable differences. No serialization contract to invent. |
+| ActiveDirectorySecurity and access/audit rule constructors/factories | Same BCL delegates and guards; existing security-rule validation tests. A suspected propagation exception difference is unreachable because the base validates first. Actual ACL persistence still requires Windows/AD. |
+| DirectoryEntry cache/credentials/path wrappers | Existing regressions and open PR200 checked; no duplicate fixes/tests. Batch 10 adds only uncovered disposed argument precedence. |
+| Native ADSI invocation, mutual-authentication status and quota operations | Clone declares provider/platform limitations. No artificial no-server failures added merely to repeat those limitations. Runtime/provider behavior remains untested. |
+| Query translation and result lifecycles | Batches 1–9 cover selected state, conversion and lifetime gaps. Actual server execution, paging/referrals/DirSync response behavior and large-directory limits remain unvalidated. |
+| Account/group persistence and membership | Selected serialization, identity and delete-lifecycle probes added. Cross-domain membership, trusts, password policy and authorization behavior need a deliberately configured disposable lab; not guessed or executed here. |
+| LastLogon zero-timestamp fallback | Controlled server seeding remains unresolved; source lead retained without a speculative test. |
+
+This inventory is a coverage map, not a claim that every public method or
+provider combination is exhaustively tested. The highest-value next validation
+is the Windows offline subset, followed by selected live cases in the verified
+disposable lab; neither environment is available in this execution workspace.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -308,8 +362,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 333 selected cases (332 new plus one enhanced existing case):
-112 offline and 221 live selections.
+discovery reports 342 selected cases (341 new plus one enhanced existing case):
+121 offline and 221 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
