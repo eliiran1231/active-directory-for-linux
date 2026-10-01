@@ -711,6 +711,18 @@ zero skipped per framework**. Its TRX artifacts confirm all 24 cases in these
 two classes pass, including the two expiration controls, along with all 541
 other comparisons. Test OU creation, artifact upload, and cleanup also passed.
 
+The PR review identified a persistence path missing from those unsaved tests:
+assigning `PasswordNeverExpires` and then queuing a password without assigning
+`Enabled`. `DeferredPasswordBehaviorComparisonTests` now covers both flag/password
+assignment orders through `Save`, comparing freshly loaded Enabled and password
+flags with Microsoft and verifying that the password was initialized. Password
+staging always sets ACCOUNTDISABLE for creation, independently of the public
+Enabled state; only an explicit Enabled assignment requests later enablement.
+The [post-review AD run 36897105277](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36897105277)
+validated commit `993a206`: **567 passed, zero failed or skipped per framework**,
+including both new persistence cases and all 565 previous comparisons. Test OU
+cleanup also succeeded.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
