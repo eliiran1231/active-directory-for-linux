@@ -91,6 +91,39 @@ runtime confirmation:
   the clone supplies array/index parameter names. Existing type-only checks
   could not detect these differences.
 
+## Batch 4: retained options, contextless searchers and workstation conversion
+
+| Class | New cases | Execution requirement | Coverage |
+| --- | ---: | --- | --- |
+| `CompatibilityEntryOptionsLifecycleComparisonTests` | 16 | Disposable Windows AD lab | Retained configuration getters, valid/invalid setters after disposal; provider options after Close/rebind |
+| `CompatibilityContextlessSearcherComparisonTests` | 9 | Windows, no AD | Constructor versus assigned QueryFilter on contextless extension principals; FindOne/FindAll/underlying-searcher operations and disposal precedence |
+| `CompatibilityWorkstationConversionComparisonTests` | 4 | Disposable Windows AD lab | Clear, single empty, two empty and embedded-comma workstation values; Save errors, raw persisted attribute and fresh principal reload |
+
+Cumulative: **265 new cases (112 offline, 153 live), plus one enhanced existing
+live case**. Category discovery selects **266 cases**. Both frameworks build
+without warnings/errors; fixture registration passes 20/20. None of this batch's
+Windows oracle cases has been executed locally. Dev was rechecked at the same
+base SHA; #200 and #201 remain the most recently updated PRs.
+
+The [configuration source](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntryConfiguration.cs)
+uses the entry's provider handle for option reads/writes; the clone retains local
+fields. Retained-wrapper access after disposal and configuration reset after
+Close are therefore useful probes. Its negative PageSize parameter contract is
+also distinct from DirectorySearcher.PageSize, which #167 already fixed. These
+tests do not call password operations or change quotas.
+
+The [PrincipalSearcher source](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs)
+distinguishes constructor initialization from QueryFilter assignment when an
+extension principal lacks a context. These tests construct no PrincipalContext.
+
+The [workstation converter](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_LoadStore.cs)
+converts an empty serialized list to null; the clone checks list count before
+joining entries. A single empty entry may therefore differ from an empty list.
+Each test seeds separate disabled accounts with Microsoft, attempts both cleanups
+independently, and reads both persisted attributes through fresh Microsoft
+entries to isolate serialization from decoding. No production behavior was
+changed to accommodate these hypotheses.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -120,10 +153,11 @@ dotnet test tests/AdForLinux.FunctionalTests -c Release -f net10.0 --filter 'Ful
 git diff --check
 ```
 
-Both differential target frameworks build with zero warnings/errors. Discovery
-reports all 158 new cases. The selected existing functional checks pass 27/27.
-Fixture registration checks validate live-test wiring without constructing AD
-fixtures. These checks validate compilation/registration, not oracle parity.
+Both differential target frameworks build with zero warnings/errors. Current
+discovery reports 266 selected cases (265 new plus one enhanced existing case).
+The selected existing functional checks passed 27/27 in batch 1. Current fixture
+registration checks pass 20/20 without constructing AD fixtures. These checks
+validate compilation/registration, not oracle parity.
 
 Windows differential execution and live AD behavior are **unrun** here. On Windows,
 the offline batch needs no credentials or AD settings:
