@@ -994,6 +994,36 @@ Run only these new cases (omit `-f` to run both configured frameworks):
 dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --filter "FullyQualifiedName~PropertyCollectionBindingComparisonTests|FullyQualifiedName~PropertyDictionaryEnumeratorComparisonTests|FullyQualifiedName~SchemaFilterBindingComparisonTests" --logger "trx;LogFilePrefix=property-schema-compatibility"
 ```
 
+### Disposed entry wrappers and Unicode path equivalence
+
+These additions use only public APIs and require Windows but no domain controller
+or `AD_*` configuration. Against Microsoft 9.0.0, local runs on .NET 8.0.29 and
+.NET 10.0.10 each produced **14 failures and 3 passing controls (17 cases)**.
+They assert compatibility and intentionally remain red; no production code changed.
+
+| Test class | Confirmed incompatibility |
+| --- | --- |
+| `DirectoryEntryDisposedWrapperComparisonTests` | After `Dispose()`, Microsoft still permits `Properties`, its `PropertyNames` and `Values` wrappers, and `IDictionary.IsReadOnly`. A null property key still throws `ArgumentNullException("propertyName")`. AdForLinux throws `ObjectDisposedException` from the `Properties` getter for all five operations, both with and without accessing the wrapper before disposal (10 failures). |
+| `DirectoryEntryPathEquivalenceComparisonTests` | Assigning a path differing only by a soft hyphen, composed/decomposed accent, character width, or hiragana/katakana preserves Microsoft's original path text and property wrapper. AdForLinux replaces the text and invalidates the wrapper (4 failures). |
+
+The disposal control verifies that `Close()` replaces the wrapper without
+disposing the entry. The path controls cover a case-only change and an actually
+different name. The Unicode cases compare local setter behavior, not server-side
+DN equality; they perform no binding or attribute reads. Microsoft's setter uses
+Windows linguistic comparison through `Utils.Compare`, whereas the clone uses
+`StringComparison.OrdinalIgnoreCase` before resetting its binding state.
+
+Reference sources:
+[DirectoryEntry.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs)
+and [Utils.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/ActiveDirectory/Utils.cs).
+The tests use the actual Microsoft assembly as the oracle.
+
+Run these cases on both configured target frameworks:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~DirectoryEntryDisposedWrapperComparisonTests|FullyQualifiedName~DirectoryEntryPathEquivalenceComparisonTests" --logger "trx;LogFilePrefix=entry-path-disposal"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
