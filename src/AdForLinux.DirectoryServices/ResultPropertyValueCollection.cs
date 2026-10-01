@@ -40,5 +40,17 @@ public class ResultPropertyValueCollection : ReadOnlyCollectionBase, IEnumerable
     /// <summary>Returns the zero-based index of a value, or -1 when absent.</summary>
     public int IndexOf(object? value) => InnerList.IndexOf(value);
 
-    public new IEnumerator<object?> GetEnumerator() => InnerList.Cast<object?>().GetEnumerator();
+    public new IEnumerator<object?> GetEnumerator() => new ValueEnumerator(InnerList.GetEnumerator());
+
+    // Preserve ArrayList's position validation and Reset support for generic callers.
+    private sealed class ValueEnumerator(IEnumerator enumerator) : IEnumerator<object?>
+    {
+        public object? Current => enumerator.Current;
+
+        public bool MoveNext() => enumerator.MoveNext();
+
+        public void Reset() => enumerator.Reset();
+
+        public void Dispose() { }
+    }
 }

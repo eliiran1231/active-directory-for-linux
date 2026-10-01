@@ -129,5 +129,12 @@ public class SchemaNameCollection : IList
 
     object ICollection.SyncRoot => this;
 
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_names).CopyTo(array, index);
+    void ICollection.CopyTo(Array array, int index)
+    {
+        // Microsoft copies from object[], which validates conversions per element
+        // (including unboxing), rather than rejecting string[] up front.
+        var values = new object?[Count];
+        _names.CopyTo(values, 0);
+        values.CopyTo(array, index);
+    }
 }
