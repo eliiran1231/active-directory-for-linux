@@ -10,6 +10,8 @@ public class SchemaNameCollection : IList
     // Structural changes replace the array, while indexer writes update it in
     // place. Existing enumerators therefore retain their original array.
     private string?[] _localNames = Array.Empty<string?>();
+    // Public Children wrappers share their entry's binding state. The local
+    // storage also supports standalone collections used internally.
     private readonly DirectoryEntry? _parent;
     private string?[] _names
     {

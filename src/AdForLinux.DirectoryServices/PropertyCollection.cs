@@ -25,11 +25,14 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     internal PropertyCollection(Action<PropertyValueCollection> onChanged, Func<PropertyCollection> load)
         : this(onChanged) => _load = load;
 
+    // A successful partial refresh establishes the cache without fetching all
+    // attributes through a previously created, still-unloaded wrapper.
     internal void MarkLoaded() => _load = null;
 
     internal void EnsureLoaded()
     {
         if (_load is null) return;
+        // Keep the loader on failure so the same wrapper can retry binding.
         var loaded = _load();
         foreach (var property in loaded._byName.Values)
             ReplaceLoaded(property.PropertyName, property.Select(value => value!));
@@ -125,6 +128,8 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     public IDictionaryEnumerator GetEnumerator()
     {
         EnsureLoaded();
+        // Pending writes must not invalidate an already-created enumerator.
+        // Values are copied too, keeping each returned wrapper independent.
         return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged);
     }
 
