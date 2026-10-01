@@ -261,6 +261,27 @@ disposal checks remain intact. Local validation also passed all four offline
 constructor comparisons and 27 functional compatibility/disposal checks on
 each of .NET 8 and .NET 10.
 
+### Validated result-value enumeration and schema copy findings
+
+[Real-AD workflow 36911092905](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36911092905)
+validated the [#191](https://github.com/eliiran1231/active-directory-for-linux/issues/191)
+fix on October 1, 2026: **632/632 differential cases passed on each of
+`net8.0-windows` and `net10.0-windows`**, with no failures or skipped cases.
+This includes all 18 added cases and all 614 pre-existing comparisons.
+Artifact upload and test-OU cleanup succeeded. The Microsoft-oracle tests
+are unchanged.
+
+Result-value enumerators reject `Current` before traversal and after exhaustion,
+and `Reset` restarts traversal from every position. The public generic enumerator
+delegates to the underlying ArrayList enumerator to preserve these semantics.
+Schema-name `ICollection.CopyTo` copies through an `object[]`, matching Microsoft's
+element conversion: an empty copy to `int[]` succeeds, while a string or null
+element throws `InvalidCastException` without changing the destination in the
+tested cases. Existing schema enumeration and mutation behavior is preserved.
+
+Local validation also passed all 39 affected differential cases and all 14
+functional collection compatibility tests on each of .NET 8 and .NET 10.
+
 ### Run the Linux tests
 
 The `smblds` container must be running (LDAPS on host port 636):
