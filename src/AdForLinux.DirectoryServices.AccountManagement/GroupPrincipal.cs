@@ -25,13 +25,12 @@ public class GroupPrincipal : Principal
     /// <summary>Starts a new, unsaved group in a context.</summary>
     public GroupPrincipal(PrincipalContext context)
     {
-        ContextRef = context;
+        ContextRef = context ?? throw new ArgumentException("A context is required.");
     }
 
     /// <summary>Starts a new, unsaved group with a name.</summary>
-    public GroupPrincipal(PrincipalContext context, string samAccountName)
+    public GroupPrincipal(PrincipalContext context, string samAccountName) : this(context)
     {
-        ContextRef = context;
         Name = samAccountName;
         SamAccountName = samAccountName;
     }
