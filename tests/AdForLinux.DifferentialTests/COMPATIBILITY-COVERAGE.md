@@ -423,6 +423,45 @@ live case**, selecting **353 cases (121 offline, 232 live)**. Both frameworks bu
 without warnings/errors; safe fixture registration passes 22/22. Windows oracle
 execution remains unrun and the cache-lifetime differences remain hypotheses.
 
+## Batch 13: refresh atomicity, invalidation and native-searcher ownership
+
+| Class | New cases | Requirement | Distinct transition |
+| --- | ---: | --- | --- |
+| `CompatibilityFailedRefreshWrapperComparisonTests` | 2 | Windows offline | Failed full/partial refresh after disposal; exception plus property-wrapper identity across repeated failures |
+| `CompatibilityPrincipalRefreshCacheComparisonTests` | 3 | Disposable lab | Loaded DisplayName after full/targeted/unrelated underlying-entry refresh; independent raw baseline and staged-value controls |
+| `CompatibilityNativeSearcherReplacementComparisonTests` | 2 | Disposable lab, translation only | Replace QueryFilter after native searcher creation, same/distinct context instances targeting identical endpoint/container |
+
+Microsoft [DirectoryEntry.RefreshCache](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectoryEntry.cs)
+checks binding and performs the refresh before discarding its property wrapper;
+the clone's full refresh clears that wrapper first. Disposed entries establish
+this failure-state comparison without ADSI/DNS work. Partial refresh supplies a
+control; no attribute values are read in these offline cases.
+
+The live refresh cases distinguish the underlying property cache from the
+already loaded Principal field. Each captures its own raw baseline before the
+high-level read, stages a unique positive value, verifies initial projection,
+and confirms full/targeted refresh restores the baseline while unrelated refresh
+retains the staged value. Only then do they compare the principal reread. Refresh
+is intentionally read-only here; no Save/Commit follows staging. They reuse the
+existing saved-disabled-user helper and exact-DN cleanup.
+
+Microsoft [PrincipalSearcher.QueryFilter](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs)
+changes its context without clearing the native searcher; [PushFilterToNativeSearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_Query.cs)
+creates one only when absent. The clone resets it when the context reference
+changes. Cases verify updated filter/context, retained native identity and custom
+PageSize/SizeLimit, with a same-context control. No Find or Save executes. This
+is ownership/configuration behavior, not cross-domain routing.
+
+Reviewed nearby failed-setter candidates without duplicating existing cases:
+searcher/VLV/DirSync invalid-set state, collection validation, and sort/security
+validation already have coverage or source agreement. Path setter differences
+for non-LDAP providers repeat declared scope limitations and were not added.
+
+Cumulative: **359 new cases (123 offline, 236 live)** plus **one enhanced existing
+live case**, selecting **360 cases (123 offline, 237 live)**. Both frameworks build
+without warnings/errors; safe fixture registration passes 22/22. All compatibility
+differences remain source-backed hypotheses; Windows oracle/AD execution is unrun.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -453,8 +492,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 353 selected cases (352 new plus one enhanced existing case):
-121 offline and 232 live selections.
+discovery reports 360 selected cases (359 new plus one enhanced existing case):
+123 offline and 237 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
