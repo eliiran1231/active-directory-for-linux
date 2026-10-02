@@ -28,32 +28,8 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
     [InlineData("positive")]
     public void LastLogon_projects_cached_timestamp_presence_like_microsoft(string timestamp)
     {
-        using var microsoftContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
-            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
-            DifferentialSettings.MicrosoftContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
-        using var ourContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
-            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
-            DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
-        var suffix = Guid.NewGuid().ToString("N")[..10];
-        var expectedName = $"lg-ms-{suffix}";
-        var actualName = $"lg-our-{suffix}";
-        var expectedDn = $"CN={expectedName},{DifferentialSettings.UsersContainer}";
-        var actualDn = $"CN={actualName},{DifferentialSettings.UsersContainer}";
-        using var expected = new Ms.UserPrincipal(microsoftContext)
-        { Name = expectedName, SamAccountName = expectedName, Enabled = false };
-        using var actual = new Ours.UserPrincipal(ourContext)
-        { Name = actualName, SamAccountName = actualName, Enabled = false };
-        var attempted = new List<string>();
-        Exception? primaryFailure = null;
-        var cleanupFailures = new List<Exception>();
-        try
+        WithSavedUsers((expected, actual, expectedEntry, actualEntry) =>
         {
-            attempted.Add(expectedDn);
-            expected.Save();
-            attempted.Add(actualDn);
-            actual.Save();
-            var expectedEntry = Assert.IsType<MsDirectory.DirectoryEntry>(expected.GetUnderlyingObject());
-            var actualEntry = Assert.IsType<OurDirectory.DirectoryEntry>(actual.GetUnderlyingObject());
             Assert.True(expectedEntry.UsePropertyCache);
             Assert.True(actualEntry.UsePropertyCache);
             var lastLogon = new DateTime(2030, 1, 2, 3, 4, 5, DateTimeKind.Utc).ToFileTimeUtc();
@@ -94,6 +70,83 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
                 .Check("ticks", expectedValue?.Ticks, actualValue?.Ticks)
                 .Check("kind", expectedValue?.Kind, actualValue?.Kind)
                 .Assert();
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LastLogon_reread_observes_underlying_cache_changes_like_microsoft(bool changeTimestamp)
+    {
+        WithSavedUsers((expected, actual, expectedEntry, actualEntry) =>
+        {
+            Assert.True(expectedEntry.UsePropertyCache);
+            Assert.True(actualEntry.UsePropertyCache);
+            var initial = new DateTime(2030, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            var replacement = initial.AddDays(11);
+            expectedEntry.Properties["lastLogon"].Value = initial.AddDays(-1).ToFileTimeUtc();
+            actualEntry.Properties["lastLogon"].Value = initial.AddDays(-1).ToFileTimeUtc();
+            expectedEntry.Properties["lastLogonTimestamp"].Value = initial.ToFileTimeUtc();
+            actualEntry.Properties["lastLogonTimestamp"].Value = initial.ToFileTimeUtc();
+            Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value));
+            Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value));
+
+            var expectedFirst = expected.LastLogon;
+            var actualFirst = actual.LastLogon;
+            // Establish successful projection before testing cache invalidation.
+            Assert.NotNull(expectedFirst);
+            Assert.Equal(initial.Ticks, expectedFirst.Value.Ticks);
+            var comparison = new Comparison($"LastLogon reread after cached timestamp change={changeTimestamp}");
+            CompareDate(comparison, "first read", expectedFirst, actualFirst);
+            if (changeTimestamp)
+            {
+                expectedEntry.Properties["lastLogonTimestamp"].Value = replacement.ToFileTimeUtc();
+                actualEntry.Properties["lastLogonTimestamp"].Value = replacement.ToFileTimeUtc();
+            }
+            var currentFileTime = (changeTimestamp ? replacement : initial).ToFileTimeUtc();
+            Assert.Equal(currentFileTime, CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value));
+            Assert.Equal(currentFileTime, CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value));
+            // AccountInfo.HandleGet may retain its already-loaded value even
+            // though the public DirectoryEntry cache has changed. Compare the
+            // oracle, without prescribing whether the second value is old/new.
+            CompareDate(comparison, "second read", expected.LastLogon, actual.LastLogon);
+            comparison.Assert();
+        });
+    }
+
+    private static void CompareDate(Comparison comparison, string label, DateTime? expected, DateTime? actual) => comparison
+        .Check($"{label}: ticks", expected?.Ticks, actual?.Ticks)
+        .Check($"{label}: kind", expected?.Kind, actual?.Kind);
+
+    internal static void WithSavedUsers(Action<Ms.UserPrincipal, Ours.UserPrincipal, MsDirectory.DirectoryEntry, OurDirectory.DirectoryEntry> observe)
+    {
+        using var microsoftContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
+            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
+            DifferentialSettings.MicrosoftContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
+        using var ourContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
+            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
+            DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
+        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var expectedName = $"lg-ms-{suffix}";
+        var actualName = $"lg-our-{suffix}";
+        var expectedDn = $"CN={expectedName},{DifferentialSettings.UsersContainer}";
+        var actualDn = $"CN={actualName},{DifferentialSettings.UsersContainer}";
+        using var expected = new Ms.UserPrincipal(microsoftContext)
+        { Name = expectedName, SamAccountName = expectedName, Enabled = false };
+        using var actual = new Ours.UserPrincipal(ourContext)
+        { Name = actualName, SamAccountName = actualName, Enabled = false };
+        var attempted = new List<string>();
+        Exception? primaryFailure = null;
+        var cleanupFailures = new List<Exception>();
+        try
+        {
+            attempted.Add(expectedDn);
+            expected.Save();
+            attempted.Add(actualDn);
+            actual.Save();
+            var expectedEntry = Assert.IsType<MsDirectory.DirectoryEntry>(expected.GetUnderlyingObject());
+            var actualEntry = Assert.IsType<OurDirectory.DirectoryEntry>(actual.GetUnderlyingObject());
+            observe(expected, actual, expectedEntry, actualEntry);
         }
         catch (Exception error) { primaryFailure = error; }
         finally
@@ -118,7 +171,7 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
         if (primaryFailure is not null) ExceptionDispatchInfo.Capture(primaryFailure).Throw();
     }
 
-    private static long CachedFileTime(object? value)
+    internal static long CachedFileTime(object? value)
     {
         Assert.NotNull(value);
         if (value is long fileTime) return fileTime;

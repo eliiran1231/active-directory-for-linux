@@ -382,15 +382,46 @@ a matching deferred-search stage. No case counts changed for these corrections.
   These are source-review findings, not execution proof. Microsoft 9.0.0 is pinned;
   net8.0-windows and net10.0-windows still need separate oracle runs.
 
-No further distinct deterministic candidate survived this pass without requiring
-unavailable Windows/provider/lab evidence. This is the current evidence boundary,
-not a claim of exhaustive compatibility. Keep the remaining runtime work explicit
-rather than adding speculative rows.
+This pass established limits for the specific provider, transport and persisted-
+timestamp scenarios above. It did not cover sequential getter-cache lifetime:
+batch 12 adds read/mutate/reread cases identified by independent review. These
+fixture limitations must not be generalized into exhaustion of public-state
+transitions; further candidates still need source and existing-coverage checks.
 
 Cumulative: **344 new cases (121 offline, 223 live)** plus **one enhanced existing
 live case**, selecting **345 cases (121 offline, 224 live)**. Both target frameworks
 build without warnings/errors; safe fixture registration passes 22/22. No Windows
 oracle or AD operation has run here.
+
+## Batch 12: sequential scalar getter-cache lifetime
+
+The existing cached-logon class gains **2 cases**: first project a positive
+replicated timestamp, replace its public cache value with a different positive
+timestamp (or leave the value unchanged as a control), verify the raw cache value,
+and compare repeated LastLogon ticks/Kind. No Save, CommitChanges or RefreshCache
+runs after staging. These extend batch 11's first-read coverage rather than
+repeating its absent/zero/positive matrix.
+
+`CompatibilityCachedScalarLifecycleComparisonTests` adds **6 cases**, changed
+and unchanged controls for DisplayName, BadLogonCount and LastPasswordSet. These
+represent string, integer and nullable date caches in Principal, AccountInfo and
+PasswordInfo. They share the same isolated saved-disabled-user setup; no shared
+mutable fixture or extra server precondition was introduced.
+
+Microsoft [Principal.HandleGet](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs#L1025-L1040)
+retains a loaded value. Its [AccountInfo.LastLogon](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AccountInfo.cs#L33-L42)
+and the related scalar getters use that load state. The clone rereads the
+underlying entry cache on these getters. Tests take Microsoft observations as
+the oracle rather than hardcoding that either implementation must retain the
+old value. First observations and raw cache prerequisites are checked, and
+unchanged controls distinguish cache lifetime from initial-conversion failures.
+All eight cases require Windows and account creation in the disposable lab;
+they do not assert persistence of any staged attribute value.
+
+Cumulative: **352 new cases (121 offline, 231 live)** plus **one enhanced existing
+live case**, selecting **353 cases (121 offline, 232 live)**. Both frameworks build
+without warnings/errors; safe fixture registration passes 22/22. Windows oracle
+execution remains unrun and the cache-lifetime differences remain hypotheses.
 
 ## Findings and prior-work check
 
@@ -422,8 +453,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 345 selected cases (344 new plus one enhanced existing case):
-121 offline and 224 live selections.
+discovery reports 353 selected cases (352 new plus one enhanced existing case):
+121 offline and 232 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
