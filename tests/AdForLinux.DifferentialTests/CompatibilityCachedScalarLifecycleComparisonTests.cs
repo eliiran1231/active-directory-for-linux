@@ -48,7 +48,7 @@ public sealed class CompatibilityCachedScalarLifecycleComparisonTests
                 "BadLogonCount" => 11,
                 _ => initialDate.AddDays(9).ToFileTimeUtc(),
             };
-            expectedEntry.Properties[attribute].Value = initial;
+            StageMicrosoft(initial);
             actualEntry.Properties[attribute].Value = initial;
             VerifyRaw(initial);
             var expectedFirst = Read(expected, property);
@@ -60,7 +60,7 @@ public sealed class CompatibilityCachedScalarLifecycleComparisonTests
             comparison.Check("first projection", Describe(expectedFirst), Describe(actualFirst));
             if (change)
             {
-                expectedEntry.Properties[attribute].Value = replacement;
+                StageMicrosoft(replacement);
                 actualEntry.Properties[attribute].Value = replacement;
             }
             VerifyRaw(change ? replacement : initial);
@@ -68,6 +68,14 @@ public sealed class CompatibilityCachedScalarLifecycleComparisonTests
             // should return the initially loaded or the newly staged value.
             comparison.Check("second projection", Describe(Read(expected, property)), Describe(Read(actual, property)));
             comparison.Assert();
+
+            void StageMicrosoft(object value)
+            {
+                if (property == "LastPasswordSet")
+                    CompatibilityCachedLogonProjectionComparisonTests.StageMicrosoftFileTime(expectedEntry, attribute, (long)value);
+                else
+                    expectedEntry.Properties[attribute].Value = value;
+            }
 
             void VerifyRaw(object value)
             {

@@ -1,4 +1,5 @@
 using Xunit;
+using MsDirectory = System.DirectoryServices;
 
 namespace AdForLinux.DifferentialTests;
 
@@ -23,13 +24,20 @@ public sealed class CompatibilityPrincipalRefreshCacheComparisonTests
         {
             Assert.True(expectedEntry.UsePropertyCache);
             Assert.True(actualEntry.UsePropertyCache);
-            // Capture each account's actual baseline without loading the high-level
-            // property. Do not assume a server default or equal account baselines.
-            var expectedBaseline = expectedEntry.Properties["displayName"].Value;
-            var actualBaseline = actualEntry.Properties["displayName"].Value;
+            // Persist a nonempty raw baseline without loading either Principal's
+            // DisplayName. ADSI GetInfoEx can retain a staged value when the server
+            // omits an absent attribute, so an absent baseline cannot establish
+            // targeted-refresh invalidation. Commit only this setup value, never
+            // the later staged value whose cache lifetime is under comparison.
+            var baseline = $"persisted-display-{Guid.NewGuid():N}";
+            expectedEntry.Properties["displayName"].Value = baseline;
+            actualEntry.Properties["displayName"].Value = baseline;
+            expectedEntry.CommitChanges();
+            actualEntry.CommitChanges();
+            AssertPersistedBaseline(expectedEntry.Path, baseline);
+            AssertPersistedBaseline(actualEntry.Path, baseline);
             var staged = $"uncommitted-display-{Guid.NewGuid():N}";
-            Assert.NotEqual<object>(staged, expectedBaseline);
-            Assert.NotEqual<object>(staged, actualBaseline);
+            Assert.NotEqual(baseline, staged);
             expectedEntry.Properties["displayName"].Value = staged;
             actualEntry.Properties["displayName"].Value = staged;
             Assert.Equal(staged, expectedEntry.Properties["displayName"].Value);
@@ -58,10 +66,19 @@ public sealed class CompatibilityPrincipalRefreshCacheComparisonTests
             // before comparing the independent Principal cache. Read new wrappers.
             var expectedRaw = expectedEntry.Properties["displayName"].Value;
             var actualRaw = actualEntry.Properties["displayName"].Value;
-            Assert.Equal(refresh == "description" ? staged : expectedBaseline, expectedRaw);
-            Assert.Equal(refresh == "description" ? staged : actualBaseline, actualRaw);
+            Assert.Equal(refresh == "description" ? staged : baseline, expectedRaw);
+            comparison.Check("raw value after refresh", expectedRaw, actualRaw);
             comparison.Check("projection after refresh", expected.DisplayName, actual.DisplayName);
             comparison.Assert();
         });
+    }
+
+    private static void AssertPersistedBaseline(string path, string baseline)
+    {
+        // A fresh Microsoft wrapper reads each independent server object; it
+        // cannot observe either provider's uncommitted in-memory cache.
+        using var entry = new MsDirectory.DirectoryEntry(path, DifferentialSettings.BindDn,
+            DifferentialSettings.BindPassword, DifferentialSettings.MicrosoftAuthenticationTypes);
+        Assert.Equal(baseline, entry.Properties["displayName"].Value);
     }
 }

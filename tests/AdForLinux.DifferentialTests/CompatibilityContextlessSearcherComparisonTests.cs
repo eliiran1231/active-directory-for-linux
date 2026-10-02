@@ -7,8 +7,10 @@ namespace AdForLinux.DifferentialTests;
 // A supported protected Principal constructor permits an extension object to
 // exist before ContextRaw is assigned. No PrincipalContext is constructed here,
 // so these operations cannot discover or connect to a directory.
-// Pinned reference: dotnet/runtime v9.0.0, PrincipalSearcher.cs: the constructor
-// initializes paging through its context; the QueryFilter setter only stores it.
+// Microsoft's empty protected constructor leaves unpersisted=false, so the
+// searcher rejects this object as a persisted filter before reading its context.
+// https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs
+// https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs
 [Trait("Category", "CompatibilityCoverageOffline")]
 public sealed class CompatibilityContextlessSearcherComparisonTests
 {
@@ -42,21 +44,30 @@ public sealed class CompatibilityContextlessSearcherComparisonTests
     [InlineData("FindAll", true)]
     [InlineData("GetUnderlyingSearcher", true)]
     [InlineData("GetUnderlyingSearcherType", true)]
-    public void Searcher_with_contextless_assigned_filter_matches_microsoft(string member, bool dispose)
+    public void Rejected_contextless_filter_assignment_and_followup_match_microsoft(string member, bool dispose)
     {
         using var expectedFilter = new MicrosoftPrincipal();
         using var actualFilter = new OurPrincipal();
         using var microsoft = new Ms.PrincipalSearcher();
         using var ours = new Ours.PrincipalSearcher();
-        // Do not use PrincipalSearcher(filter): constructor initialization is a
-        // separate contract above. Assignment reaches these operations without
-        // eagerly initializing a native searcher in Microsoft.
-        microsoft.QueryFilter = expectedFilter;
-        ours.QueryFilter = actualFilter;
-        Assert.Same(expectedFilter, microsoft.QueryFilter);
-        Assert.Same(actualFilter, ours.QueryFilter);
+        Assert.Null(microsoft.QueryFilter);
+        Assert.Null(ours.QueryFilter);
+        // Capture assignment itself: Windows 9.0.0 rejects this principal.
+        // Comparing only later operations would mistake a setup failure for
+        // evidence about an assigned contextless filter.
+        var expectedAssignmentError = Record.Exception(() => microsoft.QueryFilter = expectedFilter);
+        var actualAssignmentError = Record.Exception(() => ours.QueryFilter = actualFilter);
+        Assert.IsType<ArgumentException>(expectedAssignmentError);
+        Assert.Null(microsoft.QueryFilter);
         Assert.Null(microsoft.Context);
-        Assert.Null(ours.Context);
+        var comparison = new Comparison($"Rejected contextless filter: member={member}, dispose={dispose}")
+            .Check("assignment exception", Describe(expectedAssignmentError), Describe(actualAssignmentError))
+            .Check("filter remains empty", microsoft.QueryFilter is null, ours.QueryFilter is null)
+            .Check("context remains empty", microsoft.Context is null, ours.Context is null);
+
+        // Follow each provider's independently reached state. Microsoft's
+        // searcher is still empty; a clone that accepted the filter can have a
+        // different state, which is recorded above without aborting this probe.
         if (dispose)
         {
             microsoft.Dispose();
@@ -91,7 +102,11 @@ public sealed class CompatibilityContextlessSearcherComparisonTests
                 default: actualType = ours.GetUnderlyingSearcherType().Name; break;
             }
         });
-        Assert.Equal((Describe(expectedError), expectedType), (Describe(actualError), actualType));
+        if (dispose) Assert.IsType<ObjectDisposedException>(expectedError);
+        else Assert.IsType<InvalidOperationException>(expectedError);
+        comparison.Check("follow-up exception", Describe(expectedError), Describe(actualError))
+            .Check("follow-up native type", expectedType, actualType)
+            .Assert();
     }
 
     private static (Type? Type, string? Parameter) Describe(Exception? error) =>

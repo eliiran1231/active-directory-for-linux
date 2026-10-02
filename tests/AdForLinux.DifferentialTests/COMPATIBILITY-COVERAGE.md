@@ -4,6 +4,21 @@ Base: `dev` at `8023db6d6e63752420628a1ad94871f4dbe2edf0` (2026-10-01).
 Only tests and their documentation are added. Microsoft System.DirectoryServices
 9.0.0 is the runtime oracle; new cases do not prescribe guessed exception contracts.
 
+Current status: the isolated Windows run [36989564937, job 110782352855](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36989564937/job/110782352855)
+executed commit `789adbce45d6528e2b62243909372c5469706f6a` on both target
+frameworks. Each target reported **1087 total, 877 passed, 210 failed, zero skipped**.
+Of this branch's **367 selected cases (366 new + one enhanced; 123 offline,
+244 live)**, **172 passed and 195 failed per target**. Triage identified **16 setup
+or premise failures** and **179 comparison mismatches**. The 15 preexisting
+failures are outside this correction's scope (associated with the pending #200
+work). Failures are test observations, not a count of distinct implementation bugs.
+
+Batch 17 below corrects the 16 defective inputs/premises without production fixes,
+skips, or removed cases. **The corrected inputs have not had a Windows rerun.**
+Earlier batch sections retain their historical validation status; their “unrun”
+statements describe those checkpoints, not the Windows run above.
+
+
 ## Batch 1: boundaries, state transitions and copy contracts
 
 | Class | Discovered cases | Execution requirement | Coverage |
@@ -96,7 +111,7 @@ runtime confirmation:
 | Class | New cases | Execution requirement | Coverage |
 | --- | ---: | --- | --- |
 | `CompatibilityEntryOptionsLifecycleComparisonTests` | 16 | Disposable Windows AD lab | Retained configuration getters, valid/invalid setters after disposal; provider options after Close/rebind |
-| `CompatibilityContextlessSearcherComparisonTests` | 9 | Windows, no AD | Constructor versus assigned QueryFilter on contextless extension principals; FindOne/FindAll/underlying-searcher operations and disposal precedence |
+| `CompatibilityContextlessSearcherComparisonTests` | 9 | Windows, no AD | Constructor rejection, captured QueryFilter rejection and state; follow-up operations on the resulting empty/disposed searcher (corrected in batch 17) |
 | `CompatibilityWorkstationConversionComparisonTests` | 4 | Disposable Windows AD lab | Clear, single empty, two empty and embedded-comma workstation values; Save errors, raw persisted attribute and fresh principal reload |
 
 Cumulative: **265 new cases (112 offline, 153 live), plus one enhanced existing
@@ -113,8 +128,9 @@ also distinct from DirectorySearcher.PageSize, which #167 already fixed. These
 tests do not call password operations or change quotas.
 
 The [PrincipalSearcher source](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs)
-distinguishes constructor initialization from QueryFilter assignment when an
-extension principal lacks a context. These tests construct no PrincipalContext.
+rejects the empty extension principal as persisted before constructor initialization
+or QueryFilter assignment can consume its absent context. Batch 17 captures this
+rejection and compares the resulting state. These tests construct no PrincipalContext.
 
 The [workstation converter](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_LoadStore.cs)
 converts an empty serialized list to null; the clone checks list count before
@@ -547,10 +563,48 @@ The candidate-family table and explicit per-framework offline commands below for
 the handoff. Counts remain **366 new cases plus one enhanced case**: **123 offline,
 244 live selections**. None of the compatibility hypotheses is runtime-confirmed.
 
+## Batch 17: correct 16 setup/premise failures from the Windows run
+
+The run linked at the top supplied actual evidence for these corrections. No
+implementation code, skip, case removal, workflow dispatch, or AD rerun is included.
+All **367 selected cases** remain (366 new + one enhanced; 123 offline / 244 live).
+
+| Defective cases | Correction | Preserved evidence / rerun requirement |
+| --- | --- | --- |
+| Five `CachedLogonProjection` and two LastPasswordSet rows in `CachedScalarLifecycle` | Microsoft timestamp staging now activates a fresh real ADSI LargeInteger COM object, sets signed HighPart/LowPart, and assigns it through public Properties.Value; clone staging remains Int64 | Full-bit roundtrip checked before and after Microsoft cache assignment; presence/zero and first-projection controls remain. Windows must validate COM activation and cache acceptance. No timestamp Save/Commit occurs. |
+| Eight `ContextlessSearcher` operation rows | Capture rejected QueryFilter assignment, compare retained state, then execute the selected operation on each provider's independently reached state, optionally disposed | Microsoft must reject assignment and remain empty; subsequent empty/disposed behavior is compared. These no longer claim an assigned contextless filter reached FindOne/FindAll/native operations. Constructor row remains unchanged. |
+| One targeted DisplayName `PrincipalRefreshCache` row | Persist a nonempty raw baseline without loading Principal.DisplayName; verify both server objects through fresh Microsoft wrappers before staging | The three refresh rows share this corrected baseline. Microsoft raw-cache transition is guarded and compared with the clone, then principal projections are compared. Staged marker is never committed; exact-DN cleanup remains unchanged. |
+
+The timestamp representation follows Microsoft's own pinned
+[AcctExpirToLdapConverter](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_LoadStore.cs#L1288-L1318)
+and [ADsLargeInteger COM declaration](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/interopt.cs#L73-L83).
+It does not access private Microsoft members or fabricate the expected projection.
+The CLSID activates the registered Windows ADSI coclass; HighPart/LowPart are public
+COM properties. Missing registration or failed staging remains a visible setup
+failure, with no fallback or skip.
+
+The [PrincipalSearcher setter](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs)
+rejects a Principal whose `unpersisted` flag is false before storing QueryFilter;
+the empty protected Principal constructor leaves that flag false. The old eight
+rows therefore failed before their intended observation. The corrected rows
+preserve the rejection as an actual comparison rather than assuming acceptance.
+
+For targeted refresh, the Windows oracle retained the staged string when the
+server omitted the absent displayName attribute. The corrected nonempty baseline
+lets GetInfoEx reload an actual server value; full and unrelated-attribute refresh
+remain controls. These changes do not suppress the observed high-level cache
+retention mismatch or alter the other 179 comparison failures to make them pass.
+
+**Corrected Windows results are pending.** Local builds, discovery, fixture-only
+and clone-only checks cannot establish ADSI behavior. Re-run the affected classes
+on both Windows targets only in the verified isolated lab; the contextless class
+can independently run with the offline category without AD.
+
 ## Findings and prior-work check
 
-All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
-runs. Particularly useful probes are VLV arithmetic beyond small integer totals,
+The Windows run above distinguishes comparison mismatches from setup failures;
+corrections still require rerun before claiming those inputs work. Particularly
+useful probes are VLV arithmetic beyond small integer totals,
 DirSync high-bit validation, and SearchResultCollection's manual copy loops
 (validation timing and partial writes). Passing controls are deliberately retained.
 
@@ -566,7 +620,9 @@ made. No AD operation was executed locally.
 
 ## Candidate-family handoff
 
-Every row below is **unconfirmed at runtime**. “Source-backed” means the pinned
+The table records the original source rationale and required validation, not a
+per-family runtime verdict. See the Windows totals and setup correction above.
+“Source-backed” means the pinned
 Microsoft 9.0.0 implementation and clone take different observable paths;
 “contract probe” means the edge/sequence deserves oracle comparison without a
 claimed source-proven failure. Class names omit the common `Compatibility` prefix
@@ -613,12 +669,13 @@ other machines. No full-suite `dotnet test` command is safe as an offline check.
 Both differential target frameworks build with zero warnings/errors. Current
 discovery reports 367 selected cases (366 new plus one enhanced existing case):
 123 offline and 244 live selections.
-The selected existing functional checks passed 27/27 again in batch 15. Current fixture
+The selected existing functional checks passed 27/27 again for batch 17. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
 
-Windows differential execution and live AD behavior are **unrun** here. On Windows,
-the offline batch needs no credentials or AD settings:
+The prior Windows results above apply to `789adbce`; the corrected batch needs a
+new Windows run. No new workflow or AD run was dispatched for these corrections.
+On Windows, the offline batch needs no credentials or AD settings:
 
 ```powershell
 dotnet test tests/AdForLinux.DifferentialTests -c Release -f net8.0-windows --filter 'Category=CompatibilityCoverageOffline' --logger 'trx;LogFileName=compatibility-offline-net8.trx'

@@ -34,7 +34,7 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             Assert.True(actualEntry.UsePropertyCache);
             var lastLogon = new DateTime(2030, 1, 2, 3, 4, 5, DateTimeKind.Utc).ToFileTimeUtc();
             var replicatedLogon = new DateTime(2031, 2, 3, 4, 5, 6, DateTimeKind.Utc).ToFileTimeUtc();
-            expectedEntry.Properties["lastLogon"].Value = lastLogon;
+            StageMicrosoftFileTime(expectedEntry, "lastLogon", lastLogon);
             actualEntry.Properties["lastLogon"].Value = lastLogon;
             if (timestamp == "absent")
             {
@@ -44,7 +44,7 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             else
             {
                 var value = timestamp == "zero" ? 0L : replicatedLogon;
-                expectedEntry.Properties["lastLogonTimestamp"].Value = value;
+                StageMicrosoftFileTime(expectedEntry, "lastLogonTimestamp", value);
                 actualEntry.Properties["lastLogonTimestamp"].Value = value;
             }
             // Check cache prerequisites before projecting. Do not call Save,
@@ -84,9 +84,9 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             Assert.True(actualEntry.UsePropertyCache);
             var initial = new DateTime(2030, 1, 2, 3, 4, 5, DateTimeKind.Utc);
             var replacement = initial.AddDays(11);
-            expectedEntry.Properties["lastLogon"].Value = initial.AddDays(-1).ToFileTimeUtc();
+            StageMicrosoftFileTime(expectedEntry, "lastLogon", initial.AddDays(-1).ToFileTimeUtc());
             actualEntry.Properties["lastLogon"].Value = initial.AddDays(-1).ToFileTimeUtc();
-            expectedEntry.Properties["lastLogonTimestamp"].Value = initial.ToFileTimeUtc();
+            StageMicrosoftFileTime(expectedEntry, "lastLogonTimestamp", initial.ToFileTimeUtc());
             actualEntry.Properties["lastLogonTimestamp"].Value = initial.ToFileTimeUtc();
             Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value));
             Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value));
@@ -100,7 +100,7 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             CompareDate(comparison, "first read", expectedFirst, actualFirst);
             if (changeTimestamp)
             {
-                expectedEntry.Properties["lastLogonTimestamp"].Value = replacement.ToFileTimeUtc();
+                StageMicrosoftFileTime(expectedEntry, "lastLogonTimestamp", replacement.ToFileTimeUtc());
                 actualEntry.Properties["lastLogonTimestamp"].Value = replacement.ToFileTimeUtc();
             }
             var currentFileTime = (changeTimestamp ? replacement : initial).ToFileTimeUtc();
@@ -171,6 +171,33 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             throw new AggregateException("Cached logon projection test and/or cleanup failed; primary failure is first when present.", cleanupFailures);
         }
         if (primaryFailure is not null) ExceptionDispatchInfo.Capture(primaryFailure).Throw();
+    }
+
+    internal static void StageMicrosoftFileTime(MsDirectory.DirectoryEntry entry, string attribute, long fileTime)
+    {
+        Assert.True(entry.UsePropertyCache);
+        // ADSI LargeInteger syntax takes VT_DISPATCH/IADsLargeInteger. A boxed
+        // Int64 is rejected by IADs.PutEx on the Windows provider. Use a fresh
+        // real ADSI coclass for every assignment, including replacement values.
+        // This is also the representation used by pinned v9.0.0
+        // ADStoreCtx.AcctExpirToLdapConverter before assigning Properties.Value:
+        // https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_LoadStore.cs
+        // https://learn.microsoft.com/en-us/windows/win32/adschema/s-largeinteger
+        // https://learn.microsoft.com/en-us/windows/win32/adsi/iadslargeinteger-property-methods
+        // CLSID_LargeInteger is declared in the public Windows SDK Iads.h:
+        // https://github.com/microsoft/win32metadata/blob/main/generation/WinSDK/RecompiledIdlHeaders/um/Iads.h
+        var type = Type.GetTypeFromCLSID(new Guid("927971f5-0939-11d1-8be1-00c04fd8d503"), throwOnError: true)!;
+        var largeInteger = Activator.CreateInstance(type)!;
+        type.InvokeMember("HighPart", System.Reflection.BindingFlags.SetProperty,
+            null, largeInteger, new object[] { unchecked((int)(fileTime >> 32)) }, System.Globalization.CultureInfo.InvariantCulture);
+        type.InvokeMember("LowPart", System.Reflection.BindingFlags.SetProperty,
+            null, largeInteger, new object[] { unchecked((int)fileTime) }, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(fileTime, CachedFileTime(largeInteger));
+        // Value stages through the public provider cache; it does not call
+        // SetInfo while UsePropertyCache is true. Do not manually release the
+        // RCW here: the cache may retain it for subsequent principal projection.
+        entry.Properties[attribute].Value = largeInteger;
+        Assert.Equal(fileTime, CachedFileTime(entry.Properties[attribute].Value));
     }
 
     internal static long CachedFileTime(object? value)
