@@ -104,6 +104,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
     }
 
     [Fact]
+    [Trait("Category", "CompatibilityCoverageLive")]
     public void Members_collection_contract_matches()
     {
         using var msContext = MicrosoftContext();
@@ -129,18 +130,21 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
             .Check("SyncRoot is collection",
                 ReferenceEquals(msGroup.Members, msNongeneric.SyncRoot),
                 ReferenceEquals(ourGroup.Members, ourNongeneric.SyncRoot))
-            .Check("negative CopyTo exception",
-                Record.Exception(() => msNongeneric.CopyTo(Array.Empty<Ms.Principal>(), -1))?.GetType().Name,
-                Record.Exception(() => ourNongeneric.CopyTo(Array.Empty<Ours.Principal>(), -1))?.GetType().Name)
-            .Check("null CopyTo exception",
-                Record.Exception(() => msNongeneric.CopyTo(null!, 0))?.GetType().Name,
-                Record.Exception(() => ourNongeneric.CopyTo(null!, 0))?.GetType().Name)
-            .Check("multidimensional CopyTo exception",
-                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[1, 1], 0))?.GetType().Name,
-                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[1, 1], 0))?.GetType().Name)
-            .Check("index at length CopyTo exception",
-                Record.Exception(() => msNongeneric.CopyTo(new Ms.Principal[msGroup.Members.Count], msGroup.Members.Count))?.GetType().Name,
-                Record.Exception(() => ourNongeneric.CopyTo(new Ours.Principal[ourGroup.Members.Count], ourGroup.Members.Count))?.GetType().Name)
+            .Check("negative CopyTo contract",
+                CopyFailure(() => msNongeneric.CopyTo(Array.Empty<Ms.Principal>(), -1)),
+                CopyFailure(() => ourNongeneric.CopyTo(Array.Empty<Ours.Principal>(), -1)))
+            .Check("null CopyTo contract",
+                CopyFailure(() => msNongeneric.CopyTo(null!, 0)),
+                CopyFailure(() => ourNongeneric.CopyTo(null!, 0)))
+            .Check("null and negative CopyTo precedence",
+                CopyFailure(() => msNongeneric.CopyTo(null!, -1)),
+                CopyFailure(() => ourNongeneric.CopyTo(null!, -1)))
+            .Check("multidimensional CopyTo contract",
+                CopyFailure(() => msNongeneric.CopyTo(new Ms.Principal[1, 1], 0)),
+                CopyFailure(() => ourNongeneric.CopyTo(new Ours.Principal[1, 1], 0)))
+            .Check("index at length CopyTo contract",
+                CopyFailure(() => msNongeneric.CopyTo(new Ms.Principal[msGroup.Members.Count], msGroup.Members.Count)),
+                CopyFailure(() => ourNongeneric.CopyTo(new Ours.Principal[ourGroup.Members.Count], ourGroup.Members.Count)))
             .Check("duplicate Add exception",
                 Record.Exception(() => msGroup.Members.Add(msUser!))?.GetType().Name,
                 Record.Exception(() => ourGroup.Members.Add(ourUser!))?.GetType().Name)
@@ -169,6 +173,14 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         {
             principal.Dispose();
         }
+    }
+
+    // Preserve the existing Microsoft-oracle comparisons while checking the
+    // observable parameter contract that exception type alone cannot expose.
+    private static (string? Type, string? Parameter, int? HResult) CopyFailure(Action copy)
+    {
+        var error = Record.Exception(copy);
+        return (error?.GetType().FullName, (error as ArgumentException)?.ParamName, error?.HResult);
     }
 
     [Fact]
