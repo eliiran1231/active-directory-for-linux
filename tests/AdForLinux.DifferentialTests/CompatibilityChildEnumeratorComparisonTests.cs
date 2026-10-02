@@ -46,6 +46,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
             // Keep returned entries alive until the enumerators have finished:
             // disposing Current during positioning could change the experiment.
             var entries = new HashSet<IDisposable>(ReferenceEqualityComparer.Instance);
+            Exception? operationError = null;
             try
             {
                 microsoft = microsoftRoot.Children.GetEnumerator();
@@ -96,11 +97,24 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     .Check("MoveNext after exhaustion", MoveNext(microsoft), MoveNext(ours));
                 comparison.Assert();
             }
+            catch (Exception error)
+            {
+                operationError = error;
+                throw;
+            }
             finally
             {
-                (microsoft as IDisposable)?.Dispose();
-                (ours as IDisposable)?.Dispose();
-                foreach (var entry in entries) entry.Dispose();
+                var disposalErrors = new List<Exception>();
+                DisposeTracked(microsoft as IDisposable, disposalErrors);
+                DisposeTracked(ours as IDisposable, disposalErrors);
+                foreach (var entry in entries) DisposeTracked(entry, disposalErrors);
+                if (disposalErrors.Count > 0)
+                {
+                    if (operationError is not null) disposalErrors.Insert(0, operationError);
+                    throw new AggregateException(
+                        "Child enumeration and/or resource disposal failed; operation failure is first when present.",
+                        disposalErrors);
+                }
             }
         }
         catch (Exception error)
@@ -140,6 +154,12 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                 throw;
             }
         }
+    }
+
+    private static void DisposeTracked(IDisposable? resource, List<Exception> errors)
+    {
+        try { resource?.Dispose(); }
+        catch (Exception error) { errors.Add(error); }
     }
 
     private static Ms.DirectoryEntry OpenMicrosoft(string dn) => new(

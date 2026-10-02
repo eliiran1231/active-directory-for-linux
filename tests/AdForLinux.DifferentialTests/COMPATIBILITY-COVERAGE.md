@@ -332,6 +332,66 @@ provider combination is exhaustively tested. The highest-value next validation
 is the Windows offline subset, followed by selected live cases in the verified
 disposable lab; neither environment is available in this execution workspace.
 
+## Batch 11: cached logon projection and final audit pass
+
+`CompatibilityCachedLogonProjectionComparisonTests` adds **3 live cases** for
+absent, zero and positive lastLogonTimestamp values in the public property cache.
+It saves independent disabled users, obtains their public underlying entries,
+checks UsePropertyCache and staged raw values, then compares each principal's
+first LastLogon read. Cached FILETIME checks normalize ADSI public large-integer
+HighPart/LowPart values as well as Int64. Positive controls must yield a Microsoft timestamp. No
+Save, CommitChanges or RefreshCache occurs after staging; cleanup uses fresh
+principals and exact owned DNs. This tests cached-value projection only, not AD
+acceptance or persistence of timestamp writes.
+
+The pinned Microsoft [ADStoreCtx.Load](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_LoadStore.cs)
+reads the underlying entry's properties for newly saved principals without a
+search-result snapshot. [AccountInfo](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AccountInfo.cs)
+leaves LastLogon unloaded after insertion. Microsoft's conversion chooses the
+replicated value by attribute presence; the clone falls back after a null
+converted value. A zero replicated value is therefore a source-backed candidate;
+Windows runtime confirmation is still required.
+
+The cumulative audit corrected disposal in child enumeration and deferred-search
+observation: all enumerators/results/tracked entries receive a disposal attempt,
+and cleanup errors preserve the primary operation error. Cleanup cannot become
+a matching deferred-search stage. No case counts changed for these corrections.
+
+### Evidenced boundary after the remaining-gap pass
+
+- `UserPrincipalComparisonTests` already covers credential validation with valid
+  and invalid credentials, explicit TLS/simple and negotiate/signing/sealing
+  options, edge option values; `PrincipalBehaviorComparisonTests` covers disposal.
+  Further transport fallback cases require controlled transport faults, not a
+  generic credential failure or extra bad-password attempts.
+- `Issue45GroupQueryComparisonTests` already has a two-domain foreign-principal
+  and nested-membership case gated by a second-host/base-DN trust configuration.
+  The ordinary fixture configures one directory. No second-domain setup or trust
+  evidence was available, and no duplicate cross-domain scenario was added.
+- ExtendedDN encodings, attribute-scope queries, property-names-only results,
+  custom principal construction and extension attributes have existing tests.
+  Child collection Add/Find/Remove disposal paths agree with source; no redundant
+  matrix was added. WinNT, Machine and AD LDS provider scopes cannot be inferred
+  from an LDAP domain fixture or treated as supported clone behavior.
+- Persisted zero-timestamp seeding remains unverified. The existing fixture
+  records a real logon; it does not guarantee a present-zero replicated timestamp
+  alongside a positive local value. Batch 11 tests only the narrower public-cache
+  route, without pretending that schema metadata proves server write acceptance.
+- The audit found no additional hidden mutable global state, un-restored culture,
+  new ordering dependency, or equal-environment-error pass in the new suite.
+  These are source-review findings, not execution proof. Microsoft 9.0.0 is pinned;
+  net8.0-windows and net10.0-windows still need separate oracle runs.
+
+No further distinct deterministic candidate survived this pass without requiring
+unavailable Windows/provider/lab evidence. This is the current evidence boundary,
+not a claim of exhaustive compatibility. Keep the remaining runtime work explicit
+rather than adding speculative rows.
+
+Cumulative: **344 new cases (121 offline, 223 live)** plus **one enhanced existing
+live case**, selecting **345 cases (121 offline, 224 live)**. Both target frameworks
+build without warnings/errors; safe fixture registration passes 22/22. No Windows
+oracle or AD operation has run here.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -362,8 +422,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 342 selected cases (341 new plus one enhanced existing case):
-121 offline and 221 live selections.
+discovery reports 345 selected cases (344 new plus one enhanced existing case):
+121 offline and 224 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.

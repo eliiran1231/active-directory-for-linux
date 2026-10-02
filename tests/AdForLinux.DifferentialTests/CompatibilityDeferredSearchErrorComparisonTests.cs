@@ -94,16 +94,28 @@ public sealed class CompatibilityDeferredSearchErrorComparisonTests : IClassFixt
             }
             stage = "complete";
         });
-        try
+        var observation = new Observation(stage, error?.GetType().Name, error?.HResult,
+            (error as ArgumentException)?.ParamName, rows, error is null);
+        var disposalErrors = new List<Exception>();
+        DisposeTracked(iterator as IDisposable, disposalErrors);
+        DisposeTracked(results as IDisposable, disposalErrors);
+        if (disposalErrors.Count > 0)
         {
-            return new Observation(stage, error?.GetType().Name, error?.HResult,
-                (error as ArgumentException)?.ParamName, rows, error is null);
+            if (error is not null) disposalErrors.Insert(0, error);
+            // Disposal is test cleanup, never another comparable search stage.
+            // Preserve the stage/row observation and original search exception
+            // while ensuring both resources receive their disposal attempt.
+            throw new AggregateException(
+                $"Search resource disposal failed after {observation}; search failure is first when present.",
+                disposalErrors);
         }
-        finally
-        {
-            (iterator as IDisposable)?.Dispose();
-            (results as IDisposable)?.Dispose();
-        }
+        return observation;
+    }
+
+    private static void DisposeTracked(IDisposable? resource, List<Exception> errors)
+    {
+        try { resource?.Dispose(); }
+        catch (Exception error) { errors.Add(error); }
     }
 
     private static void Compare(Comparison comparison, string prefix, Observation expected, Observation actual) => comparison
