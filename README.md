@@ -206,7 +206,7 @@ Two test projects:
 
 ### Validated credential cache and unbound commit findings
 
-[Real-AD workflow 36926835252](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36926835252)
+[Real-AD workflow 36928486136](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36928486136)
 validated the [#199](https://github.com/eliiran1231/active-directory-for-linux/issues/199)
 fix: **713/713 differential cases passed on each of `net8.0-windows` and
 `net10.0-windows`**, with no failures or skipped cases. All 20 focused cases
@@ -221,10 +221,18 @@ security commit. Clean unbound commits and disabling `UsePropertyCache` no
 longer bind unnecessarily. New entries and pending writes still commit, and
 authentication validation remains enforced when binding is required.
 
-[Linux CI 36926839279](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36926839279)
-passed the build and all **490 functional tests on each of .NET 8 and .NET 10**
+Unsaved children receive a new non-loading wrapper containing their staged
+attributes, including `objectClass`, when credentials or authentication change.
+This preserves the wrapper identity change without fetching a nonexistent
+object before the create commit.
+
+[Linux CI 36928489423](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36928489423)
+passed the build and all **496 functional tests on each of .NET 8 and .NET 10**
 against Samba, including create/update commits and credential/authentication
-configuration. Local focused comparisons also passed all 20 cases per target.
+configuration. Six added regressions cover staged-attribute reads without
+binding and real child creation after changing each of the three setters.
+Local checks passed all three offline regressions and all 20 focused
+comparisons per target.
 
 ### Validated principal collection compatibility
 
