@@ -29,6 +29,19 @@ public sealed class CompatibilityIdentityQualificationComparisonTests(TestDataFi
         using var ourContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
             DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
+        // Every row, including malformed forms, must first prove that both
+        // contexts can find the fixture. Matching environmental errors below
+        // must not stand in for an identity-qualification comparison.
+        using (var expectedControl = Ms.UserPrincipal.FindByIdentity(
+            microsoftContext, Ms.IdentityType.SamAccountName, data.UserName))
+        using (var actualControl = Ours.UserPrincipal.FindByIdentity(
+            ourContext, Ours.IdentityType.SamAccountName, data.UserName))
+        {
+            Assert.NotNull(expectedControl);
+            Assert.NotNull(actualControl);
+            Assert.Equal(data.UserDn.ToUpperInvariant(), expectedControl.DistinguishedName?.ToUpperInvariant());
+            Assert.Equal(data.UserDn.ToUpperInvariant(), actualControl.DistinguishedName?.ToUpperInvariant());
+        }
         var identity = form switch
         {
             "bare" => data.UserName,

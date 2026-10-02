@@ -139,6 +139,7 @@ public class CompatibilitySynchronizationComparisonTests
     private static void State(Comparison comparison, string label, Ms.DirectorySynchronization expected, Ours.DirectorySynchronization actual)
     {
         comparison.Check($"{label}: option", (long)expected.Option, (long)actual.Option)
-            .Check($"{label}: cookie", expected.GetDirectorySynchronizationCookie(), actual.GetDirectorySynchronizationCookie());
+            .Check($"{label}: cookie", Convert.ToHexString(expected.GetDirectorySynchronizationCookie()),
+                Convert.ToHexString(actual.GetDirectorySynchronizationCookie()));
     }
 }

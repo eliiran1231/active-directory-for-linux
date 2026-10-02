@@ -492,6 +492,35 @@ without warnings/errors; safe fixture registration passes 22/22. Windows oracle
 execution remains unrun. Runtime confirmation is required before reporting any
 of these ownership differences as observed compatibility failures.
 
+## Batch 15: native projection and failed-search state
+
+Four new live cases cover two source-backed native-searcher contracts:
+
+- `CompatibilityNativeProjectionComparisonTests` (2): repeated access appends
+  mapped projection attributes, retaining caller attributes and duplicate counts;
+  same-context User-to-User and User-to-Group replacements exercise type changes.
+  Sorted JSON arrays preserve multiplicity without assuming mapping order.
+- `CompatibilityNativeFailureStateComparisonTests` (2): FindOne and FindAll
+  failures expose the retained native SizeLimit. A valid root is read first,
+  then Microsoft must prove a unique child DN absent with error `0x80072030`.
+  The borrowed root is temporarily replaced, restored in finally, and state is
+  inspected before another preparation accessor. These cases perform reads only.
+
+Microsoft source appends its mapped projection on each accessor and restores
+FindOne's temporary limit only after a successful native search. The clone does
+not populate that projection and restores the limit in finally. These are
+**source-backed hypotheses**, not observed Windows failures. FindAll is the
+non-temporary-limit control. Initialization/reads still require the isolated lab.
+
+The audit also strengthens existing rows: identity qualification first requires
+successful bare-SAM lookups on both APIs; culture conversion requires attribute
+presence and culture-sensitive/unchanged controls; synthetic DirSync cookies use
+hex diagnostics so equal-length content mismatches are readable.
+
+Cumulative: **366 new cases (123 offline, 243 live)** plus **one enhanced existing
+live case**, selecting **367 cases (123 offline, 244 live)**. Windows oracle and AD
+execution remain unrun.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -522,9 +551,9 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 363 selected cases (362 new plus one enhanced existing case):
-123 offline and 240 live selections.
-The selected existing functional checks passed 27/27 in batch 1. Current fixture
+discovery reports 367 selected cases (366 new plus one enhanced existing case):
+123 offline and 244 live selections.
+The selected existing functional checks passed 27/27 again in batch 15. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
 
