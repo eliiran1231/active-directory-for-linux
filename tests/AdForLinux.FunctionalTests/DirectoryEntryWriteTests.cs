@@ -16,6 +16,55 @@ public class DirectoryEntryWriteTests
 
     private static string UsersContainer => $"CN=Users,{TestSettings.BaseDn}";
 
+    [Theory]
+    [InlineData("Username")]
+    [InlineData("Password")]
+    [InlineData("AuthenticationType")]
+    public void Unsaved_child_commits_staged_attributes_after_credential_changes(string property)
+    {
+        var name = $"adfl-credentials-{Guid.NewGuid():N}";
+        var dn = $"CN={name},{UsersContainer}";
+        using var parent = Open(UsersContainer);
+
+        try
+        {
+            using var child = parent.Children.Add($"CN={name}", "group");
+            child.Properties["sAMAccountName"].Value = name;
+            child.Properties["description"].Value = "pending before credential change";
+            var before = child.Properties;
+
+            // Restore valid credentials before committing; both transitions
+            // must preserve the staged attributes without fetching the child.
+            switch (property)
+            {
+                case "Username":
+                    child.Username = "invalid-user@example.invalid";
+                    child.Username = TestSettings.BindDn;
+                    break;
+                case "Password":
+                    child.Password = "invalid-password";
+                    child.Password = TestSettings.BindPassword;
+                    break;
+                case "AuthenticationType":
+                    child.AuthenticationType = AuthenticationTypes.Signing;
+                    child.AuthenticationType = AuthenticationTypes.SecureSocketsLayer;
+                    break;
+            }
+
+            Assert.NotSame(before, child.Properties);
+            child.CommitChanges();
+
+            using var reopened = Open(dn);
+            Assert.Equal("group", reopened.SchemaClassName);
+            Assert.Equal(name, reopened.Properties["sAMAccountName"].Value);
+            Assert.Equal("pending before credential change", reopened.Properties["description"].Value);
+        }
+        finally
+        {
+            SafeDelete(dn);
+        }
+    }
+
     [Fact]
     public void Multi_valued_mutations_preserve_concurrent_changes_and_use_distinct_operations()
     {

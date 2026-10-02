@@ -154,7 +154,7 @@ public class DirectoryEntry : Component
             {
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                ResetCredentialBinding();
             }
         }
     }
@@ -170,7 +170,7 @@ public class DirectoryEntry : Component
             {
                 _username = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                ResetCredentialBinding();
             }
         }
     }
@@ -185,7 +185,7 @@ public class DirectoryEntry : Component
             {
                 _password = value;
                 _connectionOptionsOverride = null;
-                ResetConnection();
+                ResetCredentialBinding();
             }
         }
     }
@@ -362,6 +362,14 @@ public class DirectoryEntry : Component
         // Other operations still reject the disposed instance through their
         // normal binding guards.
         if (_disposed)
+        {
+            return;
+        }
+
+        // A clean, unbound entry has no provider state to commit. New children
+        // and pending writes must still bind even if their connection was reset.
+        if (_connection is null && !_isNew && _pendingPropertyChanges.Count == 0
+            && !_objectSecurityChanged && !(_objectSecurity?.IsModified() ?? false))
         {
             return;
         }
@@ -1265,6 +1273,27 @@ public class DirectoryEntry : Component
         _objectSecurity = null;
         _objectSecurityChanged = false;
         ResetConnection();
+    }
+
+    private void ResetCredentialBinding()
+    {
+        ResetConnection();
+        // Recreate the property wrapper for the new bind identity, but retain
+        // pending property/security writes so a later commit can retry them.
+        if (_isNew && _properties is not null)
+        {
+            // An unsaved child has no server object to reload. Carry its staged
+            // attributes (including objectClass) into a non-loading wrapper.
+            var replacement = new PropertyCollection(OnPropertyChanged);
+            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
+            {
+                replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+            }
+            _properties = replacement;
+            return;
+        }
+
+        _properties = null;
     }
 
     private void ResetConnection()
