@@ -126,22 +126,24 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
         using var ourContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
             DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
-        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var suffix = Guid.NewGuid().ToString("N");
         var expectedName = $"lg-ms-{suffix}";
         var actualName = $"lg-our-{suffix}";
         var expectedDn = $"CN={expectedName},{DifferentialSettings.UsersContainer}";
         var actualDn = $"CN={actualName},{DifferentialSettings.UsersContainer}";
         using var expected = new Ms.UserPrincipal(microsoftContext)
-        { Name = expectedName, SamAccountName = expectedName, Enabled = false };
+        { Name = expectedName, SamAccountName = $"lg-ms-{suffix[..10]}", Enabled = false };
         using var actual = new Ours.UserPrincipal(ourContext)
-        { Name = actualName, SamAccountName = actualName, Enabled = false };
+        { Name = actualName, SamAccountName = $"lg-our-{suffix[..10]}", Enabled = false };
         var attempted = new List<string>();
         Exception? primaryFailure = null;
         var cleanupFailures = new List<Exception>();
         try
         {
+            CompatibilityOwnedDirectoryObjects.RequireAbsent(expectedDn);
             attempted.Add(expectedDn);
             expected.Save();
+            CompatibilityOwnedDirectoryObjects.RequireAbsent(actualDn);
             attempted.Add(actualDn);
             actual.Save();
             var expectedEntry = Assert.IsType<MsDirectory.DirectoryEntry>(expected.GetUnderlyingObject());

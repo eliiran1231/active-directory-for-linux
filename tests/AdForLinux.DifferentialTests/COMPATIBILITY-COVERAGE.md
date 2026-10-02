@@ -521,6 +521,32 @@ Cumulative: **366 new cases (123 offline, 243 live)** plus **one enhanced existi
 live case**, selecting **367 cases (123 offline, 244 live)**. Windows oracle and AD
 execution remain unrun.
 
+## Batch 16: cumulative audit and cleanup ownership
+
+No new cases. A cumulative read-only audit verified independent provider objects,
+positive prerequisites for live failure probes, and all eight offline classes'
+pre-binding/local-only call paths. Source links remain pinned to `v9.0.0`, matching
+the two Microsoft package references in the differential project.
+
+The audit identified a test-only cleanup flaw: marking a generated DN as owned
+before a failed creation could delete an object already present at that DN.
+All six new writing classes now require authenticated Microsoft RefreshCache to
+prove the exact DN absent (`0x80072030`) before enabling cleanup. Generated object
+or private-container CNs use full GUIDs; account SAM names remain short. Cleanup
+visits only creations actually attempted after that preflight, including partial
+creation failures, and still preserves primary and cleanup errors. Reloads use
+exact DNs rather than truncated SAM names. The shared helper has no test or fixture.
+
+This prevents the preexisting-DN collision path; it is not an atomic reservation
+against a concurrent external writer. The verified disposable isolated lab remains
+mandatory. Existing `TestDataFixture` tracks objects after successful creation and
+uses best-effort cleanup; its unrelated behavior was not rewritten. Cleanup and
+all live prerequisites remain unrun here.
+
+The candidate-family table and explicit per-framework offline commands below form
+the handoff. Counts remain **366 new cases plus one enhanced case**: **123 offline,
+244 live selections**. None of the compatibility hypotheses is runtime-confirmed.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -538,17 +564,51 @@ in #172–#198 were checked against current test files before selecting this bat
 No workflow was dispatched, listener activated, issue opened, or production fix
 made. No AD operation was executed locally.
 
+## Candidate-family handoff
+
+Every row below is **unconfirmed at runtime**. “Source-backed” means the pinned
+Microsoft 9.0.0 implementation and clone take different observable paths;
+“contract probe” means the edge/sequence deserves oracle comparison without a
+claimed source-proven failure. Class names omit the common `Compatibility` prefix
+and `ComparisonTests` suffix. The batch sections above give case counts and
+pinned source links. Controls belong to the same tests and are not separate gaps.
+
+| Candidate family / test classes | Reason to run | Evidence strength | Validation needed |
+| --- | --- | --- | --- |
+| Searcher boundaries / `SearcherState`, `VlvState`, `Synchronization` | Tick rounding, derived VLV arithmetic, full-width flags and failed-setter state | Source-backed candidates plus passing boundary controls | Windows offline on both target frameworks |
+| Constructor and exception contracts / `ContextValidation`, `ContextlessSearcher`, `ExceptionSerialization`, `DisposedEntryValidation` | Competing validation precedence, serialization and disposed-entry guard order | Source-backed candidates; invalid inputs deliberately fail before binding | Windows offline on both frameworks |
+| Failed refresh / `FailedRefreshWrapper` | Whether a failed refresh discards retained property wrappers | Source-backed pre-validation cache reset difference | Windows offline; check repeated failures and wrapper identity |
+| Result copying / `SearchResultCopy`, enhanced `GroupPrincipalComparisonTests` | Index/rank/type validation timing, partial writes and parameter metadata | Contract probes with source-backed manual-copy concerns | Isolated Windows lab; cardinality controls must pass |
+| Result lifetime / `SearchResultLifecycle`, `ResultPathMutation` | Materialization identity, disposal, mutable ADsPath and search-time root state | Source-backed candidates | Isolated lab; verify source entries before local result mutation |
+| Child traversal and retained configuration / `ChildEnumerator`, `EntryOptionsLifecycle` | Reset/Current boundaries and provider-handle state after Close/Dispose | Source-backed candidates | Isolated lab; enumerate owned subtree and verify initial binding |
+| Deferred failures and VLV response / `DeferredSearchError`, `VlvResponse` | Failure stage/recovery and composition of real response fields | Contract probes plus source-backed response-update ordering | Isolated lab with supported VLV; corrected search and exact-cardinality controls |
+| Query translation / `QueryEscaping`, `ExtensionQueryCulture`, `AdvancedDateQuery`, `AdvancedExtensionQuery` | Quoting, culture timing, date sentinels and typed extension conversion | Source-backed translation candidates | Isolated lab for context initialization; these tests do not execute queries |
+| Qualified identity / `IdentityQualification` | Domain/separator handling while locating the same fixture user | Source-backed candidate with malformed-form probes | Isolated lab; per-row bare-SAM lookup prerequisite |
+| Persistence / `WorkstationConversion`, `ExpirationPersistence`, `InsertionRdn` | Serialization to attributes, date kind and escaped insertion names | Source-backed candidates | Isolated lab; inspect persisted values; Unspecified expiration also needs a non-UTC Windows host |
+| Retained deleted membership / `RetainedMembership` | Collection behavior after its owning group is deleted | Source-backed owner-guard candidate | Isolated lab; unique empty groups, successful initial count and delete |
+| Cached principal projection / `CachedLogonProjection`, `CachedScalarLifecycle`, `PrincipalRefreshCache` | Absent/zero timestamp projection and high-level getter caches after underlying cache mutation/refresh | Source-backed candidates | Isolated lab for saved principals; staged timestamps are never committed; persisted timestamp-write semantics remain outside coverage |
+| Native searcher/root ownership / `NativeSearcherReplacement`, `RetainedSearchRoot` | Context replacement and separate context/searcher disposal boundaries | Source-backed candidates | Isolated lab for initialization; initial root-read controls |
+| Native projection/failure state / `NativeProjection`, `NativeFailureState` | Mapped attribute accumulation and temporary FindOne limit after failure | Source-backed candidates | Isolated lab; projection-growth controls and specifically proven missing-DN error |
+
 ## Validation
 
-On Linux with temporary .NET SDK 10.0.401:
+Run from the repository root with .NET SDK 10.0.401 (and the matching .NET 10
+runtime). These Linux-safe commands build both Windows target frameworks but do
+not execute a Microsoft DirectoryServices operation or create an AD fixture:
 
 ```sh
-dotnet build tests/AdForLinux.DifferentialTests -c Release
+dotnet build tests/AdForLinux.DifferentialTests -c Release --nologo
 dotnet test tests/AdForLinux.DifferentialTests -c Release -f net10.0-windows --no-build --list-tests --filter 'Category=CompatibilityCoverageOffline|Category=CompatibilityCoverageLive'
+dotnet test tests/AdForLinux.DifferentialTests -c Release -f net10.0-windows --no-build --list-tests --filter 'Category=CompatibilityCoverageOffline'
+dotnet test tests/AdForLinux.DifferentialTests -c Release -f net10.0-windows --no-build --list-tests --filter 'Category=CompatibilityCoverageLive'
 dotnet test tests/AdForLinux.DifferentialTests -c Release -f net10.0-windows --no-build --filter 'FullyQualifiedName~FixtureRegistrationTests'
 dotnet test tests/AdForLinux.FunctionalTests -c Release -f net10.0 --filter 'FullyQualifiedName~DirectoryEntryLocalStateTests|FullyQualifiedName~CollectionCompatibilityTests'
 git diff --check
 ```
+
+The cloud validation used the executable `/tmp/adfl-dotnet/dotnet` with
+`DOTNET_CLI_HOME=/tmp/adfl-cli`; these temporary paths are not prerequisites for
+other machines. No full-suite `dotnet test` command is safe as an offline check.
 
 Both differential target frameworks build with zero warnings/errors. Current
 discovery reports 367 selected cases (366 new plus one enhanced existing case):
@@ -561,7 +621,8 @@ Windows differential execution and live AD behavior are **unrun** here. On Windo
 the offline batch needs no credentials or AD settings:
 
 ```powershell
-dotnet test tests/AdForLinux.DifferentialTests -c Release --filter 'Category=CompatibilityCoverageOffline' --logger 'trx;LogFilePrefix=compatibility-offline'
+dotnet test tests/AdForLinux.DifferentialTests -c Release -f net8.0-windows --filter 'Category=CompatibilityCoverageOffline' --logger 'trx;LogFileName=compatibility-offline-net8.trx'
+dotnet test tests/AdForLinux.DifferentialTests -c Release -f net10.0-windows --filter 'Category=CompatibilityCoverageOffline' --logger 'trx;LogFileName=compatibility-offline-net10.trx'
 ```
 
 Only after verifying a disposable isolated AD lab and configuring the existing

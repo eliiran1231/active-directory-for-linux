@@ -30,24 +30,27 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
             DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
         using var parent = Open(DifferentialSettings.UsersContainer);
-        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var suffix = Guid.NewGuid().ToString("N");
         var names = new[] { $"ws-ms-{suffix}", $"ws-our-{suffix}" };
         var created = new List<MsDirectory.DirectoryEntry>();
+        var attempted = new List<string>();
         Exception? primaryFailure = null;
         var cleanupErrors = new List<Exception>();
         try
         {
             foreach (var name in names)
             {
+                CompatibilityOwnedDirectoryObjects.RequireAbsent($"CN={name},{DifferentialSettings.UsersContainer}");
+                attempted.Add(name);
                 var entry = parent.Children.Add($"CN={name}", "user");
                 created.Add(entry);
-                entry.Properties["sAMAccountName"].Value = name;
+                entry.Properties["sAMAccountName"].Value = name[..18];
                 entry.Properties["userAccountControl"].Value = 0x202;
                 entry.Properties["userWorkstations"].Value = "BASELINE";
                 entry.CommitChanges();
             }
-            using var expected = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, names[0]);
-            using var actual = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.SamAccountName, names[1]);
+            using var expected = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.DistinguishedName, $"CN={names[0]},{DifferentialSettings.UsersContainer}");
+            using var actual = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={names[1]},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(expected);
             Assert.NotNull(actual);
             Assert.Equal(new[] { "BASELINE" }, expected.PermittedWorkstations.ToArray());
@@ -91,8 +94,8 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             // versus empty attributes. Both reads use Microsoft so decoding
             // differences cannot hide a serialization discrepancy.
             comparison.Check("persisted attribute", ReadRaw(names[0]), ReadRaw(names[1]));
-            using var expectedReload = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, names[0]);
-            using var actualReload = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.SamAccountName, names[1]);
+            using var expectedReload = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.DistinguishedName, $"CN={names[0]},{DifferentialSettings.UsersContainer}");
+            using var actualReload = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={names[1]},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(expectedReload);
             Assert.NotNull(actualReload);
             comparison.Check("fresh principal values", JsonSerializer.Serialize(expectedReload.PermittedWorkstations.ToArray()),
@@ -111,7 +114,7 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
         {
             // Try every cleanup even if one account deletion fails. If a commit
             // failed before SAM was written, the exact-DN probe still finds it.
-            foreach (var name in names)
+            foreach (var name in attempted)
             {
                 try
                 {

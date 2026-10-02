@@ -26,6 +26,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
         // A private subtree avoids depending on unrelated directory contents or
         // LDAP result ordering. The existing fixture supplies a unique prefix.
         var rdn = $"CN={data.UserName}-enum-{Guid.NewGuid():N}";
+        CompatibilityOwnedDirectoryObjects.RequireAbsent($"{rdn},{DifferentialSettings.UsersContainer}");
         using var microsoftRoot = parent.Children.Add(rdn, "container");
         var committed = false;
         Exception? primaryError = null;

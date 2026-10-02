@@ -24,9 +24,9 @@ public sealed class CompatibilityInsertionRdnComparisonTests
     [InlineData("slash")]
     public void Group_insertion_preserves_rdn_literal_like_microsoft(string shape)
     {
-        var suffix = Guid.NewGuid().ToString("N")[..12];
-        var microsoftToken = $"rm{suffix}";
-        var ourToken = $"ro{suffix}";
+        var suffix = Guid.NewGuid().ToString("N");
+        var microsoftToken = $"rm{suffix[..12]}";
+        var ourToken = $"ro{suffix[..12]}";
         var containerName = $"adfl-rdn-{suffix}";
         var container = $"CN={containerName},{DifferentialSettings.UsersContainer}";
         var containerAttempted = false;
@@ -37,6 +37,7 @@ public sealed class CompatibilityInsertionRdnComparisonTests
             // Mark before CommitChanges: it can persist the container before a later
             // client-side step reports failure. The predictable owned DN lets
             // cleanup also remove groups whose Save failed before setting SAM.
+            CompatibilityOwnedDirectoryObjects.RequireAbsent(container);
             containerAttempted = true;
             using (var parent = Open(DifferentialSettings.UsersContainer))
             using (var child = parent.Children.Add($"CN={containerName}", "container"))

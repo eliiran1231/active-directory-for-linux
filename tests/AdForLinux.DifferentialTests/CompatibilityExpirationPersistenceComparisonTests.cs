@@ -36,23 +36,26 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
             DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
         using var parent = Open(DifferentialSettings.UsersContainer);
-        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var suffix = Guid.NewGuid().ToString("N");
         var names = new[] { $"ex-ms-{suffix}", $"ex-our-{suffix}" };
         var created = new List<MsDirectory.DirectoryEntry>();
+        var attempted = new List<string>();
         Exception? primaryFailure = null;
         var errors = new List<Exception>();
         try
         {
             foreach (var name in names)
             {
+                CompatibilityOwnedDirectoryObjects.RequireAbsent($"CN={name},{DifferentialSettings.UsersContainer}");
+                attempted.Add(name);
                 var entry = parent.Children.Add($"CN={name}", "user");
                 created.Add(entry);
-                entry.Properties["sAMAccountName"].Value = name;
+                entry.Properties["sAMAccountName"].Value = name[..18];
                 entry.Properties["userAccountControl"].Value = 0x202;
                 entry.CommitChanges();
             }
-            using var expected = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, names[0]);
-            using var actual = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.SamAccountName, names[1]);
+            using var expected = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.DistinguishedName, $"CN={names[0]},{DifferentialSettings.UsersContainer}");
+            using var actual = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={names[1]},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(expected);
             Assert.NotNull(actual);
             expected.AccountExpirationDate = value;
@@ -73,8 +76,8 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
             var actualRaw = ReadRawFileTime(names[1]);
             Assert.NotNull(expectedRaw);
             comparison.Check("persisted accountExpires", expectedRaw, actualRaw);
-            using var expectedReload = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, names[0]);
-            using var actualReload = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.SamAccountName, names[1]);
+            using var expectedReload = Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.DistinguishedName, $"CN={names[0]},{DifferentialSettings.UsersContainer}");
+            using var actualReload = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={names[1]},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(expectedReload);
             Assert.NotNull(actualReload);
             Assert.NotNull(expectedReload.AccountExpirationDate);
@@ -87,7 +90,7 @@ public sealed class CompatibilityExpirationPersistenceComparisonTests(ITestOutpu
         }
         finally
         {
-            foreach (var name in names)
+            foreach (var name in attempted)
             {
                 try
                 {

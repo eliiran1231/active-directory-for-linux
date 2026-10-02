@@ -26,7 +26,7 @@ public sealed class CompatibilityRetainedMembershipComparisonTests
         using var ourContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
             DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
-        var suffix = Guid.NewGuid().ToString("N")[..10];
+        var suffix = Guid.NewGuid().ToString("N");
         var expectedName = $"adfl-rm-{suffix}";
         var actualName = $"adfl-ro-{suffix}";
         var expectedSeedAttempted = false;
@@ -36,12 +36,14 @@ public sealed class CompatibilityRetainedMembershipComparisonTests
         try
         {
             // Save can create an object before reporting a later failure.
+            CompatibilityOwnedDirectoryObjects.RequireAbsent($"CN={expectedName},{DifferentialSettings.UsersContainer}");
             expectedSeedAttempted = true;
             Seed(microsoftContext, expectedName);
+            CompatibilityOwnedDirectoryObjects.RequireAbsent($"CN={actualName},{DifferentialSettings.UsersContainer}");
             actualSeedAttempted = true;
             Seed(microsoftContext, actualName);
-            using var microsoft = Ms.GroupPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, expectedName);
-            using var ours = Ours.GroupPrincipal.FindByIdentity(ourContext, Ours.IdentityType.SamAccountName, actualName);
+            using var microsoft = Ms.GroupPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.DistinguishedName, $"CN={expectedName},{DifferentialSettings.UsersContainer}");
+            using var ours = Ours.GroupPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={actualName},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(microsoft);
             Assert.NotNull(ours);
             var expectedMembers = microsoft.Members;
@@ -117,9 +119,9 @@ public sealed class CompatibilityRetainedMembershipComparisonTests
 
     private static void Seed(Ms.PrincipalContext context, string name)
     {
-        using var group = new Ms.GroupPrincipal(context, name)
+        using var group = new Ms.GroupPrincipal(context)
         {
-            Name = name, IsSecurityGroup = true, GroupScope = Ms.GroupScope.Global,
+            Name = name, SamAccountName = name[..18], IsSecurityGroup = true, GroupScope = Ms.GroupScope.Global,
         };
         group.Save();
     }
