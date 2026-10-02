@@ -462,6 +462,36 @@ live case**, selecting **360 cases (123 offline, 237 live)**. Both frameworks bu
 without warnings/errors; safe fixture registration passes 22/22. All compatibility
 differences remain source-backed hypotheses; Windows oracle/AD execution is unrun.
 
+## Batch 14: retained native search-root ownership
+
+`CompatibilityRetainedSearchRootComparisonTests` adds **3 live read-only cases**:
+keep both owners alive, dispose only PrincipalSearcher, or dispose only
+PrincipalContext. Each retains the already-created native search root and
+successfully reads its Name before changing lifetime. It then compares Name and
+exception observations through that retained entry, not through a disposed PAPI
+wrapper. No Find, Save, Commit or independent borrowed-root disposal is used.
+
+Microsoft [ADStoreCtx_Query](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_Query.cs)
+passes its context-owned entry to the native DirectorySearcher. The native
+[DirectorySearcher.Dispose](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs)
+disposes only an internally allocated root, while [PrincipalContext](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Context.cs)
+and [ADStoreCtx](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx.cs)
+dispose their owned context entry. The clone instead creates a separate root
+owned by PrincipalSearcher. The two disposal rows exercise opposite ownership
+boundaries; the no-disposal row is a positive control.
+
+The additional sequential-state review found matching PrincipalValueCollection
+validation/change-tracking order already covered by existing edge/traversal
+suites. ObjectSecurity assignment, null rejection and disposal/reassignment also
+agree in source. Its failed-full-refresh descriptor loss shares the pre-validation
+cache reset exposed in batch 13, so no duplicate descriptor matrix was added.
+
+Cumulative: **362 new cases (123 offline, 239 live)** plus **one enhanced existing
+live case**, selecting **363 cases (123 offline, 240 live)**. Both frameworks build
+without warnings/errors; safe fixture registration passes 22/22. Windows oracle
+execution remains unrun. Runtime confirmation is required before reporting any
+of these ownership differences as observed compatibility failures.
+
 ## Findings and prior-work check
 
 All newly covered gaps remain **suspected/unconfirmed** until the Windows oracle
@@ -492,8 +522,8 @@ git diff --check
 ```
 
 Both differential target frameworks build with zero warnings/errors. Current
-discovery reports 360 selected cases (359 new plus one enhanced existing case):
-123 offline and 237 live selections.
+discovery reports 363 selected cases (362 new plus one enhanced existing case):
+123 offline and 240 live selections.
 The selected existing functional checks passed 27/27 in batch 1. Current fixture
 registration checks pass 22/22 without constructing AD fixtures. These checks
 validate compilation/registration, not oracle parity.
