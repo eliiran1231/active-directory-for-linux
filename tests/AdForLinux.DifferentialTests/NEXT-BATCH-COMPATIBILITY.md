@@ -1,16 +1,52 @@
 # Principal state and membership compatibility probes
 
-This batch adds **52 cases per framework for 11 distinct candidate root causes**.
-It changes tests and documentation only. Every test asserts parity with the
-actual Microsoft 9.0.0 assembly, so incompatibilities intentionally fail.
+This batch contains **52 cases per framework for 11 distinct root causes**.
+Every test asserts parity with the actual Microsoft 9.0.0 assembly. The tests
+and their oracle comparisons are unchanged by the issue #213 production fix.
 
-Validation on Windows, 2026-10-03:
+## Confirmed baseline
 
-- Both `net8.0-windows` and `net10.0-windows` build with zero warnings/errors.
-- The 20 offline cases ran on both targets: **15 failed, 5 passed, 0 skipped**
-  on each. These confirm cause 1, not 15 different bugs.
-- The other **32 cases require AD and have not been executed here**. Causes
-  2–11 are source-supported predictions awaiting the differential run.
+The [complete Windows differential run 37124202219](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37124202219)
+executed all cases on both `net8.0-windows` and `net10.0-windows`:
+
+- Complete suite, per target: **1,262 executed, 1,222 passed, 40 failed, zero skipped**.
+- This batch, per target: **52 executed, 16 passed, 36 failed**.
+- All 11 candidate root causes below were confirmed, including the previously
+  provisional live-AD cases. The failing-case sets were identical across targets.
+- [Issue #213](https://github.com/eliiran1231/active-directory-for-linux/issues/213)
+  covers **33 failures across ten gaps**. The three undefined-GroupScope failures
+  belong to [#60](https://github.com/eliiran1231/active-directory-for-linux/issues/60)
+  and are excluded from this fix. The four other suite failures belong to
+  [#203](https://github.com/eliiran1231/active-directory-for-linux/issues/203) and
+  [#56](https://github.com/eliiran1231/active-directory-for-linux/issues/56).
+
+## Verified issue #213 fix
+
+Validated production commit `76c4af279c71eba650bd27367798d8b746d5d42f` on
+2026-10-03; the subsequent report update changes documentation only.
+
+- [Full Windows/AD differential run 37126652280](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37126652280):
+  **1,262 executed, 1,255 passed, 7 failed, zero skipped on each framework**.
+  Both TRX artifacts were inspected; their remaining failing-case sets match.
+- **All 33 in-scope failures now pass**, and all **16 previously passing batch
+  controls remain passing** on each target. The batch is **49 passed / 3 failed**;
+  only the three undefined-GroupScope cases for #60 remain.
+- The four failures outside this batch are unchanged: the two retained entry
+  options cases (#203) and the two protected-Negotiate inheritance cases (#56).
+  The workflow remains red solely for these seven explicitly excluded cases.
+- Per-run OU creation, result upload, and OU cleanup all succeeded.
+- [Linux/Samba CI run 37126653686](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37126653686):
+  build succeeded; **526 functional tests passed, zero failed or skipped on each
+  of .NET 8 and .NET 10**.
+- Local targeted checks also passed on both frameworks: 20 generic-finder
+  oracle comparisons and 28 existing query-filter functional cases.
+
+The fix validates constructor contexts and generic finder types, separates
+nullable group assignment state, retains scalar writes until Save, returns
+pending Name assignments, retains pending member objects until persistence,
+queries stored membership independently of collection edits, and converts
+ordinary wrapped extension values without recursive expansion. Advanced
+extension conversion and the existing Microsoft-oracle tests are unchanged.
 
 ## Run
 
@@ -37,7 +73,7 @@ should be evaluated separately from test setup failures.
 Names below are test method names; parameter variants and controls are not
 counted as additional root causes.
 
-| # | Test / cases | Microsoft contract and suspected clone cause |
+| # | Test / cases | Microsoft contract and confirmed baseline defect |
 | --- | --- | --- |
 | 1 | `Generic_finder_validates_subtype_before_null_context` / 20 | `CheckFindByArgs` rejects a generic type that is not an `AuthenticablePrincipal` before checking context. The clone's protected date finders go straight to context/date conversion without validating `T`. Confirmed: `ArgumentException` with no parameter versus `ArgumentNullException("context")`. Five methods × three invalid types fail; five valid-user subtype controls pass. |
 | 2 | `Principal_constructor_checks_disposed_context` / 6 | Microsoft's constructors assign through `ContextRaw`, which checks context disposal. The clone's `AuthenticablePrincipal` and `GroupPrincipal` constructors assign `ContextRef` directly. Covers user/computer/group, each with a live-context control. |
