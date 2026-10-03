@@ -1,5 +1,9 @@
 # Differential tests (run these on Windows)
 
+The [cache boundary probe batch](CACHE-BOUNDARY-COMPATIBILITY.md) adds 30 cases
+targeting 14 candidate root causes: one confirmed offline and thirteen awaiting
+AD-backed execution. Run with `--filter "FullyQualifiedName~CacheBoundary"`.
+
 The [principal state and membership probe batch](NEXT-BATCH-COMPATIBILITY.md)
 adds 52 cases targeting 11 root causes: one confirmed offline and ten awaiting
 AD-backed execution. Run it with `--filter "FullyQualifiedName~NextBatch"`.
