@@ -194,6 +194,31 @@ cases, and pass all 31 fixture-registration checks. No AD operation was run.
 
 Batch 7 was published at `9dfe456cf9f9a1bae066461c5b900fe7e08d9baa`.
 
+## Batch 9: four live-filter and Save(context)-ownership cases
+
+- `CompatibilityLiveSchemaFilterCursorComparisonTests`: capture a bound
+  SchemaFilter cursor before indexer assignment or structural replacement.
+  Fresh wrappers prove the updated filter; the actual Microsoft captured
+  values are compared without assuming COM array identity. The existing
+  delegate fixture explicitly omits live ADSI marshaling. No child enumeration
+  or persistent write is performed, but binding still requires the lab.
+- `CompatibilitySaveContextNativeOwnershipComparisonTests`: retain the native
+  entry across Save into the same context instance or a distinct context for
+  the same container. Successful saving and independently verified DN/GUID/SAM/
+  marker are prerequisites to identity/readability comparisons. **Same-container
+  ADSI MoveHere success is unverified**: a rejected Save explicitly reports that
+  the lifetime comparison was not reached, not a confirmed ownership gap.
+  Created users have guarded exact-DN cleanup; no scalar changes are staged.
+
+Total: **57 cases across 20 contracts**: one observed managed difference and
+nineteen live hypotheses. Both new classes build cleanly and discover two cases
+per target each. Independent final-file review found no blockers. Neither uses
+the shared fixture, so the prior 31 fixture-registration checks remain applicable.
+The related retained-SchemaFilter-after-Close COM-lifetime lead was not added:
+it risks overlapping existing owner work and requires additional runtime evidence.
+
+Batch 8 was published at `cc81c0cfd835021e8662357c6446e95c99382196`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -235,7 +260,7 @@ Batch 7 was published at `9dfe456cf9f9a1bae066461c5b900fe7e08d9baa`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **53** new cases across the eight batches,
+- Both targets' discovery lists all **57** new cases across the nine batches,
   without creating the AD fixture.
 - Each target's fixture-registration checks: **31 passed, 0 failed**, including
   all eight new fixture-consuming classes. The paging and SPN classes need configured
@@ -254,8 +279,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 50 new live cases were not included.
-- Independent read-only review of all fourteen new classes found no blocking test
+  were not changed, and the 54 new live cases were not included.
+- Independent read-only review of all sixteen new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
