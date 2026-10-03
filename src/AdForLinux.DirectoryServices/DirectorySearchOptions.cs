@@ -341,6 +341,9 @@ public class DirectoryVirtualListView
         // response total first so all observable response state is coherent.
         ApproximateTotal = approximateTotal;
         Offset = offset;
+        // ADSI applies the percentage through its setter after the offset;
+        // integer rounding is consequently visible in the final Offset.
+        TargetPercentage = TargetPercentage;
         DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(contextId);
     }
 }

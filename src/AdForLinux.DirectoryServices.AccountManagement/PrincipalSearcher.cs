@@ -19,7 +19,6 @@ public class PrincipalSearcher : IDisposable
     private PrincipalContext? _context;
     private Principal? _queryFilter;
     private DirectorySearcher? _underlyingSearcher;
-    private PrincipalContext? _underlyingContext;
     private DirectoryEntry? _searchRoot;
     private bool _disposed;
 
@@ -51,6 +50,11 @@ public class PrincipalSearcher : IDisposable
 
             ThrowIfDisposed();
 
+            if (value.Context is null)
+            {
+                throw new ArgumentException("The query filter must have a context.");
+            }
+
             if (value.IsPersisted)
             {
                 throw new ArgumentException(
@@ -58,13 +62,8 @@ public class PrincipalSearcher : IDisposable
                     nameof(QueryFilter));
             }
 
-            var previousContext = _context;
             _queryFilter = value;
             _context = value.Context;
-            if (!ReferenceEquals(previousContext, _context))
-            {
-                ResetUnderlyingSearcher();
-            }
         }
     }
 
@@ -85,19 +84,12 @@ public class PrincipalSearcher : IDisposable
     {
         var searcher = PrepareUnderlyingSearcher();
         var originalSizeLimit = searcher.SizeLimit;
-        try
-        {
-            searcher.SizeLimit = 1;
-            var result = searcher.FindOne();
-            return result is null
-                ? null
-                : Principal.Materialize(
-                    Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());
-        }
-        finally
-        {
-            searcher.SizeLimit = originalSizeLimit;
-        }
+        searcher.SizeLimit = 1;
+        var result = searcher.FindOne();
+        searcher.SizeLimit = originalSizeLimit;
+        return result is null
+            ? null
+            : Principal.Materialize(Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());
     }
 
     /// <summary>Returns every match.</summary>
@@ -151,22 +143,21 @@ public class PrincipalSearcher : IDisposable
     {
         ThrowIfDisposed();
         var (context, filter) = Build();
-        if (_underlyingSearcher is null || !ReferenceEquals(_underlyingContext, context))
+        if (_underlyingSearcher is null)
         {
-            ResetUnderlyingSearcher();
-        _searchRoot = context.CreateDirectoryEntry(context.QueryContainer);
+            _searchRoot = context.SearchRoot;
             _underlyingSearcher = new DirectorySearcher(_searchRoot)
             {
                 PageSize = 256,
                 ServerTimeLimit = TimeSpan.FromSeconds(30),
             };
-            _underlyingContext = context;
         }
 
         // Match Microsoft's PushFilterToNativeSearcher behavior: refresh the QBE
         // filter for each accessor/query while preserving caller changes to the
         // other DirectorySearcher properties.
         _underlyingSearcher.Filter = filter;
+        _underlyingSearcher.PropertiesToLoad.AddRange(PrincipalSearchProjection.For(_queryFilter!.GetType()).ToArray());
         return _underlyingSearcher;
     }
 
@@ -216,9 +207,7 @@ public class PrincipalSearcher : IDisposable
     private void ResetUnderlyingSearcher()
     {
         _underlyingSearcher?.Dispose();
-        _searchRoot?.Dispose();
         _underlyingSearcher = null;
-        _underlyingContext = null;
         _searchRoot = null;
     }
 

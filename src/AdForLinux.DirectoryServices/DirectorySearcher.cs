@@ -417,6 +417,28 @@ public class DirectorySearcher : Component
     /// <summary>Returns every match. Pages automatically when PageSize &gt; 0.</summary>
     public SearchResultCollection FindAll()
     {
+        try
+        {
+            return FindAllCore();
+        }
+        catch (ArgumentException error) when (error.ParamName == nameof(Filter))
+        {
+            // ExecuteSearch accepts the request; ADSI reports malformed filters
+            // when the result cursor first advances, even for cached searches.
+            return new SearchResultCollection(DeferredFilterError(error), CacheResults, GetPropertiesLoaded());
+        }
+    }
+
+    private static IEnumerable<SearchResult> DeferredFilterError(ArgumentException error)
+    {
+        throw new ArgumentException(error.Message, error.InnerException);
+#pragma warning disable CS0162
+        yield break;
+#pragma warning restore CS0162
+    }
+
+    private SearchResultCollection FindAllCore()
+    {
         var configuredRoot = RequireRoot();
         using var reboundRoot = configuredRoot.IsDisposed
             ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)

@@ -10,7 +10,8 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchResult>, ICollection, IDisposable
 {
-    private IReadOnlyList<SearchResult>? _results;
+    private ArrayList? _results;
+    private readonly IReadOnlyList<SearchResult>? _sourceResults;
     private readonly IEnumerable<SearchResult>? _streamingResults;
     private readonly ReplayableSearchResults? _replayableResults;
     private readonly ForwardOnlySearchResults? _forwardOnlyResults;
@@ -18,7 +19,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     internal SearchResultCollection(IReadOnlyList<SearchResult> results, string[]? propertiesLoaded = null)
     {
-        _results = results;
+        _sourceResults = results;
         PropertiesLoaded = propertiesLoaded?.ToArray() ?? Array.Empty<string>();
     }
 
@@ -33,7 +34,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         PropertiesLoaded = propertiesLoaded?.ToArray() ?? Array.Empty<string>();
     }
 
-    public SearchResult this[int index] => Materialize()[index];
+    public SearchResult this[int index] => (SearchResult)Materialize()[index]!;
 
     SearchResult IReadOnlyList<SearchResult>.this[int index] => this[index];
 
@@ -65,15 +66,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     public bool Contains(SearchResult result) => Materialize().Contains(result);
 
-    public void CopyTo(SearchResult[] results, int index)
-    {
-        ArgumentNullException.ThrowIfNull(results);
-        var materialized = Materialize();
-        for (var i = 0; i < materialized.Count; i++)
-        {
-            results[index + i] = materialized[i];
-        }
-    }
+    public void CopyTo(SearchResult[] results, int index) => Materialize().CopyTo(results, index);
 
     public int IndexOf(SearchResult result)
     {
@@ -105,6 +98,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         if (disposing)
         {
             (_streamingResults as IDisposable)?.Dispose();
+            _replayableResults?.Dispose();
             _forwardOnlyResults?.Dispose();
         }
 
@@ -121,9 +115,14 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_results is not null)
+        if (_sourceResults is not null)
         {
-            return _results.GetEnumerator();
+            return _sourceResults.Select(result => result.Snapshot()).GetEnumerator();
+        }
+
+        if (_results is not null && _forwardOnlyResults is not null)
+        {
+            return _results.Cast<SearchResult>().GetEnumerator();
         }
 
         if (_replayableResults is not null)
@@ -138,29 +137,24 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     object ICollection.SyncRoot => this;
 
-    void ICollection.CopyTo(Array array, int index)
-    {
-        var materialized = Materialize();
-        for (var i = 0; i < materialized.Count; i++)
-        {
-            array.SetValue(materialized[i], index + i);
-        }
-    }
+    void ICollection.CopyTo(Array array, int index) => Materialize().CopyTo(array, index);
 
-    private IReadOnlyList<SearchResult> Materialize()
+    private ArrayList Materialize()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         if (_results is not null)
         {
             return _results;
         }
 
-        if (_replayableResults is not null)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_sourceResults is not null)
         {
-            return _results = _replayableResults.Materialize();
+            return _results = new ArrayList(_sourceResults.Select(result => result.Snapshot()).ToArray());
         }
 
-        return _results = _forwardOnlyResults!.MaterializeRemaining();
+        return _results = new ArrayList((_replayableResults is not null
+            ? _replayableResults.Materialize()
+            : _forwardOnlyResults!.MaterializeRemaining()).ToArray());
     }
 
     private sealed class ForwardOnlySearchResults : IDisposable
@@ -286,7 +280,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         }
     }
 
-    private sealed class ReplayableSearchResults : IEnumerable<SearchResult>
+    private sealed class ReplayableSearchResults : IEnumerable<SearchResult>, IDisposable
     {
         private readonly object _gate = new();
         private readonly IEnumerator<SearchResult> _source;
@@ -314,6 +308,18 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
             }
 
             return _cache;
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                if (!_complete)
+                {
+                    _complete = true;
+                    _source.Dispose();
+                }
+            }
         }
 
         private bool TryGet(int index, out SearchResult result)

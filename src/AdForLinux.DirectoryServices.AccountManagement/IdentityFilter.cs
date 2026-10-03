@@ -19,7 +19,7 @@ internal static class IdentityFilter
 
         return identityType switch
         {
-            IdentityType.SamAccountName => $"(sAMAccountName={value})",
+            IdentityType.SamAccountName => SamAccountNameAssertion(identityValue),
             IdentityType.Name => $"(cn={value})",
             IdentityType.UserPrincipalName => $"(userPrincipalName={value})",
             IdentityType.DistinguishedName => $"(distinguishedName={value})",
@@ -28,6 +28,20 @@ internal static class IdentityFilter
             _ => throw new InvalidEnumArgumentException(
                 nameof(identityType), (int)identityType.Value, typeof(IdentityType)),
         };
+    }
+
+    private static string SamAccountNameAssertion(string identity)
+    {
+        var separator = identity.IndexOf('\\');
+        if (separator >= 0)
+        {
+            if (separator == identity.Length - 1)
+            {
+                throw new ArgumentException("The qualified account name is incomplete.");
+            }
+            identity = identity[(separator + 1)..];
+        }
+        return $"(sAMAccountName={LdapFilter.EscapeValue(identity)})";
     }
 
     public static IReadOnlyList<string> BuildValueOnlyCandidates(string identityValue)

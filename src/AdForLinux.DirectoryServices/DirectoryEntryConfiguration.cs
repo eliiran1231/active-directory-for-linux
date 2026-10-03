@@ -17,14 +17,15 @@ public class DirectoryEntryConfiguration
     /// <summary>Gets or sets the page size used when enumerating child entries. Zero disables paging.</summary>
     public int PageSize
     {
-        get => _pageSize;
+        get { _entry.ThrowIfDisposed(); return _pageSize; }
         set
         {
             if (value < 0)
             {
-                throw new ArgumentException("The PageSize must be greater than or equal to zero.", nameof(value));
+                throw new ArgumentException("The PageSize must be greater than or equal to zero.");
             }
 
+            _entry.ThrowIfDisposed();
             _pageSize = value;
         }
     }
@@ -35,7 +36,7 @@ public class DirectoryEntryConfiguration
     /// </summary>
     public PasswordEncodingMethod PasswordEncoding
     {
-        get => _passwordEncoding;
+        get { _entry.ThrowIfDisposed(); return _passwordEncoding; }
         set
         {
             if (value is not PasswordEncodingMethod.PasswordEncodingSsl and
@@ -44,6 +45,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(PasswordEncodingMethod));
             }
 
+            _entry.ThrowIfDisposed();
             _passwordEncoding = value;
         }
     }
@@ -54,8 +56,8 @@ public class DirectoryEntryConfiguration
     /// </summary>
     public int PasswordPort
     {
-        get => _passwordPort;
-        set => _passwordPort = value;
+        get { _entry.ThrowIfDisposed(); return _passwordPort; }
+        set { _entry.ThrowIfDisposed(); _passwordPort = value; }
     }
 
     internal void ValidatePasswordOperation()
@@ -76,7 +78,7 @@ public class DirectoryEntryConfiguration
     /// <summary>Gets or sets the referral-chasing preference.</summary>
     public ReferralChasingOption Referral
     {
-        get => _referral;
+        get { _entry.ThrowIfDisposed(); return _referral; }
         set
         {
             if (value is not ReferralChasingOption.None and
@@ -87,6 +89,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ReferralChasingOption));
             }
 
+            _entry.ThrowIfDisposed();
             if (_referral != value)
             {
                 _referral = value;
@@ -98,7 +101,7 @@ public class DirectoryEntryConfiguration
     /// <summary>Gets or sets the requested security descriptor parts.</summary>
     public SecurityMasks SecurityMasks
     {
-        get => _securityMasks;
+        get { _entry.ThrowIfDisposed(); return _securityMasks; }
         set
         {
             const SecurityMasks allMasks = SecurityMasks.Owner | SecurityMasks.Group |
@@ -108,6 +111,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SecurityMasks));
             }
 
+            _entry.ThrowIfDisposed();
             _securityMasks = value;
         }
     }

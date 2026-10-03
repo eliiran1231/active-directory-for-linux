@@ -37,9 +37,22 @@ public static class DifferentialSettings
         BaseDn.TrimStart().StartsWith("OU=", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Where the tests create their temporary objects.</summary>
-    public static string UsersContainer =>
-        Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
-        ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
+    public static string UsersContainer
+    {
+        get
+        {
+            var container = Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
+                ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
+            if (HasIsolatedBaseDn
+                && !container.Equals(BaseDn, StringComparison.OrdinalIgnoreCase)
+                && !container.EndsWith("," + BaseDn, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "AD_USERS_CONTAINER_DN must remain inside the isolated AD_BASE_DN test OU.");
+            }
+            return container;
+        }
+    }
 
     /// <summary>
     /// Server name for PrincipalContext. Microsoft credential validation and

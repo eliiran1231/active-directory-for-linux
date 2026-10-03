@@ -10,6 +10,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class PrincipalCollection : ICollection<Principal>, ICollection
 {
     private readonly GroupPrincipal _group;
+    private DirectoryEntry? _retainedEntry;
     private readonly List<string> _insertedValuesCompleted = new();
     private readonly List<string> _insertedValuesPending = new();
     private readonly List<string> _removedValuesCompleted = new();
@@ -47,7 +48,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         get
         {
             CheckDisposed();
-            _group.EnsureMembersUsable();
+            EnsureReadableMembers();
             return EffectiveMembers().Count;
         }
     }
@@ -61,6 +62,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     public void Add(Principal principal)
     {
         CheckDisposed();
+        ArgumentNullException.ThrowIfNull(principal);
         _group.EnsureMembersUsable();
         var value = RequireMembershipValue(principal);
         if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsValue(value))
@@ -108,6 +110,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     public bool Remove(Principal principal)
     {
         CheckDisposed();
+        ArgumentNullException.ThrowIfNull(principal);
         _group.EnsureMembersUsable();
         var value = RequireMembershipValue(principal);
         if (_group.IsPersisted && principal.IsPrimaryGroup(_group))
@@ -201,7 +204,6 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     void ICollection.CopyTo(Array array, int index)
     {
         CheckDisposed();
-        _group.EnsureMembersUsable();
         if (index < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(index));
@@ -210,12 +212,12 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(array);
         if (array.Rank != 1)
         {
-            throw new ArgumentException("The array must be one-dimensional.", nameof(array));
+            throw new ArgumentException("The array must be one-dimensional.");
         }
 
         if (index >= array.GetLength(0))
         {
-            throw new ArgumentException("The index is outside the array.", nameof(index));
+            throw new ArgumentException("The index is outside the array.");
         }
 
         var values = new List<Principal>();
@@ -272,12 +274,12 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     public IEnumerator<Principal> GetEnumerator()
     {
         CheckDisposed();
-        _group.EnsureMembersUsable();
         return new PrincipalCollectionEnumerator(this);
     }
 
     private IEnumerable<Principal> EnumerateMembers()
     {
+        EnsureReadableMembers();
         foreach (var member in EffectiveMembers())
         {
             var entry = member.Context.CreateDirectoryEntry(member.DistinguishedName);
@@ -296,7 +298,24 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     internal void Dispose()
     {
+        _retainedEntry?.Dispose();
         _disposed = true;
+    }
+
+    private void EnsureReadableMembers()
+    {
+        if (_group.IsDeleted && _retainedEntry is not null)
+        {
+            // A retained collection reaches its old directory binding when
+            // enumerated, whereas argument checks and cursor creation stay local.
+            _retainedEntry.RefreshCache(new[] { "member" });
+        }
+        _group.EnsureMembersUsable();
+        if (_retainedEntry is null && _group.IsPersisted)
+        {
+            var entry = _group.RequireEntry();
+            _retainedEntry = entry.CreateEntryForDn(entry.DistinguishedName);
+        }
     }
 
     private void CheckDisposed()

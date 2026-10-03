@@ -164,7 +164,6 @@ internal static class PrincipalQueryFilterTranslator
         {
             DateTime date => date.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture),
             bool boolean => boolean ? "TRUE" : "FALSE",
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             _ => value.ToString(),
         } ?? throw new InvalidOperationException(
             $"The extension value for '{attribute}' cannot be converted to an LDAP assertion.");
@@ -172,9 +171,28 @@ internal static class PrincipalQueryFilterTranslator
         return $"({attribute}={EscapeKeepingWildcards(text)})";
     }
 
-    private static string EscapeKeepingWildcards(string value) => value
-        .Replace("\\", "\\5c")
-        .Replace("(", "\\28")
-        .Replace(")", "\\29")
-        .Replace("\0", "\\00");
+    internal static string EscapeKeepingWildcards(string value)
+    {
+        var escaped = new System.Text.StringBuilder(value.Length);
+        var quoted = false;
+        foreach (var character in value)
+        {
+            if (character == '\\' && !quoted)
+            {
+                quoted = true;
+                continue;
+            }
+            escaped.Append(character switch
+            {
+                '(' => "\\28",
+                ')' => "\\29",
+                '*' when quoted => "\\2a",
+                '\\' => "\\5c",
+                '\0' => "\\00",
+                _ => character.ToString(),
+            });
+            quoted = false;
+        }
+        return escaped.ToString();
+    }
 }
