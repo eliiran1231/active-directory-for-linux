@@ -219,6 +219,39 @@ it risks overlapping existing owner work and requires additional runtime evidenc
 
 Batch 8 was published at `cc81c0cfd835021e8662357c6446e95c99382196`.
 
+## Batch 10: three failed-insert retry and binary-ownership cases
+
+- `CompatibilityFailedInsertRetryComparisonTests`: one same-instance retry
+  after rejected deferred password. Independent successful controls for both
+  implementations use encrypted SimpleBind; fresh Microsoft reads verify both
+  control DNs and non-null LastPasswordSet. Initial rejection and exact-DN
+  rollback absence are prerequisites. The same principals receive a corrected
+  password and retry Save; actual exceptions/existence are compared without
+  prescribing a provider failure code. All four owned users have guarded
+  cleanup. This does not duplicate the existing new-instance retry or #56.
+- `CompatibilitySearchResultBinaryOwnershipComparisonTests`: two cached
+  exact-DN result enumerations, with and without a local mutation to the first
+  objectGUID byte buffer. Copied baselines and separate queries before/after
+  establish unchanged directory data. Explicit traversal avoids Count/indexer
+  materialization. The unchanged control compares contents only; the mutation
+  case also compares buffer identity. This is nested-value ownership, distinct
+  from existing outer SearchResult identity tests.
+
+Total: **60 cases across 22 contracts**: one observed managed difference and
+21 live hypotheses. Both targets build with zero warnings/errors. A cumulative
+filtered discovery confirms all 60 cases across 18 classes on each target;
+fixture-registration checks pass **32/32** on each. Independent review found no
+blocking defects. No AD execution occurred.
+
+The latest bounded audits found no distinct additions in LDAP CopyTo/unsupported
+Invoke dispatch, ordinary extension metadata inheritance, certificate thumbprint
+multisets, PropertiesLoaded ownership, or already-covered root replacement.
+Latest dev and pending owner branch were rechecked unchanged before this batch.
+Build/discovery evidence is preserved alongside the original audit at
+`/workspace/scratch/compatibility-audit-2026-10-03/validation/`.
+
+Batch 9 was published at `8f2a608efb39e03e4e2524ab80d26972143f09cd`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -260,10 +293,10 @@ Batch 8 was published at `cc81c0cfd835021e8662357c6446e95c99382196`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **57** new cases across the nine batches,
+- Both targets' discovery lists all **60** new cases across the ten batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **31 passed, 0 failed**, including
-  all eight new fixture-consuming classes. The paging and SPN classes need configured
+- Each target's fixture-registration checks: **32 passed, 0 failed**, including
+  all nine new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -279,8 +312,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 54 new live cases were not included.
-- Independent read-only review of all sixteen new classes found no blocking test
+  were not changed, and the 57 new live cases were not included.
+- Independent read-only review of all eighteen new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
