@@ -48,6 +48,29 @@ queries stored membership independently of collection edits, and converts
 ordinary wrapped extension values without recursive expansion. Advanced
 extension conversion and the existing Microsoft-oracle tests are unchanged.
 
+## Review follow-up: membership lifecycle
+
+Production/test commit `0b07d77` addresses both PR #214 review findings:
+retained members match reloaded wrappers by principal equality after acquiring a
+stored identity, and group disposal no longer disposes inserted member objects.
+
+`MembershipLifecycleComparisonTests` adds four public-API oracle cases outside
+the original 52-case batch: Add an unsaved member, Save that member, look it up,
+and test Contains/Remove/duplicate Add; then identity-based Add, enumeration,
+group disposal, and a retained member property read. The existing owned-user
+fixture accepts an optional before-Save callback; its cleanup is unchanged.
+Groups stay unsaved and all created users are deleted by fresh exact-DN lookup.
+
+- [Fresh full AD run 37128090803](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37128090803):
+  **1,266 executed, 1,259 passed, 7 failed, zero skipped per framework**.
+  All four new cases pass on both .NET 8 and .NET 10. The original batch remains
+  49 passed / 3 failed, and the remaining seven suite failures are exactly the
+  #60/#203/#56 exclusions listed above. Both TRX files were inspected.
+- OU creation, artifact upload, and cleanup all succeeded.
+- [Fresh Linux/Samba CI 37128092898](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37128092898):
+  build passed; **526 passed, zero failed or skipped per framework**.
+- The final follow-up commit only records these verified results.
+
 ## Run
 
 With the usual `AD_*` settings from [README.md](README.md), run the entire batch
