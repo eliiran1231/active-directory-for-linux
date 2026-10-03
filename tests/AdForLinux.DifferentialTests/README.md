@@ -1156,6 +1156,44 @@ Run this batch on both configured frameworks with the usual `AD_*` settings:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalContextNameComparisonTests|FullyQualifiedName~UserScalarCacheRetentionComparisonTests|FullyQualifiedName~AdvancedFiltersOwnerComparisonTests" --logger "trx;LogFilePrefix=context-scalar-owner"
 ```
 
+### Advanced-filter instance ownership and collection conversion
+
+This batch adds **27 cases per framework**, with no production changes:
+
+| Test class / cases | Finding | Validation |
+| --- | --- | --- |
+| `AdvancedFilterInstanceComparisonTests` (12) | Microsoft's six built-in criterion methods work on an `AdvancedFilters` subclass constructed with a null owner; the clone dereferences the owner and throws `NullReferenceException`. Each case also replaces the criterion. | Both .NET 8 and .NET 10: 6 confirmed failures, 6 passing non-null-owner controls |
+| `AdvancedFilterIsolationComparisonTests` (12) | A separately constructed filter instance stores built-in criteria independently in Microsoft. The clone stores them on the principal, so configuring the separate instance is predicted to add or overwrite the principal's query criterion. | Compiled; awaits AD-backed execution |
+| `CompatibilityAdvancedExtensionQueryComparisonTests` (3 new cases) | For `byte[]`, `int[]`, and `ArrayList`, Microsoft's advanced extension setter wraps the collection as one element, which query conversion stringifies. The clone recursively expands its elements into separate conditions. | Compiled; awaits AD-backed execution |
+
+The ownership cases use normal protected subclass constructors; no reflection
+or private-state mutation is involved. The live isolation cases compare the
+public native searcher's `Filter` before and after two detached-instance updates,
+both with and without an existing criterion on `principal.AdvancedSearchFilter`.
+They also verify that updating the principal's actual filter changes its query
+and restores parity. The three collection cases extend the existing scalar and
+`object[]` controls and check replacement with a scalar criterion afterward.
+All live cases in this batch render filters only: initialization may bind to AD,
+but the tests never execute the rendered queries or create/save directory objects.
+
+Source evidence: Microsoft's pinned
+[AdvancedFilters.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AdvancedFilters.cs),
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs),
+and [ADStoreCtx_Query.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADStoreCtx_Query.cs).
+The runtime Microsoft assembly remains the oracle; the 15 new live cases are
+predictions until the differential run confirms them.
+
+With the usual `AD_*` settings, run the batch on both configured frameworks
+(34 cases per framework, including 7 existing extension-query cases):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~AdvancedFilterInstanceComparisonTests|FullyQualifiedName~AdvancedFilterIsolationComparisonTests|FullyQualifiedName~CompatibilityAdvancedExtensionQueryComparisonTests" --logger "trx;LogFilePrefix=advanced-filter-ownership"
+```
+
+For the 12 offline cases alone, use
+`--filter FullyQualifiedName~AdvancedFilterInstanceComparisonTests`.
+These tests assert parity and intentionally fail where the incompatibility is present.
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
