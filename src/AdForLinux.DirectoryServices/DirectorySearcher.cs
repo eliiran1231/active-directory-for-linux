@@ -660,6 +660,14 @@ public class DirectorySearcher : Component
 
         var root = RequireRoot();
         var effectiveFilter = string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter;
+        // ADSI accepts the bare date-sentinel negations exposed by AccountManagement.
+        // LDAP requires a parenthesized assertion inside NOT. Normalize only these
+        // known provider spellings at the protocol boundary; preserve public Filter.
+        foreach (var attribute in new[] { "pwdLastSet", "badPasswordTime", "lastLogon", "lastLogonTimestamp" })
+        {
+            effectiveFilter = effectiveFilter.Replace($"(!{attribute}=0)", $"(!({attribute}=0))",
+                StringComparison.OrdinalIgnoreCase);
+        }
 #if NET10_0_OR_GREATER
         if (!IsStructurallyValidFilter(effectiveFilter))
         {

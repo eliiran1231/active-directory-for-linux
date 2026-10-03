@@ -81,8 +81,16 @@ of originally failing observations.
 Filter-string comparisons establish public native-filter parity, not successful
 execution or result parity for those rendered filters. Identity, insertion,
 workstation and real VLV cases execute the operations described by their tests.
-In particular, Microsoft's date sentinel spelling is retained in the exposed
-filter; this investigation does not claim additional server-query coverage.
+Microsoft's date sentinel spelling is retained in the exposed filter. The PR
+#204 review found that this ADSI spelling was rejected by the LDAP request
+builder. Requests now normalize the four known bare date-sentinel negations
+to parenthesized LDAP assertions without changing the public Filter. New
+`AdvancedDateRequestTests` cover all 12 affected API/comparison combinations
+and preserve escaped literal values and standard negations. New
+`AdvancedDateExecutionComparisonTests` execute all 12 combinations against
+both providers with past and future cutoffs (24 cases), compare returned DNs,
+and check positive timestamp and unset-date controls in the disposable OU.
+These additional tests are outside the original 367-case cohort.
 
 The older `DirectorySearchOptionsComparisonTests` response simulation omitted
 Microsoft's final TargetPercentage setter. It now replays the complete public
