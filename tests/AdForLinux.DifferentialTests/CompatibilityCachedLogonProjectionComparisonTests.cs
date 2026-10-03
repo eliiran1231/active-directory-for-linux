@@ -118,7 +118,9 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
         .Check($"{label}: ticks", expected?.Ticks, actual?.Ticks)
         .Check($"{label}: kind", expected?.Kind, actual?.Kind);
 
-    internal static void WithSavedUsers(Action<Ms.UserPrincipal, Ours.UserPrincipal, MsDirectory.DirectoryEntry, OurDirectory.DirectoryEntry> observe)
+    internal static void WithSavedUsers(
+        Action<Ms.UserPrincipal, Ours.UserPrincipal, MsDirectory.DirectoryEntry, OurDirectory.DirectoryEntry> observe,
+        Action<Ms.UserPrincipal, Ours.UserPrincipal>? beforeSave = null)
     {
         using var microsoftContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
             DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
@@ -140,6 +142,7 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
         var cleanupFailures = new List<Exception>();
         try
         {
+            beforeSave?.Invoke(expected, actual);
             CompatibilityOwnedDirectoryObjects.RequireAbsent(expectedDn);
             attempted.Add(expectedDn);
             expected.Save();

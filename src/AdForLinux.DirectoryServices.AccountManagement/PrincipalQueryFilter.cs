@@ -147,11 +147,13 @@ internal static class PrincipalQueryFilterTranslator
 
     private static string ExtensionAssertions(string attribute, object? value)
     {
-        if (value is IEnumerable values and not string and not byte[])
-        {
-            return string.Concat(values.Cast<object?>().Select(item => ExtensionAssertions(attribute, item)));
-        }
+        return value is object[] values
+            ? string.Concat(values.Select(item => ExtensionAssertion(attribute, item)))
+            : ExtensionAssertion(attribute, value);
+    }
 
+    private static string ExtensionAssertion(string attribute, object? value)
+    {
         if (value is null)
         {
             // Microsoft's extension-cache converter dereferences each

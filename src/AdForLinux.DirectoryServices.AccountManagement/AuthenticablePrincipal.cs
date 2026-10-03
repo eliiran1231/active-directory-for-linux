@@ -43,7 +43,7 @@ public class AuthenticablePrincipal : Principal
         {
             throw new ArgumentException("The context cannot be null.");
         }
-        ContextRef = context;
+        ContextRaw = context;
     }
 
     protected internal AuthenticablePrincipal(
@@ -610,7 +610,7 @@ public class AuthenticablePrincipal : Principal
         if (_enabledAfterPassword is not null)
         {
             Enabled = _enabledAfterPassword.Value;
-            Entry!.CommitChanges();
+            CommitPendingScalars(Entry!);
             if (!deferResetUntilInsertCompletes)
             {
                 _enabledAfterPassword = null;
@@ -728,15 +728,25 @@ public class AuthenticablePrincipal : Principal
         FindByAdvancedFilter<AuthenticablePrincipal>(context, BuildDateCondition(context, "pwdLastSet", time, type));
 
     protected static PrincipalSearchResult<T> FindByLockoutTime<T>(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "lockoutTime", time, type));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(CheckFinderContext<T>(context), "lockoutTime", time, type));
     protected static PrincipalSearchResult<T> FindByLogonTime<T>(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<T>(context, BuildLastLogonCondition(context, time, type));
+        FindByAdvancedFilter<T>(context, BuildLastLogonCondition(CheckFinderContext<T>(context), time, type));
     protected static PrincipalSearchResult<T> FindByExpirationTime<T>(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "accountExpires", time, type));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(CheckFinderContext<T>(context), "accountExpires", time, type));
     protected static PrincipalSearchResult<T> FindByBadPasswordAttempt<T>(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "badPasswordTime", time, type));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(CheckFinderContext<T>(context), "badPasswordTime", time, type));
     protected static PrincipalSearchResult<T> FindByPasswordSetTime<T>(PrincipalContext context, DateTime time, MatchType type) =>
-        FindByAdvancedFilter<T>(context, BuildDateCondition(context, "pwdLastSet", time, type));
+        FindByAdvancedFilter<T>(context, BuildDateCondition(CheckFinderContext<T>(context), "pwdLastSet", time, type));
+
+    private static PrincipalContext CheckFinderContext<T>(PrincipalContext context)
+    {
+        if (!typeof(AuthenticablePrincipal).IsAssignableFrom(typeof(T)))
+        {
+            throw new ArgumentException("The type must derive from AuthenticablePrincipal.");
+        }
+        ArgumentNullException.ThrowIfNull(context);
+        return context;
+    }
 
     private static string BuildDateCondition(
         PrincipalContext context,

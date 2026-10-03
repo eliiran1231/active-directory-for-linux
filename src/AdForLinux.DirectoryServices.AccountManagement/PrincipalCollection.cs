@@ -65,14 +65,14 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(principal);
         _group.EnsureMembersUsable();
         var value = RequireMembershipValue(principal);
-        if ((_group.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsValue(value))
+        if ((_group.IsPersisted && principal.IsPersisted && principal.IsPrimaryGroup(_group)) || ContainsValue(value))
         {
             throw new PrincipalExistsException(
                 "The principal already exists in the collection.");
         }
 
         _memberSources[value] = new MemberReference(
-            value, principal.DistinguishedName!, principal.Context);
+            value, principal.DistinguishedName, principal.Context, principal);
         if (RemoveValue(_removedValuesPending, value))
         {
             AddValue(_insertedValuesCompleted, value);
@@ -95,10 +95,18 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(identityValue);
 
-        using var principal = Principal.FindByIdentity(context, identityType, identityValue)
+        var principal = Principal.FindByIdentity(context, identityType, identityValue)
             ?? throw new NoMatchingPrincipalException(
                 "No principal matched the supplied identity.");
-        Add(principal);
+        try
+        {
+            Add(principal);
+        }
+        catch
+        {
+            principal.Dispose();
+            throw;
+        }
     }
 
     public bool Remove(UserPrincipal user) => Remove((Principal)user);
@@ -113,7 +121,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(principal);
         _group.EnsureMembersUsable();
         var value = RequireMembershipValue(principal);
-        if (_group.IsPersisted && principal.IsPrimaryGroup(_group))
+        if (_group.IsPersisted && principal.IsPersisted && principal.IsPrimaryGroup(_group))
         {
             throw new InvalidOperationException(
                 "The principal cannot be removed because this is its primary group.");
@@ -244,11 +252,20 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             return;
         }
 
+        // Resolve pending objects only at Save. Unsaved members can be staged,
+        // but every member must have a directory identity before any LDAP write.
+        var inserted = _insertedValuesPending.Select(value =>
+        {
+            var source = SourceFor(value);
+            return source.Principal is null
+                ? value
+                : GroupMembershipConverter.ForPrincipal(_group, source.Principal);
+        }).ToList();
         var toRemove = _clearPending
             ? CurrentDirectMemberDns()
             : _removedValuesPending.ToList();
         _group.RequireEntry().ApplyValueChanges(
-            "member", _insertedValuesPending, toRemove);
+            "member", inserted, toRemove);
 
         foreach (var dn in _removedValuesPending)
         {
@@ -256,9 +273,18 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         }
 
         _removedValuesPending.Clear();
-        foreach (var dn in _insertedValuesPending)
+        for (var index = 0; index < _insertedValuesPending.Count; index++)
         {
-            AddValue(_insertedValuesCompleted, dn);
+            var oldValue = _insertedValuesPending[index];
+            var value = inserted[index];
+            var source = SourceFor(oldValue);
+            _memberSources.Remove(oldValue);
+            _memberSources[value] = source with
+            {
+                Value = value,
+                DistinguishedName = source.Principal?.DistinguishedName ?? source.DistinguishedName,
+            };
+            AddValue(_insertedValuesCompleted, value);
         }
 
         _insertedValuesPending.Clear();
@@ -282,7 +308,12 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         EnsureReadableMembers();
         foreach (var member in EffectiveMembers())
         {
-            var entry = member.Context.CreateDirectoryEntry(member.DistinguishedName);
+            if (member.Principal is not null)
+            {
+                yield return member.Principal;
+                continue;
+            }
+            var entry = member.Context.CreateDirectoryEntry(member.DistinguishedName!);
             var principal = PrincipalFactory.FromEntry(member.Context, entry);
             if (principal is null)
             {
@@ -299,6 +330,8 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     internal void Dispose()
     {
         _retainedEntry?.Dispose();
+        // Inserted principals can escape through enumeration, including those
+        // resolved by identity-based Add. Their lifetime belongs to the caller.
         _disposed = true;
     }
 
@@ -484,7 +517,19 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private string RequireMembershipValue(Principal principal)
     {
         ArgumentNullException.ThrowIfNull(principal);
-        return GroupMembershipConverter.ForPrincipal(_group, principal);
+        // Read the identity to retain disposed/deleted principal validation.
+        var dn = principal.DistinguishedName;
+        // A retained unsaved member can acquire a stored identity before the
+        // group is saved. Match equivalent wrappers against that live principal,
+        // keeping all pending/completed operations on its original staging key.
+        var retained = _memberSources.Values.FirstOrDefault(source =>
+            source.Principal is not null && source.Principal.Equals(principal));
+        if (retained is not null) return retained.Value;
+        if (dn is not null) return GroupMembershipConverter.ForPrincipal(_group, principal);
+
+        var value = "pending:" + Guid.NewGuid().ToString("N");
+        _memberSources[value] = new MemberReference(value, null, principal.Context, principal);
+        return value;
     }
 
     private MemberReference SourceFor(string value) =>
@@ -523,6 +568,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
 
     private sealed record MemberReference(
         string Value,
-        string DistinguishedName,
-        PrincipalContext Context);
+        string? DistinguishedName,
+        PrincipalContext Context,
+        Principal? Principal = null);
 }

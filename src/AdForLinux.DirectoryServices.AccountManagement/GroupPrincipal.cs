@@ -21,16 +21,22 @@ public class GroupPrincipal : Principal
     private const int DefaultGroupType = ScopeGlobal | SecurityEnabled;
 
     private PrincipalCollection? _members;
+    private bool _scopeAssigned;
+    private bool _securityAssigned;
 
     /// <summary>Starts a new, unsaved group in a context.</summary>
     public GroupPrincipal(PrincipalContext context)
     {
-        ContextRef = context ?? throw new ArgumentException("A context is required.");
+        ContextRaw = context ?? throw new ArgumentException("A context is required.");
     }
 
     /// <summary>Starts a new, unsaved group with a name.</summary>
     public GroupPrincipal(PrincipalContext context, string samAccountName) : this(context)
     {
+        if (samAccountName is null)
+        {
+            throw new ArgumentException("The account name cannot be null.");
+        }
         Name = samAccountName;
         SamAccountName = samAccountName;
     }
@@ -67,11 +73,13 @@ public class GroupPrincipal : Principal
     private PrincipalSearchResult<Principal> GetMembersCore(bool recursive)
     {
         CheckDisposedOrDeleted();
+        if (!IsPersisted)
+        {
+            return new PrincipalSearchResult<Principal>(Array.Empty<Principal>());
+        }
         if (!recursive)
         {
-            // Materialize the collection while keeping staged membership
-            // changes visible. As with Microsoft, callers own yielded principals.
-            return new PrincipalSearchResult<Principal>(Members.ToList());
+            return new PrincipalSearchResult<Principal>(ReadStoredMembers());
         }
 
         // Walk each group's merged direct membership so primary-group-only
@@ -95,7 +103,7 @@ public class GroupPrincipal : Principal
                     continue;
                 }
 
-                foreach (var principal in group.Members)
+                foreach (var principal in group.ReadStoredMembers())
                 {
                     if (principal is GroupPrincipal nestedGroup)
                     {
@@ -126,6 +134,20 @@ public class GroupPrincipal : Principal
         return new PrincipalSearchResult<Principal>(members);
     }
 
+    private List<Principal> ReadStoredMembers()
+    {
+        // A separate collection reads the store without this group's pending edits.
+        var stored = new PrincipalCollection(this);
+        try
+        {
+            return stored.ToList();
+        }
+        finally
+        {
+            stored.Dispose();
+        }
+    }
+
     /// <summary>
     /// How widely the group can be used. Null before the object is saved and no
     /// scope was set.
@@ -135,6 +157,7 @@ public class GroupPrincipal : Principal
         get
         {
             CheckDisposedOrDeleted();
+            if (!IsPersisted && !_scopeAssigned) return null;
             var groupType = ReadGroupType();
             if (groupType is null)
             {
@@ -175,6 +198,7 @@ public class GroupPrincipal : Principal
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType((groupType & ~ScopeMask) | bit);
+            _scopeAssigned = true;
             RemoveQueryFilter("groupType");
             SetQueryFilter(
                 nameof(GroupScope),
@@ -194,6 +218,7 @@ public class GroupPrincipal : Principal
         get
         {
             CheckDisposedOrDeleted();
+            if (!IsPersisted && !_securityAssigned) return null;
             var groupType = ReadGroupType();
             return groupType is null ? null : (groupType.Value & SecurityEnabled) != 0;
         }
@@ -209,6 +234,7 @@ public class GroupPrincipal : Principal
             WriteGroupType(value.Value
                 ? groupType | SecurityEnabled
                 : groupType & ~SecurityEnabled);
+            _securityAssigned = true;
             RemoveQueryFilter("groupType");
             SetQueryFilter(
                 nameof(IsSecurityGroup),

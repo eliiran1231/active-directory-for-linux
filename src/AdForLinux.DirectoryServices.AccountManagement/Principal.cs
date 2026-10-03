@@ -180,6 +180,10 @@ public abstract class Principal : IDisposable
             // guard because machine contexts map Name to SamAccountName.
             _ = ContextRef.ContextType;
             CheckDisposedOrDeleted();
+            if (_pending.TryGetValue("cn", out var pendingName))
+            {
+                return pendingName?.ToString();
+            }
             if (Entry is not null)
             {
                 return Entry.Properties["name"].Value?.ToString();
@@ -842,8 +846,10 @@ public abstract class Principal : IDisposable
         if (Entry is not null)
         {
             OnBeforeSave();
+            ApplyPendingScalars(Entry);
             ApplyExtensionChanges(Entry);
             Entry.CommitChanges();
+            _pending.Clear();
             _extensionCache.Clear();
             OnAfterSave();
             return;
@@ -1044,8 +1050,10 @@ public abstract class Principal : IDisposable
             }
 
             OnBeforeSave();
+            ApplyPendingScalars(originalEntry);
             ApplyExtensionChanges(originalEntry);
             originalEntry.CommitChanges();
+            _pending.Clear();
             _extensionCache.Clear();
 
             var destinationEntry = context.CreateDirectoryEntry(currentDn);
@@ -1270,6 +1278,7 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         // Microsoft requires an initialized context even for unsaved properties.
         if (ContextRef is null) throw new NullReferenceException();
+        if (_pending.TryGetValue(attributeName, out var pendingValue)) return pendingValue?.ToString();
         if (Entry is not null)
         {
             return AccountManagementExceptionTranslator.Execute(
@@ -1422,22 +1431,11 @@ public abstract class Principal : IDisposable
     private protected void SetString(string attributeName, string? value)
     {
         CheckDisposedOrDeleted();
-        // Reject an incomplete principal before staging any value or query filter.
+        // Principal writes must survive refreshes of the underlying entry cache.
         if (ContextRef is null) throw new NullReferenceException();
-        if (Entry is not null)
+        _pending[attributeName] = value;
+        if (Entry is null)
         {
-            if (value is null)
-            {
-                Entry.Properties[attributeName].Clear();
-            }
-            else
-            {
-                Entry.Properties[attributeName].Value = value;
-            }
-        }
-        else
-        {
-            _pending[attributeName] = value;
             SetQueryFilter(
                 attributeName,
                 PrincipalQueryFilterKind.String,
@@ -1445,6 +1443,22 @@ public abstract class Principal : IDisposable
                 value);
         }
         _loadedScalars[attributeName] = value;
+    }
+
+    private protected void CommitPendingScalars(DirectoryEntry entry)
+    {
+        ApplyPendingScalars(entry);
+        entry.CommitChanges();
+        _pending.Clear();
+    }
+
+    private void ApplyPendingScalars(DirectoryEntry entry)
+    {
+        foreach (var (name, value) in _pending)
+        {
+            if (value is null) entry.Properties[name].Clear();
+            else entry.Properties[name].Value = value;
+        }
     }
 
     /// <summary>The values staged before the object is saved.</summary>
