@@ -1122,6 +1122,40 @@ Run the new batch on both target frameworks with the usual `AD_*` settings:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalExtensionPropertyIsolationComparisonTests|FullyQualifiedName~PrincipalValueCollectionEqualityDispatchComparisonTests|FullyQualifiedName~PrincipalValueEnumeratorExceptionComparisonTests" --logger "trx;LogFilePrefix=extension-collection-contracts"
 ```
 
+### Context name, additional scalar caches, and advanced-filter ownership
+
+This batch adds **19 cases per framework**, using the Microsoft 9.0.0 assemblies
+as the runtime oracle. No production implementation changes accompany it.
+
+| Test class | Compatibility gap | Validation status |
+| --- | --- | --- |
+| `PrincipalContextNameComparisonTests` | Microsoft retains the supplied `host:port` in `Name`; the clone returns only the parsed host. Container, username, and options are controls. | Compiled; one AD-dependent case awaits execution |
+| `UserScalarCacheRetentionComparisonTests` | `GivenName`, `Surname`, `EmailAddress`, and `Description` still read the underlying entry on every access in the clone. Microsoft keeps a separately loaded principal value. | Compiled; 16 AD-dependent cases await execution |
+| `AdvancedFiltersOwnerComparisonTests` | The protected constructor accepts a null owner in Microsoft; the clone throws `ArgumentNullException("p")`. | Both frameworks: one confirmed failure and one passing non-null control |
+
+The scalar cases cover replacing a loaded value, clearing it, setting a value
+after initially loading an absent attribute, and leaving the cache unchanged.
+Each case verifies the raw entry values before and after mutation, then compares
+two subsequent principal reads. This extends the existing DisplayName tests to
+properties that still use `GetString` rather than `GetCachedString` in the clone.
+The existing owned-user fixture creates independent disabled users and cleans
+them up even on assertion failure. No Save or Commit follows the cache edits.
+The context-name case performs no directory writes. The constructor comparison
+uses ordinary protected subclass constructors and requires neither AD nor reflection.
+
+Source-level evidence is in Microsoft's
+[Context.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Context.cs),
+[User.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/User.cs),
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs),
+and [AdvancedFilters.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AdvancedFilters.cs).
+The two live findings remain predictions until the differential run confirms them.
+
+Run this batch on both configured frameworks with the usual `AD_*` settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalContextNameComparisonTests|FullyQualifiedName~UserScalarCacheRetentionComparisonTests|FullyQualifiedName~AdvancedFiltersOwnerComparisonTests" --logger "trx;LogFilePrefix=context-scalar-owner"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
