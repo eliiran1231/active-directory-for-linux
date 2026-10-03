@@ -83,21 +83,21 @@ public class UserPrincipal : AuthenticablePrincipal
     /// <summary>The phone number (<c>telephoneNumber</c>).</summary>
     public string? VoiceTelephoneNumber
     {
-        get => GetString("telephoneNumber");
+        get => GetCachedString("telephoneNumber");
         set => SetString("telephoneNumber", value);
     }
 
     /// <summary>The middle name.</summary>
     public string? MiddleName
     {
-        get => GetString("middleName");
+        get => GetCachedString("middleName");
         set => SetString("middleName", value);
     }
 
     /// <summary>The employee id.</summary>
     public string? EmployeeId
     {
-        get => GetString("employeeID");
+        get => GetCachedString("employeeID");
         set => SetString("employeeID", value);
     }
 

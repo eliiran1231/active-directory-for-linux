@@ -27,6 +27,9 @@ public abstract class Principal : IDisposable
     private bool _deleted;
     internal bool IsDeleted => _deleted;
     private bool _inserting;
+    // Identity belongs to the principal, independently of its entry's lifetime
+    // and mutable public property cache. Equality must also work after disposal.
+    private Guid? _storedGuid;
 
     private protected PrincipalContext ContextRef = null!;
 
@@ -49,6 +52,13 @@ public abstract class Principal : IDisposable
     {
         ContextRef = context;
         Entry = entry;
+        CaptureStoredIdentity(entry);
+    }
+
+    private void CaptureStoredIdentity(DirectoryEntry entry)
+    {
+        var guid = AccountManagementExceptionTranslator.Execute(() => entry.Guid);
+        _storedGuid = guid == System.Guid.Empty ? null : guid;
     }
 
     /// <summary>The context this principal belongs to.</summary>
@@ -893,6 +903,7 @@ public abstract class Principal : IDisposable
                 // objectSid) and the completed structural class chain are available
                 // before post-create work or the caller observes this principal.
                 child.RefreshCacheAfterCreate();
+                CaptureStoredIdentity(child);
                 _pending.Clear();
                 _extensionCache.Clear();
                 _inserting = true;
@@ -915,6 +926,7 @@ public abstract class Principal : IDisposable
                     if (TryRollbackCreatedEntry(() => parent.Children.Remove(child)))
                     {
                         Entry = null;
+                        _storedGuid = null;
                         RestoreValues(_pending, pendingBeforeCreate);
                         RestoreValues(_extensionCache, extensionsBeforeCreate);
                         shouldDisposeChild = true;
@@ -1246,8 +1258,7 @@ public abstract class Principal : IDisposable
             return false;
         }
 
-        var guid = Guid;
-        return guid is not null && other.Guid is not null && guid == other.Guid;
+        return _storedGuid is not null && _storedGuid == other._storedGuid;
     }
 
     /// <summary>Matches Microsoft's instance-based hash behavior.</summary>
