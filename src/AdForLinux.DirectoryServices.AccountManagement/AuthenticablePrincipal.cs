@@ -73,6 +73,9 @@ public class AuthenticablePrincipal : Principal
         }
     }
 
+    internal override IEnumerable<string> BuiltInAdvancedFilterConditions =>
+        AdvancedSearchFilter.FilterConditions;
+
     private protected virtual int DefaultUserAccountControl => NormalAccount;
 
     /// <summary>

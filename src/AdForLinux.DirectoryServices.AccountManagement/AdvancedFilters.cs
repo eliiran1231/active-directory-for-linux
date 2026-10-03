@@ -10,6 +10,13 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class AdvancedFilters
 {
     private readonly Principal _principal;
+    private readonly Dictionary<string, Func<string>> _criteria = new(StringComparer.OrdinalIgnoreCase);
+
+    // Built-in criteria belong to this instance, including detached and ownerless
+    // filters. Defer conversion until query construction so values can be replaced.
+    internal IEnumerable<string> FilterConditions => _criteria.Values.Select(condition => condition());
+
+    private void SetAdvancedFilter(string key, Func<string> condition) => _criteria[key] = condition;
 
     protected internal AdvancedFilters(Principal p)
     {
@@ -26,12 +33,12 @@ public class AdvancedFilters
         AdvancedDateFilterSet("lockoutTime", lockoutTime, match);
 
     public void BadLogonCount(int badLogonCount, MatchType match) =>
-        _principal.SetAdvancedFilter("badPwdCount", () =>
+        SetAdvancedFilter("badPwdCount", () =>
             ToLdapCondition("badPwdCount", badLogonCount.ToString(CultureInfo.InvariantCulture), match));
 
     public void LastLogonTime(DateTime logonTime, MatchType match)
     {
-        _principal.SetAdvancedFilter(
+        SetAdvancedFilter(
             "lastLogon",
             () => $"(|{ToLdapDateCondition("lastLogon", logonTime, match, excludeDefaultValue: true)}" +
             $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, excludeDefaultValue: true, requirePresenceForNotEquals: true)})");
@@ -46,7 +53,7 @@ public class AdvancedFilters
         MatchType match,
         bool excludeDefaultValue = false)
     {
-        _principal.SetAdvancedFilter(attribute, () => ToLdapDateCondition(attribute, value, match, excludeDefaultValue));
+        SetAdvancedFilter(attribute, () => ToLdapDateCondition(attribute, value, match, excludeDefaultValue));
     }
 
     protected void AdvancedFilterSet(string attribute, object value, Type objectType, MatchType mt)
@@ -56,10 +63,14 @@ public class AdvancedFilters
 
     private static string ConvertExtension(string attribute, object value, MatchType match)
     {
-        if (value is System.Collections.ICollection collection)
-        {
-            return string.Concat(collection.Cast<object>().Select(item => ConvertExtension(attribute, item, match)));
-        }
+        // Only object[] supplies multiple criteria. Other collections are a
+        // single value, and elements are converted without recursive expansion.
+        var values = value as object[] ?? new[] { value };
+        return string.Concat(values.Select(item => ConvertExtensionValue(attribute, item, match)));
+    }
+
+    private static string ConvertExtensionValue(string attribute, object value, MatchType match)
+    {
         var text = value switch
         {
             DateTime date => date.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture),
