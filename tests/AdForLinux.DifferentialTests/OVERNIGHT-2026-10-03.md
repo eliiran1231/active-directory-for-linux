@@ -126,6 +126,27 @@ There were no blocking review findings and no live execution.
 
 Batch 4 was published at `3ccfb6a940ca613669c4517cdf2a7064ec898b70`.
 
+## Batch 6: two small-group membership-cache cases
+
+`CompatibilitySmallGroupMembershipCacheComparisonTests` compares retained
+Members.Contains after an external member removal and a full native-entry
+refresh, with an unchanged-membership control. Total: **45 cases across 14
+contracts**, one observed managed difference and thirteen live hypotheses.
+
+Both uniquely owned groups are seeded through independent raw Microsoft entries,
+then reloaded before the first Contains. No completed insertion list can mask
+the membership query. Fresh server reads prove the mutation, and fresh principals
+must observe that server state. Full RefreshCache avoids coupling this probe to
+the pending absent-attribute partial-refresh family. Exact-DN cleanup checks
+unique SAM, marker and saved GUID and preserves primary failures.
+
+Pinned Group.IsSmallGroup retains a SearchResult used by ADStoreCtx membership
+checks; the clone reads current ranged membership. This is source support only.
+Both cases build and discover on both targets; no AD execution occurred.
+Independent review found no blockers after the full-refresh refinement.
+
+Batch 5 was published at `16c8484876e6ce4f2898d86be1bdd4395f9fe8c9`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -148,6 +169,9 @@ Batch 4 was published at `3ccfb6a940ca613669c4517cdf2a7064ec898b70`.
   filter; they do not cover the constructor-versus-later-assignment default.
   Existing PAPI Current position tests read a positioned principal once; they
   do not compare repeated wrapper identity or independent disposal ownership.
+- A further PrincipalContext audit found matching Domain constructor validation,
+  disposed/null/empty credential precedence, and explicit option handling;
+  existing cases already cover those mechanisms. No authentication was run.
 - A separate offline audit found no distinct candidate in existing timeout,
   coupled-option, VLV, synchronization, collection traversal/copy, contextless
   principal, or borrowed search-root coverage. No filler variants were added.
@@ -164,10 +188,10 @@ Batch 4 was published at `3ccfb6a940ca613669c4517cdf2a7064ec898b70`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **43** new cases across the five batches,
+- Both targets' discovery lists all **45** new cases across the six batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **28 passed, 0 failed**, including
-  all five new fixture-consuming classes. The paging and SPN classes need configured
+- Each target's fixture-registration checks: **29 passed, 0 failed**, including
+  all six new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -183,8 +207,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 40 new live cases were not included.
-- Independent read-only review of all nine new classes found no blocking test
+  were not changed, and the 42 new live cases were not included.
+- Independent read-only review of all ten new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
