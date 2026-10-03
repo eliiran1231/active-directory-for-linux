@@ -252,6 +252,28 @@ Build/discovery evidence is preserved alongside the original audit at
 
 Batch 9 was published at `8f2a608efb39e03e4e2524ab80d26972143f09cd`.
 
+## Batch 11: two credential-reset pending-write cases
+
+`CompatibilityCredentialResetPendingWriteComparisonTests` stages Description on
+already-persisted owned entries, assigns a temporary password and restores the
+original before any binding operation, then commits. Unchanged-password
+assignment is the persistence control. Independent Microsoft readers verify
+final values and ownership. The temporary value is never used for a bind.
+This isolates credential-unbind pending-write survival from unsaved-child
+retention, Close, and immediate-write cache invalidation.
+
+Total: **62 cases across 23 contracts**: one observed managed difference and
+22 live hypotheses. Both targets build with zero warnings/errors and discover
+the two new cases. Final-file review found no blockers; no AD execution occurred.
+This class does not use the shared fixture; the prior 32 registration checks
+remain applicable. The bounded security-wrapper audit found matching guards,
+base delegation, factories, dirty-state tracking, and existing integration
+coverage. An ordinary Principal.Name-plus-Save rename assumption was rejected:
+pinned Microsoft source writes the name property without calling Rename, so no
+success-expecting probe was added for that hypothesis.
+
+Batch 10 was published at `da20ec15c9dd8cf7f7f3dcc485ee25cf8495193f`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -293,7 +315,7 @@ Batch 9 was published at `8f2a608efb39e03e4e2524ab80d26972143f09cd`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **60** new cases across the ten batches,
+- Both targets' discovery lists all **62** new cases across the eleven batches,
   without creating the AD fixture.
 - Each target's fixture-registration checks: **32 passed, 0 failed**, including
   all nine new fixture-consuming classes. The paging and SPN classes need configured
@@ -312,8 +334,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 57 new live cases were not included.
-- Independent read-only review of all eighteen new classes found no blocking test
+  were not changed, and the 59 new live cases were not included.
+- Independent read-only review of all nineteen new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
