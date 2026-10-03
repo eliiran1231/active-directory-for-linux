@@ -1,5 +1,9 @@
 # Differential tests (run these on Windows)
 
+The [principal state and membership probe batch](NEXT-BATCH-COMPATIBILITY.md)
+adds 52 cases targeting 11 root causes: one confirmed offline and ten awaiting
+AD-backed execution. Run it with `--filter "FullyQualifiedName~NextBatch"`.
+
 For the current expanded compatibility results, implementation changes and
 remaining limitations tracked by #203, see
 [COMPATIBILITY-COVERAGE.md](COMPATIBILITY-COVERAGE.md#issue-203-implementation-status-2026-10-03).
