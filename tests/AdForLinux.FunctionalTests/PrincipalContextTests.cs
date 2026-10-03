@@ -13,6 +13,23 @@ public class PrincipalContextTests
     private static PrincipalContext Authenticated(string? container = null) =>
         TestSettings.CreatePrincipalContext(container);
 
+    [Theory]
+    [InlineData("dc.example.test", 389)]
+    [InlineData("dc.example.test:389", 389)]
+    [InlineData("dc.example.test:1636", 1636)]
+    public void Supplied_name_is_preserved_without_changing_transport(string name, int port)
+    {
+        using var context = new PrincipalContext(
+            ContextType.Domain, name, "DC=example,DC=test", ContextOptions.SimpleBind);
+
+        Assert.Equal(name, context.Name);
+        Assert.Equal(port, context.Port);
+        Assert.Equal("dc.example.test", context.BuildOptions().Host);
+        Assert.Equal(port, context.BuildOptions().Port);
+        Assert.Equal($"LDAP://dc.example.test:{port}/DC=example,DC=test",
+            context.PathFor("DC=example,DC=test"));
+    }
+
     [Fact]
     public void Container_is_null_when_no_container_was_supplied()
     {
