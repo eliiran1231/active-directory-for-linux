@@ -431,10 +431,9 @@ public class DirectorySearcher : Component
 
     private static IEnumerable<SearchResult> DeferredFilterError(ArgumentException error)
     {
-        throw new ArgumentException(error.Message, error.InnerException);
-#pragma warning disable CS0162
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(
+            new ArgumentException(error.Message, error.InnerException)).Throw();
         yield break;
-#pragma warning restore CS0162
     }
 
     private SearchResultCollection FindAllCore()
@@ -513,9 +512,19 @@ public class DirectorySearcher : Component
         // Use a separate connection because a result collection can outlive the searcher/root,
         // and an in-flight request must not share mutable timeout/referral state with callers.
         var resultRoot = root.CreateEntryForDn(root.DistinguishedName);
-        var connection = resultRoot.GetConnection();
-        ConfigureConnection(connection);
-        var request = BuildRequest();
+        LdapConnection connection;
+        SearchRequest request;
+        try
+        {
+            connection = resultRoot.GetConnection();
+            ConfigureConnection(connection);
+            request = BuildRequest();
+        }
+        catch
+        {
+            resultRoot.Dispose();
+            throw;
+        }
         var pageControl = PageSize > 0 ? new PageResultRequestControl(PageSize) : null;
         if (pageControl is not null)
         {
@@ -630,7 +639,7 @@ public class DirectorySearcher : Component
         }
         catch (LdapException ex) when (ex.ErrorCode == 87)
         {
-            throw new ArgumentException(ex.Message, nameof(Filter), ex);
+            throw new ArgumentException(ex.Message, ex);
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {

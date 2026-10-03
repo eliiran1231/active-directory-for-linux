@@ -295,7 +295,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
             var index = 0;
             while (TryGet(index++, out var result))
             {
-                yield return result;
+                yield return result.Snapshot();
             }
         }
 
@@ -307,7 +307,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
             {
             }
 
-            return _cache;
+            return _cache.Select(result => result.Snapshot()).ToArray();
         }
 
         public void Dispose()

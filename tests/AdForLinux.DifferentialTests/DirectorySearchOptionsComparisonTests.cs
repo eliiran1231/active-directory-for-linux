@@ -212,11 +212,16 @@ public class DirectorySearchOptionsComparisonTests
             ApproximateTotal = 1000,
         };
 
-        // This is the public state transition performed by Microsoft's
-        // DirectorySearcher when a VLV response returns position 2 of 13.
-        microsoft.ApproximateTotal = 13;
+        // Replay every public setter used by the Microsoft 9.0.0
+        // DirectorySearcher.VirtualListView response getter. The final
+        // percentage assignment rounds Offset again (2 of 13 becomes 1).
+        // CompatibilityVlvResponseComparisonTests independently verifies
+        // this transition using real sorted AD search responses.
+        // https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs
         microsoft.Offset = 2;
+        microsoft.ApproximateTotal = 13;
         microsoft.DirectoryVirtualListViewContext = new MicrosoftDirectoryServices.DirectoryVirtualListViewContext();
+        microsoft.TargetPercentage = (int)((double)microsoft.Offset / microsoft.ApproximateTotal * 100);
         ours.Update(offset: 2, approximateTotal: 13, contextId: null);
 
         AssertViewsEqual(microsoft, ours);

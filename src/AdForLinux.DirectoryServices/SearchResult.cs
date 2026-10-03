@@ -60,7 +60,7 @@ public class SearchResult
         return _searchRoot.CreateEntryForPath(Path);
     }
 
-    private SearchResult(DirectoryEntry searchRoot, ResultPropertyCollection properties)
+    internal SearchResult(DirectoryEntry searchRoot, ResultPropertyCollection properties)
     {
         _searchRoot = searchRoot;
         Properties = properties;

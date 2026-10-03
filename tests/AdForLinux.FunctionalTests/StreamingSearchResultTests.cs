@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Runtime.CompilerServices;
 using AdForLinux.DirectoryServices;
 using Xunit;
 
@@ -18,18 +17,22 @@ public class StreamingSearchResultTests
 
         Assert.Equal(0, source.ValuesRead);
         Assert.True(first.MoveNext());
-        Assert.Same(items[0], first.Current);
+        Assert.Equal(items[0].Path, first.Current.Path);
+        Assert.Same(first.Current, first.Current);
         Assert.True(first.MoveNext());
-        Assert.Same(items[1], first.Current);
+        Assert.Equal(items[1].Path, first.Current.Path);
         Assert.True(second.MoveNext());
-        Assert.Same(items[0], second.Current);
+        Assert.Equal(items[0].Path, second.Current.Path);
         Assert.Equal(2, source.ValuesRead);
 
         Assert.Equal(items.Length, results.Count);
         Assert.True(second.MoveNext());
-        Assert.Same(items[1], second.Current);
-        Assert.Equal(items, results.ToArray());
-        Assert.Equal(items, results.ToArray());
+        Assert.Equal(items[1].Path, second.Current.Path);
+        Assert.NotSame(first.Current, second.Current);
+        Assert.NotSame(results[1], second.Current);
+        Assert.Same(results[1], results[1]);
+        Assert.Equal(items.Select(row => row.Path), results.Select(row => row.Path));
+        Assert.Equal(items.Select(row => row.Path), results.Select(row => row.Path));
         Assert.Equal(1, source.Enumerations);
         Assert.Equal(items.Length, source.ValuesRead);
         Assert.Equal(1, source.Disposals);
@@ -118,7 +121,7 @@ public class StreamingSearchResultTests
         {
             using var cursor = ((IEnumerable<SearchResult>)results).GetEnumerator();
             Assert.True(cursor.MoveNext());
-            Assert.Same(item, cursor.Current);
+            Assert.Equal(item.Path, cursor.Current.Path);
             Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => cursor.MoveNext()));
         }).WaitAsync(TimeSpan.FromSeconds(10));
     }
@@ -141,9 +144,53 @@ public class StreamingSearchResultTests
         Assert.Throws<ObjectDisposedException>(() => results.GetEnumerator());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Short_copy_destination_is_unchanged_after_validation_failure(bool nonGeneric)
+    {
+        var items = CreateResults();
+        using var results = new SearchResultCollection(items);
+        var destination = new[] { items[2] };
+        var error = Assert.Throws<ArgumentException>(() =>
+        {
+            if (nonGeneric) ((ICollection)results).CopyTo(destination, 0);
+            else results.CopyTo(destination, 0);
+        });
+        Assert.Equal("destinationArray", error.ParamName);
+        Assert.Same(items[2], destination[0]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Materialized_results_remain_accessible_after_disposal(bool streaming)
+    {
+        var items = CreateResults();
+        var results = streaming
+            ? new SearchResultCollection(new TrackedResults(items), cacheResults: true)
+            : new SearchResultCollection(items);
+        var cached = results[0];
+        results.Dispose();
+        Assert.Equal(3, results.Count);
+        Assert.Same(cached, results[0]);
+        Assert.True(results.Contains(cached));
+        Assert.False(results.Contains(null!));
+        Assert.Equal(-1, results.IndexOf(null!));
+        var copy = new SearchResult[3];
+        results.CopyTo(copy, 0);
+        Assert.Same(cached, copy[0]);
+        Assert.Throws<ObjectDisposedException>(() => results.GetEnumerator());
+    }
+
     private static SearchResult[] CreateResults() => Enumerable.Range(0, 3)
-        // Only reference identity matters here. The real constructor reads LDAP schema.
-        .Select(_ => (SearchResult)RuntimeHelpers.GetUninitializedObject(typeof(SearchResult)))
+        .Select(index =>
+        {
+            var root = new DirectoryEntry($"LDAP://offline.invalid/CN={index}");
+            var properties = new ResultPropertyCollection();
+            properties.Set("adspath", new object[] { root.Path });
+            return new SearchResult(root, properties);
+        })
         .ToArray();
 
     private sealed class TrackedResults(SearchResult[] items) : IEnumerable<SearchResult>
