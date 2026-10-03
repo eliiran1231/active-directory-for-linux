@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <!-- Only the explicitly audited managed API paths in Program.cs run here. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <MicrosoftImplementationTfm Condition="'$(TargetFramework)' == 'net8.0'">net8.0</MicrosoftImplementationTfm>
+    <MicrosoftImplementationTfm Condition="'$(TargetFramework)' == 'net10.0'">net9.0</MicrosoftImplementationTfm>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Restore the pinned package, but explicitly use its Windows implementation
+         instead of Linux's platform-not-supported facade. Never use this harness
+         for directory, native, search, or default-domain-discovery operations. -->
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0"
+                      ExcludeAssets="all" GeneratePathProperty="true" />
+    <Reference Include="System.DirectoryServices">
+      <HintPath>$(PkgSystem_DirectoryServices)/runtimes/win/lib/$(MicrosoftImplementationTfm)/System.DirectoryServices.dll</HintPath>
+    </Reference>
+    <ProjectReference Include="../../src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj" />
+  </ItemGroup>
+</Project>

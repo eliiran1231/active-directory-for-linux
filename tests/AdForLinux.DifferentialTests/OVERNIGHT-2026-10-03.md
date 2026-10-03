@@ -60,6 +60,48 @@ row Current denotes. No live execution has occurred.
 
 Batch 2 was published at `779f3bde70240496dbc2249d742f8cccbaa8264a`.
 
+## Batch 4: 15 cases, five further mechanisms
+
+| Class | Cases | Mechanism and controls |
+| --- | ---: | --- |
+| `CompatibilityDisposedPropertyContainsComparisonTests` | 3 | Disposed owner versus null name validation in Contains. Named Contains and null indexer are controls. All are offline. |
+| `CompatibilityRetainedPropertyWriteAfterCloseComparisonTests` | 3 | Write through a retained value wrapper after Close, then read the owner's new wrapper. No-Close retained write and Close/fresh write are controls. |
+| `CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests` | 6 | Retained ServicePrincipalNames Add/RemoveAt/Clear after owner disposal, with live-owner controls. One callback/lifetime mechanism, not three independent bugs. Computers remain unsaved. |
+| `CompatibilitySearchExecutionStateComparisonTests` | 3 | Paged subsecond ServerTimeLimit (one case with independent paging/timeout controls); projection retained after a proven-missing root fails (FindOne/FindAll, each with successful recovery). |
+
+Total: **40 cases**, covering **11 contracts**. Ten contracts remain live-test
+hypotheses. One managed validation difference was directly observed with the
+actual pinned Windows implementation assemblies loaded on Linux:
+
+```text
+Disposed Properties.Contains(null):
+Microsoft: ObjectDisposedException, ObjectName="DirectoryEntry"
+AdForLinux: ArgumentNullException, ParamName="propertyName"
+.NET 8.0.22: 1 failed, 2 passed
+.NET 10.0.0: 1 failed, 2 passed
+```
+
+These are comparison failures from the new test, not a Windows-hosted lab run.
+The parameterless entries are disposed before any operation that could bind;
+the two successful controls verify the independent disposed/named and
+null/indexer validation paths. To reproduce offline on Windows:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter FullyQualifiedName~CompatibilityDisposedPropertyContainsComparisonTests
+```
+
+The remaining 12 new cases were built/discovered only. Close/write and search
+classes use the existing fixture, which creates and deletes objects. The SPN
+class uses valid contexts and unsaved principals; context initialization can
+bind. None of these live classes was executed in this environment.
+
+The earlier managed searcher audit is now reproducible from checked-in
+[harness source and commands](../Compatibility.ManagedStateAudit/README.md),
+with [compact results and assembly hashes](../Compatibility.ManagedStateAudit/RESULTS.md).
+It remains separate from the solution/workflows. The maintained harness adds
+runtime/hash diagnostics and a failing exit status; its new source hash is
+recorded in RESULTS.md, separate from the original temporary harness hash.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -85,16 +127,23 @@ Batch 2 was published at `779f3bde70240496dbc2249d742f8cccbaa8264a`.
 - A separate offline audit found no distinct candidate in existing timeout,
   coupled-option, VLV, synchronization, collection traversal/copy, contextless
   principal, or borrowed search-root coverage. No filler variants were added.
+- Batch 4 distinguishes execution-time timeout handling from setter validation,
+  failed-root projection changes from successful projection, retained scalar
+  collections from Group.Members, and Close/rebind writes from disposed writes.
+  Pending cache-boundary Contains-after-Clear does not cover null-name/disposal
+  precedence. Open issues were rechecked: #215, #201 and #15; no overlapping
+  owner issue was found. Save/Delete extension-cache transitions remain under
+  investigation for a later increment.
 
 ## Validation
 
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **25** new cases across the three batches,
+- Both targets' discovery lists all **40** new cases across the four batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **26 passed, 0 failed**, including
-  all three new fixture-consuming classes. The paging class needs configured
+- Each target's fixture-registration checks: **28 passed, 0 failed**, including
+  all five new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -110,8 +159,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 25 new live cases were not included.
-- Independent read-only review of all four new classes found no blocking test
+  were not changed, and the 37 new live cases were not included.
+- Independent read-only review of all eight new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
@@ -125,6 +174,7 @@ On Linux x64 with SDK 10.0.100:
   both runs used byte-identical source. Exact projects, output and assembly
   hashes are retained in the execution workspace at
   `/workspace/scratch/compatibility-audit-2026-10-03/`.
+  The maintained equivalent is now committed under `tests/Compatibility.ManagedStateAudit`.
 
 Build and fixture checks do not establish Microsoft/clone behavioral parity.
 Do not run the new live classes as an offline validation command.
@@ -133,6 +183,9 @@ Do not run the new live classes as an offline validation command.
 
 - [Microsoft 9.0.0 SearchResultCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SearchResultCollection.cs): `ResultsEnumerator.Current`, `MoveNext`, `Reset`, and `InnerList`.
 - [Microsoft 9.0.0 PropertyValueCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyValueCollection.cs): `Value` calls Clear before constructing replacement values; `OnClearComplete` accesses the owner.
+- [Microsoft 9.0.0 PropertyCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyCollection.cs): Contains owner access precedes its provider call; the indexer has separate null validation.
+- [Microsoft 9.0.0 DirectorySearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs): root binding precedes ADsPath augmentation, and search preferences truncate timeout seconds.
+- [Microsoft 9.0.0 principal ValueCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs): retained mutation methods work on tracked values without consulting the principal owner.
 - [Microsoft 9.0.0 PrincipalSearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs): constructor calls to `SetDefaultPageSizeForContext` versus the QueryFilter setter.
 - [Microsoft 9.0.0 FindResultEnumerator](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/FindResultEnumerator.cs) and [ADEntriesSet](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADEntriesSet.cs): each Current read projects CurrentAsPrincipal.
 
