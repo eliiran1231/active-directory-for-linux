@@ -299,6 +299,29 @@ time-budget timing lead would require a race and was not turned into a test.
 
 Batch 11 was published at `79502e76baa09180c197890bc0055ad1ceeb6364`.
 
+## Batch 13: sixteen public subclass and unsaved-state cases
+
+| Test class | Cases | Candidate and controls |
+| --- | ---: | --- |
+| `CompatibilityAdvancedFilterOverrideComparisonTests` | 2 | A virtual getter returns the base filter or a separate populated filter. Microsoft query translation reads its stored filter directly. Baseline, base-getter criterion, and recovery checks isolate dispatch from detached filter storage (#209). |
+| `CompatibilityPendingMemberEqualityComparisonTests` | 2 | Two independently loaded wrappers have the same verified DN/GUID. Reference-equality custom principals contrast with ordinary principal equality; pending Contains should honor the equality result. Group edits remain unsaved. |
+| `CompatibilityDisposedPendingMemberComparisonTests` | 2 | Pending membership is established before optional member disposal. Microsoft checks its inserted list before consulting member properties; the live-member case is the control. |
+| `CompatibilityMemberCursorOwnerLifetimeComparisonTests` | 3 | A positioned unsaved-member cursor observes Current and Reset with a live group, disposed group, or disposed cursor. Collection Count proves group disposal separately. The existing clone-only contrary expectation is untouched. |
+| `CompatibilityUnsavedUnlockComparisonTests` | 2 | Repeated UnlockAccount on a normally constructed unsaved user is a Microsoft no-op. Null identity/unlocked state and the disposed-principal guard are controls. No account is saved. |
+| `CompatibilityAuthenticableCredentialConstructorComparisonTests` | 3 | A real subclass exposes the protected credential constructor, which skips missing SAM/password and leaves Name unset. Supplied credentials and explicit-assignment control distinguish this overload from public User/Computer constructors. Passwords remain staged. |
+| `CompatibilityCustomDateFinderComparisonTests` | 2 | Built-in generic and custom user-type expiration finders compare first MoveNext only. Both public built-in finders must first return the known fixture DN at its seeded expiration. No custom Current cast or unique-result assumption is made. |
+
+Total: **80 cases across 31 candidate contracts**, in **27 classes**: one
+observed managed difference and thirty live-test hypotheses. Three cases are
+offline; **77 require separately authorized live execution**. These sixteen new
+cases are source-supported only. Two new classes use the existing AD-mutating
+fixture; the other five use real contexts that may bind. None ran against AD.
+Pinned Microsoft 9.0.0 source and an independent review support all seven
+mechanisms; source review is not runtime confirmation. The pending cache-boundary
+branch and #215 do not cover these paths. `dev` remains at the documented base.
+
+Batch 12 was published at `bb60e5718394b67f3303d6f7e3bde4b0bbfb09b0`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -340,10 +363,10 @@ Batch 11 was published at `79502e76baa09180c197890bc0055ad1ceeb6364`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **64** new cases across the twelve batches,
+- Both targets' discovery lists all **80** new cases across the thirteen batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **32 passed, 0 failed**, including
-  all nine new fixture-consuming classes. The paging and SPN classes need configured
+- Each target's fixture-registration checks: **34 passed, 0 failed**, including
+  all eleven new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -359,8 +382,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 61 new live cases were not included.
-- Independent read-only review of all twenty new classes found no blocking test
+  were not changed, and the 77 new live cases were not included.
+- Independent read-only review of all twenty-seven new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
