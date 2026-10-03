@@ -22,7 +22,6 @@ public abstract class Principal : IDisposable
     private sealed record ExtensionCacheEntry(object?[]? Values, Func<string>? FilterCondition = null);
 
     private readonly Dictionary<string, ExtensionCacheEntry> _extensionCache = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, Func<string>> _advancedFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
@@ -1363,13 +1362,7 @@ public abstract class Principal : IDisposable
         }
     }
 
-    // Convert criteria only when building a query, so callers can replace
-    // placeholder values before their match type or FILETIME is evaluated.
-    internal void SetAdvancedFilter(string key, Func<string> condition)
-    {
-        if (_deleted) CheckDisposedOrDeleted();
-        _advancedFilters[key] = condition;
-    }
+    internal virtual IEnumerable<string> BuiltInAdvancedFilterConditions => Enumerable.Empty<string>();
 
     internal void SetAdvancedExtensionFilter(string attribute, object? value, Func<string> condition)
     {
@@ -1390,11 +1383,10 @@ public abstract class Principal : IDisposable
         get
         {
             CheckDisposedOrDeleted();
-            return _advancedFilters.Values
+            return BuiltInAdvancedFilterConditions
                 .Concat(_extensionCache.Values
                     .Where(entry => entry.FilterCondition is not null)
-                    .Select(entry => entry.FilterCondition!))
-                .Select(condition => condition());
+                    .Select(entry => entry.FilterCondition!()));
         }
     }
 
