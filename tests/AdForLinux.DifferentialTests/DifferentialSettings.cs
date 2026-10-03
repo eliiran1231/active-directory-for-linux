@@ -44,14 +44,26 @@ public static class DifferentialSettings
             var container = Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
                 ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
             if (HasIsolatedBaseDn
-                && !container.Equals(BaseDn, StringComparison.OrdinalIgnoreCase)
-                && !container.EndsWith("," + BaseDn, StringComparison.OrdinalIgnoreCase))
+                && !IsWithinTestBase(container, BaseDn))
             {
                 throw new InvalidOperationException(
                     "AD_USERS_CONTAINER_DN must remain inside the isolated AD_BASE_DN test OU.");
             }
             return container;
         }
+    }
+
+    internal static bool IsWithinTestBase(string container, string testBase)
+    {
+        // Walk actual RDN boundaries: a matching text suffix behind an escaped
+        // comma can belong to a CN outside the disposable OU.
+        for (string? ancestor = container; ancestor is not null;
+             ancestor = AdForLinux.DirectoryServices.Ldap.LdapDistinguishedName.Parent(ancestor))
+        {
+            if (ancestor.Equals(testBase, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

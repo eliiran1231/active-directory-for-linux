@@ -1,10 +1,134 @@
-# Compatibility coverage branch
+# Compatibility coverage and remediation
+
+## Issue #203 implementation status (2026-10-03)
+
+Implementation starts from `dev` at
+`b461d4aa41acda658b210387100555fb705f3cf0`, which includes the corrected
+oracle inputs from #202 and the merged #199/#200 fix. The production/test
+implementation at `0ca8198a5927f45d8eac0c51408fcbe7700fa3e5` was exercised by
+[Windows AD run 37112393660](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37112393660)
+and rerun with environment reporting at
+`71d1ffa304cb95f50914ff6cb6b085e34cd83397` in
+[Windows AD run 37112694125](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37112694125).
+Both targets report **1,087 total / 1,083 passed / 4 failed / 0 skipped**.
+The per-run OU was created and deleted successfully, and the complete TRX
+observations were uploaded as `differential-test-results`.
+
+[Linux CI run 37112396767](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37112396767)
+at the same implementation commit passed the solution build and the complete
+Samba functional suite: **508/508 on net8.0 and 508/508 on net10.0**, zero skips.
+Container teardown succeeded.
+
+For the **367 issue-specific cases**, both targets report **365 passed / 2 failed**.
+The corrected baseline
+[run 37005328583](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37005328583)
+at `6a662ccdb7e330b38b0302244a2820db610bae80` had **176 passed / 191 failed**
+in the same cohort. This implementation resolves **189 failing test cases per
+target**, not 189 independent bugs. The eight fixture-registration cases whose
+parameter text names compatibility classes are excluded from these cohort counts.
+
+All 16 corrected inputs now execute their intended comparisons successfully.
+This includes the seven timestamp-staging rows, eight rejected-contextless-filter
+rows, and the targeted DisplayName refresh row. All three DisplayName refresh
+cases pass. The 20 existing credential-cache/unbound-commit tests also pass;
+their implementation belongs to #200, not this change.
+
+### Remaining findings: issue must stay open
+
+Two comparisons remain in `CompatibilityEntryOptionsLifecycleComparisonTests`,
+`Retained_options_rebind_after_close_like_microsoft`:
+
+| Setting after setting a value and calling Close | Microsoft in this lab | AdForLinux |
+| --- | ---: | ---: |
+| PageSize, previously 17 | 99 | 17 |
+| SecurityMasks, previously 3 | 7 | 3 |
+
+ADSI reads these settings from its provider handle; AdForLinux retains its local
+protocol configuration. LDAP does not expose that ADSI handle's defaults.
+This change fixes disposed-option access and validation precedence, but does
+**not** claim to implement provider-default discovery/rebind. The observed 99
+and 7 are not hard-coded into production. These two original comparison cases
+remain enabled and failing. They need a separate portable-provider design or
+explicitly accepted compatibility limitation before #203 can be closed.
+
+The other two full-suite failures are the unchanged
+`Issue56ConnectionInheritanceTests` cases: both fail during protected Negotiate
+binding with "The supplied credential is invalid." The same two failures were
+already present on main at `73fc72d8ccf604f29f6a83e2f9453bd68396ae0b` in
+[run 37107393704](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37107393704),
+before this branch. They are reported separately from compatibility mismatches;
+the full Windows suite is not green.
+
+### Root causes and implementation changes
+
+The following groups describe code changes; the case totals describe the full
+tested families, including passing controls. They are separate from the count
+of originally failing observations.
+
+| Investigation group | Cases in cohort | Implementation |
+| --- | ---: | --- |
+| Collections and enumeration | 118 | ArrayList-backed materialized CopyTo validation preserves destination atomicity and exception metadata; enumeration gets independent result snapshots; cached collection operations survive disposal; child enumerators validate Current and support Reset. |
+| DirectoryEntry lifetime/cache | 27 | Retained options reject disposed entries after local argument validation; disposed RefreshCache/MoveTo precedence follows Microsoft; a failed full refresh preserves the prior property wrapper and pending state. The two Close/default cases above remain unresolved. |
+| Validation, membership, serialization | 38 | Constructor validation follows credential/options/type order; contextless filters are rejected without changing searcher state; NoMatchingPrincipalException's serialization constructor rejects unsupported serialization; retained membership delays directory access and preserves null validation; collection copy errors match parameter metadata. |
+| Result/native-searcher state | 19 | SearchResult reads mutable ADsPath and captures search-time credentials/options; contexts own native search roots; filter replacement retains the native searcher; mapped projections accumulate including duplicates; a failed FindOne retains the temporary native size limit. |
+| Query conversion and identity | 41 | PAPI backslash quoting, per-element advanced extension conversion, runtime date/bool conversion, query-time numeric culture, date sentinel clauses, and explicit SAM qualification follow the oracle. |
+| Loaded principal projections | 14 | Loaded DisplayName, BadLogonCount, LastPasswordSet and LastLogon values remain cached; a present zero lastLogonTimestamp does not fall back to lastLogon. |
+| Persistence | 12 | RDN escaping preserves boundary spaces and leading hashes; an empty serialized workstation string clears the persisted attribute. |
+| Deferred errors | 12 | Malformed FindAll filters fail on cursor advancement with matching parameter metadata in cached, uncached and asynchronous modes; recovery on the same searcher is preserved. |
+| Real VLV response | 3 | Response state applies the offset, total, context and final percentage setter, preserving Microsoft's visible integer rounding. |
+| Unchanged searcher/VLV/synchronization/expiration controls | 83 | All passing controls retained. |
+
+Filter-string comparisons establish public native-filter parity, not successful
+execution or result parity for those rendered filters. Identity, insertion,
+workstation and real VLV cases execute the operations described by their tests.
+In particular, Microsoft's date sentinel spelling is retained in the exposed
+filter; this investigation does not claim additional server-query coverage.
+
+The older `DirectorySearchOptionsComparisonTests` response simulation omitted
+Microsoft's final TargetPercentage setter. It now replays the complete public
+setter sequence from the pinned 9.0.0 DirectorySearcher source and still compares
+against a real Microsoft DirectoryVirtualListView. The unchanged real-response
+tests independently establish the transition. Four preexisting functional
+assertions encoded the superseded escaping/date behavior and were updated to
+the verified contract; additional local tests cover quoting, SAM qualification,
+copy failure atomicity, result identity and cached access after disposal.
+No skips or disabled comparison assertions were added.
+
+### Reproduction and safety
+
+The Windows workflow uses its `ad-lab` environment and per-run disposable OU.
+`DifferentialSettings.UsersContainer` now rejects an explicit container override
+outside an isolated `AD_BASE_DN`, before fixtures can write to that location.
+Ancestry is checked at real RDN boundaries, so an escaped comma cannot disguise
+an out-of-OU container as a matching text suffix.
+Owned-object preflights and cleanup remain intact.
+
+Both differential targets reference Microsoft DirectoryServices and
+AccountManagement **9.0.0**. Starting at `71d1ffa304cb95f50914ff6cb6b085e34cd83397`,
+fixture-registration output records OS, architecture, SDK, runtime, target,
+commit, and both Microsoft informational versions in each target's TRX.
+The final lab run recorded Windows `10.0.26100` x64, SDK `10.0.401`, and
+runtimes `8.0.31` and `10.0.12` for `net8.0-windows` and `net10.0-windows`.
+Local verification used Windows `10.0.26200` x64, SDK `10.0.302`, runtimes
+`8.0.29` and `10.0.10`, and Microsoft package build
+`9.0.0+9d5a6a9aa463d6d10b0b0ba6d5982cc82f363dc3`.
+
+Local checks pass on both targets: **154/154** offline Microsoft comparisons
+(123 expanded offline cases, 11 DirectorySearchOptions cases and 20 #200
+controls), **100/100** selected functional cases, and **29/29** fixture
+registration/isolation checks (22 existing cases plus seven new ancestry cases).
+The seven ancestry tests were added after the full-run commit cited above and
+passed separately on both targets; they do not alter the 367-case issue cohort
+or production assemblies. The workflow retains complete target-specific TRX
+files; the local checks are not a substitute for the live run.
+
+## Historical coverage branch baseline (2026-10-01)
 
 Base: `dev` at `8023db6d6e63752420628a1ad94871f4dbe2edf0` (2026-10-01).
 Only tests and their documentation are added. Microsoft System.DirectoryServices
 9.0.0 is the runtime oracle; new cases do not prescribe guessed exception contracts.
 
-Current status: the isolated Windows run [36989564937, job 110782352855](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36989564937/job/110782352855)
+Original pre-correction status: the isolated Windows run [36989564937, job 110782352855](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/36989564937/job/110782352855)
 executed commit `789adbce45d6528e2b62243909372c5469706f6a` on both target
 frameworks. Each target reported **1087 total, 877 passed, 210 failed, zero skipped**.
 Of this branch's **367 selected cases (366 new + one enhanced; 123 offline,
@@ -14,7 +138,8 @@ failures are outside this correction's scope (associated with the pending #200
 work). Failures are test observations, not a count of distinct implementation bugs.
 
 Batch 17 below corrects the 16 defective inputs/premises without production fixes,
-skips, or removed cases. **The corrected inputs have not had a Windows rerun.**
+skips, or removed cases. At that checkpoint the corrected inputs had not had a
+Windows rerun; the issue #203 implementation status above supersedes that status.
 Earlier batch sections retain their historical validation status; their “unrun”
 statements describe those checkpoints, not the Windows run above.
 
