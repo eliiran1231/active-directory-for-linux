@@ -20,7 +20,6 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private bool _disposed;
     private int _version;
     private List<string>? _primaryGroupMemberDns;
-    private readonly List<Principal> _ownedMembers = new();
     private readonly Dictionary<string, MemberReference> _memberSources =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -102,7 +101,6 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         try
         {
             Add(principal);
-            _ownedMembers.Add(principal);
         }
         catch
         {
@@ -332,8 +330,8 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     internal void Dispose()
     {
         _retainedEntry?.Dispose();
-        foreach (var principal in _ownedMembers) principal.Dispose();
-        _ownedMembers.Clear();
+        // Inserted principals can escape through enumeration, including those
+        // resolved by identity-based Add. Their lifetime belongs to the caller.
         _disposed = true;
     }
 
@@ -521,8 +519,11 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(principal);
         // Read the identity to retain disposed/deleted principal validation.
         var dn = principal.DistinguishedName;
+        // A retained unsaved member can acquire a stored identity before the
+        // group is saved. Match equivalent wrappers against that live principal,
+        // keeping all pending/completed operations on its original staging key.
         var retained = _memberSources.Values.FirstOrDefault(source =>
-            ReferenceEquals(source.Principal, principal));
+            source.Principal is not null && source.Principal.Equals(principal));
         if (retained is not null) return retained.Value;
         if (dn is not null) return GroupMembershipConverter.ForPrincipal(_group, principal);
 
