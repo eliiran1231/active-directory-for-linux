@@ -1079,6 +1079,49 @@ Run both configured frameworks:
 dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~DirectoryEntryCredentialCacheComparisonTests|FullyQualifiedName~DirectoryEntryUnboundCommitComparisonTests" --logger "trx;LogFilePrefix=entry-cache-compatibility"
 ```
 
+### Extension property isolation and generic collection contracts
+
+This batch adds comparisons against the Microsoft 9.0.0 assemblies. Production
+code is unchanged; the assertions require compatibility and expose differences
+as failures.
+
+| Test class | Behavior under comparison | AD required? |
+| --- | --- | --- |
+| `PrincipalExtensionPropertyIsolationComparisonTests` | After assigning an ordinary property on an unsaved user, `ExtensionGet` for its LDAP attribute should still return an empty array. The clone instead returns the ordinary property's pending value, including a single null for an explicitly cleared Description. | Yes, for context/property validation; no principals are saved |
+| `PrincipalValueCollectionEqualityDispatchComparisonTests` | `Contains`, `IndexOf`, and `Remove`, through generic and non-generic interfaces, dispatch equality differently: Microsoft uses `object.Equals`; the clone's `List<T>` uses `IEquatable<T>` when available. | No |
+| `PrincipalValueEnumeratorExceptionComparisonTests` | After enumerator disposal, `Current`, `MoveNext`, and `Reset` must match `ObjectDisposedException.ObjectName`, not just the exception type. | No |
+
+The 18 offline cases were run on Windows with .NET 8.0.29 and .NET 10.0.10:
+each target reported **12 failures and 6 passing controls**, with no skips.
+Six failures expose equality dispatch and six expose the disposed object name:
+Microsoft reports `ValueCollectionEnumerator`, while the clone reports its
+namespace-qualified nested `Enumerator` implementation type. Both targets build
+without warnings or errors. The seven AD-dependent cases have not been run.
+
+The equality fixture deliberately gives `object.Equals` reference semantics and
+`IEquatable<T>.Equals` key semantics to make the dispatch observable. This is an
+edge case for arbitrary generic element types, not a claim about ordinary string
+workstation values. Same-instance probes are passing controls, and removal tests
+also compare the remaining elements. Reflection invokes only Microsoft's normal
+internal collection constructor; compared operations use public interfaces.
+
+The extension tests cover Description (including null), DisplayName,
+SamAccountName, UserPrincipalName, and GivenName. An unrelated attribute is a
+control; explicit extension writes are also checked to remain independent of the
+ordinary property. These seven cases are compiled but await a configured AD run.
+
+Reference implementations:
+[Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs),
+[TrackedCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollection.cs),
+[ValueCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs),
+and [TrackedCollectionEnumerator.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/TrackedCollectionEnumerator.cs).
+
+Run the new batch on both target frameworks with the usual `AD_*` settings:
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~PrincipalExtensionPropertyIsolationComparisonTests|FullyQualifiedName~PrincipalValueCollectionEqualityDispatchComparisonTests|FullyQualifiedName~PrincipalValueEnumeratorExceptionComparisonTests" --logger "trx;LogFilePrefix=extension-collection-contracts"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in
