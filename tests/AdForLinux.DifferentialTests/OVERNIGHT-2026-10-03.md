@@ -27,6 +27,25 @@ original wrappers. Writes are cached only, with no commit or save.
 Both classes register the existing fixture, whose setup and cleanup perform AD
 operations: execution requires a separately authorized disposable lab.
 
+## Batch 2: four cases, two further candidate differences
+
+- `CompatibilitySearcherConstructionPagingComparisonTests`: two constructor
+  paths. Parameterless construction followed by a valid QueryFilter assignment
+  may retain Microsoft's zero default page size; the filter-taking constructor
+  is the 256-page-size control. An explicit subsequent PageSize assignment must
+  survive repeated native access in both cases. Native initialization can bind;
+  no query or write is performed.
+- `CompatibilityPrincipalCurrentOwnershipComparisonTests`: two reads of Current
+  at one known user, with and without disposing the first returned wrapper.
+  Compare wrapper reference identity and whether the second remains readable.
+  Each returned DN is verified before disposal, and the exact query must have
+  one row. Cleanup uses reference identity, not Principal.Equals, and disposes
+  each distinct returned principal.
+
+The branch now contains **24 cases** covering **five candidate contracts**.
+Batch 1 was published at `6842d8ce539616fb0a358ab79b66a85c17cb9b8f`.
+These additional cases also require the Windows lab and are not confirmed bugs.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -45,19 +64,41 @@ operations: execution requires a separately authorized disposable lab.
   entry wrapper tests cover wrapper metadata/access, not local contents after a
   retained whole-Value setter fails. Pending cache-boundary tests also do not
   exercise that transition.
+- Existing native-searcher projection tests construct the searcher with a
+  filter; they do not cover the constructor-versus-later-assignment default.
+  Existing PAPI Current position tests read a positioned principal once; they
+  do not compare repeated wrapper identity or independent disposal ownership.
+- A separate offline audit found no distinct candidate in existing timeout,
+  coupled-option, VLV, synchronization, collection traversal/copy, contextless
+  principal, or borrowed search-root coverage. No filler variants were added.
 
 ## Validation
 
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **20** new cases, without creating the AD fixture.
-- Each target's fixture-registration checks: **25 passed, 0 failed**, including both
-  new classes. These checks only inspect types; they do not create fixtures.
+- Both targets' discovery lists all **24** new cases across the two batches,
+  without creating the AD fixture.
+- Each target's fixture-registration checks: **26 passed, 0 failed**, including
+  all three new fixture-consuming classes. The paging class needs configured
+  contexts but no fixture. These checks only inspect types; they do not create
+  fixtures.
 - An existing ten-case offline collection baseline was attempted through the
   normal Linux runner. All ten stopped at Microsoft's platform-not-supported
   constructor stubs. This is an environment limitation, **not a regression or
   compatibility finding**. Windows behavioral execution remains outstanding.
+- A separate copied output directory was then configured with the unmodified
+  pinned package's Windows implementation DLLs, replacing the Linux stubs only
+  in that temporary copy. The four audited, purely managed existing classes
+  `PrincipalValueCollectionOfflineComparisonTests`,
+  `CompatibilitySearcherStateComparisonTests`,
+  `CompatibilitySynchronizationComparisonTests`, and
+  `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
+  target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
+  Windows platform behavior or ADSI. Repository sources/output configuration
+  were not changed, and the 24 new live cases were not included.
+- Independent read-only review of all four new classes found no blocking test
+  defects. This is source/design review, not runtime verification.
 
 Build and fixture checks do not establish Microsoft/clone behavioral parity.
 Do not run the new live classes as an offline validation command.
@@ -66,6 +107,8 @@ Do not run the new live classes as an offline validation command.
 
 - [Microsoft 9.0.0 SearchResultCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/SearchResultCollection.cs): `ResultsEnumerator.Current`, `MoveNext`, `Reset`, and `InnerList`.
 - [Microsoft 9.0.0 PropertyValueCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/PropertyValueCollection.cs): `Value` calls Clear before constructing replacement values; `OnClearComplete` accesses the owner.
+- [Microsoft 9.0.0 PrincipalSearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs): constructor calls to `SetDefaultPageSizeForContext` versus the QueryFilter setter.
+- [Microsoft 9.0.0 FindResultEnumerator](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/FindResultEnumerator.cs) and [ADEntriesSet](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADEntriesSet.cs): each Current read projects CurrentAsPrincipal.
 
 The comparisons call the actual package APIs; these sources motivate the probes
 and do not substitute for the Windows oracle. No production or workflow files
