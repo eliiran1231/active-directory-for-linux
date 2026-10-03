@@ -274,6 +274,31 @@ success-expecting probe was added for that hypothesis.
 
 Batch 10 was published at `da20ec15c9dd8cf7f7f3dcc485ee25cf8495193f`.
 
+## Batch 12: two account-control flag-composition cases
+
+`CompatibilityAccountControlMergeComparisonTests` stages PasswordNeverExpires
+on an owned disabled user, optionally commits NOT_DELEGATED through the same
+borrowed native entry, then saves the principal. Fresh Microsoft reads establish
+initial, intermediate, and final persisted state. Observations mask only the
+three relevant flags; native edits preserve other bits. The unchanged-native
+row is a control, and the disabled bit is checked throughout.
+
+Microsoft merges the staged Boolean into current native flags at Save; the clone
+stages the complete integer at assignment. This is independent-bit composition,
+not the existing #213 scalar-retention-after-refresh mechanism. Ownership uses
+a separate marker, SAM and GUID with exact-DN leaf cleanup.
+
+Total: **64 cases across 24 contracts**: one observed managed difference and
+23 live hypotheses. Both targets build with zero warnings/errors and discover
+the two new cases; independent final-file review found no blockers. No live
+execution occurred. This class adds no fixture consumer. A ComputerPrincipal
+SAM-suffix hypothesis was rejected because both pinned implementations preserve
+the assigned text; no suffix variant was added. Search-request filter/projection
+configuration is captured before streaming begins; a remaining asynchronous
+time-budget timing lead would require a race and was not turned into a test.
+
+Batch 11 was published at `79502e76baa09180c197890bc0055ad1ceeb6364`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -315,7 +340,7 @@ Batch 10 was published at `da20ec15c9dd8cf7f7f3dcc485ee25cf8495193f`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **62** new cases across the eleven batches,
+- Both targets' discovery lists all **64** new cases across the twelve batches,
   without creating the AD fixture.
 - Each target's fixture-registration checks: **32 passed, 0 failed**, including
   all nine new fixture-consuming classes. The paging and SPN classes need configured
@@ -334,8 +359,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 59 new live cases were not included.
-- Independent read-only review of all nineteen new classes found no blocking test
+  were not changed, and the 61 new live cases were not included.
+- Independent read-only review of all twenty new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
