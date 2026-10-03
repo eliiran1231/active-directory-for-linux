@@ -25,6 +25,9 @@ public sealed class CompatibilityAdvancedExtensionQueryComparisonTests
     [InlineData("string-array")]
     [InlineData("integer-array-range")]
     [InlineData("scalar-string")]
+    [InlineData("byte-array")]
+    [InlineData("value-type-array")]
+    [InlineData("array-list")]
     public void Custom_advanced_filter_conversion_and_replacement_match_microsoft(string scenario)
     {
         using var expectedContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
@@ -85,6 +88,12 @@ public sealed class CompatibilityAdvancedExtensionQueryComparisonTests
         "string-array" => ("otherTelephone", new object[] { "555-0101", "555-0102" }, typeof(string), false),
         "integer-array-range" => ("badPwdCount", new object[] { 2, 5 }, typeof(int), true),
         "scalar-string" => ("description", "initial-control", typeof(string), false),
+        // These collections are wrapped as a single object by Microsoft's
+        // AdvancedFilterSet (only object[] is passed through). Its extension
+        // converter stringifies that element; the clone recursively expands it.
+        "byte-array" => ("description", new byte[] { 1, 2 }, typeof(byte[]), false),
+        "value-type-array" => ("description", new int[] { 2, 5 }, typeof(int[]), false),
+        "array-list" => ("description", new System.Collections.ArrayList { "one", "two" }, typeof(object), false),
         _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
     };
 
