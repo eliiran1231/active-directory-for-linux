@@ -69,7 +69,7 @@ Batch 2 was published at `779f3bde70240496dbc2249d742f8cccbaa8264a`.
 | `CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests` | 6 | Retained ServicePrincipalNames Add/RemoveAt/Clear after owner disposal, with live-owner controls. One callback/lifetime mechanism, not three independent bugs. Computers remain unsaved. |
 | `CompatibilitySearchExecutionStateComparisonTests` | 3 | Paged subsecond ServerTimeLimit (one case with independent paging/timeout controls); projection retained after a proven-missing root fails (FindOne/FindAll, each with successful recovery). |
 
-Total: **40 cases**, covering **11 contracts**. Ten contracts remain live-test
+After batch 4: **40 cases**, covering **11 contracts**. Ten contracts remain live-test
 hypotheses. One managed validation difference was directly observed with the
 actual pinned Windows implementation assemblies loaded on Linux:
 
@@ -102,6 +102,30 @@ It remains separate from the solution/workflows. The maintained harness adds
 runtime/hash diagnostics and a failing exit status; its new source hash is
 recorded in RESULTS.md, separate from the original temporary harness hash.
 
+## Batch 5: three extension-persistence cases
+
+`CompatibilityExtensionPersistenceLifecycleComparisonTests` adds Save/no-Save
+retained-array alias cases and one cached-extension-after-Delete case. The
+branch total is now **43 cases across 13 contracts**: one directly observed
+managed difference and twelve live-test hypotheses.
+
+The Save case distinguishes clearing an extension cache from retaining its
+supplied array after successful persistence. A fresh exact-DN read verifies the
+stored marker first and again after the purely local array mutation. The
+no-Save row is a control. The Delete case stages a cache entry after Save,
+deletes the owned user, proves exact-DN absence, and compares cached read/write
+behavior while an ordinary Name getter confirms the deleted state.
+
+Both providers use normal UserPrincipal-derived constructors with valid
+contexts. Full-GUID CNs, short unique SAM names, absence preflight, and fresh
+GUID/marker checks guard exact-DN cleanup. Unrecognized partial creations are
+not deleted; cleanup reports that failure alongside the original test error.
+These cases create/delete users when run and require the authorized isolated
+lab. Here, only both-target build/discovery and independent source review ran.
+There were no blocking review findings and no live execution.
+
+Batch 4 was published at `3ccfb6a940ca613669c4517cdf2a7064ec898b70`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -132,15 +156,15 @@ recorded in RESULTS.md, separate from the original temporary harness hash.
   collections from Group.Members, and Close/rebind writes from disposed writes.
   Pending cache-boundary Contains-after-Clear does not cover null-name/disposal
   precedence. Open issues were rechecked: #215, #201 and #15; no overlapping
-  owner issue was found. Save/Delete extension-cache transitions remain under
-  investigation for a later increment.
+  owner issue was found. The later Save/Delete extension-cache cases distinguish
+  persistence/deletion from the existing unsaved/disposed extension-cache tests.
 
 ## Validation
 
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **40** new cases across the four batches,
+- Both targets' discovery lists all **43** new cases across the five batches,
   without creating the AD fixture.
 - Each target's fixture-registration checks: **28 passed, 0 failed**, including
   all five new fixture-consuming classes. The paging and SPN classes need configured
@@ -159,8 +183,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 37 new live cases were not included.
-- Independent read-only review of all eight new classes found no blocking test
+  were not changed, and the 40 new live cases were not included.
+- Independent read-only review of all nine new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
@@ -187,6 +211,7 @@ Do not run the new live classes as an offline validation command.
 - [Microsoft 9.0.0 DirectorySearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices/src/System/DirectoryServices/DirectorySearcher.cs): root binding precedes ADsPath augmentation, and search preferences truncate timeout seconds.
 - [Microsoft 9.0.0 principal ValueCollection](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/ValueCollection.cs): retained mutation methods work on tracked values without consulting the principal owner.
 - [Microsoft 9.0.0 PrincipalSearcher](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/PrincipalSearcher.cs): constructor calls to `SetDefaultPageSizeForContext` versus the QueryFilter setter.
+- [Microsoft 9.0.0 Principal](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs): extension-cache reads/writes and ResetAllChangeStatus across persistence/deletion.
 - [Microsoft 9.0.0 FindResultEnumerator](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/FindResultEnumerator.cs) and [ADEntriesSet](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/AD/ADEntriesSet.cs): each Current read projects CurrentAsPrincipal.
 
 The comparisons call the actual package APIs; these sources motivate the probes
