@@ -1194,6 +1194,42 @@ For the 12 offline cases alone, use
 `--filter FullyQualifiedName~AdvancedFilterInstanceComparisonTests`.
 These tests assert parity and intentionally fail where the incompatibility is present.
 
+### Remaining user scalar caches and persisted equality after disposal
+
+This batch adds **20 cases per framework**, with no production changes:
+
+| Test class / new cases | Suspected incompatibility |
+| --- | --- |
+| `UserScalarCacheRetentionComparisonTests` (12) | `VoiceTelephoneNumber`, `MiddleName`, and `EmployeeId` use uncached `GetString` in the clone. Microsoft keeps each loaded principal value separately from the underlying entry cache. |
+| `PersistedPrincipalEqualityDisposalComparisonTests` (8) | Comparing separately loaded saved principals after either is disposed reads the guarded `Guid` getter in the clone. Microsoft compares stored identity keys without accessing disposed properties. |
+
+Both target frameworks build with zero warnings/errors. **The new cases have not
+been executed against AD; these are source-backed predictions awaiting the
+differential run, not confirmed runtime results.** The scalar additions cover
+replacement, clearing, initially absent values, and an unchanged control. They
+check raw cache values before comparing repeated principal reads. The equality
+matrix covers equal/different identities and every left/right disposal
+combination, compares both directions, and includes self/null/unrelated-object
+controls. It verifies successful lookup and equality before disposal, so a lookup
+failure cannot masquerade as the lifecycle difference.
+
+Both classes reuse the owned-user fixture, which creates two temporary disabled
+users and cleans up through fresh lookups even after test failure. Scalar edits
+stay in the entry cache; no Save or Commit follows them. Equality tests query
+fresh wrappers for the owned users and dispose only those wrappers.
+
+Source evidence: Microsoft's pinned
+[User.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/User.cs)
+and [Principal.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.AccountManagement/src/System/DirectoryServices/AccountManagement/Principal.cs).
+The actual Microsoft 9.0.0 assemblies remain the test oracle.
+
+With the usual `AD_*` settings, run both frameworks (36 cases per framework,
+including the 16 existing scalar cases):
+
+```powershell
+dotnet test tests/AdForLinux.DifferentialTests --filter "FullyQualifiedName~UserScalarCacheRetentionComparisonTests|FullyQualifiedName~PersistedPrincipalEqualityDisposalComparisonTests" --logger "trx;LogFilePrefix=scalar-persisted-equality"
+```
+
 ## Things to know before you read a failure
 
 - **The account running the tests needs rights** to create and delete objects in

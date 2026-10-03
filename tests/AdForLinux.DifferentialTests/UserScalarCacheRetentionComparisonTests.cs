@@ -10,7 +10,11 @@ public sealed class UserScalarCacheRetentionComparisonTests
 {
     public static IEnumerable<object[]> Cases()
     {
-        foreach (var property in new[] { "GivenName", "Surname", "EmailAddress", "Description" })
+        foreach (var property in new[]
+        {
+            "GivenName", "Surname", "EmailAddress", "Description",
+            "VoiceTelephoneNumber", "MiddleName", "EmployeeId",
+        })
         foreach (var transition in new[] { "replace", "clear", "initially-absent", "unchanged" })
             yield return new object[] { property, transition };
     }
@@ -30,14 +34,18 @@ public sealed class UserScalarCacheRetentionComparisonTests
                 "Surname" => "sn",
                 "EmailAddress" => "mail",
                 "Description" => "description",
+                "VoiceTelephoneNumber" => "telephoneNumber",
+                "MiddleName" => "middleName",
+                "EmployeeId" => "employeeID",
                 _ => throw new ArgumentOutOfRangeException(nameof(property)),
             };
-            string? initial = transition == "initially-absent" ? null : "initial@example.test";
+            // Keep values within employeeID's 16-character schema limit too.
+            string? initial = transition == "initially-absent" ? null : "initial-value";
             string? replacement = transition switch
             {
                 "clear" => null,
                 "unchanged" => initial,
-                _ => "replacement@example.test",
+                _ => "replacement",
             };
             Assert.True(expectedEntry.UsePropertyCache);
             Assert.True(actualEntry.UsePropertyCache);
@@ -73,6 +81,9 @@ public sealed class UserScalarCacheRetentionComparisonTests
         "Surname" => user.Surname,
         "EmailAddress" => user.EmailAddress,
         "Description" => user.Description,
+        "VoiceTelephoneNumber" => user.VoiceTelephoneNumber,
+        "MiddleName" => user.MiddleName,
+        "EmployeeId" => user.EmployeeId,
         _ => throw new ArgumentOutOfRangeException(nameof(property)),
     };
 
@@ -82,6 +93,9 @@ public sealed class UserScalarCacheRetentionComparisonTests
         "Surname" => user.Surname,
         "EmailAddress" => user.EmailAddress,
         "Description" => user.Description,
+        "VoiceTelephoneNumber" => user.VoiceTelephoneNumber,
+        "MiddleName" => user.MiddleName,
+        "EmployeeId" => user.EmployeeId,
         _ => throw new ArgumentOutOfRangeException(nameof(property)),
     };
 }
