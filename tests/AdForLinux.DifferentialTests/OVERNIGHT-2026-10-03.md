@@ -147,6 +147,30 @@ Independent review found no blockers after the full-refresh refinement.
 
 Batch 5 was published at `16c8484876e6ce4f2898d86be1bdd4395f9fe8c9`.
 
+## Batch 7: four native-lifetime and rename-cache cases
+
+- `CompatibilityQueriedPrincipalNativeLifetimeComparisonTests`: native Close
+  and Dispose before the first queried principal Description read. Raw entries
+  verify the seeded value without priming that high-level getter. Microsoft
+  retains the search-result snapshot; the clone's cold read uses its native
+  entry. Close is the successful rebind control. The fixture performs writes;
+  the test body only reads and changes local object lifetime.
+- `CompatibilityRenameRetainedCacheComparisonTests`: rename with caching
+  disabled/enabled after explicit cache priming. Independent reads prove the
+  new CN/GUID and old-DN absence. Microsoft can retain its managed dictionary
+  in the non-caching path, whereas the clone resets it. Cache mode is assigned
+  before retaining wrappers; no ObjectSecurity access changes the premise.
+  Owned users have full-GUID CNs and SAM/marker/GUID checks at both exact cleanup
+  locations, including partial-failure recovery.
+
+Total: **49 cases across 16 contracts**. One managed difference is observed;
+all fifteen live mechanisms remain source-supported hypotheses. Both new
+classes received independent review with no blocking findings. Both targets
+build cleanly and discover all four new cases. No live execution occurred.
+Latest dev remains `f3c01ab`; open #215 and the pending cache branch remain excluded.
+
+Batch 6 was published at `0ccd3deccd1e189c990a7949c083e5422aa357ba`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -188,10 +212,10 @@ Batch 5 was published at `16c8484876e6ce4f2898d86be1bdd4395f9fe8c9`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **45** new cases across the six batches,
+- Both targets' discovery lists all **49** new cases across the seven batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **29 passed, 0 failed**, including
-  all six new fixture-consuming classes. The paging and SPN classes need configured
+- Each target's fixture-registration checks: **30 passed, 0 failed**, including
+  all seven new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -207,8 +231,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 42 new live cases were not included.
-- Independent read-only review of all ten new classes found no blocking test
+  were not changed, and the 46 new live cases were not included.
+- Independent read-only review of all twelve new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
