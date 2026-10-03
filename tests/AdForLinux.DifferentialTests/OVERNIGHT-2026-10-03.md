@@ -171,6 +171,29 @@ Latest dev remains `f3c01ab`; open #215 and the pending cache branch remain excl
 
 Batch 6 was published at `0ccd3deccd1e189c990a7949c083e5422aa357ba`.
 
+## Batch 8: four implicit-write and VLV-lifetime cases
+
+- `CompatibilityImplicitWriteCacheComparisonTests`: known-single description
+  index assignment with caching disabled/enabled. Independent reads prove
+  immediate persistence or staging. Wrapper identity is captured before an
+  explicit commit can mask the transition; the later commit verifies final
+  persistence only. Cleanup uses a separate otherTelephone marker plus exact
+  DN, SAM and GUID, so editing description cannot erase ownership evidence.
+- `CompatibilityVlvResultDisposalComparisonTests`: dispose results after the
+  first row or after EOF, then read the searcher's VirtualListView. Separate
+  sorted and fully exhausted VLV queries prove the exact three-object set and
+  one-row window before touching the candidate cursor. Only the control reaches
+  EOF. Clearing the option must recover a null getter after error capture.
+  DirSync shares this mechanism and was not added as a duplicate requiring
+  extra replication permissions.
+
+Total: **53 cases across 18 contracts**: one observed managed difference and
+seventeen source-supported live hypotheses. Independent final-file review found
+no blockers. Both targets build with zero warnings/errors, discover the four
+cases, and pass all 31 fixture-registration checks. No AD operation was run.
+
+Batch 7 was published at `9dfe456cf9f9a1bae066461c5b900fe7e08d9baa`.
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
@@ -212,10 +235,10 @@ Batch 6 was published at `0ccd3deccd1e189c990a7949c083e5422aa357ba`.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **49** new cases across the seven batches,
+- Both targets' discovery lists all **53** new cases across the eight batches,
   without creating the AD fixture.
-- Each target's fixture-registration checks: **30 passed, 0 failed**, including
-  all seven new fixture-consuming classes. The paging and SPN classes need configured
+- Each target's fixture-registration checks: **31 passed, 0 failed**, including
+  all eight new fixture-consuming classes. The paging and SPN classes need configured
   contexts but no fixture. These checks only inspect types; they do not create
   fixtures.
 - An existing ten-case offline collection baseline was attempted through the
@@ -231,8 +254,8 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 46 new live cases were not included.
-- Independent read-only review of all twelve new classes found no blocking test
+  were not changed, and the 50 new live cases were not included.
+- Independent read-only review of all fourteen new classes found no blocking test
   defects, including the later interleaved-cursor case. This is source/design
   review, not runtime verification.
 - A deterministic managed-state harness (seed `1032026`) exercised **2,000
