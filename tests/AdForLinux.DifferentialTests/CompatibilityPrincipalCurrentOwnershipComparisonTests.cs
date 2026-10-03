@@ -77,6 +77,93 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
         }
     }
 
+    [Fact]
+    public void Interleaved_cursors_observe_matching_shared_result_position()
+    {
+        // Both seeded user names share this generated suffix; validate the
+        // naming premise and then validate the complete result set separately.
+        var suffix = data.UserName.Split('-')[^1];
+        Assert.Equal("adfl-d-u-" + suffix, data.UserName);
+        Assert.Equal("adfl-d-z-" + suffix, data.UnsetUserName);
+        var pattern = "adfl-d-*-" + suffix;
+        var expectedDns = new[] { data.UserDn, data.UnsetUserDn };
+        using var expectedContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
+            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
+            DifferentialSettings.MicrosoftContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
+        using var actualContext = new Ours.PrincipalContext(Ours.ContextType.Domain,
+            DifferentialSettings.ServerName, DifferentialSettings.UsersContainer,
+            DifferentialSettings.OurContextOptions, DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
+        using var leftFilter = new Ms.UserPrincipal(expectedContext) { SamAccountName = pattern };
+        using var rightFilter = new Ours.UserPrincipal(actualContext) { SamAccountName = pattern };
+        using var leftSearch = new Ms.PrincipalSearcher(leftFilter);
+        using var rightSearch = new Ours.PrincipalSearcher(rightFilter);
+        using (var probe = leftSearch.FindAll())
+            VerifySeedSet(probe, principal => principal.DistinguishedName);
+        using (var probe = rightSearch.FindAll())
+            VerifySeedSet(probe, principal => principal.DistinguishedName);
+        using var leftResults = leftSearch.FindAll();
+        using var rightResults = rightSearch.FindAll();
+        using var leftA = leftResults.GetEnumerator();
+        using var leftB = leftResults.GetEnumerator();
+        using var rightA = rightResults.GetEnumerator();
+        using var rightB = rightResults.GetEnumerator();
+        var leftOwned = new HashSet<Ms.Principal>(ReferenceEqualityComparer.Instance);
+        var rightOwned = new HashSet<Ours.Principal>(ReferenceEqualityComparer.Instance);
+        try
+        {
+            Assert.True(leftA.MoveNext());
+            Assert.True(rightA.MoveNext());
+            var leftFirst = Take(leftA, leftOwned, p => p.DistinguishedName);
+            var rightFirst = Take(rightA, rightOwned, p => p.DistinguishedName);
+            Assert.True(leftA.MoveNext());
+            Assert.True(rightA.MoveNext());
+            var leftSecond = Take(leftA, leftOwned, p => p.DistinguishedName);
+            var rightSecond = Take(rightA, rightOwned, p => p.DistinguishedName);
+            Assert.False(StringComparer.OrdinalIgnoreCase.Equals(leftFirst, leftSecond));
+            Assert.False(StringComparer.OrdinalIgnoreCase.Equals(rightFirst, rightSecond));
+
+            // First MoveNext on B resets Microsoft's shared result set. A's
+            // own position flags still say it is positioned at its second row.
+            Assert.True(leftB.MoveNext());
+            Assert.True(rightB.MoveNext());
+            var leftBFirst = Take(leftB, leftOwned, p => p.DistinguishedName);
+            var rightBFirst = Take(rightB, rightOwned, p => p.DistinguishedName);
+            var leftAAfter = Take(leftA, leftOwned, p => p.DistinguishedName);
+            var rightAAfter = Take(rightA, rightOwned, p => p.DistinguishedName);
+            new Comparison("Interleaved principal cursors share underlying position")
+                .Check("A now observes B's row", StringComparer.OrdinalIgnoreCase.Equals(leftAAfter, leftBFirst),
+                    StringComparer.OrdinalIgnoreCase.Equals(rightAAfter, rightBFirst))
+                .Check("A retains its previously observed row", StringComparer.OrdinalIgnoreCase.Equals(leftAAfter, leftSecond),
+                    StringComparer.OrdinalIgnoreCase.Equals(rightAAfter, rightSecond))
+                .Assert();
+        }
+        finally
+        {
+            foreach (var principal in leftOwned) principal.Dispose();
+            foreach (var principal in rightOwned) principal.Dispose();
+        }
+
+        string Take<T>(IEnumerator<T> cursor, HashSet<T> owned, Func<T, string?> dn) where T : IDisposable
+        {
+            var principal = cursor.Current;
+            owned.Add(principal);
+            var name = Assert.IsType<string>(dn(principal));
+            Assert.Contains(name, expectedDns, StringComparer.OrdinalIgnoreCase);
+            return name;
+        }
+
+        void VerifySeedSet<T>(IEnumerable<T> results, Func<T, string?> dn) where T : IDisposable
+        {
+            var names = new List<string>();
+            foreach (var principal in results)
+            {
+                using (principal) names.Add(Assert.IsType<string>(dn(principal)));
+            }
+            Assert.Equal(expectedDns.Order(StringComparer.OrdinalIgnoreCase),
+                names.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
     private static (Type? Error, string? Dn) ReadDn(Func<string?> read)
     {
         string? dn = null;

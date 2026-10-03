@@ -42,9 +42,23 @@ operations: execution requires a separately authorized disposable lab.
   one row. Cleanup uses reference identity, not Principal.Equals, and disposes
   each distinct returned principal.
 
-The branch now contains **24 cases** covering **five candidate contracts**.
+After batch 2, the branch contained **24 cases** covering **five candidate contracts**.
 Batch 1 was published at `6842d8ce539616fb0a358ab79b66a85c17cb9b8f`.
 These additional cases also require the Windows lab and are not confirmed bugs.
+
+## Batch 3: one shared-position case and bounded offline audit
+
+`CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position`
+adds one case, bringing the total to **25 cases and six candidate contracts**.
+Two enumerators share one result collection. A advances twice, B advances once,
+then A.Current is read again. Microsoft shares an underlying ResultSet; the
+clone's cursors use separate list positions. Assertions compare only DN
+relationships within each provider. Independent positive queries establish the
+exact two seeded users before probing, and all returned principals are disposed
+by reference. This differs from wrapper ownership: it concerns which directory
+row Current denotes. No live execution has occurred.
+
+Batch 2 was published at `779f3bde70240496dbc2249d742f8cccbaa8264a`.
 
 ## Deduplication checkpoint
 
@@ -77,7 +91,7 @@ These additional cases also require the Windows lab and are not confirmed bugs.
 On Linux x64 with SDK 10.0.100:
 
 - Both `net8.0-windows` and `net10.0-windows` build: **0 warnings, 0 errors**.
-- Both targets' discovery lists all **24** new cases across the two batches,
+- Both targets' discovery lists all **25** new cases across the three batches,
   without creating the AD fixture.
 - Each target's fixture-registration checks: **26 passed, 0 failed**, including
   all three new fixture-consuming classes. The paging class needs configured
@@ -96,9 +110,21 @@ On Linux x64 with SDK 10.0.100:
   `CompatibilityVlvStateComparisonTests` report **90 passed, 0 failed on each
   target** (.NET 8.0.22 and 10.0.0). This checks managed code paths on Linux, not
   Windows platform behavior or ADSI. Repository sources/output configuration
-  were not changed, and the 24 new live cases were not included.
+  were not changed, and the 25 new live cases were not included.
 - Independent read-only review of all four new classes found no blocking test
-  defects. This is source/design review, not runtime verification.
+  defects, including the later interleaved-cursor case. This is source/design
+  review, not runtime verification.
+- A deterministic managed-state harness (seed `1032026`) exercised **2,000
+  sequences, 120,000 operations, and 2,400,000 exception/state comparisons per
+  runtime**, with **zero differences on both .NET 8.0.22 and 10.0.0**. It uses a
+  source-audited whitelist of 16 searcher scalar/enum/timeout setters, VLV and
+  DirSync assignment, Sort assignment, and Dispose. No entry, SearchRoot,
+  Find, Bind, or native-handle operation is permitted. This is bounded evidence,
+  not exhaustive coverage or an AD integration pass. The harness source hash is
+  `6c6eb7cc80101e4fe7bda003a7dc9c63b16b9466e122a5d204a4a33514372c3a`;
+  both runs used byte-identical source. Exact projects, output and assembly
+  hashes are retained in the execution workspace at
+  `/workspace/scratch/compatibility-audit-2026-10-03/`.
 
 Build and fixture checks do not establish Microsoft/clone behavioral parity.
 Do not run the new live classes as an offline validation command.
