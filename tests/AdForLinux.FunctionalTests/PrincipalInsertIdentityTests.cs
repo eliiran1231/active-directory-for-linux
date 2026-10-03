@@ -10,6 +10,49 @@ public class PrincipalInsertIdentityTests
         TestSettings.CreatePrincipalContext(TestDirectory.UsersContainer);
 
     [Fact]
+    public void Stored_identity_survives_disposal_without_a_prior_guid_or_equality_read()
+    {
+        var name = $"adfl-i211-{Guid.NewGuid():N}"[..20];
+        try
+        {
+            using var context = Context();
+            using var created = new UserPrincipal(context)
+            {
+                Name = name,
+                SamAccountName = name,
+                Enabled = false,
+            };
+            created.Save();
+            using var first = UserPrincipal.FindByIdentity(context, name);
+            using var second = UserPrincipal.FindByIdentity(context, name);
+            using var different = UserPrincipal.FindByIdentity(context, "Administrator");
+            using var unsaved = new UserPrincipal(context);
+            Assert.NotNull(first);
+            Assert.NotNull(second);
+            Assert.NotNull(different);
+
+            created.Dispose();
+            first.Dispose();
+            second.Dispose();
+            different.Dispose();
+            unsaved.Dispose();
+
+            Assert.True(first.Equals(second));
+            Assert.True(second.Equals(first));
+            Assert.True(created.Equals(first));
+            Assert.False(first.Equals(different));
+            Assert.False(different.Equals(first));
+            Assert.False(first.Equals(unsaved));
+            Assert.Throws<ObjectDisposedException>(() => _ = first.Guid);
+            Assert.Throws<ObjectDisposedException>(() => _ = created.Guid);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(name));
+        }
+    }
+
+    [Fact]
     public void Save_reloads_generated_identity_for_new_principal_types()
     {
         var suffix = Guid.NewGuid().ToString("N")[..6];
