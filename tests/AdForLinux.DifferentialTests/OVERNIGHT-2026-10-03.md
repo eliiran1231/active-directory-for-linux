@@ -322,6 +322,67 @@ branch and #215 do not cover these paths. `dev` remains at the documented base.
 
 Batch 12 was published at `bb60e5718394b67f3303d6f7e3bde4b0bbfb09b0`.
 
+## Bounded public-surface map and quality checkpoint
+
+Rechecked after batch 13 at `d1e656648f9bbd4303b6459d05a68d01adb530c7`.
+This is an inventory of examined families, not a claim of exhaustive API coverage.
+Existing coverage means authored tests; it does not imply a current Windows pass.
+
+| Examined public family | Existing or pending coverage | Distinct mechanisms added here / disposition |
+| --- | --- | --- |
+| Low-level result cursors and result values | Existing CopyTo validation, materialization identity, deferred errors and post-dispose collection access | Current/Reset cursor states and binary-value ownership across repeated cached enumeration. Exact-DN positive queries precede empty/disposed probes. |
+| Entry properties, cache and lifetime | Existing credential-wrapper invalidation and failed refresh; pending farm owns fourteen cache/view families listed below | Retained whole-value setter, null Contains after disposal, Close/rebind writes, implicit-write wrapper invalidation, rename cache mode, and pending writes across credential reset. No fake timestamp objects or absent-attribute refresh assumptions. |
+| Entry children and schema filters | Existing child cursor tests; pending farm owns Add/Find cache inheritance and SchemaEntry path | Live SchemaFilter index/structural mutation cursor comparison. Credential propagation aligns in source; direct Find/Add filter effects and retained native-filter lifetime deferred because ADSI runtime behavior is not established. |
+| Entry options and security | Existing options lifecycle and security-rule suites; #215 owns PageSize/SecurityMasks after Close | No duplicate rows. Security wrappers use matching base APIs, validation and dirty tracking in the examined paths. Provider defaults are not hard-coded. |
+| Searcher configuration and execution | Existing validation, timeout, option coupling, projection, malformed-filter and native failure suites | Constructor paging, subsecond execution limit, missing-root projection state and VLV result-disposal state. Managed whitelist audit found zero differences; streaming timing/race variants deferred. |
+| Principal query translation and subclass dispatch | Existing advanced dates, culture, detached filters (#209), metadata, generic-finder validation and identity tests | Virtual filter getter dispatch, custom date finder first advancement, and protected credential constructor. Custom date Current casting is deliberately not assumed. Ordinary Name assignment is not treated as a rename. |
+| Principal result and native-entry ownership | Existing result disposal and native searcher replacement | Repeated/interleaved Current ownership, cold queried values after native Close/Dispose, and Save(context) native ownership. Same-container MoveHere success remains an explicit runtime prerequisite. |
+| Principal persistence and account state | Existing insertion/expiration/workstation/credential suites; protected-Negotiate #56 excluded | Extension cache across Save/Delete, same-object failed-insert retry, account-control bit composition, and unsaved UnlockAccount. Valid password controls, exact absence/readback and masked UAC assertions guard the relevant premises. |
+| Group membership | Existing lifecycle, deleted-owner collection and enhanced CopyTo tests; closed #60 GroupScope excluded | Small-group external membership refresh, pending custom equality, disposed pending member, and cursor owner lifetime. Add/Remove equality variants repeat the Contains mechanism; no bulk mutator exists. |
+| Membership CopyTo metadata | `Members_collection_contract_matches` and [#203](https://github.com/eliiran1231/active-directory-for-linux/issues/203) already cover this family, including rank and index-at-length parameter differences | Genuine short capacity is not an exact existing row, but adds only another ArgumentException parameter-name variant (Microsoft null versus clone `array`); both buffer before writing. Excluded as the same low-impact family, not reported as an already-tested exact edge or a new practical defect. |
+| Principal value collections | Existing interface/null/index, equality dispatch, mutation-attempt invalidation, cursor disposal/reset and typed/non-generic copy suites | Retained SPN collection mutation after owner disposal. Other examined paths have coverage; custom-equality reentrancy and clock-granularity races were not converted into nondeterministic tests. |
+| Context and credential validation | Existing constructor/option/disposal precedence and Issue56 authentication tests | No distinct added path. Null/whitespace credentials can reach real authentication; no offline probe assumes otherwise. Context disposal alone does not invalidate the examined cold queried-property path in source. |
+
+Quality boundaries retained across the cumulative tests:
+
+- The three offline cases use a parameterless entry and dispose before owner
+  access. The other 77 cases remain live-only, including tests whose bodies
+  merely configure objects: real PrincipalContext construction/native searcher
+  initialization may bind, and eleven new classes consume the AD-mutating fixture.
+- Owned persistence probes preflight exact candidate DNs and use independent
+  ownership markers/SAM and GUID checks before leaf cleanup. Rename checks both
+  old/new DNs. Unknown partial creations are not deleted; cleanup failures retain
+  the primary failure. Existing fixture ownership remains its own responsibility.
+- No staged timestamp substitutes for a genuine ADSI LargeInteger. The new
+  expiration finder uses the fixture's explicitly persisted UTC date and proves
+  the exact fixture DN is returned by both built-in finders before comparing
+  custom first advancement. Case-insensitive DN comparisons use ordinal/invariant
+  handling; no new test infers locale-sensitive or cross-timezone parity.
+- Provider-specific operations retain prerequisites: supported sorted VLV and a
+  proven three-row baseline; actual SchemaFilter behavior from the package;
+  successful same-container Save(context); password-policy rejection and valid
+  password control; specifically verified missing-DN failure. Failure to establish
+  one of these is a setup/premise result, not a confirmed compatibility defect.
+- Pinned Microsoft **9.0.0** remains the oracle for both framework targets.
+  Builds, discovery, fixture reflection and source review are separate evidence
+  from behavior. No AD/Windows execution was attempted or requested by this audit.
+
+The [evidence manifest](OVERNIGHT-2026-10-03-EVIDENCE.json) records the exact
+27-file inventory, per-class case counts, source SHA-256 values, pinned source
+commit, runtime versions and validation-log hashes. Independent cumulative
+reviews covered the earlier 57 and later 23 cases with no blocking findings.
+
+Reproducible validation inventory at this checkpoint:
+
+| Evidence | Scope and result |
+| --- | --- |
+| Differential build | `dotnet build tests/AdForLinux.DifferentialTests --no-restore --nologo`; both targets, zero warnings/errors. |
+| Cumulative discovery | `dotnet vstest <target DLL> --ListTests --TestCaseFilter:<OR of the 27 new fully-qualified class filters>`; exactly 80 rows per target, with no fixture construction. The new files are the `*Tests.cs` paths in `git diff --name-only f3c01ab52c4be824819b637fe0bb4702f43138d0 d1e656648f9bbd4303b6459d05a68d01adb530c7`. |
+| Safe fixture checks | `dotnet vstest <target DLL> --TestCaseFilter:FullyQualifiedName~FixtureRegistrationTests`; 34 passed per target. |
+| Managed oracle evidence | Three new offline cases: one expected comparison failure and two controls passed per runtime. Four existing audited classes: 90 passed per runtime. These used temporary copies with official Windows implementation DLLs; normal Linux facades reject the operations. |
+| Deterministic audit | Maintained project and exact per-runtime hashes/results in [Compatibility.ManagedStateAudit](../Compatibility.ManagedStateAudit/README.md); 120,000 operations and 2,400,000 comparisons per runtime, no differences in the whitelist. |
+| Retained logs | Workspace `scratch/compatibility-audit-2026-10-03/validation/` contains build, per-batch/cumulative discovery, fixture and managed logs; adjacent TRX files preserve the offline observations. `tests-only.patch` preserves the cumulative patch. These workspace paths are execution evidence, not portable repository paths. |
+
 ## Deduplication checkpoint
 
 - Checked latest dev and recently closed fixes through #214; #215 (Options after
