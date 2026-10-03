@@ -20,6 +20,7 @@ public class PrincipalContext : IDisposable
     private readonly bool _hasExplicitPort;
     private readonly ContextType _contextType;
     private readonly string _name;
+    private readonly string _serverName;
     private readonly int _port;
     private readonly bool _useSsl;
     private readonly string? _userName;
@@ -139,6 +140,7 @@ public class PrincipalContext : IDisposable
         _password = password;
 
         _useSsl = options.HasFlag(ContextOptions.SecureSocketLayer);
+        _serverName = name;
         (_name, _port, _hasExplicitPort) = ParseServer(name, _useSsl);
         _container = container;
     }
@@ -164,13 +166,13 @@ public class PrincipalContext : IDisposable
         }
     }
 
-    /// <summary>The server host name.</summary>
+    /// <summary>The supplied server name, including any explicit port.</summary>
     public string Name
     {
         get
         {
             CheckDisposed();
-            return _name;
+            return _serverName;
         }
     }
 

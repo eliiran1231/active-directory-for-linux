@@ -62,21 +62,21 @@ public class UserPrincipal : AuthenticablePrincipal
     /// <summary>The first name (<c>givenName</c>).</summary>
     public string? GivenName
     {
-        get => GetString("givenName");
+        get => GetCachedString("givenName");
         set => SetString("givenName", value);
     }
 
     /// <summary>The last name (<c>sn</c>).</summary>
     public string? Surname
     {
-        get => GetString("sn");
+        get => GetCachedString("sn");
         set => SetString("sn", value);
     }
 
     /// <summary>The email address (<c>mail</c>).</summary>
     public string? EmailAddress
     {
-        get => GetString("mail");
+        get => GetCachedString("mail");
         set => SetString("mail", value);
     }
 

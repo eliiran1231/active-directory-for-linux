@@ -215,7 +215,7 @@ public abstract class Principal : IDisposable
     /// <summary>The description.</summary>
     public string? Description
     {
-        get => GetString("description");
+        get => GetCachedString("description");
         set => SetString("description", value);
     }
 

@@ -13,7 +13,6 @@ public class AdvancedFilters
 
     protected internal AdvancedFilters(Principal p)
     {
-        ArgumentNullException.ThrowIfNull(p);
         _principal = p;
     }
 
