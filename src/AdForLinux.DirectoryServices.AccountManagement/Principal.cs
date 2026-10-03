@@ -1158,17 +1158,8 @@ public abstract class Principal : IDisposable
             return Entry.Properties[attribute].Cast<object?>().ToArray();
         }
 
-        if (!_pending.TryGetValue(attribute, out var value))
-        {
-            return Array.Empty<object?>();
-        }
-
-        return value switch
-        {
-            object?[] values => values.ToArray(),
-            null => new object?[] { null },
-            _ => new object?[] { value },
-        };
+        // Ordinary staged properties are separate from the extension cache.
+        return Array.Empty<object?>();
     }
 
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>

@@ -61,13 +61,20 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     public bool Contains(T value)
     {
         ThrowIfNull(value);
-        return _values.Contains(value);
+        return IndexOf(value) >= 0;
     }
 
     public int IndexOf(T value)
     {
         ThrowIfNull(value);
-        return _values.IndexOf(value);
+        // Microsoft dispatches through object.Equals, even when T implements
+        // IEquatable<T> with different equality semantics.
+        for (var index = 0; index < _values.Count; index++)
+        {
+            if (object.Equals(_values[index], value)) return index;
+        }
+
+        return -1;
     }
 
     public void Insert(int index, T value)
@@ -82,13 +89,14 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     {
         ThrowIfNull(value);
         _version++;
-        var removed = _values.Remove(value);
-        if (removed)
+        var index = IndexOf(value);
+        if (index >= 0)
         {
+            _values.RemoveAt(index);
             Changed();
         }
 
-        return removed;
+        return index >= 0;
     }
 
     public void RemoveAt(int index)
@@ -131,7 +139,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         {
             get
             {
-                ObjectDisposedException.ThrowIf(_disposed, this);
+                CheckDisposed();
                 if (!_hasCurrent)
                 {
                     throw new InvalidOperationException("Enumeration has either not started or has already finished.");
@@ -146,7 +154,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
 
         public bool MoveNext()
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            CheckDisposed();
             CheckVersion();
             _hasCurrent = _inner.MoveNext();
             _current = _hasCurrent ? _inner.Current : default!;
@@ -155,7 +163,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
 
         public void Reset()
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            CheckDisposed();
             CheckVersion();
             _inner.Reset();
             _hasCurrent = false;
@@ -167,6 +175,11 @@ public class PrincipalValueCollection<T> : IList<T>, IList
             if (_disposed) return;
             _inner.Dispose();
             _disposed = true;
+        }
+
+        private void CheckDisposed()
+        {
+            if (_disposed) throw new ObjectDisposedException("ValueCollectionEnumerator");
         }
 
         private void CheckVersion()
