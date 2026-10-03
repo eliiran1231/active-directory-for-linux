@@ -18,7 +18,7 @@ public class AdvancedFilters
     }
 
     public void LastBadPasswordAttempt(DateTime lastAttempt, MatchType match) =>
-        AdvancedDateFilterSet("badPasswordTime", lastAttempt, match);
+        AdvancedDateFilterSet("badPasswordTime", lastAttempt, match, excludeDefaultValue: true);
 
     public void AccountExpirationDate(DateTime expirationTime, MatchType match) =>
         AdvancedDateFilterSet("accountExpires", expirationTime, match);
@@ -34,12 +34,12 @@ public class AdvancedFilters
     {
         _principal.SetAdvancedFilter(
             "lastLogon",
-            () => $"(|{ToLdapDateCondition("lastLogon", logonTime, match)}" +
-            $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, requirePresenceForNotEquals: true)})");
+            () => $"(|{ToLdapDateCondition("lastLogon", logonTime, match, excludeDefaultValue: true)}" +
+            $"{ToLdapDateCondition("lastLogonTimestamp", logonTime, match, excludeDefaultValue: true, requirePresenceForNotEquals: true)})");
     }
 
     public void LastPasswordSetTime(DateTime passwordSetTime, MatchType match) =>
-        AdvancedDateFilterSet("pwdLastSet", passwordSetTime, match);
+        AdvancedDateFilterSet("pwdLastSet", passwordSetTime, match, excludeDefaultValue: true);
 
     private void AdvancedDateFilterSet(
         string attribute,
@@ -52,15 +52,22 @@ public class AdvancedFilters
 
     protected void AdvancedFilterSet(string attribute, object value, Type objectType, MatchType mt)
     {
-        _principal.SetAdvancedExtensionFilter(attribute, value, () =>
-        {
-            var text = objectType == typeof(DateTime) && value is DateTime date
-                ? date.ToUniversalTime().ToFileTimeUtc().ToString(CultureInfo.InvariantCulture)
-                : Convert.ToString(value, CultureInfo.InvariantCulture)
-                    ?? throw new ArgumentException("The filter value cannot be converted to text.", nameof(value));
+        _principal.SetAdvancedExtensionFilter(attribute, value, () => ConvertExtension(attribute, value, mt));
+    }
 
-            return ToLdapCondition(attribute, text, mt);
-        });
+    private static string ConvertExtension(string attribute, object value, MatchType match)
+    {
+        if (value is System.Collections.ICollection collection)
+        {
+            return string.Concat(collection.Cast<object>().Select(item => ConvertExtension(attribute, item, match)));
+        }
+        var text = value switch
+        {
+            DateTime date => date.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture),
+            bool boolean => boolean ? "TRUE" : "FALSE",
+            _ => value.ToString()!,
+        };
+        return ToLdapCondition(attribute, text, match, papiQuoting: true);
     }
 
     internal static string ToLdapDateCondition(
@@ -73,7 +80,7 @@ public class AdvancedFilters
         var fileTime = value.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture);
         var condition = ToLdapCondition(attribute, fileTime, match, requirePresenceForNotEquals);
         return excludeDefaultValue && match is not MatchType.Equals and not MatchType.NotEquals
-            ? $"(&{condition}(!({attribute}=0)))"
+            ? $"(&{condition}(!{attribute}=0))"
             : condition;
     }
 
@@ -81,9 +88,12 @@ public class AdvancedFilters
         string attribute,
         string value,
         MatchType match,
-        bool requirePresenceForNotEquals = false)
+        bool requirePresenceForNotEquals = false,
+        bool papiQuoting = false)
     {
-        var escaped = LdapFilter.EscapeValue(value);
+        var escaped = papiQuoting
+            ? PrincipalQueryFilterTranslator.EscapeKeepingWildcards(value)
+            : LdapFilter.EscapeValue(value);
         return match switch
         {
             MatchType.Equals => $"({attribute}={escaped})",

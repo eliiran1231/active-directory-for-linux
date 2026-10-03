@@ -60,7 +60,7 @@ public sealed class CompatibilityAdvancedDateQueryComparisonTests
     private static string? OurFilter(Ours.PrincipalSearcher searcher) =>
         Assert.IsType<AdForLinux.DirectoryServices.DirectorySearcher>(searcher.GetUnderlyingSearcher()).Filter;
 
-    private static void Configure(Ms.AdvancedFilters filters, string method, DateTime value, Ms.MatchType match)
+    internal static void Configure(Ms.AdvancedFilters filters, string method, DateTime value, Ms.MatchType match)
     {
         switch (method)
         {
@@ -72,7 +72,7 @@ public sealed class CompatibilityAdvancedDateQueryComparisonTests
         }
     }
 
-    private static void Configure(Ours.AdvancedFilters filters, string method, DateTime value, Ours.MatchType match)
+    internal static void Configure(Ours.AdvancedFilters filters, string method, DateTime value, Ours.MatchType match)
     {
         switch (method)
         {

@@ -13,8 +13,10 @@ public class SearchResult
 
     internal SearchResult(SearchResultEntry entry, DirectoryEntry searchRoot)
     {
-        _searchRoot = searchRoot;
-        Path = searchRoot.PathForDn(entry.DistinguishedName);
+        // Capture credentials and transport configuration before callers can
+        // mutate or dispose the search root. This entry never opens a connection.
+        _searchRoot = searchRoot.CreateEntryForDn(entry.DistinguishedName);
+        var path = searchRoot.PathForDn(entry.DistinguishedName);
 
         var properties = new ResultPropertyCollection();
         var grouped = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
@@ -42,12 +44,12 @@ public class SearchResult
         }
 
         // Microsoft also exposes the path as the "adspath" property.
-        properties.Set("adspath", new object[] { Path });
+        properties.Set("adspath", new object[] { path });
         Properties = properties;
     }
 
     /// <summary>The <c>LDAP://…</c> path of this result.</summary>
-    public string Path { get; }
+    public string Path => (string)Properties["ADsPath"][0]!;
 
     /// <summary>The attributes that were loaded for this result.</summary>
     public ResultPropertyCollection Properties { get; }
@@ -55,7 +57,22 @@ public class SearchResult
     /// <summary>Opens this result as a full <see cref="DirectoryEntry"/>.</summary>
     public DirectoryEntry GetDirectoryEntry()
     {
-        var dn = Path.Substring(Path.IndexOf('/', "LDAP://".Length) + 1);
-        return _searchRoot.CreateEntryForDn(dn);
+        return _searchRoot.CreateEntryForPath(Path);
+    }
+
+    internal SearchResult(DirectoryEntry searchRoot, ResultPropertyCollection properties)
+    {
+        _searchRoot = searchRoot;
+        Properties = properties;
+    }
+
+    internal SearchResult Snapshot()
+    {
+        var properties = new ResultPropertyCollection();
+        foreach (string name in Properties.PropertyNames)
+        {
+            properties.Set(name, Properties[name].Cast<object>().ToArray());
+        }
+        return new SearchResult(_searchRoot, properties);
     }
 }

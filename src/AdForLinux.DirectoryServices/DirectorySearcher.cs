@@ -417,6 +417,27 @@ public class DirectorySearcher : Component
     /// <summary>Returns every match. Pages automatically when PageSize &gt; 0.</summary>
     public SearchResultCollection FindAll()
     {
+        try
+        {
+            return FindAllCore();
+        }
+        catch (ArgumentException error) when (error.ParamName == nameof(Filter))
+        {
+            // ExecuteSearch accepts the request; ADSI reports malformed filters
+            // when the result cursor first advances, even for cached searches.
+            return new SearchResultCollection(DeferredFilterError(error), CacheResults, GetPropertiesLoaded());
+        }
+    }
+
+    private static IEnumerable<SearchResult> DeferredFilterError(ArgumentException error)
+    {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(
+            new ArgumentException(error.Message, error.InnerException)).Throw();
+        yield break;
+    }
+
+    private SearchResultCollection FindAllCore()
+    {
         var configuredRoot = RequireRoot();
         using var reboundRoot = configuredRoot.IsDisposed
             ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
@@ -491,9 +512,19 @@ public class DirectorySearcher : Component
         // Use a separate connection because a result collection can outlive the searcher/root,
         // and an in-flight request must not share mutable timeout/referral state with callers.
         var resultRoot = root.CreateEntryForDn(root.DistinguishedName);
-        var connection = resultRoot.GetConnection();
-        ConfigureConnection(connection);
-        var request = BuildRequest();
+        LdapConnection connection;
+        SearchRequest request;
+        try
+        {
+            connection = resultRoot.GetConnection();
+            ConfigureConnection(connection);
+            request = BuildRequest();
+        }
+        catch
+        {
+            resultRoot.Dispose();
+            throw;
+        }
         var pageControl = PageSize > 0 ? new PageResultRequestControl(PageSize) : null;
         if (pageControl is not null)
         {
@@ -608,7 +639,7 @@ public class DirectorySearcher : Component
         }
         catch (LdapException ex) when (ex.ErrorCode == 87)
         {
-            throw new ArgumentException(ex.Message, nameof(Filter), ex);
+            throw new ArgumentException(ex.Message, ex);
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {
@@ -629,6 +660,14 @@ public class DirectorySearcher : Component
 
         var root = RequireRoot();
         var effectiveFilter = string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter;
+        // ADSI accepts the bare date-sentinel negations exposed by AccountManagement.
+        // LDAP requires a parenthesized assertion inside NOT. Normalize only these
+        // known provider spellings at the protocol boundary; preserve public Filter.
+        foreach (var attribute in new[] { "pwdLastSet", "badPasswordTime", "lastLogon", "lastLogonTimestamp" })
+        {
+            effectiveFilter = effectiveFilter.Replace($"(!{attribute}=0)", $"(!({attribute}=0))",
+                StringComparison.OrdinalIgnoreCase);
+        }
 #if NET10_0_OR_GREATER
         if (!IsStructurallyValidFilter(effectiveFilter))
         {

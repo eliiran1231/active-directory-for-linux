@@ -20,8 +20,21 @@ public class PrincipalQueryFilterTests
         using var user = new UserPrincipal(context) { DisplayName = "team*\\2a)(cn=*)\0" };
         using var searcher = new PrincipalSearcher(user);
 
-        Assert.Equal(UserCategory + "(displayName=team*\\5c2a\\29\\28cn=*\\29\\00))",
+        Assert.Equal(UserCategory + "(displayName=team*2a\\29\\28cn=*\\29\\00))",
             searcher.GetLdapFilter());
+    }
+
+    [Theory]
+    [InlineData(@"DESK\*", @"DESK\2a")]
+    [InlineData(@"lab\\box", @"lab\5cbox")]
+    [InlineData(@"quote\(x\)", @"quote\28x\29")]
+    [InlineData(@"trailing\", "trailing")]
+    public void String_query_applies_papi_backslash_quoting(string value, string expected)
+    {
+        using var context = OfflineContext();
+        using var user = new UserPrincipal(context) { DisplayName = value };
+        using var searcher = new PrincipalSearcher(user);
+        Assert.Equal(UserCategory + $"(displayName={expected}))", searcher.GetLdapFilter());
     }
 
     [Fact]

@@ -693,11 +693,11 @@ public class DirectoryEntry : Component
     /// <summary>Re-reads this object's attributes from the server.</summary>
     public void RefreshCache()
     {
+        var refreshed = ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true);
         _pendingPropertyChanges.Clear();
-        _properties = null;
+        _properties = refreshed;
         _objectSecurity = null;
         _objectSecurityChanged = false;
-        EnsureLoaded();
     }
 
     /// <summary>
@@ -723,6 +723,7 @@ public class DirectoryEntry : Component
     /// <summary>Re-reads the specified attributes into the local property cache.</summary>
     public void RefreshCache(string[] propertyNames)
     {
+        ThrowIfDisposed();
         // ADSI dereferences the array before validating it.
         _ = propertyNames.Length;
         if (propertyNames.Any(propertyName => propertyName is null))
@@ -834,7 +835,11 @@ public class DirectoryEntry : Component
 
     private void MoveTo(DirectoryEntry newParent, string? newName, bool validateNewName)
     {
-        ArgumentNullException.ThrowIfNull(newParent);
+        if (newParent is null)
+        {
+            throw new NullReferenceException();
+        }
+        ThrowIfDisposed();
         if (validateNewName && newName is not null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(newName);
@@ -1092,9 +1097,14 @@ public class DirectoryEntry : Component
     internal DirectoryEntry CreateEntryForDn(string distinguishedName)
     {
         var path = new LdapPath(_path.Host, _path.Port, distinguishedName).ToString();
+        return CreateEntryForPath(path);
+    }
+
+    internal DirectoryEntry CreateEntryForPath(string path)
+    {
         return _connectionOptionsOverride is null
             ? new DirectoryEntry(path, _username, _password, _authenticationType)
-            : new DirectoryEntry(path, _connectionOptionsOverride);
+            : new DirectoryEntry(path, _connectionOptionsOverride.Clone());
     }
 
     /// <summary>Builds the LDAP path for a DN on this entry's server.</summary>

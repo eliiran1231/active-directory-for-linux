@@ -337,10 +337,11 @@ public class DirectoryVirtualListView
 
     internal void Update(int offset, int approximateTotal, byte[]? contextId)
     {
-        // Offset derives TargetPercentage from ApproximateTotal. Apply the
-        // response total first so all observable response state is coherent.
-        ApproximateTotal = approximateTotal;
+        // Match the DirectorySearcher response getter, including the second
+        // offset calculation performed by the percentage setter.
         Offset = offset;
+        ApproximateTotal = approximateTotal;
         DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(contextId);
+        TargetPercentage = approximateTotal == 0 ? 0 : (int)((double)offset / approximateTotal * 100);
     }
 }

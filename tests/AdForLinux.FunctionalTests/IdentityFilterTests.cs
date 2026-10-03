@@ -17,9 +17,22 @@ public class IdentityFilterTests
         const string value = "Jörg\\2a*)(objectClass=*)\0";
 
         Assert.Equal(
-            $"({attribute}=Jörg\\5c2a\\2a\\29\\28objectClass=\\2a\\29\\00)",
+            type == IdentityType.SamAccountName
+                ? "(sAMAccountName=2a\\2a\\29\\28objectClass=\\2a\\29\\00)"
+                : $"({attribute}=Jörg\\5c2a\\2a\\29\\28objectClass=\\2a\\29\\00)",
             IdentityFilter.Build(type, value));
     }
+
+    [Theory]
+    [InlineData(@"DOMAIN\user", "user")]
+    [InlineData(@"\user", "user")]
+    [InlineData(@"DOMAIN\user\suffix", @"user\5csuffix")]
+    public void Explicit_sam_qualification_uses_the_first_separator(string value, string expected)
+        => Assert.Equal($"(sAMAccountName={expected})", IdentityFilter.Build(IdentityType.SamAccountName, value));
+
+    [Fact]
+    public void Explicit_sam_rejects_a_trailing_qualifier_separator()
+        => Assert.Throws<ArgumentException>(() => IdentityFilter.Build(IdentityType.SamAccountName, @"DOMAIN\"));
 
     [Theory]
     [InlineData(IdentityType.Guid, "00112233-4455-6677-8899-aabbccddeeff",

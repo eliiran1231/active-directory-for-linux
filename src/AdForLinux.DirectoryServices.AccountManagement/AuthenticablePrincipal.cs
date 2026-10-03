@@ -160,19 +160,18 @@ public class AuthenticablePrincipal : Principal
     /// the replicated <c>lastLogonTimestamp</c> when present, which can lag by
     /// days; otherwise the local <c>lastLogon</c> of the server we asked.
     /// </summary>
-    public DateTime? LastLogon =>
-        AdFileTime.ToDateTime(GetString("lastLogonTimestamp"))
-        ?? AdFileTime.ToDateTime(GetString("lastLogon"));
+    public DateTime? LastLogon => AdFileTime.ToDateTime(
+        GetCachedString("lastLogonTimestamp") ?? GetCachedString("lastLogon"));
 
     /// <summary>
     /// When the password was last set, or null if the user must change it at
     /// next logon.
     /// </summary>
-    public DateTime? LastPasswordSet => AdFileTime.ToDateTime(GetString("pwdLastSet"));
+    public DateTime? LastPasswordSet => AdFileTime.ToDateTime(GetCachedString("pwdLastSet"));
 
     /// <summary>How many bad password attempts have been counted.</summary>
     public int BadLogonCount =>
-        int.TryParse(GetString("badPwdCount"), out var count) ? count : 0;
+        int.TryParse(GetCachedString("badPwdCount"), out var count) ? count : 0;
 
     /// <summary>When the last bad password attempt happened, or null.</summary>
     public DateTime? LastBadPasswordAttempt => AdFileTime.ToDateTime(GetString("badPasswordTime"));
@@ -680,7 +679,7 @@ public class AuthenticablePrincipal : Principal
     private void SetPermittedWorkstations(IReadOnlyList<string> values)
     {
         var value = values.Count == 0 ? null : string.Join(',', values);
-        SetString("userWorkstations", value);
+        SetString("userWorkstations", string.IsNullOrEmpty(value) ? null : value);
         if (values.Count == 0)
         {
             RemoveQueryFilter("userWorkstations");

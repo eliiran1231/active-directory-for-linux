@@ -76,13 +76,13 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     public IEnumerator GetEnumerator()
     {
         _parent.ThrowIfDisposed();
-        return Enumerate().GetEnumerator();
+        return new ChildEnumerator(this);
     }
 
     IEnumerator<DirectoryEntry> IEnumerable<DirectoryEntry>.GetEnumerator()
     {
         _parent.ThrowIfDisposed();
-        return Enumerate().GetEnumerator();
+        return new ChildEnumerator(this);
     }
 
     private IEnumerable<DirectoryEntry> Enumerate()
@@ -100,6 +100,32 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
         {
             yield return result.GetDirectoryEntry();
         }
+    }
+
+    private sealed class ChildEnumerator(DirectoryEntries owner) : IEnumerator<DirectoryEntry>
+    {
+        private IEnumerator<DirectoryEntry>? _iterator;
+        private bool _positioned;
+
+        public DirectoryEntry Current => _positioned
+            ? _iterator!.Current
+            : throw new InvalidOperationException("The enumerator is not positioned on a child.");
+        object IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            _iterator ??= owner.Enumerate().GetEnumerator();
+            return _positioned = _iterator.MoveNext();
+        }
+
+        public void Reset()
+        {
+            _iterator?.Dispose();
+            _iterator = null;
+            _positioned = false;
+        }
+
+        public void Dispose() => Reset();
     }
 
     private string BuildSchemaFilter()

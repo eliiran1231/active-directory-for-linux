@@ -34,6 +34,19 @@ public class PrincipalContext : IDisposable
     private string? _container;
     private string? _connectedServer;
     private bool _disposed;
+    private DirectoryEntry? _searchRoot;
+
+    internal DirectoryEntry SearchRoot
+    {
+        get
+        {
+            lock (_connectionStateLock)
+            {
+                CheckDisposed();
+                return _searchRoot ??= CreateDirectoryEntry(QueryContainer);
+            }
+        }
+    }
 
     private enum CredentialValidationMethod
     {
@@ -94,6 +107,13 @@ public class PrincipalContext : IDisposable
         string? userName,
         string? password)
     {
+        if ((userName is null) != (password is null))
+        {
+            throw new ArgumentException(
+                "The userName and password parameters must either both be null or both contain a value.");
+        }
+
+        ValidateOptions(options, contextType == ContextType.Domain);
         if (!Enum.IsDefined(contextType))
         {
             throw new InvalidEnumArgumentException(
@@ -112,14 +132,6 @@ public class PrincipalContext : IDisposable
                 "Serverless binding is not supported on Linux. Pass the domain controller " +
                 "name, e.g. new PrincipalContext(ContextType.Domain, \"dc1.example.com\").");
         }
-
-        if ((userName is null) != (password is null))
-        {
-            throw new ArgumentException(
-                "The userName and password parameters must either both be null or both contain a value.");
-        }
-
-        ValidateOptions(options);
 
         _contextType = contextType;
         _options = options;
@@ -693,7 +705,7 @@ public class PrincipalContext : IDisposable
         return (name, useSsl ? 636 : 389, false);
     }
 
-    private static void ValidateOptions(ContextOptions options)
+    private static void ValidateOptions(ContextOptions options, bool validateBindMode)
     {
         const ContextOptions validOptions =
             ContextOptions.Negotiate |
@@ -710,14 +722,13 @@ public class PrincipalContext : IDisposable
         }
 
         var bindOptions = options & (ContextOptions.Negotiate | ContextOptions.SimpleBind);
-        if (bindOptions is ContextOptions.Negotiate or ContextOptions.SimpleBind)
+        if (!validateBindMode || bindOptions is ContextOptions.Negotiate or ContextOptions.SimpleBind)
         {
             return;
         }
 
         throw new ArgumentException(
-            "Domain contexts require exactly one of ContextOptions.Negotiate or ContextOptions.SimpleBind.",
-            nameof(options));
+            "Domain contexts require exactly one of ContextOptions.Negotiate or ContextOptions.SimpleBind.");
     }
 
     private static bool IsAuthenticationFailure(LdapException exception) =>
@@ -791,6 +802,11 @@ public class PrincipalContext : IDisposable
 
             _foreignContexts.Clear();
             _disposed = true;
+        }
+        lock (_connectionStateLock)
+        {
+            _searchRoot?.Dispose();
+            _searchRoot = null;
         }
         GC.SuppressFinalize(this);
     }

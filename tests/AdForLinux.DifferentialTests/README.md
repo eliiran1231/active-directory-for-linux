@@ -1,5 +1,10 @@
 # Differential tests (run these on Windows)
 
+For the current expanded compatibility results, implementation changes and
+remaining limitations tracked by #203, see
+[COMPATIBILITY-COVERAGE.md](COMPATIBILITY-COVERAGE.md#issue-203-implementation-status-2026-10-03).
+Historical failure counts below describe their original test batches.
+
 These tests compare **the real Microsoft library** with **our Linux clone**.
 
 They cannot run on Linux, because `System.DirectoryServices` and

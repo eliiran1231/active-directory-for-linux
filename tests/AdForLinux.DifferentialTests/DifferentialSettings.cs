@@ -37,9 +37,34 @@ public static class DifferentialSettings
         BaseDn.TrimStart().StartsWith("OU=", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Where the tests create their temporary objects.</summary>
-    public static string UsersContainer =>
-        Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
-        ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
+    public static string UsersContainer
+    {
+        get
+        {
+            var container = Environment.GetEnvironmentVariable("AD_USERS_CONTAINER_DN")
+                ?? (HasIsolatedBaseDn ? BaseDn : $"CN=Users,{BaseDn}");
+            if (HasIsolatedBaseDn
+                && !IsWithinTestBase(container, BaseDn))
+            {
+                throw new InvalidOperationException(
+                    "AD_USERS_CONTAINER_DN must remain inside the isolated AD_BASE_DN test OU.");
+            }
+            return container;
+        }
+    }
+
+    internal static bool IsWithinTestBase(string container, string testBase)
+    {
+        // Walk actual RDN boundaries: a matching text suffix behind an escaped
+        // comma can belong to a CN outside the disposable OU.
+        for (string? ancestor = container; ancestor is not null;
+             ancestor = AdForLinux.DirectoryServices.Ldap.LdapDistinguishedName.Parent(ancestor))
+        {
+            if (ancestor.Equals(testBase, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>
     /// Server name for PrincipalContext. Microsoft credential validation and

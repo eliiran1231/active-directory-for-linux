@@ -18,6 +18,7 @@ public abstract class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string?> _loadedScalars = new(StringComparer.OrdinalIgnoreCase);
     private sealed record ExtensionCacheEntry(object?[]? Values, Func<string>? FilterCondition = null);
 
     private readonly Dictionary<string, ExtensionCacheEntry> _extensionCache = new(StringComparer.Ordinal);
@@ -25,6 +26,7 @@ public abstract class Principal : IDisposable
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
     private bool _deleted;
+    internal bool IsDeleted => _deleted;
     private bool _inserting;
 
     private protected PrincipalContext ContextRef = null!;
@@ -206,7 +208,7 @@ public abstract class Principal : IDisposable
     /// <summary>The display name.</summary>
     public string? DisplayName
     {
-        get => GetString("displayName");
+        get => GetCachedString("displayName");
         set => SetString("displayName", value);
     }
 
@@ -1093,15 +1095,27 @@ public abstract class Principal : IDisposable
     }
 
     /// <summary>Escapes a value for use as an RDN (RFC 4514).</summary>
-    private static string EscapeRdnValue(string value) => value
-        .Replace("\\", "\\\\")
-        .Replace(",", "\\,")
-        .Replace("+", "\\+")
-        .Replace("\"", "\\\"")
-        .Replace("<", "\\<")
-        .Replace(">", "\\>")
-        .Replace(";", "\\;")
-        .Replace("=", "\\=");
+    private static string EscapeRdnValue(string value)
+    {
+        var escaped = new System.Text.StringBuilder(value.Length);
+        for (var index = 0; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (character == '\0')
+            {
+                escaped.Append("\\00");
+                continue;
+            }
+            if (character is '\\' or ',' or '+' or '"' or '<' or '>' or ';' or '='
+                || (index == 0 && character == '#')
+                || (character == ' ' && (index == 0 || index == value.Length - 1)))
+            {
+                escaped.Append('\\');
+            }
+            escaped.Append(character);
+        }
+        return escaped.ToString();
+    }
 
     /// <summary>The underlying <see cref="DirectoryEntry"/>.</summary>
     public object? GetUnderlyingObject()
@@ -1262,6 +1276,17 @@ public abstract class Principal : IDisposable
         }
 
         return _pending.TryGetValue(attributeName, out var value) ? value?.ToString() : null;
+    }
+
+    private protected string? GetCachedString(string attributeName)
+    {
+        CheckDisposedOrDeleted();
+        if (!_loadedScalars.TryGetValue(attributeName, out var value))
+        {
+            value = GetString(attributeName);
+            _loadedScalars[attributeName] = value;
+        }
+        return value;
     }
 
     private protected IEnumerable<string> GetValues(string attributeName)
@@ -1425,6 +1450,7 @@ public abstract class Principal : IDisposable
                 attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
                 value);
         }
+        _loadedScalars[attributeName] = value;
     }
 
     /// <summary>The values staged before the object is saved.</summary>

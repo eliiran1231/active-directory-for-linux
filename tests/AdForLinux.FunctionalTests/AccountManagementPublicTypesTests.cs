@@ -93,7 +93,7 @@ public class AccountManagementPublicTypesTests
         var ticks = when.ToFileTimeUtc();
 
         Assert.Equal(
-            $"(&(objectClass=computer)(sAMAccountName=server$)(|(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))))",
+            $"(&(objectClass=computer)(sAMAccountName=server$)(|(&(&(lastLogon>={ticks})(!(lastLogon={ticks}))(lastLogon=*))(!lastLogon=0))(&(&(lastLogonTimestamp>={ticks})(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*))(!lastLogonTimestamp=0))))",
             searcher.GetLdapFilter());
     }
 
@@ -169,7 +169,7 @@ public class AccountManagementPublicTypesTests
 
         using var searcher = new PrincipalSearcher(user);
         Assert.Equal(
-            $"(&(objectCategory=user)(objectClass=user)(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(pwdLastSet>={ticks}))",
+            $"(&(objectCategory=user)(objectClass=user)(&(&(badPasswordTime<={ticks})(!(badPasswordTime={ticks}))(badPasswordTime=*))(!badPasswordTime=0))(|(!(lastLogon={ticks}))(&(!(lastLogonTimestamp={ticks}))(lastLogonTimestamp=*)))(&(pwdLastSet>={ticks})(!pwdLastSet=0)))",
             searcher.GetLdapFilter());
     }
 
