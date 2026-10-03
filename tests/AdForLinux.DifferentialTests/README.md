@@ -1196,16 +1196,32 @@ These tests assert parity and intentionally fail where the incompatibility is pr
 
 ### Remaining user scalar caches and persisted equality after disposal
 
-This batch adds **20 cases per framework**, with no production changes:
+The [original real-AD run](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37121188275)
+confirmed **15 failures and 5 passing controls in 20 new cases per framework**,
+identically on .NET 8 and .NET 10. These findings are tracked by
+[issue #211](https://github.com/eliiran1231/active-directory-for-linux/issues/211).
 
-| Test class / new cases | Suspected incompatibility |
+| Test class / new cases | Corrected behavior |
 | --- | --- |
-| `UserScalarCacheRetentionComparisonTests` (12) | `VoiceTelephoneNumber`, `MiddleName`, and `EmployeeId` use uncached `GetString` in the clone. Microsoft keeps each loaded principal value separately from the underlying entry cache. |
-| `PersistedPrincipalEqualityDisposalComparisonTests` (8) | Comparing separately loaded saved principals after either is disposed reads the guarded `Guid` getter in the clone. Microsoft compares stored identity keys without accessing disposed properties. |
+| `UserScalarCacheRetentionComparisonTests` (12) | `VoiceTelephoneNumber`, `MiddleName`, and `EmployeeId` retain their loaded values, including null, separately from the public entry cache. Ordinary setters still update the principal cache and staged or saved attributes. |
+| `PersistedPrincipalEqualityDisposalComparisonTests` (8) | Equality compares identity captured when loading or creating a principal, so disposing either operand does not change the result. Ordinary disposed-property guards and unsaved equality remain intact. |
 
-Both target frameworks build with zero warnings/errors. **The new cases have not
-been executed against AD; these are source-backed predictions awaiting the
-differential run, not confirmed runtime results.** The scalar additions cover
+Validated by the [real-AD workflow](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37121851299):
+all **36 selected cases pass on each target**, with the existing Microsoft-oracle
+tests unchanged. The full suite reports **1,210 executed, 1,206 passed, 4 failed,
+zero skipped** per target. The remaining failures are outside #211: the two
+entry-options rebinding cases tracked by [#203](https://github.com/eliiran1231/active-directory-for-linux/issues/203)
+and the two protected-Negotiate creation/save cases tracked by
+[#56](https://github.com/eliiran1231/active-directory-for-linux/issues/56).
+Test OU creation and cleanup and result artifact upload succeeded.
+
+The [Linux CI workflow](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37121849439)
+passed the build and **526/526 functional tests on each target**, including a
+regression that disposes loaded and newly created principals before any GUID or
+equality read. The four existing unsaved-equality differential cases also pass
+locally on both targets.
+
+The scalar additions cover
 replacement, clearing, initially absent values, and an unchanged control. They
 check raw cache values before comparing repeated principal reads. The equality
 matrix covers equal/different identities and every left/right disposal
