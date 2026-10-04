@@ -6,6 +6,48 @@ namespace AdForLinux.FunctionalTests;
 
 public class Issue216RegressionTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Principal_cursor_reset_defers_shared_rewind_until_next_move(bool projected)
+    {
+        using var results = projected ? new PrincipalSearchResult<int>(2, index => index)
+            : new PrincipalSearchResult<int>(new[] { 0, 1 });
+        using var first = results.GetEnumerator();
+        using var second = results.GetEnumerator();
+        Assert.True(first.MoveNext());
+        Assert.True(second.MoveNext());
+        Assert.True(first.MoveNext());
+        Assert.Equal(1, second.Current);
+        first.Reset();
+        Assert.Throws<InvalidOperationException>(() => first.Current);
+        Assert.Equal(1, second.Current);
+        Assert.True(first.MoveNext());
+        Assert.Equal(0, second.Current);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Exhausted_principal_cursor_stays_exhausted_until_its_own_reset(bool projected)
+    {
+        using var results = projected ? new PrincipalSearchResult<int>(2, index => index)
+            : new PrincipalSearchResult<int>(new[] { 0, 1 });
+        using var first = results.GetEnumerator();
+        using var second = results.GetEnumerator();
+        Assert.True(first.MoveNext());
+        Assert.True(first.MoveNext());
+        Assert.False(first.MoveNext());
+        Assert.True(second.MoveNext());
+        Assert.False(first.MoveNext());
+        Assert.False(first.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => first.Current);
+        Assert.Equal(0, second.Current);
+        first.Reset();
+        Assert.True(first.MoveNext());
+        Assert.Equal(0, first.Current);
+    }
+
     [Fact]
     public void Subsecond_configured_paging_limit_is_unlimited()
     {

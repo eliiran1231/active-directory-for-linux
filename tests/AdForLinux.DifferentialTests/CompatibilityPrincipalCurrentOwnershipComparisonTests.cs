@@ -77,8 +77,11 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
         }
     }
 
-    [Fact]
-    public void Interleaved_cursors_observe_matching_shared_result_position()
+    [Theory]
+    [InlineData("advance")]
+    [InlineData("reset")]
+    [InlineData("exhaust")]
+    public void Interleaved_cursors_observe_matching_shared_result_position(string operation)
     {
         // Both seeded user names share this generated suffix; validate the
         // naming premise and then validate the complete result set separately.
@@ -136,6 +139,51 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
                 .Check("A retains its previously observed row", StringComparer.OrdinalIgnoreCase.Equals(leftAAfter, leftSecond),
                     StringComparer.OrdinalIgnoreCase.Equals(rightAAfter, rightSecond))
                 .Assert();
+
+            // Exercise the opposite interleaving too: B must observe A's move.
+            Assert.True(leftA.MoveNext());
+            Assert.True(rightA.MoveNext());
+            CompareCurrent("B after A advances", leftB, rightB);
+            if (operation == "reset")
+            {
+                leftA.Reset();
+                rightA.Reset();
+                Assert.Throws<InvalidOperationException>(() => leftA.Current);
+                Assert.Throws<InvalidOperationException>(() => rightA.Current);
+                CompareCurrent("B after A resets, before A moves", leftB, rightB);
+                Assert.True(leftA.MoveNext());
+                Assert.True(rightA.MoveNext());
+                CompareCurrent("B after reset A moves", leftB, rightB);
+            }
+            else if (operation == "exhaust")
+            {
+                Assert.False(leftA.MoveNext());
+                Assert.False(rightA.MoveNext());
+                leftB.Reset();
+                rightB.Reset();
+                Assert.True(leftB.MoveNext());
+                Assert.True(rightB.MoveNext());
+                for (var attempt = 0; attempt < 2; attempt++)
+                {
+                    new Comparison("Exhausted A after B restarts")
+                        .Check("MoveNext", leftA.MoveNext(), rightA.MoveNext()).Assert();
+                    Assert.Throws<InvalidOperationException>(() => leftA.Current);
+                    Assert.Throws<InvalidOperationException>(() => rightA.Current);
+                    CompareCurrent("B after exhausted A moves", leftB, rightB);
+                }
+                leftA.Reset();
+                rightA.Reset();
+                Assert.True(leftA.MoveNext());
+                Assert.True(rightA.MoveNext());
+                CompareCurrent("A restarts after its own reset", leftA, rightA);
+            }
+
+            void CompareCurrent(string label, IEnumerator<Ms.Principal> expected, IEnumerator<Ours.Principal> actual)
+            {
+                var expectedDn = Take(expected, leftOwned, p => p.DistinguishedName);
+                var actualDn = Take(actual, rightOwned, p => p.DistinguishedName);
+                new Comparison(label).Check("DN", expectedDn.ToUpperInvariant(), actualDn.ToUpperInvariant()).Assert();
+            }
         }
         finally
         {

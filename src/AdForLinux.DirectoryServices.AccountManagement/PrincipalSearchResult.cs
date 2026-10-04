@@ -60,6 +60,7 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
         private bool _disposed;
         private bool _hasCurrent;
         private bool _started;
+        private bool _endReached;
 
         internal FindResultEnumerator(PrincipalSearchResult<T> owner)
         {
@@ -86,17 +87,30 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
         public bool MoveNext()
         {
             CheckDisposed();
+            if (_endReached)
+            {
+                return false;
+            }
+
             _hasCurrent = false;
-            if (!_started) { _owner._position = -1; _started = true; }
-            return _hasCurrent = ++_owner._position < _owner._count;
+            // Microsoft shares the row position, but keeps start/end flags per
+            // enumerator. Rewind only when a new or reset cursor first moves.
+            if (!_started)
+            {
+                _owner._position = -1;
+                _started = true;
+            }
+            _hasCurrent = ++_owner._position < _owner._count;
+            _endReached = !_hasCurrent;
+            return _hasCurrent;
         }
 
         public void Reset()
         {
             CheckDisposed();
-            _owner._position = -1;
             _started = false;
             _hasCurrent = false;
+            _endReached = false;
         }
 
         public void Dispose()
