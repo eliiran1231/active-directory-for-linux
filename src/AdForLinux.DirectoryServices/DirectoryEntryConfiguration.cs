@@ -26,9 +26,8 @@ public class DirectoryEntryConfiguration
     internal void Reset()
     {
         // Reset this wrapper in place: callers may retain it across Close().
-        // Keep the portable no-paging policy until a provider-independent
-        // PageSize default is established; ADSI's observed values are not an
-        // LDAP server policy and must not be copied from a single lab run.
+        // The documented portable default disables paging. ADSI's provider
+        // default is intentionally not part of this contract (see README).
         _pageSize = 0;
         _securityMasks = DefaultSecurityMasks;
         _passwordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;

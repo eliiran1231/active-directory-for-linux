@@ -22,9 +22,12 @@ public sealed class DirectoryEntryOptionDefaultsComparisonTests(ITestOutputHelpe
         var expected = Assert.IsType<Ms.DirectoryEntryConfiguration>(microsoft.Options);
         var actual = ours.Options;
         var initial = Read(expected, property);
+        // README documents zero as the portable PageSize default. Preserve the
+        // live Microsoft baseline and strict parity for every other option.
+        var portableDefault = property == "PageSize" ? 0 : initial;
         var comparison = new Comparison($"Fresh/rebound options: {property}");
         output.WriteLine($"{property}: initial Microsoft={initial}, clone={Read(actual, property)}");
-        comparison.Check("fresh value", initial, Read(actual, property));
+        comparison.Check("fresh value (documented default policy)", portableDefault, Read(actual, property));
 
         foreach (var value in new[] { first, second })
         {
@@ -41,8 +44,9 @@ public sealed class DirectoryEntryOptionDefaultsComparisonTests(ITestOutputHelpe
             var rebound = Read(expected, property);
             output.WriteLine($"{property}: rebound after {value}: Microsoft={rebound}, clone={Read(actual, property)}");
             comparison.Check($"Microsoft resets after {value}", initial, rebound)
-                .Check($"retained after {value}", rebound, Read(actual, property))
-                .Check($"entry options after {value}", Read(microsoft.Options!, property), Read(ours.Options, property));
+                .Check($"Microsoft entry options after {value}", initial, Read(microsoft.Options!, property))
+                .Check($"retained after {value}", portableDefault, Read(actual, property))
+                .Check($"entry options after {value}", portableDefault, Read(ours.Options, property));
         }
         comparison.Assert();
     }

@@ -123,6 +123,16 @@ advanced date/count comparisons.
   server, port, TLS mode, authentication type, credential, or connection
   security option. Such moves throw `PlatformNotSupportedException` before an
   LDAP request is sent; same-connection moves and renames remain supported.
+- **Entry enumeration page-size default.** `DirectoryEntry.Options.PageSize`
+  intentionally defaults to `0` (paging disabled) in this portable implementation.
+  Microsoft's ADSI provider supplies its own default; the tested Windows provider
+  returned `99`, which is not treated as a portable contract. `Close()` and other
+  logical rebinds restore each implementation's default through both retained
+  `Options` references and `entry.Options`. Explicit nonnegative assignments
+  still match Microsoft's behavior. Set a positive page size explicitly when
+  enumerating children that may exceed the server's unpaged result limit.
+  This exception is limited to the entry option's default; security masks,
+  validation and disposal behavior remain Microsoft comparisons.
 - **Password transport options.** `DirectoryEntryConfiguration.PasswordPort`
   stores nondefault values, and `PasswordEncoding` accepts both defined enum
   values, matching Microsoft's setter/getter behavior. Portable password

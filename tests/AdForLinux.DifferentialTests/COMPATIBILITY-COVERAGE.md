@@ -836,7 +836,11 @@ Fresh and reset security masks use `Owner | Group | Dacl`, as documented by
 [ADS_SECURITY_INFO_ENUM](https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_security_info_enum).
 Explicit mask assignments and validation/disposal ordering are preserved.
 
-The existing Microsoft lifecycle comparisons are unchanged. The additional
+The lifecycle comparisons now allow only the documented PageSize default
+difference: zero in the portable implementation versus the live fresh-entry
+value supplied by ADSI. Both access paths must reset to their respective
+defaults. Assigned values, SecurityMasks, exceptions and disposal behavior
+continue to be compared directly with Microsoft. The additional
 `DirectoryEntryOptionDefaultsComparisonTests` class reads fresh Microsoft and
 clone entries, creates independent Microsoft entries while another has modified
 options, and checks two Close/rebind cycles. It writes observations to test output
@@ -849,16 +853,26 @@ On Windows against the local Samba lab, both runtimes observed Microsoft PageSiz
 99 on fresh, independent and rebound entries, while the clone returned zero.
 SecurityMasks passed on both runtimes. This isolates a remaining initial-default
 gap from the fixed stale-value lifecycle bug. The portable no-paging default is
-retained: these observations do not establish a provider-independent contract,
-and no Windows ADSI dependency or observed numeric default was added.
+now an intentional, documented divergence (see README), rather than an open
+numeric-parity target. No Windows ADSI dependency or observed numeric default
+was added.
 
-The configured Windows AD endpoint failed binding with "The server is not
-operational" on both runtimes, before either fresh-entry probe could read options.
-The required existing lifecycle class and full Windows/AD differential suite
-therefore remain unvalidated; Samba observations are not Windows/AD acceptance.
-The 189 selected offline compatibility and fixture-registration cases passed on
-each runtime. **Issue #215 remains open**, including the PageSize comparison and
-the outstanding real-AD validation.
+The initial local Windows AD attempt failed binding with "The server is not
+operational" on both runtimes. Subsequently,
+[real-AD run 37202828815](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37202828815)
+tested commit `3c4480e` on both targets: 1,353/1,361 passed, eight failed and none
+skipped per runtime. Under the earlier strict numeric-default comparisons, two
+failures concerned PageSize; SecurityMasks and all disposal/validation cases
+passed. The other six failures concerned failed-insert password retry (one),
+protected-Negotiate inheritance (two), and GroupScope validation (three).
+
+After accepting the README's portable default policy, the revised fresh/rebound
+probes passed 2/2 on both Windows runtimes against Samba, and the 189 selected
+offline compatibility and fixture-registration checks passed on each runtime.
+The full real-AD suite and fixture-backed lifecycle class still need a run with
+the revised assertions; no updated full-suite pass count is claimed. #215 has
+not been closed automatically. Its remaining check is validation of the accepted
+contract, not changing the portable default to an observed ADSI number.
 
 Linux/Samba validation used the existing test image, with the source copied into
 the container to avoid overwriting Windows build outputs. The configured Samba
