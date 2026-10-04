@@ -1,0 +1,179 @@
+{
+  "source_commit": "d1e656648f9bbd4303b6459d05a68d01adb530c7",
+  "base_commit": "f3c01ab52c4be824819b637fe0bb4702f43138d0",
+  "microsoft_package_version": "9.0.0",
+  "sdk": "10.0.100",
+  "runtimes": [
+    "8.0.22",
+    "10.0.0"
+  ],
+  "case_count_per_target": 80,
+  "offline_cases": 3,
+  "live_only_cases": 77,
+  "class_count": 27,
+  "fixture_registration_passed_per_target": 34,
+  "live_execution_performed": false,
+  "build_warnings": 0,
+  "build_errors": 0,
+  "classes": [
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityAccountControlMergeComparisonTests.cs",
+      "cases": 2,
+      "sha256": "e8f2d7d90b63d85a700f91b0e8affbb64f27d5daf9ad6460aca87d1c879c3bb5"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityAdvancedFilterOverrideComparisonTests.cs",
+      "cases": 2,
+      "sha256": "e3f9f44d6dba0b6095564c58f74cab9a7fb73e0911326feb23b5d27760db169c"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityAuthenticableCredentialConstructorComparisonTests.cs",
+      "cases": 3,
+      "sha256": "2cadeabad063a119990047cedc94e847bd5a274ae763c038ded454fe62a22400"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityCredentialResetPendingWriteComparisonTests.cs",
+      "cases": 2,
+      "sha256": "68a6eec720f2a5c531a0b7cb9a10756c723c0847fac670adb33b6dc2eb7f7b37"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityCustomDateFinderComparisonTests.cs",
+      "cases": 2,
+      "sha256": "b4e77a8f9f07bcb2b642a42af4da9f74a18217e7742fe25b9c054b642fa98201"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityDirectoryResultCursorComparisonTests.cs",
+      "cases": 14,
+      "sha256": "c7d0b09a8d938b0fe6350a475bce25ca6533397309da17102b137995944bd346"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityDisposedPendingMemberComparisonTests.cs",
+      "cases": 2,
+      "sha256": "50ec09337c55edd18346d546907d980c8908dd47102496b83ef6377b70fd881d"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityDisposedPropertyContainsComparisonTests.cs",
+      "cases": 3,
+      "sha256": "eeaca65b3658b8b830287d59af77e6994159be4fbea84d9a1544f6898f7b6ed5"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityExtensionPersistenceLifecycleComparisonTests.cs",
+      "cases": 3,
+      "sha256": "ce271fedd1ce1fb84b2b677177a2c69d4221a1deb5411f957e11db80e5fec693"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityFailedInsertRetryComparisonTests.cs",
+      "cases": 1,
+      "sha256": "8c0708a023d2e4c0349c3e842e94c5bd13ec0295167032bb5a93b6e1502692e2"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityImplicitWriteCacheComparisonTests.cs",
+      "cases": 2,
+      "sha256": "51668ab955311432b635d4090486d58754bfb58fdbee850069d51d0b72ac5bfe"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityLiveSchemaFilterCursorComparisonTests.cs",
+      "cases": 2,
+      "sha256": "3533bc594d628cbbab85c4481accaf038029aa8de89645e68bc991820b8158fa"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityMemberCursorOwnerLifetimeComparisonTests.cs",
+      "cases": 3,
+      "sha256": "51bff9f8a6d1bccfcc92c083c1c450db0bfe0d4f3e26c7b5979e26a61e93e2bd"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityPendingMemberEqualityComparisonTests.cs",
+      "cases": 2,
+      "sha256": "88fec4007c2a5c476710fcdf08edaf04e463b8b08e82cfc4b91e562574e9c3f9"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityPrincipalCurrentOwnershipComparisonTests.cs",
+      "cases": 3,
+      "sha256": "91b014f242bb5c7e09202bc9efb153ad64a2e2b2fd6fa0d2e27c8ca6da6dd579"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.cs",
+      "cases": 2,
+      "sha256": "c5ae5a43bed9ed2fdea8c7ef859ad08e73108ad34a71519f26b3647036ddae29"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityRenameRetainedCacheComparisonTests.cs",
+      "cases": 2,
+      "sha256": "d89fe1d08f63b7a54865ede7a0449a578ad87be3bde7c50111eaee0407d41dee"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.cs",
+      "cases": 6,
+      "sha256": "672807185a858f9f1ba789834aa81ff36230e8821c899ea19199528774001327"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.cs",
+      "cases": 3,
+      "sha256": "af02629084f67190b8c706cfd1115054ad2854baf78ef6abf371fc0b57efebd3"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityRetainedValueReplacementComparisonTests.cs",
+      "cases": 6,
+      "sha256": "6c4afb680536245307480f8b8cc832e9c7ab2afc7b8a10ef1690f12e53df3373"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilitySaveContextNativeOwnershipComparisonTests.cs",
+      "cases": 2,
+      "sha256": "c6d0a9bb7375ffd15434d3f723c332a1980386ef015b435c0a76f4e046ee4033"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilitySearchExecutionStateComparisonTests.cs",
+      "cases": 3,
+      "sha256": "fdda4552e7f1b87723c0ae1b725b5e67b58c370d35f7d66e1f09b669255c02b1"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilitySearchResultBinaryOwnershipComparisonTests.cs",
+      "cases": 2,
+      "sha256": "1d62b1c6b0edb24c82853866a6781cc29792ea4277689807893ced7f71cd7c57"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilitySearcherConstructionPagingComparisonTests.cs",
+      "cases": 2,
+      "sha256": "cf6dd3d556cb4fe61d233373aaf13fb842eb435c36213125f00fed31337e1512"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilitySmallGroupMembershipCacheComparisonTests.cs",
+      "cases": 2,
+      "sha256": "34dd451166c1ef00e613df68f0e7d230df4659eb3f44f479e23768c24945ca1c"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityUnsavedUnlockComparisonTests.cs",
+      "cases": 2,
+      "sha256": "aed7a7789b75f2dd58582f6f967df4ab39f3a3ce26ea7c2760e79969bb5e06bd"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/CompatibilityVlvResultDisposalComparisonTests.cs",
+      "cases": 2,
+      "sha256": "7e4cf5d9823e05468b8df7cf097bfaed1a4984ae483f08982708ba22f445ae1e"
+    }
+  ],
+  "execution_workspace_evidence_root": "/workspace/scratch/compatibility-audit-2026-10-03",
+  "logs": [
+    {
+      "workspace_relative_path": "validation/batch13-build.log",
+      "sha256": "7ba2f0da09f5ca4a023b1dbd461729c4caddeff5e7ec6f56af1134db4fdfb307"
+    },
+    {
+      "workspace_relative_path": "validation/batch13-cumulative-discovery-net8.0-windows.log",
+      "sha256": "eed564ce7abbce47c444cc54bc1a29a3dfbcaa9104265e251e1f9920b6e14f7b"
+    },
+    {
+      "workspace_relative_path": "validation/batch13-cumulative-discovery-net10.0-windows.log",
+      "sha256": "eed564ce7abbce47c444cc54bc1a29a3dfbcaa9104265e251e1f9920b6e14f7b"
+    },
+    {
+      "workspace_relative_path": "validation/batch13-fixtures-net8.0-windows.log",
+      "sha256": "db405b4ed188c0d77ce07936b95b62cd65c65f25563b4450e2084c6362d8402c"
+    },
+    {
+      "workspace_relative_path": "validation/batch13-fixtures-net10.0-windows.log",
+      "sha256": "e5cb3661815867efd8dc8a47680ee4fc3f06f04234e58d6dfe9852d20efc7a0a"
+    }
+  ],
+  "managed_audit_source_sha256": "5140630e9e7f5740c39909c4c887930cd9c9b832d88471cb0b7a2010a6af39ac"
+}

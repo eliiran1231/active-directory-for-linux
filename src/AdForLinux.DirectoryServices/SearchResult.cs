@@ -71,7 +71,8 @@ public class SearchResult
         var properties = new ResultPropertyCollection();
         foreach (string name in Properties.PropertyNames)
         {
-            properties.Set(name, Properties[name].Cast<object>().ToArray());
+            properties.Set(name, Properties[name].Cast<object>()
+                .Select(value => value is byte[] bytes ? bytes.ToArray() : value).ToArray());
         }
         return new SearchResult(_searchRoot, properties);
     }

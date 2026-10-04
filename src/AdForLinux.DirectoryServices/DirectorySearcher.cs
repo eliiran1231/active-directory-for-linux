@@ -35,6 +35,7 @@ public class DirectorySearcher : Component
     private SortOption _sort = new();
     private SecurityMasks _securityMasks;
     private DirectoryVirtualListView? _virtualListView;
+    private SearchResultCollection? _controlResults;
 
     internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
 
@@ -370,7 +371,11 @@ public class DirectorySearcher : Component
     [DefaultValue(null)]
     public DirectoryVirtualListView? VirtualListView
     {
-        get => _virtualListView;
+        get
+        {
+            if (_virtualListView is not null) _controlResults?.ValidateControlAccess();
+            return _virtualListView;
+        }
         set
         {
             if (value is not null)
@@ -419,7 +424,7 @@ public class DirectorySearcher : Component
     {
         try
         {
-            return FindAllCore();
+            return _controlResults = FindAllCore();
         }
         catch (ArgumentException error) when (error.ParamName == nameof(Filter))
         {
@@ -651,6 +656,9 @@ public class DirectorySearcher : Component
 
     private SearchRequest BuildRequest()
     {
+        var root = RequireRoot();
+        using var binding = root.IsDisposed ? root.CreateEntryForDn(root.DistinguishedName) : null;
+        (binding ?? root).BindEntry();
         // ADSI adds the canonical spelling to nonempty projections, even when
         // another casing is already present. StringCollection is case-sensitive.
         if (PropertiesToLoad.Count > 0 && !PropertiesToLoad.Contains("ADsPath"))
@@ -658,7 +666,6 @@ public class DirectorySearcher : Component
             PropertiesToLoad.Add("ADsPath");
         }
 
-        var root = RequireRoot();
         var effectiveFilter = string.IsNullOrEmpty(Filter) ? "(objectClass=*)" : Filter;
         // ADSI accepts the bare date-sentinel negations exposed by AccountManagement.
         // LDAP requires a parenthesized assertion inside NOT. Normalize only these
@@ -711,9 +718,9 @@ public class DirectorySearcher : Component
             request.Controls.Add(DirectorySynchronization.CreateControl());
         }
 
-        if (VirtualListView is not null)
+        if (_virtualListView is not null)
         {
-            request.Controls.Add(VirtualListView.CreateControl());
+            request.Controls.Add(_virtualListView.CreateControl());
         }
 
         if (Tombstone)
@@ -1037,9 +1044,9 @@ public class DirectorySearcher : Component
             DirectorySynchronization.Update(sync);
         }
 
-        if (VirtualListView is not null && response.Controls.OfType<VlvResponseControl>().FirstOrDefault() is { } vlv)
+        if (_virtualListView is not null && response.Controls.OfType<VlvResponseControl>().FirstOrDefault() is { } vlv)
         {
-            VirtualListView.Update(vlv);
+            _virtualListView.Update(vlv);
         }
     }
 

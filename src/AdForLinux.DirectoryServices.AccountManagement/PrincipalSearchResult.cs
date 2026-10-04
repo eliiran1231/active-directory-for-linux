@@ -9,17 +9,28 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
 {
     private readonly IReadOnlyList<T> _results;
+    private readonly Func<int, T>? _project;
+    private readonly int _count;
+    private int _position = -1;
     private bool _disposed;
 
     internal PrincipalSearchResult(IReadOnlyList<T> results)
     {
         _results = results;
+        _count = results.Count;
+    }
+
+    internal PrincipalSearchResult(int count, Func<int, T> project)
+    {
+        _results = Array.Empty<T>();
+        _count = count;
+        _project = project;
     }
 
     public IEnumerator<T> GetEnumerator()
     {
         ThrowIfDisposed();
-        return new FindResultEnumerator<T>(_results.GetEnumerator());
+        return new FindResultEnumerator(this);
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -43,18 +54,19 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
         }
     }
 
-    private sealed class FindResultEnumerator<TPrincipal> : IEnumerator<TPrincipal>
+    private sealed class FindResultEnumerator : IEnumerator<T>
     {
-        private readonly IEnumerator<TPrincipal> _inner;
+        private readonly PrincipalSearchResult<T> _owner;
         private bool _disposed;
         private bool _hasCurrent;
+        private bool _started;
 
-        internal FindResultEnumerator(IEnumerator<TPrincipal> inner)
+        internal FindResultEnumerator(PrincipalSearchResult<T> owner)
         {
-            _inner = inner;
+            _owner = owner;
         }
 
-        public TPrincipal Current
+        public T Current
         {
             get
             {
@@ -63,7 +75,9 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
                 {
                     throw new InvalidOperationException("Enumeration has not started or has already finished.");
                 }
-                return _inner.Current;
+                return _owner._project is not null
+                    ? _owner._project(_owner._position)
+                    : _owner._results[_owner._position];
             }
         }
 
@@ -73,13 +87,15 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
         {
             CheckDisposed();
             _hasCurrent = false;
-            return _hasCurrent = _inner.MoveNext();
+            if (!_started) { _owner._position = -1; _started = true; }
+            return _hasCurrent = ++_owner._position < _owner._count;
         }
 
         public void Reset()
         {
             CheckDisposed();
-            _inner.Reset();
+            _owner._position = -1;
+            _started = false;
             _hasCurrent = false;
         }
 
@@ -90,7 +106,6 @@ public class PrincipalSearchResult<T> : IEnumerable<T>, IDisposable
                 return;
             }
 
-            _inner.Dispose();
             _disposed = true;
         }
 

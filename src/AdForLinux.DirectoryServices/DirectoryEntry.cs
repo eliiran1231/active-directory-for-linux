@@ -344,7 +344,7 @@ public class DirectoryEntry : Component
             // The wrapper itself does not bind, even after disposal. Loading
             // directory values still checks disposal through GetConnection().
             return _properties ??= new PropertyCollection(OnPropertyChanged,
-                () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true));
+                () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
         }
     }
 
@@ -606,7 +606,7 @@ public class DirectoryEntry : Component
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
         child._isNew = true;
-        child._properties = new PropertyCollection(child.OnPropertyChanged);
+        child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.ThrowIfDisposed);
 
         // The structural class; AD fills in the rest of the class chain.
         child._properties["objectClass"].Value = schemaClassName;
@@ -743,7 +743,7 @@ public class DirectoryEntry : Component
         }
 
         var refreshed = ReadProperties(propertyNames);
-        var properties = _properties ?? new PropertyCollection(OnPropertyChanged);
+        var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
         properties.MarkLoaded();
         foreach (var propertyName in propertyNames)
         {
@@ -896,7 +896,7 @@ public class DirectoryEntry : Component
     /// LDAP connection bind only authenticates to the server, whereas ADSI's
     /// DirectoryEntry.Bind also resolves the object represented by the path.
     /// </summary>
-    private string BindEntry()
+    internal string BindEntry()
     {
         ThrowIfDisposed();
         if (_isNew)
@@ -950,7 +950,7 @@ public class DirectoryEntry : Component
         }
 
         var response = (SearchResponse)connection.SendRequestCompatible(request);
-        var properties = new PropertyCollection(OnPropertyChanged);
+        var properties = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
 
         if (response.Entries.Count > 0)
         {
@@ -1182,6 +1182,12 @@ public class DirectoryEntry : Component
         ThrowIfDisposed();
         if (_usePropertyCache || _isNew)
         {
+            if (_properties is null && !_isNew)
+            {
+                // A retained wrapper writes into the newly bound native cache.
+                Properties.EnsureLoaded();
+                _properties!.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+            }
             _pendingPropertyChanges.Add(property);
             return;
         }
@@ -1190,6 +1196,7 @@ public class DirectoryEntry : Component
         AddModifications(request, property);
         GetConnection().SendRequestCompatible(request);
         property.ResetChanged();
+        _properties = null;
     }
 
     private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
@@ -1235,7 +1242,9 @@ public class DirectoryEntry : Component
             DeleteOldRdn = true,
         };
         GetConnection().SendRequestCompatible(request);
+        var retainedProperties = _usePropertyCache ? null : _properties;
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
+        if (!_usePropertyCache) _properties = retainedProperties;
     }
 
     private static void ValidateRenameName(string? newName)
@@ -1288,13 +1297,13 @@ public class DirectoryEntry : Component
     private void ResetCredentialBinding()
     {
         ResetConnection();
-        // Recreate the property wrapper for the new bind identity, but retain
-        // pending property/security writes so a later commit can retry them.
+        // Unsaved children retain creation values; persisted bindings discard
+        // pending native writes when their credentials change.
         if (_isNew && _properties is not null)
         {
             // An unsaved child has no server object to reload. Carry its staged
             // attributes (including objectClass) into a non-loading wrapper.
-            var replacement = new PropertyCollection(OnPropertyChanged);
+            var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
             foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
             {
                 replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
@@ -1303,6 +1312,9 @@ public class DirectoryEntry : Component
             return;
         }
 
+        _pendingPropertyChanges.Clear();
+        _objectSecurity = null;
+        _objectSecurityChanged = false;
         _properties = null;
     }
 

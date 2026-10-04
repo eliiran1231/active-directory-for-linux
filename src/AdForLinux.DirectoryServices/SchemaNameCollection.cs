@@ -41,7 +41,9 @@ public class SchemaNameCollection : IList
         set
         {
             ValidateIndex(index);
-            _names[index] = value;
+            var names = _parent is null ? _names : _names.ToArray();
+            names[index] = value;
+            _names = names;
         }
     }
 

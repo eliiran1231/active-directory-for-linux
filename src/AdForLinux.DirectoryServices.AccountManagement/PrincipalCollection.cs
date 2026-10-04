@@ -20,6 +20,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private bool _disposed;
     private int _version;
     private List<string>? _primaryGroupMemberDns;
+    private List<string>? _smallGroupMemberDns;
     private readonly Dictionary<string, MemberReference> _memberSources =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -171,6 +172,10 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
+        ArgumentNullException.ThrowIfNull(principal);
+        if (_insertedValuesPending.Any(value => SourceFor(value).Principal?.Equals(principal) == true))
+            return true;
+        if (!_group.IsPersisted) return false;
         return ContainsValue(RequireMembershipValue(principal));
     }
 
@@ -379,9 +384,9 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             get
             {
                 CheckDisposed();
-                _collection.CheckDisposed();
                 if (!_hasCurrent)
                 {
+                    _collection.CheckDisposed();
                     throw new InvalidOperationException("The enumerator is not positioned on a member.");
                 }
                 return _inner.Current;
@@ -402,7 +407,6 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         public void Reset()
         {
             CheckDisposed();
-            _collection.CheckDisposed();
             CheckChanged();
             // Compiler-generated iterators do not support Reset. Start a new
             // traversal without taking ownership of previously yielded principals.
@@ -459,13 +463,16 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             member.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
     }
 
-    private List<string> CurrentDirectMemberDns() =>
-        AccountManagementExceptionTranslator.Execute(() =>
-            !_group.IsPersisted
-                ? new List<string>()
+    private List<string> CurrentDirectMemberDns()
+    {
+        if (_smallGroupMemberDns is not null) return _smallGroupMemberDns;
+        var values = AccountManagementExceptionTranslator.Execute(() =>
+            !_group.IsPersisted ? new List<string>()
                 : RangedAttributeReader.Read(_group.RequireEntry(), "member")
-                    .Select(value => value.ToString()!)
-                    .ToList());
+                    .Select(value => value.ToString()!).ToList());
+        if (_group.IsPersisted && values.Count < 1500) _smallGroupMemberDns = values;
+        return values;
+    }
 
     private List<MemberReference> CurrentDirectMembers()
     {

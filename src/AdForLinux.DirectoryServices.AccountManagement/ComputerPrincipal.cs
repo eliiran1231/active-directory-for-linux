@@ -14,6 +14,8 @@ public class ComputerPrincipal : AuthenticablePrincipal
     public ComputerPrincipal(PrincipalContext context, string samAccountName, string password, bool enabled)
         : base(context, samAccountName, password, enabled)
     {
+        if (samAccountName is null || password is null) throw new ArgumentException("The account name and password cannot be null.");
+        Name = samAccountName;
     }
 
     internal ComputerPrincipal(PrincipalContext context, DirectoryEntry entry) : base(context)
