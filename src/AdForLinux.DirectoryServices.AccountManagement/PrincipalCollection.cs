@@ -463,19 +463,20 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             return false;
         }
 
-        return CurrentDirectMembers().Any(member =>
-            member.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
+        var storedDns = _smallGroupMemberDns ?? CurrentDirectMemberDns();
+        if (_group.IsPersisted && storedDns.Count < 1500) _smallGroupMemberDns = storedDns;
+        return storedDns.Any(dn => GroupMembershipConverter.ForStoredDistinguishedName(dn)
+            .Equals(value, StringComparison.OrdinalIgnoreCase));
     }
 
     private List<string> CurrentDirectMemberDns()
     {
-        if (_smallGroupMemberDns is not null) return _smallGroupMemberDns;
-        var values = AccountManagementExceptionTranslator.Execute(() =>
+        // Enumeration and writes use the current membership. Only the optimized
+        // small-group Contains path retains the original lookup snapshot.
+        return AccountManagementExceptionTranslator.Execute(() =>
             !_group.IsPersisted ? new List<string>()
                 : RangedAttributeReader.Read(_group.RequireEntry(), "member")
                     .Select(value => value.ToString()!).ToList());
-        if (_group.IsPersisted && values.Count < 1500) _smallGroupMemberDns = values;
-        return values;
     }
 
     private List<MemberReference> CurrentDirectMembers()
