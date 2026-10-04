@@ -1314,8 +1314,8 @@ public class DirectoryEntry : Component
         }
 
         _pendingPropertyChanges.Clear();
-        _objectSecurity = null;
-        _objectSecurityChanged = false;
+        // The managed security descriptor has its own dirty tracking and must
+        // remain available if a subsequent commit fails under new credentials.
         _properties = null;
     }
 
