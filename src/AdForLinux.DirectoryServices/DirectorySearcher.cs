@@ -400,6 +400,7 @@ public class DirectorySearcher : Component
             ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
             : null;
         var root = reboundRoot ?? configuredRoot;
+        root.BindEntry();
         if (HasAttributeScopeQuery)
         {
             return FindAttributeScoped(root, maximumResults: 1).FirstOrDefault();
@@ -448,6 +449,7 @@ public class DirectorySearcher : Component
             ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
             : null;
         var root = reboundRoot ?? configuredRoot;
+        root.BindEntry();
         if (HasAttributeScopeQuery)
         {
             var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
@@ -657,8 +659,6 @@ public class DirectorySearcher : Component
     private SearchRequest BuildRequest()
     {
         var root = RequireRoot();
-        using var binding = root.IsDisposed ? root.CreateEntryForDn(root.DistinguishedName) : null;
-        (binding ?? root).BindEntry();
         // ADSI adds the canonical spelling to nonempty projections, even when
         // another casing is already present. StringCollection is case-sensitive.
         if (PropertiesToLoad.Count > 0 && !PropertiesToLoad.Contains("ADsPath"))

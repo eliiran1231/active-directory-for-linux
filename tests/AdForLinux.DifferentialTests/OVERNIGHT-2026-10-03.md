@@ -1,5 +1,25 @@
 # Compatibility coverage: 2026-10-03
 
+## Issue #216 implementation follow-up
+
+The historical audit below describes the original test-only branch. Its 80
+comparison cases are now included with the fixes on `fix/issue-216-compatibility`.
+Validation results for that branch must be read separately from the original
+54-failure run linked in issue #216.
+
+Compatibility decision: preserve successful same-instance retry after a failed
+deferred-password insert has been completely rolled back. AdForLinux restores
+the staged principal and permits a corrected password followed by Save. The
+pinned Microsoft implementation instead rejects that retry with
+PrincipalOperationException and leaves the DN absent. Reproducing its unusable
+retry state would remove an existing recovery behavior without protecting any
+directory data. The differential comparison remains unchanged and explicitly
+reports this intentional difference; rollback and guarded cleanup are still
+required. Other contracts in this batch target Microsoft parity.
+
+The seven pre-existing failures (Options #215: two, GroupScope #60: three,
+protected Negotiate #56: two) remain outside this issue's fix scope.
+
 Tests-only branch: `bro/compatibility-coverage-2026-10-03`.
 Base: `dev` at `f3c01ab52c4be824819b637fe0bb4702f43138d0` (PR #214).
 Reference packages remain Microsoft DirectoryServices and AccountManagement **9.0.0**.

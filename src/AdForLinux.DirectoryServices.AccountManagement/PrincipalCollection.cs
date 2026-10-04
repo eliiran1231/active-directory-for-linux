@@ -175,7 +175,11 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         ArgumentNullException.ThrowIfNull(principal);
         if (_insertedValuesPending.Any(value => SourceFor(value).Principal?.Equals(principal) == true))
             return true;
-        if (!_group.IsPersisted) return false;
+        if (!_group.IsPersisted)
+        {
+            _ = principal.DistinguishedName;
+            return false;
+        }
         return ContainsValue(RequireMembershipValue(principal));
     }
 
