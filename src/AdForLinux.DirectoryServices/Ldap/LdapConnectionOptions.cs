@@ -55,10 +55,28 @@ internal sealed class LdapConnectionOptions
         (AuthenticationType == AuthType.Basic && string.IsNullOrEmpty(BindDn));
 
     /// <summary>Builds the explicit credential, or null to use anonymous/default credentials.</summary>
-    public NetworkCredential? ToCredential() =>
-        IsAnonymous || string.IsNullOrEmpty(BindDn)
-            ? null
-            : new NetworkCredential(BindDn, BindPassword);
+    public NetworkCredential? ToCredential()
+    {
+        if (IsAnonymous || string.IsNullOrEmpty(BindDn))
+        {
+            return null;
+        }
+
+        // Negotiate consumes the Windows domain separately from the user name.
+        // Basic binds must keep the supplied LDAP identity intact, including
+        // backslashes used to escape characters in distinguished names.
+        if (AuthenticationType == AuthType.Negotiate)
+        {
+            var separator = BindDn.IndexOf('\\');
+            if (separator > 0 && separator < BindDn.Length - 1 &&
+                !BindDn[..separator].Contains('='))
+            {
+                return new NetworkCredential(BindDn[(separator + 1)..], BindPassword, BindDn[..separator]);
+            }
+        }
+
+        return new NetworkCredential(BindDn, BindPassword);
+    }
 
     /// <summary>
     /// Makes an independent snapshot for another entry. Keep this explicit so

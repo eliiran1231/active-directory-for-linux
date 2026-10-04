@@ -10,12 +10,93 @@ namespace AdForLinux.FunctionalTests;
 
 public class DirectoryEntryOptionsTests
 {
+    [Theory]
+    [InlineData("close")]
+    [InlineData("path")]
+    [InlineData("username")]
+    [InlineData("password")]
+    [InlineData("authentication")]
+    public void Rebinding_resets_retained_options_to_fresh_entry_state(string operation)
+    {
+        using var fresh = new DirectoryEntry();
+        using var entry = new DirectoryEntry();
+        var retained = entry.Options;
+        retained.PageSize = 17;
+        retained.SecurityMasks = EntrySecurityMasks.Owner;
+        retained.PasswordPort = 1636;
+        retained.PasswordEncoding = PasswordEncodingMethod.PasswordEncodingClear;
+        retained.Referral = ReferralChasingOption.None;
+
+        // Changing referrals recreates the transport, not the logical binding.
+        Assert.Equal(17, retained.PageSize);
+        Assert.Equal(EntrySecurityMasks.Owner, retained.SecurityMasks);
+        switch (operation)
+        {
+            case "close": entry.Close(); break;
+            case "path": entry.Path = "LDAP://localhost:1/DC=test"; break;
+            case "username": entry.Username = "changed"; break;
+            case "password": entry.Password = "changed"; break;
+            case "authentication": entry.AuthenticationType = AuthenticationTypes.Anonymous; break;
+        }
+
+        Assert.Same(retained, entry.Options);
+        Assert.Equal(fresh.Options.PageSize, retained.PageSize);
+        Assert.Equal(EntrySecurityMasks.Owner | EntrySecurityMasks.Group | EntrySecurityMasks.Dacl,
+            retained.SecurityMasks);
+        Assert.Equal(fresh.Options.SecurityMasks, entry.Options.SecurityMasks);
+        Assert.Equal(fresh.Options.PasswordPort, retained.PasswordPort);
+        Assert.Equal(fresh.Options.PasswordEncoding, retained.PasswordEncoding);
+        Assert.Equal(fresh.Options.Referral, retained.Referral);
+
+        // Set immediately after Close, without a getter, then reset again.
+        entry.Close();
+        retained.PageSize = 31;
+        retained.SecurityMasks = EntrySecurityMasks.None;
+        Assert.Equal(31, entry.Options.PageSize);
+        Assert.Equal(EntrySecurityMasks.None, entry.Options.SecurityMasks);
+        entry.Close();
+        entry.Close();
+        Assert.Equal(fresh.Options.PageSize, retained.PageSize);
+        Assert.Equal(fresh.Options.SecurityMasks, retained.SecurityMasks);
+
+        entry.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => _ = retained.PageSize);
+        Assert.Throws<ObjectDisposedException>(() => retained.PageSize = 1);
+        Assert.Throws<ArgumentException>(() => retained.PageSize = -1);
+        Assert.Throws<ObjectDisposedException>(() => _ = retained.SecurityMasks);
+        Assert.Throws<ObjectDisposedException>(() => retained.SecurityMasks = EntrySecurityMasks.None);
+        Assert.Throws<InvalidEnumArgumentException>(() => retained.SecurityMasks = (EntrySecurityMasks)16);
+    }
+
     private static DirectoryEntry Open(string dn) =>
         new(
             TestSettings.PathFor(dn),
             TestSettings.BindDn,
             TestSettings.BindPassword,
             AuthenticationTypes.SecureSocketsLayer);
+
+    [Fact]
+    public void Close_resets_options_and_next_connection_uses_new_assignments()
+    {
+        using var entry = Open(TestSettings.BaseDn);
+        using var fresh = Open(TestSettings.BaseDn);
+        var retained = entry.Options;
+        retained.PageSize = 17;
+        retained.SecurityMasks = EntrySecurityMasks.Owner;
+        var originalConnection = entry.GetConnection();
+
+        entry.Close();
+        Assert.Equal(fresh.Options.PageSize, retained.PageSize);
+        Assert.Equal(fresh.Options.SecurityMasks, entry.Options.SecurityMasks);
+        retained.PageSize = 31;
+        retained.SecurityMasks = EntrySecurityMasks.Dacl;
+        retained.Referral = ReferralChasingOption.None;
+        var rebound = entry.GetConnection();
+        Assert.NotSame(originalConnection, rebound);
+        Assert.Equal(31, retained.PageSize);
+        Assert.Equal(EntrySecurityMasks.Dacl, entry.Options.SecurityMasks);
+        Assert.Equal(ReferralChasingOptions.None, rebound.SessionOptions.ReferralChasing);
+    }
 
     [Fact]
     public void Page_size_rejects_negative_values()

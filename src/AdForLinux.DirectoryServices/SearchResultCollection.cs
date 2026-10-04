@@ -16,6 +16,12 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
     private readonly ReplayableSearchResults? _replayableResults;
     private readonly ForwardOnlySearchResults? _forwardOnlyResults;
     private bool _disposed;
+    private bool _exhausted;
+
+    internal void ValidateControlAccess()
+    {
+        if (_disposed && !_exhausted) throw new ObjectDisposedException(nameof(SearchResultCollection));
+    }
 
     internal SearchResultCollection(IReadOnlyList<SearchResult> results, string[]? propertiesLoaded = null)
     {
@@ -112,12 +118,15 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
     IEnumerator<SearchResult> IEnumerable<SearchResult>.GetEnumerator() => GetGenericEnumerator();
 
     private IEnumerator<SearchResult> GetGenericEnumerator()
+        => new CompletionEnumerator(this, CreateEnumerator());
+
+    private IEnumerator<SearchResult> CreateEnumerator()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (_sourceResults is not null)
         {
-            return _sourceResults.Select(result => result.Snapshot()).GetEnumerator();
+            return new SnapshotEnumerator(_sourceResults);
         }
 
         if (_results is not null && _forwardOnlyResults is not null)
@@ -135,6 +144,33 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
 
     bool ICollection.IsSynchronized => false;
 
+    private sealed class CompletionEnumerator(SearchResultCollection owner, IEnumerator<SearchResult> inner)
+        : IEnumerator<SearchResult>
+    {
+        public SearchResult Current => inner.Current;
+        object IEnumerator.Current => Current;
+        public bool MoveNext()
+        {
+            var moved = inner.MoveNext();
+            if (!moved) owner._exhausted = true;
+            return moved;
+        }
+        public void Reset() { inner.Reset(); owner._exhausted = false; }
+        public void Dispose() => inner.Dispose();
+    }
+
+    private sealed class SnapshotEnumerator(IReadOnlyList<SearchResult> results) : IEnumerator<SearchResult>
+    {
+        private int _index = -1;
+        public SearchResult Current => _index >= 0 && _index < results.Count
+            ? results[_index].Snapshot()
+            : throw new InvalidOperationException("The cursor is not positioned on a result.");
+        object IEnumerator.Current => Current;
+        public bool MoveNext() => ++_index < results.Count;
+        public void Reset() => _index = -1;
+        public void Dispose() { }
+    }
+
     object ICollection.SyncRoot => this;
 
     void ICollection.CopyTo(Array array, int index) => Materialize().CopyTo(array, index);
@@ -149,12 +185,15 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_sourceResults is not null)
         {
+            _exhausted = true;
             return _results = new ArrayList(_sourceResults.Select(result => result.Snapshot()).ToArray());
         }
 
-        return _results = new ArrayList((_replayableResults is not null
+        _results = new ArrayList((_replayableResults is not null
             ? _replayableResults.Materialize()
             : _forwardOnlyResults!.MaterializeRemaining()).ToArray());
+        _exhausted = true;
+        return _results;
     }
 
     private sealed class ForwardOnlySearchResults : IDisposable
@@ -263,7 +302,8 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         {
             private SearchResult? _current;
 
-            public SearchResult Current => _current!;
+            public SearchResult Current => _current
+                ?? throw new InvalidOperationException("The cursor is not positioned on a result.");
 
             object IEnumerator.Current => Current;
 
@@ -290,13 +330,23 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         internal ReplayableSearchResults(IEnumerable<SearchResult> source) =>
             _source = source.GetEnumerator();
 
-        public IEnumerator<SearchResult> GetEnumerator()
+        public IEnumerator<SearchResult> GetEnumerator() => new Enumerator(this);
+
+        private sealed class Enumerator(ReplayableSearchResults owner) : IEnumerator<SearchResult>
         {
-            var index = 0;
-            while (TryGet(index++, out var result))
+            private int _index = -1;
+            private SearchResult? _current;
+            public SearchResult Current => _current
+                ?? throw new InvalidOperationException("The cursor is not positioned on a result.");
+            object IEnumerator.Current => Current;
+            public bool MoveNext()
             {
-                yield return result.Snapshot();
+                if (owner.TryGet(++_index, out var result)) { _current = result.Snapshot(); return true; }
+                _current = null;
+                return false;
             }
+            public void Reset() { _index = -1; _current = null; }
+            public void Dispose() { }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

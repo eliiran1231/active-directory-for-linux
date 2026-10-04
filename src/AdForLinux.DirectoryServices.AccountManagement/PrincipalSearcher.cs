@@ -21,6 +21,7 @@ public class PrincipalSearcher : IDisposable
     private DirectorySearcher? _underlyingSearcher;
     private DirectoryEntry? _searchRoot;
     private bool _disposed;
+    private readonly int _defaultPageSize;
 
     /// <summary>Creates a searcher with no example yet.</summary>
     public PrincipalSearcher()
@@ -31,6 +32,7 @@ public class PrincipalSearcher : IDisposable
     public PrincipalSearcher(Principal queryFilter)
     {
         QueryFilter = queryFilter ?? throw new ArgumentException(null, nameof(queryFilter));
+        _defaultPageSize = 256;
     }
 
     /// <summary>The example principal whose set properties must all match.</summary>
@@ -99,23 +101,12 @@ public class PrincipalSearcher : IDisposable
     private PrincipalSearchResult<Principal> FindAllCore()
     {
         var searcher = PrepareUnderlyingSearcher();
-        var found = new List<Principal>();
         using var results = searcher.FindAll();
-        foreach (var result in results.Cast<SearchResult>())
-        {
-            var entry = result.GetDirectoryEntry();
-            var principal = Principal.Materialize(
-                Context!, QueryFilter!.GetType(), entry);
-            if (principal is null)
-            {
-                entry.Dispose();
-                continue;
-            }
-
-            found.Add(principal);
-        }
-
-        return new PrincipalSearchResult<Principal>(found);
+        var rows = results.Cast<SearchResult>().ToArray();
+        var context = Context!;
+        var type = QueryFilter!.GetType();
+        return new PrincipalSearchResult<Principal>(rows.Length, index =>
+            Principal.Materialize(context, type, rows[index].GetDirectoryEntry())!);
     }
 
     /// <summary>
@@ -148,7 +139,7 @@ public class PrincipalSearcher : IDisposable
             _searchRoot = context.SearchRoot;
             _underlyingSearcher = new DirectorySearcher(_searchRoot)
             {
-                PageSize = 256,
+                PageSize = _defaultPageSize,
                 ServerTimeLimit = TimeSpan.FromSeconds(30),
             };
         }

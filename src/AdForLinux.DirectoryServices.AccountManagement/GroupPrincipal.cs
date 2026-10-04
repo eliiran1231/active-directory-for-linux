@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
@@ -22,6 +20,7 @@ public class GroupPrincipal : Principal
 
     private PrincipalCollection? _members;
     private bool _scopeAssigned;
+    private GroupScope _assignedScope;
     private bool _securityAssigned;
 
     /// <summary>Starts a new, unsaved group in a context.</summary>
@@ -158,6 +157,7 @@ public class GroupPrincipal : Principal
         {
             CheckDisposedOrDeleted();
             if (!IsPersisted && !_scopeAssigned) return null;
+            if (_scopeAssigned) return _assignedScope;
             var groupType = ReadGroupType();
             if (groupType is null)
             {
@@ -181,24 +181,20 @@ public class GroupPrincipal : Principal
                 throw new ArgumentNullException(nameof(value));
             }
 
-            if (!Enum.IsDefined(value.Value))
-            {
-                throw new InvalidEnumArgumentException(
-                    nameof(value), (int)value.Value, typeof(GroupScope));
-            }
-
+            // Microsoft retains undefined enum values in the public property;
+            // its AD converter treats values other than Local/Global as Universal.
             var bit = value switch
             {
                 AccountManagement.GroupScope.Local => ScopeLocal,
                 AccountManagement.GroupScope.Universal => ScopeUniversal,
                 AccountManagement.GroupScope.Global => ScopeGlobal,
-                _ => throw new InvalidEnumArgumentException(
-                    nameof(value), (int)value.Value, typeof(GroupScope)),
+                _ => ScopeUniversal,
             };
 
             var groupType = ReadGroupType() ?? DefaultGroupType;
             WriteGroupType((groupType & ~ScopeMask) | bit);
             _scopeAssigned = true;
+            _assignedScope = value.Value;
             RemoveQueryFilter("groupType");
             SetQueryFilter(
                 nameof(GroupScope),

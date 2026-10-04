@@ -823,3 +823,75 @@ creates and deletes all its entries, including computers, in its configured
 Do not run the entire suite as an offline
 check. Keep net8.0-windows and net10.0-windows outcomes separate when reporting
 failures, and preserve the Microsoft/clone observations from each failing case.
+
+## Issue 215: portable option lifecycle (2026-10-04)
+
+`Close()` now resets the retained configuration wrapper in place, so retained
+`Options` references and subsequent `entry.Options` access share fresh state.
+Path and credential/authentication changes also reset logical binding options.
+Changing referral chasing only recreates the transport and preserves the other
+options. New assignments after Close survive the next connection creation.
+
+Fresh and reset security masks use `Owner | Group | Dacl`, as documented by
+[ADS_SECURITY_INFO_ENUM](https://learn.microsoft.com/en-us/windows/win32/api/iads/ne-iads-ads_security_info_enum).
+Explicit mask assignments and validation/disposal ordering are preserved.
+
+The lifecycle comparisons now allow only the documented PageSize default
+difference: zero in the portable implementation versus the live fresh-entry
+value supplied by ADSI. Both access paths must reset to their respective
+defaults. Assigned values, SecurityMasks, exceptions and disposal behavior
+continue to be compared directly with Microsoft. The additional
+`DirectoryEntryOptionDefaultsComparisonTests` class reads fresh Microsoft and
+clone entries, creates independent Microsoft entries while another has modified
+options, and checks two Close/rebind cycles. It writes observations to test output
+and compares actual values, without hard-coded Microsoft defaults. Run it alone
+in a fresh test process using
+`--filter FullyQualifiedName~DirectoryEntryOptionDefaultsComparisonTests` on
+each of `net8.0-windows` and `net10.0-windows`.
+
+On Windows against the local Samba lab, both runtimes observed Microsoft PageSize
+99 on fresh, independent and rebound entries, while the clone returned zero.
+SecurityMasks passed on both runtimes. This isolates a remaining initial-default
+gap from the fixed stale-value lifecycle bug. The portable no-paging default is
+now an intentional, documented divergence (see README), rather than an open
+numeric-parity target. No Windows ADSI dependency or observed numeric default
+was added.
+
+The initial local Windows AD attempt failed binding with "The server is not
+operational" on both runtimes. Subsequently,
+[real-AD run 37202828815](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37202828815)
+tested commit `3c4480e` on both targets: 1,353/1,361 passed, eight failed and none
+skipped per runtime. Under the earlier strict numeric-default comparisons, two
+failures concerned PageSize; SecurityMasks and all disposal/validation cases
+passed. The other six failures concerned failed-insert password retry (one),
+protected-Negotiate inheritance (two), and GroupScope validation (three).
+
+After accepting the README's portable default policy, the revised fresh/rebound
+probes passed 2/2 on both Windows runtimes against Samba, and the 189 selected
+offline compatibility and fixture-registration checks passed on each runtime.
+The full real-AD suite and fixture-backed lifecycle class still need a run with
+the revised assertions; no updated full-suite pass count is claimed. #215 has
+not been closed automatically. Its remaining check is validation of the accepted
+contract, not changing the portable default to an observed ADSI number.
+
+Linux/Samba validation used the existing test image, with the source copied into
+the container to avoid overwriting Windows build outputs. The configured Samba
+credentials were rejected, so validation used a temporary test administrator
+instead of changing the existing administrator password; the temporary account
+was deleted after validation. Each full run completed 542 cases:
+
+| Linux runtime | Passed | Failed |
+| --- | ---: | ---: |
+| net8.0 | 469 | 73 |
+| net10.0 | 541 | 1 |
+
+All 19 option cases passed on each runtime, including the live Close/rebind
+regression; an isolated net10.0 option run also passed 19/19. Every net8.0 failure
+included LDAP server unavailability; a separate retry of
+`ConnectionTests.Simple_bind_over_tls_succeeds` passed immediately. The net10.0
+failure was `DirectorySearcherTests.FindAll_asynchronous_searches_are_repeatable_when_cached`.
+It reported that the client-side timeout limit was exceeded.
+These results do not establish a green full Linux suite; the full-suite failures
+need separate investigation rather than being hidden by the focused results.
+Detailed logs and per-runtime TRX files are retained locally under
+`TestResults/issue215-*` (ignored build artifacts).

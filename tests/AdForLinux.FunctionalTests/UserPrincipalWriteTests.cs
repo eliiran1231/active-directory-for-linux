@@ -70,6 +70,9 @@ public class UserPrincipalWriteTests
             using var context = Context();
             using var principal = new CustomAuthenticablePrincipal(
                 context, name, "Str0ng!Passw0rd#2026", enabled: true);
+            // The protected credential constructor leaves Name unassigned,
+            // as verified by the Microsoft-oracle tests for issue #216.
+            principal.Name = name;
             principal.Save();
 
             Assert.Throws<PasswordException>(() => principal.ChangePassword(
@@ -174,6 +177,11 @@ public class UserPrincipalWriteTests
             Assert.Equal(name, user.SamAccountName);
             Assert.Equal("Rollback retry", user.DisplayName);
             Assert.Throws<InvalidOperationException>(user.GetUnderlyingObject);
+            Assert.Null(UserPrincipal.FindByIdentity(context, name));
+
+            user.SetPassword("Str0ng!Passw0rd#2026");
+            Assert.Throws<PrincipalOperationException>(user.Save);
+            Assert.False(user.IsPersisted);
             Assert.Null(UserPrincipal.FindByIdentity(context, name));
 
             using var corrected = new UserPrincipal(context)
