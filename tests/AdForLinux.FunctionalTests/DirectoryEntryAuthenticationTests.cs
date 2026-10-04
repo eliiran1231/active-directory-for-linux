@@ -140,6 +140,52 @@ public class DirectoryEntryAuthenticationTests
         Assert.Null(options.ToCredential());
     }
 
+    [Theory]
+    [InlineData(AuthenticationTypes.Secure, @"ADLAB\Administrator", "Administrator", "ADLAB")]
+    [InlineData(AuthenticationTypes.Secure, "Administrator@adlab.local", "Administrator@adlab.local", "")]
+    [InlineData(AuthenticationTypes.Secure, "Administrator", "Administrator", "")]
+    [InlineData(AuthenticationTypes.Secure, @"CN=Last\, First,DC=adlab,DC=local", @"CN=Last\, First,DC=adlab,DC=local", "")]
+    [InlineData(AuthenticationTypes.SecureSocketsLayer, @"ADLAB\Administrator", @"ADLAB\Administrator", "")]
+    [InlineData(AuthenticationTypes.SecureSocketsLayer, "Administrator@adlab.local", "Administrator@adlab.local", "")]
+    [InlineData(AuthenticationTypes.SecureSocketsLayer, @"CN=Last\, First,DC=adlab,DC=local", @"CN=Last\, First,DC=adlab,DC=local", "")]
+    public void Bind_credentials_preserve_the_identity_for_the_authentication_mechanism(
+        AuthenticationTypes authenticationTypes, string identity, string expectedUser, string expectedDomain)
+    {
+        using var entry = new DirectoryEntry(Path, identity, "test-password", authenticationTypes);
+
+        var credential = Assert.IsType<System.Net.NetworkCredential>(entry.BuildOptions().ToCredential());
+
+        Assert.Equal(expectedUser, credential.UserName);
+        Assert.Equal(expectedDomain, credential.Domain);
+        Assert.Equal("test-password", credential.Password);
+    }
+
+    [Theory]
+    [InlineData(@"ADLAB\Administrator", "Administrator", "ADLAB")]
+    [InlineData("Administrator@adlab.local", "Administrator@adlab.local", "")]
+    public void Principal_context_children_inherit_protected_negotiate_credentials(
+        string identity, string expectedUser, string expectedDomain)
+    {
+        using var context = new DirectoryServices.AccountManagement.PrincipalContext(
+            DirectoryServices.AccountManagement.ContextType.Domain,
+            "dc.example.test", "DC=example,DC=test",
+            DirectoryServices.AccountManagement.ContextOptions.Negotiate |
+            DirectoryServices.AccountManagement.ContextOptions.Signing |
+            DirectoryServices.AccountManagement.ContextOptions.Sealing,
+            identity, "test-password");
+        using var parent = context.CreateDirectoryEntry("DC=example,DC=test");
+        using var child = parent.Children.Add("CN=credential-test", "user");
+        var options = child.BuildOptions();
+        var credential = Assert.IsType<System.Net.NetworkCredential>(options.ToCredential());
+
+        Assert.Equal(AuthType.Negotiate, options.AuthenticationType);
+        Assert.True(options.Signing);
+        Assert.True(options.Sealing);
+        Assert.Equal(expectedUser, credential.UserName);
+        Assert.Equal(expectedDomain, credential.Domain);
+        Assert.Equal("test-password", credential.Password);
+    }
+
     [Fact]
     public void Children_add_clones_the_complete_negotiate_connection_configuration()
     {
