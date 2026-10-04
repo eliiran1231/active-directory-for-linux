@@ -1,13 +1,143 @@
 # Compatibility coverage: 2026-10-03
 
-## Issue #216 implementation follow-up
+## Issue #216 follow-up: 2026-10-04
+
+This follow-up focuses on five areas: staged userAccountControl flags, paging
+and ServerTimeLimit, result ownership and lifetime, staged writes and cache
+boundaries, and disposed-owner Contains(null) validation. The merged fixes pass
+their existing Windows/AD comparisons. Review found two additional gaps in
+repeated synchronous Current reads and the first paged request's time budget;
+their local corrections and validation are tracked separately below.
+
+The evidence in this table is Windows/AD [run 37218941807](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37218941807)
+at `0b76b6d`, using Microsoft **9.0.0**. The complete differential test directory
+is unchanged from `bro/compatibility-coverage-2026-10-03` at `61e77bbe`; its Git
+tree matches exactly. The implementation includes the merged fixes and both
+additional corrections below. Counts are per runtime and are the same on
+.NET 8 and .NET 10.
+
+| Target area | Verified contract and current status |
+| --- | --- |
+| userAccountControl merge | `CompatibilityAccountControlMergeComparisonTests`: **2/2 passed**. Save merges explicitly staged bits with the current native flags, preserving an unrelated native-entry edit. |
+| Paging and ServerTimeLimit | `CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft`: **1/1 passed**, including PageSize=1 with a 500 ms limit truncated to zero protocol seconds. `CompatibilitySearcherConstructionPagingComparisonTests`: **2/2 passed** for constructor-versus-later filter assignment and retained explicit PageSize. The newly found first-request budget gap is tracked below. |
+| Result ownership and lifetime | **23/23 passed**: low-level cursor state/reset (**14/14**), principal wrapper ownership (**2/2**), the original interleaved principal cursor case (**1/1**), binary-buffer replay (**2/2**), queried-principal native lifetime (**2/2**), and Save(context) native ownership (**2/2**). The new synchronous repeated-Current identity correction is tracked below. |
+| Staged writes and cache boundaries | The five contracts detailed below passed **15/15**. This includes both persisted write behavior and the values/identities observable through retained wrappers. |
+| Disposed Contains(null) | `CompatibilityDisposedPropertyContainsComparisonTests`: **3/3 passed**. Contains validates disposal before null-name validation; the indexer retains null-name-first validation. |
+
+### Staged writes and cache boundaries: five contracts
+
+All cases below passed in the same original-suite AD run on both runtimes. Six of these
+15 cases failed in the original issue run. The breakdown makes the separate
+cache transitions explicit; no additional production defect was established in
+these five paths during this follow-up.
+
+| Contract | Differential comparison | Cases per runtime | Production behavior |
+| --- | --- | ---: | --- |
+| Whole-value replacement after owner disposal | [CompatibilityRetainedValueReplacementComparisonTests](CompatibilityRetainedValueReplacementComparisonTests.cs), `Whole_value_replacement_preserves_matching_local_state_after_owner_disposal` | 6/6 passed | `PropertyValueCollection.Value` clears the retained local contents before the disposed-owner check throws. Scalar, array and null replacements have live-owner controls. |
+| Retained writes across Close | [CompatibilityRetainedPropertyWriteAfterCloseComparisonTests](CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.cs), `Cached_write_through_retained_or_fresh_wrapper_matches_after_close` | 3/3 passed | `DirectoryEntry.OnPropertyChanged` transfers a retained wrapper's write into the rebound cache after Close; fresh and retained wrapper values and identities are compared. |
+| Implicit commit cache invalidation | [CompatibilityImplicitWriteCacheComparisonTests](CompatibilityImplicitWriteCacheComparisonTests.cs), `Scalar_write_replaces_managed_cache_at_the_same_commit_boundary` | 2/2 passed | Noncached index assignment persists immediately and clears the managed property cache. Cached assignment retains wrappers until explicit CommitChanges. |
+| Rename cache boundary | [CompatibilityRenameRetainedCacheComparisonTests](CompatibilityRenameRetainedCacheComparisonTests.cs), `Rename_retains_or_replaces_managed_cache_like_microsoft` | 2/2 passed | `DirectoryEntry.MoveOrRename` replaces the cache when caching is enabled; noncached mode retains the managed old cn after a successful server rename. |
+| Pending writes after credential reset | [CompatibilityCredentialResetPendingWriteComparisonTests](CompatibilityCredentialResetPendingWriteComparisonTests.cs), `Pending_existing_entry_write_after_password_reset_matches_microsoft` | 2/2 passed | Changed then restored Password discards ordinary pending writes on an existing entry through `ResetCredentialBinding`; unchanged credentials preserve them. |
+
+The last contract concerns existing entries and ordinary attributes. Unsaved
+children retain creation values, and dirty security descriptors retain their
+separate recovery state. Disposed Contains(null) is independently covered by
+the three-case comparison in the status table, not included in the 15 cases.
+
+### Additional ownership and paging corrections
+
+Synchronous `SnapshotEnumerator.Current` created a fresh SearchResult on every
+read at the same position. The correction caches that result until MoveNext or
+Reset. Repeated reads retain identity and local binary mutations; moving or
+replaying obtains an independent snapshot.
+
+`StreamingSearchResultTests.Cached_cursor_retains_current_until_it_moves_or_resets`
+checks streaming and synchronous modes. The synchronous case failed before the
+correction and passed afterward. The differential comparisons from
+`bro/compatibility-coverage-2026-10-03` remain unchanged; these additional
+regressions belong to the functional suite.
+
+A separate paging gap affects a configured one-second ServerTimeLimit. Starting
+the budget when the result source is constructed lets time spent before the
+first request consume that budget; integer-second truncation can then suppress
+the first request entirely. The follow-up correction starts the budget at the
+first dispatch and adds deterministic regressions for that boundary. This is
+distinct from the already-passing 500 ms configuration test.
+
+For the requested original oracle, the complete differential test project was
+extracted unchanged from `bro/compatibility-coverage-2026-10-03` at
+`61e77bbe6cf4d0fd50a0777778e08deb5c54ce77` and built against a separate copy of
+the corrected current implementation. Its original disposed-Contains comparison
+passed **3/3 on each runtime**, including the named-Contains and null-indexer
+controls. This preserves the original assertions rather than substituting the
+later test revisions used by the merged CI run.
+
+Final validation of both corrections passed **559/559 Linux functional tests**
+on each runtime against an isolated disposable Samba domain, and **42/42 focused
+offline regressions** on each Windows runtime. Both new regressions failed
+before their fixes. Linux TRX files are saved under
+`artifacts/issue216/final-linux/`; the temporary domain and network were removed.
+The original Windows/AD issue comparisons also pass, as detailed below. The new
+one-second preparation-delay and repeated-Current identity cases are additional
+functional regressions; the unchanged original oracle does not assert those
+new edge cases directly.
+
+### Original-suite CI evidence
+
+Windows/AD run `37218941807` reported **1,355 passed / 2 failed / 0 skipped** on
+each runtime. Its downloaded
+[TRX artifact](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37218941807/artifacts/11310071252)
+was compared with original run `37189327647` by full test name using ordinal,
+case-sensitive matching, including theory arguments.
+
+| Scope | .NET 8 | .NET 10 |
+| --- | ---: | ---: |
+| Full original differential suite | 1,355 passed / 2 failed / 0 skipped | 1,355 passed / 2 failed / 0 skipped |
+| Original issue cases, unchanged assertions and identities | 80 / 80 passed | 80 / 80 passed |
+| Original passing controls preserved | 33 / 33 | 33 / 33 |
+| Original issue failures corrected | 47 / 47 | 47 / 47 |
+| Missing or added test identities | 0 / 0 | 0 / 0 |
+
+The two failures are outside the 80 issue cases and the five focus areas:
+
+- `CompatibilityEntryOptionsLifecycleComparisonTests` for retained **PageSize**
+  remains different because the portable DirectoryEntry option default is zero,
+  while ADSI supplies its own default. This is the documented #215 compatibility
+  decision, separate from DirectorySearcher paging and ServerTimeLimit.
+- `GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft`
+  contains an old clone-only assertion that undefined GroupScope assignment
+  throws. The merged GroupScope fix accepts and retains that value like Microsoft;
+  the three original live GroupScope comparisons now pass. This stale assertion
+  was deliberately retained in this unchanged original suite.
+
+Of the seven failures outside issue #216 in the original run, six now pass and
+the PageSize difference remains. The old GroupScope assertion changed from pass
+to fail. No assertion was removed, skipped or weakened for this validation.
+Disposable-OU setup, cleanup and TRX upload all succeeded.
+
+[Follow-up machine-readable results](ISSUE-216-FOLLOWUP-RESULTS.json) record every
+original issue identity and outcome, the identical test-directory Git trees,
+exact baseline changes, and SHA-256 hashes of the original and follow-up TRX
+files. [The earlier results](ISSUE-216-RESULTS.json) remain unchanged as evidence
+for `eccb8ac`; their eight failures and the then-current retry decision are
+historical, not the state validated by the follow-up run.
+
+### Historical retry decision superseded
+
+The merged follow-up also supersedes the earlier decision to permit same-instance
+retry after a rolled-back insert. Another Save on that principal now throws
+PrincipalOperationException and leaves the DN absent. A new principal with a
+corrected password can still be saved. The unchanged differential retry test
+passes in the unchanged original-suite AD run; this separate fix is already complete.
+
+## Historical implementation validation at eccb8ac
 
 The historical audit below describes the original test-only branch. Its 80
 comparison cases are now included with the fixes on `fix/issue-216-compatibility`.
 Validation results for that branch must be read separately from the original
 54-failure run linked in issue #216.
 
-Compatibility decision: preserve successful same-instance retry after a failed
+Then-current compatibility decision (superseded above): preserve successful same-instance retry after a failed
 deferred-password insert has been completely rolled back. AdForLinux restores
 the staged principal and permits a corrected password followed by Save. The
 pinned Microsoft implementation instead rejects that retry with
@@ -51,7 +181,7 @@ after an earlier empty membership lookup. Two older clone-only test assumptions
 were updated to the verified Windows contracts: local extension-cache access
 after Delete and explicit Name assignment for a custom credential constructor.
 
-Final Windows/AD validation at the same production commit:
+Windows/AD validation at the same historical production commit:
 [run 37193479294](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37193479294)
 and [uploaded TRX evidence](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37193479294/artifacts/11299729037).
 Both runtimes used the pinned Microsoft **9.0.0** packages.

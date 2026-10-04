@@ -1,0 +1,1263 @@
+{
+  "schemaVersion": 2,
+  "issue": 216,
+  "originalAdRun": 37189327647,
+  "validationAdRun": 37218941807,
+  "validationCommit": "0b76b6dca0f723e0cca4a3b942db885ae48bdf18",
+  "originalSuiteCommit": "61e77bbe6cf4d0fd50a0777778e08deb5c54ce77",
+  "trxArtifact": 11310071252,
+  "runUrl": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37218941807",
+  "artifactUrl": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37218941807/artifacts/11310071252",
+  "microsoftPackageVersion": "9.0.0",
+  "unchangedOriginalSuite": {
+    "directory": "tests/AdForLinux.DifferentialTests",
+    "originalTree": "82c7fa80b3ac565e8a9331921f495a28b29dfe44",
+    "validationTree": "82c7fa80b3ac565e8a9331921f495a28b29dfe44",
+    "identicalGitTrees": true,
+    "changedFiles": [
+    ],
+    "issueClassManifest": "tests/AdForLinux.DifferentialTests/OVERNIGHT-2026-10-03-EVIDENCE.json",
+    "issueClassCount": 27
+  },
+  "identityComparison": "All TRX rows matched by complete testName with StringComparer.Ordinal, including case-sensitive theory arguments. The issue inventory is selected only from the original run using its 27-class evidence manifest. Missing identities and additions remain explicit; no renamed-case mapping is used.",
+  "knownStaleBaselineExpectation": {
+    "name": "AdForLinux.DifferentialTests.GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft",
+    "scope": "Outside the 80 issue-216 cases; unchanged original test retained in validation.",
+    "reason": "The test requires the clone to throw InvalidEnumArgumentException for undefined GroupScope assignment without comparing that assignment with Microsoft. The merged GroupScope compatibility correction accepts and retains undefined values. Its result is reported separately and is not hidden, skipped, or counted as an issue-216 pass."
+  },
+  "historicalResults": "ISSUE-216-RESULTS.json",
+  "results": [
+    {
+      "framework": "net8.0-windows",
+      "file": "differential-net8.trx",
+      "originalSha256": "489369489CAB2C5F981BA21C9A912DABB633CAAAD2FB733A70200B5781D870E8",
+      "sha256": "910EFA896A66B9BC4BFFF341641C425088F9A544D8B44C65D9081E3795D2867A",
+      "originalTotal": 1357,
+      "originalPassed": 1303,
+      "originalFailed": 54,
+      "total": 1357,
+      "passed": 1355,
+      "failed": 2,
+      "skipped": 0,
+      "otherOutcomes": [
+      ],
+      "originalIssueCases": 80,
+      "matchedOriginalIssueCases": 80,
+      "originalIssueCasesPassed": 80,
+      "originalIssueControls": 33,
+      "originalIssueControlsPreserved": 33,
+      "originalIssueFailures": 47,
+      "originalIssueFailuresFixed": 47,
+      "originalBaselineCases": 1277,
+      "unchangedOriginalBaselineOutcomes": 1270,
+      "baselineChanges": [
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"SecurityMasks\", value: 3)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft",
+          "before": "Passed",
+          "after": "Failed",
+          "knownStaleCloneOnlyExpectation": true
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.Direct_children_add_inherits_protected_negotiate_options",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.User_principal_save_inherits_protected_negotiate_options",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: -1)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 2147483647)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 3)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        }
+      ],
+      "missingOriginalTests": [
+      ],
+      "addedCases": [
+      ],
+      "failures": [
+        "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"PageSize\", value: 17)",
+        "AdForLinux.DifferentialTests.GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft"
+      ],
+      "knownStaleBaselineExpectationOutcome": "Failed",
+      "targetAreas": [
+        {
+          "name": "userAccountControl merge",
+          "selectedTestPrefixes": [
+            "CompatibilityAccountControlMergeComparisonTests."
+          ],
+          "originalTotal": 2,
+          "originalPassed": 1,
+          "originalFailed": 1,
+          "matchedOriginalCases": 2,
+          "passed": 2,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: False)",
+            "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: True)"
+          ]
+        },
+        {
+          "name": "Paging and ServerTimeLimit",
+          "selectedTestPrefixes": [
+            "CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft",
+            "CompatibilitySearcherConstructionPagingComparisonTests."
+          ],
+          "originalTotal": 3,
+          "originalPassed": 1,
+          "originalFailed": 2,
+          "matchedOriginalCases": 3,
+          "passed": 3,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft"
+          ]
+        },
+        {
+          "name": "Result ownership and lifetime",
+          "selectedTestPrefixes": [
+            "CompatibilityDirectoryResultCursorComparisonTests.",
+            "CompatibilityPrincipalCurrentOwnershipComparisonTests.",
+            "CompatibilitySearchResultBinaryOwnershipComparisonTests.",
+            "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.",
+            "CompatibilitySaveContextNativeOwnershipComparisonTests."
+          ],
+          "originalTotal": 23,
+          "originalPassed": 5,
+          "originalFailed": 18,
+          "matchedOriginalCases": 23,
+          "passed": 23,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"empty-after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"empty-after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: False)",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: True)",
+            "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: False)",
+            "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: True)"
+          ]
+        },
+        {
+          "name": "Staged writes and cache boundaries",
+          "selectedTestPrefixes": [
+            "CompatibilityRetainedValueReplacementComparisonTests.",
+            "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.",
+            "CompatibilityImplicitWriteCacheComparisonTests.",
+            "CompatibilityRenameRetainedCacheComparisonTests.",
+            "CompatibilityCredentialResetPendingWriteComparisonTests."
+          ],
+          "originalTotal": 15,
+          "originalPassed": 9,
+          "originalFailed": 6,
+          "matchedOriginalCases": 15,
+          "passed": 15,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: False)",
+            "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: True)",
+            "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: False)",
+            "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"fresh-after-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-after-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-without-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: True)"
+          ]
+        },
+        {
+          "name": "Disposed Contains(null)",
+          "selectedTestPrefixes": [
+            "CompatibilityDisposedPropertyContainsComparisonTests."
+          ],
+          "originalTotal": 3,
+          "originalPassed": 2,
+          "originalFailed": 1,
+          "matchedOriginalCases": 3,
+          "passed": 3,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-name\")",
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-null\")",
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"indexer-null\")"
+          ]
+        }
+      ],
+      "originalIssueCaseResults": [
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAdvancedFilterOverrideComparisonTests.Query_translation_uses_matching_filter_instance_with_overridden_getter(useAlternate: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAdvancedFilterOverrideComparisonTests.Query_translation_uses_matching_filter_instance_with_overridden_getter(useAlternate: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"credentials\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"explicit-assignment-control\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"missing-credentials\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCustomDateFinderComparisonTests.Expiration_finder_first_advance_matches_for_custom_user_type(customType: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCustomDateFinderComparisonTests.Expiration_finder_first_advance_matches_for_custom_user_type(customType: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"empty-after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"positioned\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"empty-after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"positioned\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"positioned\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"positioned\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPendingMemberComparisonTests.Contains_retains_staged_member_identity_after_member_disposal(disposeMember: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPendingMemberComparisonTests.Contains_retains_staged_member_identity_after_member_disposal(disposeMember: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-name\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-null\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"indexer-null\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Cached_extension_operations_after_delete_match_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft(save: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft(save: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityFailedInsertRetryComparisonTests.Corrected_password_retry_on_same_failed_principal_matches_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityLiveSchemaFilterCursorComparisonTests.Retained_schema_cursor_after_live_filter_replacement_matches(replaceArray: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityLiveSchemaFilterCursorComparisonTests.Retained_schema_cursor_after_live_filter_replacement_matches(replaceArray: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"alive\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"cursor-disposed\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"group-disposed\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPendingMemberEqualityComparisonTests.Pending_contains_honors_principal_equality(referenceEquality: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPendingMemberEqualityComparisonTests.Pending_contains_honors_principal_equality(referenceEquality: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Add\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Add\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Clear\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Clear\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"RemoveAt\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"RemoveAt\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"fresh-after-close\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-after-close\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-without-close\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Missing_root_failure_preserves_projection_like_microsoft(findAll: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Missing_root_failure_preserves_projection_like_microsoft(findAll: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySmallGroupMembershipCacheComparisonTests.Retained_contains_after_external_membership_change_and_native_refresh_matches(externalRemove: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySmallGroupMembershipCacheComparisonTests.Retained_contains_after_external_membership_change_and_native_refresh_matches(externalRemove: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard(dispose: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard(dispose: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state(exhaust: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state(exhaust: True)",
+          "before": "Passed",
+          "after": "Passed"
+        }
+      ]
+    },
+    {
+      "framework": "net10.0-windows",
+      "file": "differential-net10.trx",
+      "originalSha256": "460A0EB6E78906303BF12015C916910E6FCC83391744162335B8AE1BE2EA6130",
+      "sha256": "0F26D3F75A851921268CB75E2ECA442C5209D0B2D923C1A8497D2A37206123C6",
+      "originalTotal": 1357,
+      "originalPassed": 1303,
+      "originalFailed": 54,
+      "total": 1357,
+      "passed": 1355,
+      "failed": 2,
+      "skipped": 0,
+      "otherOutcomes": [
+      ],
+      "originalIssueCases": 80,
+      "matchedOriginalIssueCases": 80,
+      "originalIssueCasesPassed": 80,
+      "originalIssueControls": 33,
+      "originalIssueControlsPreserved": 33,
+      "originalIssueFailures": 47,
+      "originalIssueFailuresFixed": 47,
+      "originalBaselineCases": 1277,
+      "unchangedOriginalBaselineOutcomes": 1270,
+      "baselineChanges": [
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"SecurityMasks\", value: 3)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft",
+          "before": "Passed",
+          "after": "Failed",
+          "knownStaleCloneOnlyExpectation": true
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.Direct_children_add_inherits_protected_negotiate_options",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.User_principal_save_inherits_protected_negotiate_options",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: -1)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 2147483647)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 3)",
+          "before": "Failed",
+          "after": "Passed",
+          "knownStaleCloneOnlyExpectation": false
+        }
+      ],
+      "missingOriginalTests": [
+      ],
+      "addedCases": [
+      ],
+      "failures": [
+        "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"PageSize\", value: 17)",
+        "AdForLinux.DifferentialTests.GroupScopeValidationComparisonTests.Group_scope_accepts_only_values_defined_by_microsoft"
+      ],
+      "knownStaleBaselineExpectationOutcome": "Failed",
+      "targetAreas": [
+        {
+          "name": "userAccountControl merge",
+          "selectedTestPrefixes": [
+            "CompatibilityAccountControlMergeComparisonTests."
+          ],
+          "originalTotal": 2,
+          "originalPassed": 1,
+          "originalFailed": 1,
+          "matchedOriginalCases": 2,
+          "passed": 2,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: False)",
+            "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: True)"
+          ]
+        },
+        {
+          "name": "Paging and ServerTimeLimit",
+          "selectedTestPrefixes": [
+            "CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft",
+            "CompatibilitySearcherConstructionPagingComparisonTests."
+          ],
+          "originalTotal": 3,
+          "originalPassed": 1,
+          "originalFailed": 2,
+          "matchedOriginalCases": 3,
+          "passed": 3,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft"
+          ]
+        },
+        {
+          "name": "Result ownership and lifetime",
+          "selectedTestPrefixes": [
+            "CompatibilityDirectoryResultCursorComparisonTests.",
+            "CompatibilityPrincipalCurrentOwnershipComparisonTests.",
+            "CompatibilitySearchResultBinaryOwnershipComparisonTests.",
+            "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.",
+            "CompatibilitySaveContextNativeOwnershipComparisonTests."
+          ],
+          "originalTotal": 23,
+          "originalPassed": 5,
+          "originalFailed": 18,
+          "matchedOriginalCases": 23,
+          "passed": 23,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"empty-after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"empty-after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"after-last\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"before-first\")",
+            "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"positioned\")",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: False)",
+            "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: True)",
+            "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: False)",
+            "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: True)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: False)",
+            "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: True)"
+          ]
+        },
+        {
+          "name": "Staged writes and cache boundaries",
+          "selectedTestPrefixes": [
+            "CompatibilityRetainedValueReplacementComparisonTests.",
+            "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.",
+            "CompatibilityImplicitWriteCacheComparisonTests.",
+            "CompatibilityRenameRetainedCacheComparisonTests.",
+            "CompatibilityCredentialResetPendingWriteComparisonTests."
+          ],
+          "originalTotal": 15,
+          "originalPassed": 9,
+          "originalFailed": 6,
+          "matchedOriginalCases": 15,
+          "passed": 15,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: False)",
+            "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: True)",
+            "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: False)",
+            "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"fresh-after-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-after-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-without-close\")",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: True)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: False)",
+            "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: True)"
+          ]
+        },
+        {
+          "name": "Disposed Contains(null)",
+          "selectedTestPrefixes": [
+            "CompatibilityDisposedPropertyContainsComparisonTests."
+          ],
+          "originalTotal": 3,
+          "originalPassed": 2,
+          "originalFailed": 1,
+          "matchedOriginalCases": 3,
+          "passed": 3,
+          "failed": 0,
+          "missingOriginalTests": [
+          ],
+          "testNames": [
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-name\")",
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-null\")",
+            "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"indexer-null\")"
+          ]
+        }
+      ],
+      "originalIssueCaseResults": [
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAccountControlMergeComparisonTests.Staged_account_flag_merges_with_native_entry_changes(editOtherNativeBit: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAdvancedFilterOverrideComparisonTests.Query_translation_uses_matching_filter_instance_with_overridden_getter(useAlternate: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAdvancedFilterOverrideComparisonTests.Query_translation_uses_matching_filter_instance_with_overridden_getter(useAlternate: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"credentials\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"explicit-assignment-control\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties(scenario: \"missing-credentials\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCredentialResetPendingWriteComparisonTests.Pending_existing_entry_write_after_password_reset_matches_microsoft(bouncePassword: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCustomDateFinderComparisonTests.Expiration_finder_first_advance_matches_for_custom_user_type(customType: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityCustomDateFinderComparisonTests.Expiration_finder_first_advance_matches_for_custom_user_type(customType: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"empty-after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: False, position: \"positioned\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"empty-after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position(cacheResults: True, position: \"positioned\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: False, position: \"positioned\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"after-last\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"before-first\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization(materialize: True, position: \"positioned\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPendingMemberComparisonTests.Contains_retains_staged_member_identity_after_member_disposal(disposeMember: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPendingMemberComparisonTests.Contains_retains_staged_member_identity_after_member_disposal(disposeMember: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-name\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"contains-null\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence(operation: \"indexer-null\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Cached_extension_operations_after_delete_match_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft(save: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft(save: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityFailedInsertRetryComparisonTests.Corrected_password_retry_on_same_failed_principal_matches_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityImplicitWriteCacheComparisonTests.Scalar_write_replaces_managed_cache_at_the_same_commit_boundary(usePropertyCache: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityLiveSchemaFilterCursorComparisonTests.Retained_schema_cursor_after_live_filter_replacement_matches(replaceArray: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityLiveSchemaFilterCursorComparisonTests.Retained_schema_cursor_after_live_filter_replacement_matches(replaceArray: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"alive\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"cursor-disposed\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityMemberCursorOwnerLifetimeComparisonTests.Positioned_cursor_current_and_reset_follow_cursor_lifetime(lifetime: \"group-disposed\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPendingMemberEqualityComparisonTests.Pending_contains_honors_principal_equality(referenceEquality: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPendingMemberEqualityComparisonTests.Pending_contains_honors_principal_equality(referenceEquality: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership(disposeFirst: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft(disposeNative: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRenameRetainedCacheComparisonTests.Rename_retains_or_replaces_managed_cache_like_microsoft(usePropertyCache: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Add\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Add\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Clear\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"Clear\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"RemoveAt\", disposeOwner: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft(operation: \"RemoveAt\", disposeOwner: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"fresh-after-close\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-after-close\")",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close(scenario: \"retained-without-close\")",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"array\", dispose: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"null\", dispose: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal(replacement: \"scalar\", dispose: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySaveContextNativeOwnershipComparisonTests.Save_context_preserves_retained_native_entry_like_microsoft(distinctContext: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state(constructorFilter: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Fractional_server_limit_preserves_paged_results_like_microsoft",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Missing_root_failure_preserves_projection_like_microsoft(findAll: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchExecutionStateComparisonTests.Missing_root_failure_preserves_projection_like_microsoft(findAll: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySearchResultBinaryOwnershipComparisonTests.Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(mutate: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySmallGroupMembershipCacheComparisonTests.Retained_contains_after_external_membership_change_and_native_refresh_matches(externalRemove: False)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilitySmallGroupMembershipCacheComparisonTests.Retained_contains_after_external_membership_change_and_native_refresh_matches(externalRemove: True)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard(dispose: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard(dispose: True)",
+          "before": "Passed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state(exhaust: False)",
+          "before": "Failed",
+          "after": "Passed"
+        },
+        {
+          "name": "AdForLinux.DifferentialTests.CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state(exhaust: True)",
+          "before": "Passed",
+          "after": "Passed"
+        }
+      ]
+    }
+  ]
+}
