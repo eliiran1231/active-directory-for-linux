@@ -14,11 +14,13 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
 {
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
+    private readonly Action? _validateOwner;
 
-    internal PropertyValueCollection(string propertyName, Action<PropertyValueCollection>? onChanged = null)
+    internal PropertyValueCollection(string propertyName, Action<PropertyValueCollection>? onChanged = null, Action? validateOwner = null)
     {
         PropertyName = propertyName;
         _onChanged = onChanged;
+        _validateOwner = validateOwner;
     }
 
     /// <summary>The attribute name these values belong to.</summary>
@@ -60,6 +62,9 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
             // Bypass CollectionBase's hooks so replacing the whole attribute
             // is recorded as one LDAP operation rather than Clear plus Adds.
             InnerList.Clear();
+            // Clear reaches the owner before a replacement is constructed.
+            // In particular a disposed owner leaves this retained wrapper empty.
+            _validateOwner?.Invoke();
             if (value is byte[] bytes)
             {
                 InnerList.Add(bytes);

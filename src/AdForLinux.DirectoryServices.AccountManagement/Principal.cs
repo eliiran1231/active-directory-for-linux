@@ -19,7 +19,8 @@ public abstract class Principal : IDisposable
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string?> _loadedScalars = new(StringComparer.OrdinalIgnoreCase);
-    private sealed record ExtensionCacheEntry(object?[]? Values, Func<string>? FilterCondition = null);
+    private Dictionary<string, string?>? _initialScalars;
+    private sealed record ExtensionCacheEntry(object?[]? Values, Func<string>? FilterCondition = null, bool Changed = true);
 
     private readonly Dictionary<string, ExtensionCacheEntry> _extensionCache = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PrincipalQueryFilter> _queryFilters = new(StringComparer.OrdinalIgnoreCase);
@@ -53,6 +54,9 @@ public abstract class Principal : IDisposable
         ContextRef = context;
         Entry = entry;
         CaptureStoredIdentity(entry);
+        _initialScalars = entry.Properties.Cast<PropertyValueCollection>()
+            .ToDictionary(property => property.PropertyName,
+                property => property.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
     }
 
     private void CaptureStoredIdentity(DirectoryEntry entry)
@@ -831,6 +835,8 @@ public abstract class Principal : IDisposable
     /// <summary>Runs after a successful save, for extra work like membership.</summary>
     private protected virtual void OnAfterSave()
     {
+        foreach (var key in _extensionCache.Keys.ToArray())
+            _extensionCache[key] = _extensionCache[key] with { Changed = false };
     }
 
     /// <summary>
@@ -850,7 +856,6 @@ public abstract class Principal : IDisposable
             ApplyExtensionChanges(Entry);
             Entry.CommitChanges();
             _pending.Clear();
-            _extensionCache.Clear();
             OnAfterSave();
             return;
         }
@@ -911,7 +916,6 @@ public abstract class Principal : IDisposable
                 child.RefreshCacheAfterCreate();
                 CaptureStoredIdentity(child);
                 _pending.Clear();
-                _extensionCache.Clear();
                 _inserting = true;
                 try
                 {
@@ -1054,24 +1058,8 @@ public abstract class Principal : IDisposable
             ApplyExtensionChanges(originalEntry);
             originalEntry.CommitChanges();
             _pending.Clear();
-            _extensionCache.Clear();
-
-            var destinationEntry = context.CreateDirectoryEntry(currentDn);
-            Entry = destinationEntry;
             ContextRef = context;
-            try
-            {
-                OnAfterSave();
-            }
-            catch
-            {
-                destinationEntry.Dispose();
-                Entry = originalEntry;
-                ContextRef = originalContext;
-                throw;
-            }
-
-            originalEntry.Dispose();
+            OnAfterSave();
         }
         catch
         {
@@ -1159,7 +1147,6 @@ public abstract class Principal : IDisposable
     /// <summary>Reads an arbitrary directory attribute for an extension class.</summary>
     protected object?[] ExtensionGet(string attribute)
     {
-        if (_deleted) CheckDisposedOrDeleted();
         if (attribute is null)
         {
             throw new ArgumentException("The attribute cannot be null.");
@@ -1184,7 +1171,6 @@ public abstract class Principal : IDisposable
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
     protected void ExtensionSet(string attribute, object? value)
     {
-        if (_deleted) CheckDisposedOrDeleted();
         if (attribute is null)
         {
             throw new ArgumentException("The attribute cannot be null.");
@@ -1202,7 +1188,7 @@ public abstract class Principal : IDisposable
     {
         foreach (var (attribute, cached) in _extensionCache)
         {
-            if (cached.FilterCondition is not null) continue;
+            if (cached.FilterCondition is not null || !cached.Changed) continue;
             var values = cached.Values!;
             if (values.Length == 1 && values[0] is null)
             {
@@ -1293,7 +1279,9 @@ public abstract class Principal : IDisposable
         CheckDisposedOrDeleted();
         if (!_loadedScalars.TryGetValue(attributeName, out var value))
         {
-            value = GetString(attributeName);
+            value = _initialScalars is not null
+                ? _initialScalars.GetValueOrDefault(attributeName)
+                : GetString(attributeName);
             _loadedScalars[attributeName] = value;
         }
         return value;
@@ -1315,6 +1303,8 @@ public abstract class Principal : IDisposable
 
     private protected void SetValues<T>(string attributeName, IReadOnlyList<T> values)
     {
+        // Retained value collections own their local state after owner disposal.
+        if (_disposed) return;
         CheckDisposedOrDeleted();
         var array = values.Cast<object>().ToArray();
         if (Entry is not null)

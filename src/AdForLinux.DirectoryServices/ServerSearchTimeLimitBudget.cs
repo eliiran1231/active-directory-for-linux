@@ -22,8 +22,9 @@ internal sealed class ServerSearchTimeLimitBudget
         bool isPaged,
         TimeProvider timeProvider)
     {
-        _serverTimeLimit = serverTimeLimit;
-        _serverPageTimeLimit = serverPageTimeLimit;
+        // ADSI truncates configured limits to whole seconds; zero is unlimited.
+        _serverTimeLimit = TimeSpan.FromSeconds((int)serverTimeLimit.TotalSeconds);
+        _serverPageTimeLimit = TimeSpan.FromSeconds((int)serverPageTimeLimit.TotalSeconds);
         _isPaged = isPaged;
         _timeProvider = timeProvider;
         _startedAt = timeProvider.GetTimestamp();

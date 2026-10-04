@@ -15,15 +15,21 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Action<PropertyValueCollection>? _onChanged;
 
-    internal PropertyCollection(Action<PropertyValueCollection>? onChanged = null)
+    internal PropertyCollection(Action<PropertyValueCollection>? onChanged = null, Action? validateOwner = null)
     {
         _onChanged = onChanged;
+        _validateOwner = validateOwner;
     }
 
     private Func<PropertyCollection>? _load;
+    private readonly Action? _validateOwner;
 
-    internal PropertyCollection(Action<PropertyValueCollection> onChanged, Func<PropertyCollection> load)
-        : this(onChanged) => _load = load;
+    internal PropertyCollection(Action<PropertyValueCollection> onChanged, Func<PropertyCollection> load, Action? validateOwner = null)
+        : this(onChanged)
+    {
+        _load = load;
+        _validateOwner = validateOwner;
+    }
 
     // A successful partial refresh establishes the cache without fetching all
     // attributes through a previously created, still-unloaded wrapper.
@@ -51,7 +57,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
             EnsureLoaded();
             if (!_cachedValues.TryGetValue(propertyName, out var values))
             {
-                values = new PropertyValueCollection(propertyName, OnChanged);
+                values = new PropertyValueCollection(propertyName, OnChanged, _validateOwner);
                 _cachedValues[propertyName] = values;
             }
 
@@ -62,6 +68,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     /// <summary>True if the attribute has been loaded and exists.</summary>
     public bool Contains(string propertyName)
     {
+        _validateOwner?.Invoke();
         ArgumentNullException.ThrowIfNull(propertyName);
         EnsureLoaded();
         return _byName.ContainsKey(propertyName);
@@ -115,7 +122,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     /// <summary>Replaces one managed property-cache entry with server values.</summary>
     internal void ReplaceLoaded(string propertyName, IEnumerable<object> values)
     {
-        var replacement = new PropertyValueCollection(propertyName, OnChanged);
+        var replacement = new PropertyValueCollection(propertyName, OnChanged, _validateOwner);
         foreach (var value in values)
         {
             replacement.AddLoaded(value);
@@ -130,7 +137,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         EnsureLoaded();
         // Pending writes must not invalidate an already-created enumerator.
         // Values are copied too, keeping each returned wrapper independent.
-        return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged);
+        return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged, _validateOwner);
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -214,13 +221,15 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     {
         private readonly (string Name, object[] Values)[] _snapshot;
         private readonly Action<PropertyValueCollection>? _onChanged;
+        private readonly Action? _validateOwner;
         private int _index = -1;
 
-        internal PropertyEnumerator(PropertyValueCollection[] properties, Action<PropertyValueCollection>? onChanged)
+        internal PropertyEnumerator(PropertyValueCollection[] properties, Action<PropertyValueCollection>? onChanged, Action? validateOwner)
         {
             _snapshot = properties.Select(property =>
                 (property.PropertyName, property.Select(value => value!).ToArray())).ToArray();
             _onChanged = onChanged;
+            _validateOwner = validateOwner;
         }
 
         private void ValidatePosition()
@@ -238,7 +247,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
             {
                 ValidatePosition();
                 var property = _snapshot[_index];
-                var values = new PropertyValueCollection(property.Name, _onChanged);
+                var values = new PropertyValueCollection(property.Name, _onChanged, _validateOwner);
                 foreach (var value in property.Values) values.AddLoaded(value);
                 return values;
             }

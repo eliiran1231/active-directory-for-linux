@@ -36,6 +36,8 @@ public class AuthenticablePrincipal : Principal
     private byte[]? _permittedLogonTimes;
     private byte[]? _permittedLogonTimesBaseline;
     private bool _permittedLogonTimesLoaded;
+    private int _changedAccountControlBits;
+    private int _accountControlValues;
 
     protected internal AuthenticablePrincipal(PrincipalContext context)
     {
@@ -53,13 +55,7 @@ public class AuthenticablePrincipal : Principal
         bool enabled)
         : this(context)
     {
-        if (samAccountName is null || password is null)
-        {
-            throw new ArgumentException("The account name and password cannot be null.");
-        }
-
-        SamAccountName = samAccountName;
-        Name = samAccountName;
+        if (samAccountName is not null) SamAccountName = samAccountName;
         _passwordToSet = password;
         Enabled = enabled;
     }
@@ -74,7 +70,7 @@ public class AuthenticablePrincipal : Principal
     }
 
     internal override IEnumerable<string> BuiltInAdvancedFilterConditions =>
-        AdvancedSearchFilter.FilterConditions;
+        _advancedSearchFilter?.FilterConditions ?? Enumerable.Empty<string>();
 
     private protected virtual int DefaultUserAccountControl => NormalAccount;
 
@@ -452,6 +448,7 @@ public class AuthenticablePrincipal : Principal
     public void UnlockAccount()
     {
         CheckDisposedOrDeleted();
+        if (Entry is null) return;
         var entry = RequireSaved();
         AccountManagementExceptionTranslator.Execute(
             () => entry.ReplaceAttributeImmediate("lockoutTime", "0"));
@@ -492,6 +489,9 @@ public class AuthenticablePrincipal : Principal
 
     private protected void SetUserAccountControlBit(int bit, bool on)
     {
+        CheckDisposedOrDeleted();
+        _changedAccountControlBits |= bit;
+        _accountControlValues = on ? _accountControlValues | bit : _accountControlValues & ~bit;
         var flags = ReadUserAccountControl() ?? DefaultUserAccountControl;
         flags = on ? flags | bit : flags & ~bit;
         SetString("userAccountControl", flags.ToString());
@@ -642,11 +642,18 @@ public class AuthenticablePrincipal : Principal
         _userCannotChangePassword = null;
         _accountExpirationDateChanged = false;
         _permittedLogonTimesBaseline = _permittedLogonTimes?.ToArray();
+        _changedAccountControlBits = 0;
     }
 
     private protected override void OnBeforeSave()
     {
         base.OnBeforeSave();
+        if (Entry is not null && _changedAccountControlBits != 0)
+        {
+            var nativeFlags = Convert.ToInt32(Entry.Properties["userAccountControl"].Value);
+            SetString("userAccountControl", ((nativeFlags & ~_changedAccountControlBits)
+                | (_accountControlValues & _changedAccountControlBits)).ToString());
+        }
         if (_permittedLogonTimesLoaded
             && !(_permittedLogonTimes ?? Array.Empty<byte>()).SequenceEqual(
                 _permittedLogonTimesBaseline ?? Array.Empty<byte>()))
@@ -781,20 +788,8 @@ public class AuthenticablePrincipal : Principal
         using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, $"(&{category}{condition})") { PageSize = 500 };
         using var results = searcher.FindAll();
-        var principals = new List<T>();
-        foreach (var result in results.Cast<SearchResult>())
-        {
-            var entry = result.GetDirectoryEntry();
-            if (PrincipalFactory.FromEntry(context, entry) is T principal)
-            {
-                principals.Add(principal);
-            }
-            else
-            {
-                entry.Dispose();
-            }
-        }
-
-        return new PrincipalSearchResult<T>(principals);
+        var rows = results.Cast<SearchResult>().ToArray();
+        return new PrincipalSearchResult<T>(rows.Length, index =>
+            (T)(object)PrincipalFactory.FromEntry(context, rows[index].GetDirectoryEntry())!);
     }
 }

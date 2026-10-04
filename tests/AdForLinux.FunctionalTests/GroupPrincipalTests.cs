@@ -229,6 +229,33 @@ public class GroupPrincipalTests
     }
 
     [Fact]
+    public void Clearing_saved_members_does_not_use_an_earlier_empty_contains_snapshot()
+    {
+        var groupName = NewName();
+        var userName = NewName();
+        var userDn = SeedUser(userName);
+        try
+        {
+            using var context = Context();
+            using var group = new GroupPrincipal(context, groupName);
+            group.Save();
+            using var user = UserPrincipal.FindByIdentity(context, userName)!;
+            Assert.False(group.Members.Contains(user));
+            group.Members.Add(user);
+            group.Save();
+            group.Members.Clear();
+            group.Save();
+            using var reloaded = GroupPrincipal.FindByIdentity(context, groupName)!;
+            Assert.Empty(reloaded.Members);
+        }
+        finally
+        {
+            TestDirectory.Delete(DnFor(groupName));
+            TestDirectory.Delete(userDn);
+        }
+    }
+
+    [Fact]
     public void Nested_group_is_returned_as_a_group_principal()
     {
         var outerName = NewName();

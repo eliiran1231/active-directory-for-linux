@@ -20,6 +20,7 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     private bool _disposed;
     private int _version;
     private List<string>? _primaryGroupMemberDns;
+    private List<string>? _smallGroupMemberDns;
     private readonly Dictionary<string, MemberReference> _memberSources =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -171,6 +172,14 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
     {
         CheckDisposed();
         _group.EnsureMembersUsable();
+        ArgumentNullException.ThrowIfNull(principal);
+        if (_insertedValuesPending.Any(value => SourceFor(value).Principal?.Equals(principal) == true))
+            return true;
+        if (!_group.IsPersisted)
+        {
+            _ = principal.DistinguishedName;
+            return false;
+        }
         return ContainsValue(RequireMembershipValue(principal));
     }
 
@@ -379,9 +388,9 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             get
             {
                 CheckDisposed();
-                _collection.CheckDisposed();
                 if (!_hasCurrent)
                 {
+                    _collection.CheckDisposed();
                     throw new InvalidOperationException("The enumerator is not positioned on a member.");
                 }
                 return _inner.Current;
@@ -402,7 +411,6 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
         public void Reset()
         {
             CheckDisposed();
-            _collection.CheckDisposed();
             CheckChanged();
             // Compiler-generated iterators do not support Reset. Start a new
             // traversal without taking ownership of previously yielded principals.
@@ -455,17 +463,21 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             return false;
         }
 
-        return CurrentDirectMembers().Any(member =>
-            member.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
+        var storedDns = _smallGroupMemberDns ?? CurrentDirectMemberDns();
+        if (_group.IsPersisted && storedDns.Count < 1500) _smallGroupMemberDns = storedDns;
+        return storedDns.Any(dn => GroupMembershipConverter.ForStoredDistinguishedName(dn)
+            .Equals(value, StringComparison.OrdinalIgnoreCase));
     }
 
-    private List<string> CurrentDirectMemberDns() =>
-        AccountManagementExceptionTranslator.Execute(() =>
-            !_group.IsPersisted
-                ? new List<string>()
+    private List<string> CurrentDirectMemberDns()
+    {
+        // Enumeration and writes use the current membership. Only the optimized
+        // small-group Contains path retains the original lookup snapshot.
+        return AccountManagementExceptionTranslator.Execute(() =>
+            !_group.IsPersisted ? new List<string>()
                 : RangedAttributeReader.Read(_group.RequireEntry(), "member")
-                    .Select(value => value.ToString()!)
-                    .ToList());
+                    .Select(value => value.ToString()!).ToList());
+    }
 
     private List<MemberReference> CurrentDirectMembers()
     {
@@ -503,7 +515,9 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             || ContainsValue(_removedValuesPending, member.Value));
         foreach (var value in _insertedValuesCompleted)
         {
-            AddMember(members, SourceFor(value));
+            // Completed inserts are directory-backed members. Enumeration must
+            // not borrow the caller's original (possibly disposed) principal.
+            AddMember(members, SourceFor(value) with { Principal = null });
         }
 
         foreach (var value in _insertedValuesPending)

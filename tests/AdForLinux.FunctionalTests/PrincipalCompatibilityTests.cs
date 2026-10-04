@@ -804,7 +804,7 @@ public class PrincipalCompatibilityTests
     }
 
     [Fact]
-    public void Extension_changes_are_cached_until_save_and_deleted_principals_are_rejected()
+    public void Extension_cache_survives_deletion_while_ordinary_principal_operations_are_rejected()
     {
         var userName = NewName();
         var userDn = DnFor(userName, TestDirectory.UsersContainer);
@@ -830,8 +830,11 @@ public class PrincipalCompatibilityTests
             Assert.Equal("staged", entry.Properties["telephoneNumber"].Value);
 
             user.Delete();
-            Assert.Throws<InvalidOperationException>(() => user.ReadExtension("telephoneNumber"));
-            Assert.Throws<InvalidOperationException>(() => user.WriteExtension("telephoneNumber", "deleted"));
+            // Issue #216's Windows oracle confirms extension-cache operations
+            // remain local and usable after Delete, unlike ordinary properties.
+            Assert.Equal(new object[] { "staged" }, user.ReadExtension("telephoneNumber"));
+            user.WriteExtension("telephoneNumber", "deleted");
+            Assert.Equal(new object[] { "deleted" }, user.ReadExtension("telephoneNumber"));
             Assert.Throws<InvalidOperationException>(() => user.Save());
             Assert.Throws<InvalidOperationException>(() => user.GetGroups());
             Assert.Throws<InvalidOperationException>(() => user.GetUnderlyingObject());

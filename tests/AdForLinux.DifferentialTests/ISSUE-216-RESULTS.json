@@ -1,0 +1,69 @@
+{
+    "issue":  216,
+    "productionCommit":  "eccb8acead9fb5b1be5be986c3642855dea9e956",
+    "originalAdRun":  37189327647,
+    "finalAdRun":  37193479294,
+    "trxArtifact":  11299729037,
+    "linuxRun":  37193481530,
+    "linuxPassedPerRuntime":  532,
+    "linuxFailedPerRuntime":  0,
+    "results":  {
+                    "value":  [
+                                  {
+                                      "file":  "differential-net10.trx",
+                                      "sha256":  "5D62888172D63893ECAFA6DEC5333EADB9C669A249C8F4642C2D0DF8AF8E0385",
+                                      "total":  1357,
+                                      "passed":  1349,
+                                      "failed":  8,
+                                      "newTotal":  80,
+                                      "newPassed":  79,
+                                      "originalNewControlsPreserved":  33,
+                                      "originalFailuresFixed":  46,
+                                      "baselineChanges":  [
+
+                                                          ],
+                                      "missingOriginalTests":  [
+
+                                                               ],
+                                      "failures":  [
+                                                       "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.User_principal_save_inherits_protected_negotiate_options",
+                                                       "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"SecurityMasks\", value: 3)",
+                                                       "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"PageSize\", value: 17)",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: -1)",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 3)",
+                                                       "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.Direct_children_add_inherits_protected_negotiate_options",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 2147483647)",
+                                                       "AdForLinux.DifferentialTests.CompatibilityFailedInsertRetryComparisonTests.Corrected_password_retry_on_same_failed_principal_matches_microsoft"
+                                                   ]
+                                  },
+                                  {
+                                      "file":  "differential-net8.trx",
+                                      "sha256":  "929CCB67D3D88167212DF3CC1FD1D7D20085BA2556D65D5BBE399C2A92C150BA",
+                                      "total":  1357,
+                                      "passed":  1349,
+                                      "failed":  8,
+                                      "newTotal":  80,
+                                      "newPassed":  79,
+                                      "originalNewControlsPreserved":  33,
+                                      "originalFailuresFixed":  46,
+                                      "baselineChanges":  [
+
+                                                          ],
+                                      "missingOriginalTests":  [
+
+                                                               ],
+                                      "failures":  [
+                                                       "AdForLinux.DifferentialTests.CompatibilityFailedInsertRetryComparisonTests.Corrected_password_retry_on_same_failed_principal_matches_microsoft",
+                                                       "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.Direct_children_add_inherits_protected_negotiate_options",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 2147483647)",
+                                                       "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"PageSize\", value: 17)",
+                                                       "AdForLinux.DifferentialTests.CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft(property: \"SecurityMasks\", value: 3)",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: 3)",
+                                                       "AdForLinux.DifferentialTests.NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match(value: -1)",
+                                                       "AdForLinux.DifferentialTests.Issue56ConnectionInheritanceTests.User_principal_save_inherits_protected_negotiate_options"
+                                                   ]
+                                  }
+                              ],
+                    "Count":  2
+                }
+}
