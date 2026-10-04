@@ -20,6 +20,64 @@ required. Other contracts in this batch target Microsoft parity.
 The seven pre-existing failures (Options #215: two, GroupScope #60: three,
 protected Negotiate #56: two) remain outside this issue's fix scope.
 
+Implemented behavior:
+
+- Merge staged account-control bits into the current native flags at Save.
+- Truncate configured LDAP time limits to whole seconds and preserve the
+  parameterless principal searcher's zero page-size default.
+- Validate and rewind low-level cursors; copy binary buffers across replay;
+  project independent principals while sharing the principal result position.
+- Preserve search-loaded scalar values after native-entry disposal, and retain
+  the native entry across Save into another context for the same container.
+- Match retained-value replacement failure state, null-Contains disposal
+  precedence, writes through wrappers retained across Close, implicit-write
+  cache invalidation, noncached rename caches, and credential-reset write loss.
+  Dirty managed security descriptors retain their existing failure recovery.
+- Preserve extension-cache arrays across Save and local access after Delete;
+  allow retained principal-value collections to mutate after owner disposal.
+- Preserve bound schema-filter cursor snapshots and VLV response lifetime;
+  validate missing search roots before changing the requested projection.
+- Respect pending member equality and lifetime; retain small-group Contains
+  snapshots without using stale snapshots for membership writes/enumeration.
+- Match the protected credential constructor, stored advanced-filter dispatch,
+  custom date-finder advancement, and unsaved UnlockAccount behavior.
+
+Linux validation at production commit `eccb8ac`:
+[CI run 37193481530](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37193481530)
+passed the solution build and **532/532 functional tests on each of .NET 8 and
+.NET 10**, with no skips. Six new offline/live functional cases exercise cursor
+ownership, replay, time limits, retained collections, and clearing saved members
+after an earlier empty membership lookup. Two older clone-only test assumptions
+were updated to the verified Windows contracts: local extension-cache access
+after Delete and explicit Name assignment for a custom credential constructor.
+
+Final Windows/AD validation at the same production commit:
+[run 37193479294](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37193479294)
+and [uploaded TRX evidence](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37193479294/artifacts/11299729037).
+Both runtimes used the pinned Microsoft **9.0.0** packages.
+
+| Scope | .NET 8 | .NET 10 |
+| --- | ---: | ---: |
+| Full differential suite | 1,349 passed / 8 failed / 0 skipped | 1,349 passed / 8 failed / 0 skipped |
+| Issue #216 cases | 79 passed / 1 intentional difference | 79 passed / 1 intentional difference |
+| Original new passing controls preserved | 33 / 33 | 33 / 33 |
+| Original new failures corrected | 46 / 47 | 46 / 47 |
+| Changed outcomes outside this batch | 0 | 0 |
+| Missing original test identities | 0 | 0 |
+
+TRX comparison by full test name against original run `37189327647` confirms
+all 1,277 results outside the 80-case batch retained their outcomes (the 1,266
+baseline identities plus eleven additional fixture checks). Thus the eight
+remaining failures are exactly the seven prior failures listed above and the
+documented same-instance retry decision. All 31 report-defined contracts now
+have either matching comparisons or that explicit compatibility decision; this
+is not a claim of 31 independent implementation defects. The workflow remains
+red because the original oracle comparisons have not been weakened or skipped.
+Disposable-OU creation, cleanup, and TRX upload succeeded.
+
+[Machine-readable results](ISSUE-216-RESULTS.json) include the exact failure
+identities, original-run comparisons, and SHA-256 hashes of both TRX files.
+
 Tests-only branch: `bro/compatibility-coverage-2026-10-03`.
 Base: `dev` at `f3c01ab52c4be824819b637fe0bb4702f43138d0` (PR #214).
 Reference packages remain Microsoft DirectoryServices and AccountManagement **9.0.0**.
