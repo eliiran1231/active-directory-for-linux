@@ -31,6 +31,7 @@ public class DirectoryEntry : Component
     private LdapConnection? _schemaConnection;
     private PropertyCollection? _properties;
     internal string?[] SchemaFilterNames { get; set; } = Array.Empty<string?>();
+    internal bool HasBoundObject => _boundDistinguishedName is not null || _isNew;
     private readonly HashSet<PropertyValueCollection> _pendingPropertyChanges = new();
     private string? _boundDistinguishedName;
     private bool _isNew;

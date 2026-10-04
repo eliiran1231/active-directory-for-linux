@@ -41,7 +41,9 @@ public class SchemaNameCollection : IList
         set
         {
             ValidateIndex(index);
-            var names = _parent is null ? _names : _names.ToArray();
+            // A bound provider marshals a new array on each access. The local,
+            // unbound collection retains its in-place indexer behavior.
+            var names = _parent?.HasBoundObject == true ? _names.ToArray() : _names;
             names[index] = value;
             _names = names;
         }

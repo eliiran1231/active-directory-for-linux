@@ -514,7 +514,9 @@ public class PrincipalCollection : ICollection<Principal>, ICollection
             || ContainsValue(_removedValuesPending, member.Value));
         foreach (var value in _insertedValuesCompleted)
         {
-            AddMember(members, SourceFor(value));
+            // Completed inserts are directory-backed members. Enumeration must
+            // not borrow the caller's original (possibly disposed) principal.
+            AddMember(members, SourceFor(value) with { Principal = null });
         }
 
         foreach (var value in _insertedValuesPending)

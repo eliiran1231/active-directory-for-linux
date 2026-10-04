@@ -185,12 +185,15 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_sourceResults is not null)
         {
+            _exhausted = true;
             return _results = new ArrayList(_sourceResults.Select(result => result.Snapshot()).ToArray());
         }
 
-        return _results = new ArrayList((_replayableResults is not null
+        _results = new ArrayList((_replayableResults is not null
             ? _replayableResults.Materialize()
             : _forwardOnlyResults!.MaterializeRemaining()).ToArray());
+        _exhausted = true;
+        return _results;
     }
 
     private sealed class ForwardOnlySearchResults : IDisposable

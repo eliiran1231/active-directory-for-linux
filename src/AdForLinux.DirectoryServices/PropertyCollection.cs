@@ -137,7 +137,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         EnsureLoaded();
         // Pending writes must not invalidate an already-created enumerator.
         // Values are copied too, keeping each returned wrapper independent.
-        return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged);
+        return new PropertyEnumerator(_byName.Values.ToArray(), _onChanged, _validateOwner);
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -221,13 +221,15 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     {
         private readonly (string Name, object[] Values)[] _snapshot;
         private readonly Action<PropertyValueCollection>? _onChanged;
+        private readonly Action? _validateOwner;
         private int _index = -1;
 
-        internal PropertyEnumerator(PropertyValueCollection[] properties, Action<PropertyValueCollection>? onChanged)
+        internal PropertyEnumerator(PropertyValueCollection[] properties, Action<PropertyValueCollection>? onChanged, Action? validateOwner)
         {
             _snapshot = properties.Select(property =>
                 (property.PropertyName, property.Select(value => value!).ToArray())).ToArray();
             _onChanged = onChanged;
+            _validateOwner = validateOwner;
         }
 
         private void ValidatePosition()
@@ -245,7 +247,7 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
             {
                 ValidatePosition();
                 var property = _snapshot[_index];
-                var values = new PropertyValueCollection(property.Name, _onChanged);
+                var values = new PropertyValueCollection(property.Name, _onChanged, _validateOwner);
                 foreach (var value in property.Values) values.AddLoaded(value);
                 return values;
             }
