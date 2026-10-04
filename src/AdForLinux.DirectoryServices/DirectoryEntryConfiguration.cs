@@ -7,12 +7,33 @@ public class DirectoryEntryConfiguration
 {
     private readonly DirectoryEntry _entry;
     private int _pageSize;
-    private PasswordEncodingMethod _passwordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;
-    private int _passwordPort = 636;
-    private ReferralChasingOption _referral = ReferralChasingOption.External;
+    private PasswordEncodingMethod _passwordEncoding;
+    private int _passwordPort;
+    private ReferralChasingOption _referral;
     private SecurityMasks _securityMasks;
 
-    internal DirectoryEntryConfiguration(DirectoryEntry entry) => _entry = entry;
+    // ADS_SECURITY_INFO_ENUM documents Owner, Group and DACL as the initial mask.
+    // https://learn.microsoft.com/windows/win32/api/iads/ne-iads-ads_security_info_enum
+    internal const SecurityMasks DefaultSecurityMasks =
+        SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl;
+
+    internal DirectoryEntryConfiguration(DirectoryEntry entry)
+    {
+        _entry = entry;
+        Reset();
+    }
+
+    internal void Reset()
+    {
+        // Reset this wrapper in place: callers may retain it across Close().
+        // The documented portable default disables paging. ADSI's provider
+        // default is intentionally not part of this contract (see README).
+        _pageSize = 0;
+        _securityMasks = DefaultSecurityMasks;
+        _passwordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;
+        _passwordPort = 636;
+        _referral = ReferralChasingOption.External;
+    }
 
     /// <summary>Gets or sets the page size used when enumerating child entries. Zero disables paging.</summary>
     public int PageSize
@@ -98,7 +119,10 @@ public class DirectoryEntryConfiguration
         }
     }
 
-    /// <summary>Gets or sets the requested security descriptor parts.</summary>
+    /// <summary>
+    /// Gets or sets the requested security descriptor parts. A fresh binding
+    /// requests the owner, group and DACL; reading the SACL requires an explicit flag.
+    /// </summary>
     public SecurityMasks SecurityMasks
     {
         get { _entry.ThrowIfDisposed(); return _securityMasks; }

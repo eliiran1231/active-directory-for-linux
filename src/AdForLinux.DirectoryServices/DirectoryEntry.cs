@@ -1030,7 +1030,7 @@ public class DirectoryEntry : Component
     }
 
     private SecurityMasks EffectiveSecurityMasks() => Options.SecurityMasks == SecurityMasks.None
-        ? SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl
+        ? DirectoryEntryConfiguration.DefaultSecurityMasks
         : Options.SecurityMasks;
 
     private void LoadEntry(
@@ -1286,6 +1286,7 @@ public class DirectoryEntry : Component
 
     private void ResetBinding(LdapPath path, string? pathText = null)
     {
+        _options?.Reset();
         _path = path;
         _pathText = pathText ?? path.ToString();
         _pendingPropertyChanges.Clear();
@@ -1297,6 +1298,7 @@ public class DirectoryEntry : Component
 
     private void ResetCredentialBinding()
     {
+        _options?.Reset();
         ResetConnection();
         // Unsaved children retain creation values; persisted bindings discard
         // pending native writes when their credentials change.
@@ -1331,6 +1333,7 @@ public class DirectoryEntry : Component
 
     private void Unbind()
     {
+        _options?.Reset();
         ResetConnection();
         _pendingPropertyChanges.Clear();
         _properties = null;
