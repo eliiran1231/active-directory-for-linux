@@ -6,6 +6,31 @@ namespace AdForLinux.FunctionalTests;
 
 public class DirectorySearcherTimeLimitTests
 {
+    [Theory]
+    [InlineData(1000, 1)]
+    [InlineData(1500, 1)]
+    [InlineData(1000, 5000)]
+    public void Paged_search_starts_finite_budget_with_first_request(
+        int configuredMilliseconds, int preparationMilliseconds)
+    {
+        var clock = new ManualTimeProvider();
+        var budget = new ServerSearchTimeLimitBudget(
+            TimeSpan.FromMilliseconds(configuredMilliseconds),
+            TimeSpan.FromSeconds(-1),
+            isPaged: true,
+            clock);
+        clock.Advance(TimeSpan.FromMilliseconds(preparationMilliseconds));
+
+        var firstPage = new SearchRequest();
+        Assert.True(budget.TryApply(firstPage));
+        Assert.Equal(TimeSpan.FromSeconds(1), firstPage.TimeLimit);
+
+        // Once the first request starts, a fractional remainder still cannot
+        // become LDAP's zero/unlimited sentinel on the next page.
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.False(budget.TryApply(new SearchRequest()));
+    }
+
     [Fact]
     public void Paged_search_applies_page_limit_until_overall_budget_is_smaller()
     {
@@ -54,6 +79,7 @@ public class DirectorySearcherTimeLimitTests
             isPaged: true,
             clock);
 
+        Assert.True(budget.TryApply(new SearchRequest()));
         clock.Advance(TimeSpan.FromMilliseconds(4_700));
 
         Assert.False(budget.TryApply(new SearchRequest()));

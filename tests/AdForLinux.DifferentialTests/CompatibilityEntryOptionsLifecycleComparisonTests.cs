@@ -55,14 +55,6 @@ public sealed class CompatibilityEntryOptionsLifecycleComparisonTests(TestDataFi
         using var actualEntry = OurEntry();
         var expected = Assert.IsType<Ms.DirectoryEntryConfiguration>(expectedEntry.Options);
         var actual = actualEntry.Options;
-        var freshExpected = Observe(expected, property, "get");
-        // README: the portable PageSize default is zero; ADSI owns its default.
-        // Only default values differ, not setters, exceptions or reset behavior.
-        if (property == "PageSize")
-        {
-            Assert.Equal(new Observation(null, null, 0), Observe(actual, property, "get"));
-            Assert.Null(freshExpected.Error);
-        }
         Set(expected, property, value);
         Set(actual, property, value);
         var comparison = new Comparison($"Entry options after Close: {property}");
@@ -72,20 +64,9 @@ public sealed class CompatibilityEntryOptionsLifecycleComparisonTests(TestDataFi
         // Microsoft stores options on the provider handle; the clone stores
         // fields on the configuration wrapper. Read through the retained object
         // first, then through Entry.Options, without assuming which is retained.
-        if (property == "PageSize")
-        {
-            Compare(comparison, "Microsoft retained reset", freshExpected, Observe(expected, property, "get"));
-            Compare(comparison, "Microsoft entry options reset", freshExpected, Observe(expectedEntry.Options!, property, "get"));
-            var portableDefault = new Observation(null, null, 0);
-            Compare(comparison, "portable retained reset", portableDefault, Observe(actual, property, "get"));
-            Compare(comparison, "portable entry options reset", portableDefault, Observe(actualEntry.Options, property, "get"));
-        }
-        else
-        {
-            Compare(comparison, "retained after close", Observe(expected, property, "get"), Observe(actual, property, "get"));
-            Compare(comparison, "entry options after close", Observe(expectedEntry.Options!, property, "get"),
-                Observe(actualEntry.Options, property, "get"));
-        }
+        Compare(comparison, "retained after close", Observe(expected, property, "get"), Observe(actual, property, "get"));
+        Compare(comparison, "entry options after close", Observe(expectedEntry.Options!, property, "get"),
+            Observe(actualEntry.Options, property, "get"));
         comparison.Assert();
     }
 
