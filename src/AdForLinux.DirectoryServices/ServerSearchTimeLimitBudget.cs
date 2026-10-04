@@ -14,7 +14,7 @@ internal sealed class ServerSearchTimeLimitBudget
     private readonly TimeSpan _serverPageTimeLimit;
     private readonly bool _isPaged;
     private readonly TimeProvider _timeProvider;
-    private readonly long _startedAt;
+    private long? _startedAt;
 
     internal ServerSearchTimeLimitBudget(
         TimeSpan serverTimeLimit,
@@ -27,7 +27,6 @@ internal sealed class ServerSearchTimeLimitBudget
         _serverPageTimeLimit = TimeSpan.FromSeconds((int)serverPageTimeLimit.TotalSeconds);
         _isPaged = isPaged;
         _timeProvider = timeProvider;
-        _startedAt = timeProvider.GetTimestamp();
     }
 
     /// <summary>
@@ -43,7 +42,17 @@ internal sealed class ServerSearchTimeLimitBudget
             var remaining = _serverTimeLimit;
             if (_isPaged)
             {
-                remaining -= _timeProvider.GetElapsedTime(_startedAt);
+                if (_startedAt is long startedAt)
+                {
+                    remaining -= _timeProvider.GetElapsedTime(startedAt);
+                }
+                else
+                {
+                    // Start the server budget when the first request is ready.
+                    // Preparation time must not discard a one-second search
+                    // before the server receives any request.
+                    _startedAt = _timeProvider.GetTimestamp();
+                }
                 // LDAP encodes the request time limit as integer seconds. A
                 // positive fraction would become zero, which means unlimited.
                 if (remaining < MinimumLdapTimeLimit)
