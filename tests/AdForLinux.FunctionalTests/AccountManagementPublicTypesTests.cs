@@ -114,8 +114,25 @@ public class AccountManagementPublicTypesTests
             Assert.Equal("(&(objectCategory=user)(objectClass=user))", searcher.GetLdapFilter());
         }
 
-        Assert.Throws<InvalidEnumArgumentException>(
-            () => group.GroupScope = (GroupScope)int.MaxValue);
+        group.GroupScope = (GroupScope)int.MaxValue;
+        Assert.Equal((GroupScope)int.MaxValue, group.GroupScope);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    [InlineData(int.MaxValue)]
+    public void Undefined_group_scope_is_retained_until_reassigned(int value)
+    {
+        using var context = OfflineContext();
+        using var group = new GroupPrincipal(context) { GroupScope = GroupScope.Global };
+        group.GroupScope = (GroupScope)value;
+        group.IsSecurityGroup = false;
+        Assert.Equal((GroupScope)value, group.GroupScope);
+        Assert.Throws<ArgumentNullException>(() => group.GroupScope = null);
+        Assert.Equal((GroupScope)value, group.GroupScope);
+        group.GroupScope = GroupScope.Universal;
+        Assert.Equal(GroupScope.Universal, group.GroupScope);
     }
 
     [Fact]

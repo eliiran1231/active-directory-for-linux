@@ -28,6 +28,7 @@ public abstract class Principal : IDisposable
     private bool _deleted;
     internal bool IsDeleted => _deleted;
     private bool _inserting;
+    private bool _insertRolledBack;
     // Identity belongs to the principal, independently of its entry's lifetime
     // and mutable public property cache. Equality must also work after disposal.
     private Guid? _storedGuid;
@@ -849,6 +850,13 @@ public abstract class Principal : IDisposable
     private void SaveCore()
     {
         CheckDisposedOrDeleted();
+        if (_insertRolledBack)
+        {
+            // Microsoft retains the native entry for a rolled-back insert.
+            // Retrying that instance targets the deleted object, not a new add.
+            throw new PrincipalOperationException(
+                "The directory object created by the previous save was removed. Create a new principal to retry.");
+        }
         if (Entry is not null)
         {
             OnBeforeSave();
@@ -935,6 +943,7 @@ public abstract class Principal : IDisposable
                     // Cleanup is best effort and must never hide the save failure.
                     if (TryRollbackCreatedEntry(() => parent.Children.Remove(child)))
                     {
+                        _insertRolledBack = true;
                         Entry = null;
                         _storedGuid = null;
                         RestoreValues(_pending, pendingBeforeCreate);

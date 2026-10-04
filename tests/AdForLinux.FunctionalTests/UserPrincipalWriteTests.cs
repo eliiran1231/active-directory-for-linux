@@ -179,6 +179,11 @@ public class UserPrincipalWriteTests
             Assert.Throws<InvalidOperationException>(user.GetUnderlyingObject);
             Assert.Null(UserPrincipal.FindByIdentity(context, name));
 
+            user.SetPassword("Str0ng!Passw0rd#2026");
+            Assert.Throws<PrincipalOperationException>(user.Save);
+            Assert.False(user.IsPersisted);
+            Assert.Null(UserPrincipal.FindByIdentity(context, name));
+
             using var corrected = new UserPrincipal(context)
             {
                 Name = name,
