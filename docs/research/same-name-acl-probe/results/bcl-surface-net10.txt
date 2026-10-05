@@ -1,141 +1,141 @@
-TYPE System.Security.Principal.IdentityReference; base=System.Object; interfaces=
-  public Boolean Equals(System.Object); virtual=True; final=False
-  public Int32 GetHashCode(); virtual=True; final=False
-  public Boolean IsValidTargetType(System.Type); virtual=True; final=False
-  public System.String ToString(); virtual=True; final=False
-  public System.Security.Principal.IdentityReference Translate(System.Type); virtual=True; final=False
-  public System.String get_Value(); virtual=True; final=False
-  public Boolean op_Equality(System.Security.Principal.IdentityReference, System.Security.Principal.IdentityReference); virtual=False; final=False
-  public Boolean op_Inequality(System.Security.Principal.IdentityReference, System.Security.Principal.IdentityReference); virtual=False; final=False
-TYPE System.Security.Principal.SecurityIdentifier; base=System.Security.Principal.IdentityReference; interfaces=System.IComparable`1[[System.Security.Principal.SecurityIdentifier, System.Security.Principal.Windows, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a]]
-  public Void .ctor(Byte[], Int32); virtual=False; final=False
-  public Void .ctor(IntPtr); virtual=False; final=False
-  public Void .ctor(System.Security.Principal.WellKnownSidType, System.Security.Principal.SecurityIdentifier); virtual=False; final=False
-  public Void .ctor(System.String); virtual=False; final=False
-  public Int32 CompareTo(System.Security.Principal.SecurityIdentifier); virtual=True; final=True
-  public Boolean Equals(System.Object); virtual=True; final=False
-  public Boolean Equals(System.Security.Principal.SecurityIdentifier); virtual=False; final=False
-  public Void GetBinaryForm(Byte[], Int32); virtual=False; final=False
-  public Int32 GetHashCode(); virtual=True; final=False
-  public Boolean IsAccountSid(); virtual=False; final=False
-  public Boolean IsEqualDomainSid(System.Security.Principal.SecurityIdentifier); virtual=False; final=False
-  public Boolean IsValidTargetType(System.Type); virtual=True; final=False
-  public Boolean IsWellKnown(System.Security.Principal.WellKnownSidType); virtual=False; final=False
-  field Int32 MaxBinaryLength
-  field Int32 MinBinaryLength
-  public System.String ToString(); virtual=True; final=False
-  public System.Security.Principal.IdentityReference Translate(System.Type); virtual=True; final=False
-  public System.Security.Principal.SecurityIdentifier get_AccountDomainSid(); virtual=False; final=False
-  public Int32 get_BinaryLength(); virtual=False; final=False
-  public System.String get_Value(); virtual=True; final=False
-  public Boolean op_Equality(System.Security.Principal.SecurityIdentifier, System.Security.Principal.SecurityIdentifier); virtual=False; final=False
-  public Boolean op_Inequality(System.Security.Principal.SecurityIdentifier, System.Security.Principal.SecurityIdentifier); virtual=False; final=False
-TYPE System.Security.Principal.NTAccount; base=System.Security.Principal.IdentityReference; interfaces=
-  public Void .ctor(System.String); virtual=False; final=False
-  public Void .ctor(System.String, System.String); virtual=False; final=False
-  public Boolean Equals(System.Object); virtual=True; final=False
-  public Int32 GetHashCode(); virtual=True; final=False
-  public Boolean IsValidTargetType(System.Type); virtual=True; final=False
-  public System.String ToString(); virtual=True; final=False
-  public System.Security.Principal.IdentityReference Translate(System.Type); virtual=True; final=False
-  public System.String get_Value(); virtual=True; final=False
-  public Boolean op_Equality(System.Security.Principal.NTAccount, System.Security.Principal.NTAccount); virtual=False; final=False
-  public Boolean op_Inequality(System.Security.Principal.NTAccount, System.Security.Principal.NTAccount); virtual=False; final=False
-TYPE System.Security.AccessControl.AuthorizationRule; base=System.Object; interfaces=
-  protected Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags); virtual=False; final=False
-  protected Int32 get_AccessMask(); virtual=False; final=False
-  public System.Security.Principal.IdentityReference get_IdentityReference(); virtual=False; final=False
-  public System.Security.AccessControl.InheritanceFlags get_InheritanceFlags(); virtual=False; final=False
-  public Boolean get_IsInherited(); virtual=False; final=False
-  public System.Security.AccessControl.PropagationFlags get_PropagationFlags(); virtual=False; final=False
-TYPE System.Security.AccessControl.AccessRule; base=System.Security.AccessControl.AuthorizationRule; interfaces=
-  protected Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType); virtual=False; final=False
-  public System.Security.AccessControl.AccessControlType get_AccessControlType(); virtual=False; final=False
-TYPE System.Security.AccessControl.AuditRule; base=System.Security.AccessControl.AuthorizationRule; interfaces=
-  protected Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags); virtual=False; final=False
-  public System.Security.AccessControl.AuditFlags get_AuditFlags(); virtual=False; final=False
-TYPE System.Security.AccessControl.ObjectAccessRule; base=System.Security.AccessControl.AccessRule; interfaces=
-  protected Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AccessControlType); virtual=False; final=False
-  public System.Guid get_InheritedObjectType(); virtual=False; final=False
-  public System.Security.AccessControl.ObjectAceFlags get_ObjectFlags(); virtual=False; final=False
-  public System.Guid get_ObjectType(); virtual=False; final=False
-TYPE System.Security.AccessControl.ObjectAuditRule; base=System.Security.AccessControl.AuditRule; interfaces=
-  protected Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AuditFlags); virtual=False; final=False
-  public System.Guid get_InheritedObjectType(); virtual=False; final=False
-  public System.Security.AccessControl.ObjectAceFlags get_ObjectFlags(); virtual=False; final=False
-  public System.Guid get_ObjectType(); virtual=False; final=False
-TYPE System.Security.AccessControl.ObjectSecurity; base=System.Object; interfaces=
-  protected Void .ctor(); virtual=False; final=False
-  protected Void .ctor(Boolean, Boolean); virtual=False; final=False
-  protected Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); virtual=False; final=False
-  public System.Security.AccessControl.AccessRule AccessRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType); virtual=True; final=False
-  public System.Security.AccessControl.AuditRule AuditRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags); virtual=True; final=False
-  public System.Security.Principal.IdentityReference GetGroup(System.Type); virtual=False; final=False
-  public System.Security.Principal.IdentityReference GetOwner(System.Type); virtual=False; final=False
-  public Byte[] GetSecurityDescriptorBinaryForm(); virtual=False; final=False
-  public System.String GetSecurityDescriptorSddlForm(System.Security.AccessControl.AccessControlSections); virtual=False; final=False
-  public Boolean IsSddlConversionSupported(); virtual=False; final=False
-  protected Boolean ModifyAccess(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); virtual=True; final=False
-  public Boolean ModifyAccessRule(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); virtual=True; final=False
-  protected Boolean ModifyAudit(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); virtual=True; final=False
-  public Boolean ModifyAuditRule(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); virtual=True; final=False
-  protected Void Persist(Boolean, System.String, System.Security.AccessControl.AccessControlSections); virtual=True; final=False
-  protected Void Persist(System.Runtime.InteropServices.SafeHandle, System.Security.AccessControl.AccessControlSections); virtual=True; final=False
-  protected Void Persist(System.String, System.Security.AccessControl.AccessControlSections); virtual=True; final=False
-  public Void PurgeAccessRules(System.Security.Principal.IdentityReference); virtual=True; final=False
-  public Void PurgeAuditRules(System.Security.Principal.IdentityReference); virtual=True; final=False
-  protected Void ReadLock(); virtual=False; final=False
-  protected Void ReadUnlock(); virtual=False; final=False
-  public Void SetAccessRuleProtection(Boolean, Boolean); virtual=False; final=False
-  public Void SetAuditRuleProtection(Boolean, Boolean); virtual=False; final=False
-  public Void SetGroup(System.Security.Principal.IdentityReference); virtual=False; final=False
-  public Void SetOwner(System.Security.Principal.IdentityReference); virtual=False; final=False
-  public Void SetSecurityDescriptorBinaryForm(Byte[]); virtual=False; final=False
-  public Void SetSecurityDescriptorBinaryForm(Byte[], System.Security.AccessControl.AccessControlSections); virtual=False; final=False
-  public Void SetSecurityDescriptorSddlForm(System.String); virtual=False; final=False
-  public Void SetSecurityDescriptorSddlForm(System.String, System.Security.AccessControl.AccessControlSections); virtual=False; final=False
-  protected Void WriteLock(); virtual=False; final=False
-  protected Void WriteUnlock(); virtual=False; final=False
-  public System.Type get_AccessRightType(); virtual=True; final=False
-  public System.Type get_AccessRuleType(); virtual=True; final=False
-  protected Boolean get_AccessRulesModified(); virtual=False; final=False
-  public Boolean get_AreAccessRulesCanonical(); virtual=False; final=False
-  public Boolean get_AreAccessRulesProtected(); virtual=False; final=False
-  public Boolean get_AreAuditRulesCanonical(); virtual=False; final=False
-  public Boolean get_AreAuditRulesProtected(); virtual=False; final=False
-  public System.Type get_AuditRuleType(); virtual=True; final=False
-  protected Boolean get_AuditRulesModified(); virtual=False; final=False
-  protected Boolean get_GroupModified(); virtual=False; final=False
-  protected Boolean get_IsContainer(); virtual=False; final=False
-  protected Boolean get_IsDS(); virtual=False; final=False
-  protected Boolean get_OwnerModified(); virtual=False; final=False
-  protected System.Security.AccessControl.CommonSecurityDescriptor get_SecurityDescriptor(); virtual=False; final=False
-  protected Void set_AccessRulesModified(Boolean); virtual=False; final=False
-  protected Void set_AuditRulesModified(Boolean); virtual=False; final=False
-  protected Void set_GroupModified(Boolean); virtual=False; final=False
-  protected Void set_OwnerModified(Boolean); virtual=False; final=False
-TYPE System.Security.AccessControl.DirectoryObjectSecurity; base=System.Security.AccessControl.ObjectSecurity; interfaces=
-  protected Void .ctor(); virtual=False; final=False
-  protected Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); virtual=False; final=False
-  public System.Security.AccessControl.AccessRule AccessRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType, System.Guid, System.Guid); virtual=True; final=False
-  protected Void AddAccessRule(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Void AddAuditRule(System.Security.AccessControl.ObjectAuditRule); virtual=False; final=False
-  public System.Security.AccessControl.AuditRule AuditRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags, System.Guid, System.Guid); virtual=True; final=False
-  public System.Security.AccessControl.AuthorizationRuleCollection GetAccessRules(Boolean, Boolean, System.Type); virtual=False; final=False
-  public System.Security.AccessControl.AuthorizationRuleCollection GetAuditRules(Boolean, Boolean, System.Type); virtual=False; final=False
-  protected Boolean ModifyAccess(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); virtual=True; final=False
-  protected Boolean ModifyAudit(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); virtual=True; final=False
-  protected Boolean RemoveAccessRule(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Void RemoveAccessRuleAll(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Void RemoveAccessRuleSpecific(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Boolean RemoveAuditRule(System.Security.AccessControl.ObjectAuditRule); virtual=False; final=False
-  protected Void RemoveAuditRuleAll(System.Security.AccessControl.ObjectAuditRule); virtual=False; final=False
-  protected Void RemoveAuditRuleSpecific(System.Security.AccessControl.ObjectAuditRule); virtual=False; final=False
-  protected Void ResetAccessRule(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Void SetAccessRule(System.Security.AccessControl.ObjectAccessRule); virtual=False; final=False
-  protected Void SetAuditRule(System.Security.AccessControl.ObjectAuditRule); virtual=False; final=False
-TYPE System.Security.AccessControl.AuthorizationRuleCollection; base=System.Collections.ReadOnlyCollectionBase; interfaces=System.Collections.ICollection,System.Collections.IEnumerable
-  public Void .ctor(); virtual=False; final=False
-  public Void AddRule(System.Security.AccessControl.AuthorizationRule); virtual=False; final=False
-  public Void CopyTo(System.Security.AccessControl.AuthorizationRule[], Int32); virtual=False; final=False
-  public System.Security.AccessControl.AuthorizationRule get_Item(Int32); virtual=False; final=False
+TYPE System.Security.Principal.IdentityReference; public=True; abstract=True; sealed=False; base=System.Object; interfaces=
+  Public Boolean Equals(System.Object); static=False; abstract=True; virtual=True; final=False
+  Public Int32 GetHashCode(); static=False; abstract=True; virtual=True; final=False
+  Public Boolean IsValidTargetType(System.Type); static=False; abstract=True; virtual=True; final=False
+  Public System.String ToString(); static=False; abstract=True; virtual=True; final=False
+  Public System.Security.Principal.IdentityReference Translate(System.Type); static=False; abstract=True; virtual=True; final=False
+  Public System.String get_Value(); static=False; abstract=True; virtual=True; final=False
+  Public Boolean op_Equality(System.Security.Principal.IdentityReference, System.Security.Principal.IdentityReference); static=True; abstract=False; virtual=False; final=False
+  Public Boolean op_Inequality(System.Security.Principal.IdentityReference, System.Security.Principal.IdentityReference); static=True; abstract=False; virtual=False; final=False
+TYPE System.Security.Principal.SecurityIdentifier; public=True; abstract=False; sealed=True; base=System.Security.Principal.IdentityReference; interfaces=System.IComparable`1[[System.Security.Principal.SecurityIdentifier, System.Security.Principal.Windows, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a]]
+  Public Void .ctor(Byte[], Int32); static=False; abstract=False; virtual=False; final=False
+  Public Void .ctor(IntPtr); static=False; abstract=False; virtual=False; final=False
+  Public Void .ctor(System.Security.Principal.WellKnownSidType, System.Security.Principal.SecurityIdentifier); static=False; abstract=False; virtual=False; final=False
+  Public Void .ctor(System.String); static=False; abstract=False; virtual=False; final=False
+  Public Int32 CompareTo(System.Security.Principal.SecurityIdentifier); static=False; abstract=False; virtual=True; final=True
+  Public Boolean Equals(System.Object); static=False; abstract=False; virtual=True; final=False
+  Public Boolean Equals(System.Security.Principal.SecurityIdentifier); static=False; abstract=False; virtual=False; final=False
+  Public Void GetBinaryForm(Byte[], Int32); static=False; abstract=False; virtual=False; final=False
+  Public Int32 GetHashCode(); static=False; abstract=False; virtual=True; final=False
+  Public Boolean IsAccountSid(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean IsEqualDomainSid(System.Security.Principal.SecurityIdentifier); static=False; abstract=False; virtual=False; final=False
+  Public Boolean IsValidTargetType(System.Type); static=False; abstract=False; virtual=True; final=False
+  Public Boolean IsWellKnown(System.Security.Principal.WellKnownSidType); static=False; abstract=False; virtual=False; final=False
+  Public field Int32 MaxBinaryLength; static=True; readonly=True; literal=False
+  Public field Int32 MinBinaryLength; static=True; readonly=True; literal=False
+  Public System.String ToString(); static=False; abstract=False; virtual=True; final=False
+  Public System.Security.Principal.IdentityReference Translate(System.Type); static=False; abstract=False; virtual=True; final=False
+  Public System.Security.Principal.SecurityIdentifier get_AccountDomainSid(); static=False; abstract=False; virtual=False; final=False
+  Public Int32 get_BinaryLength(); static=False; abstract=False; virtual=False; final=False
+  Public System.String get_Value(); static=False; abstract=False; virtual=True; final=False
+  Public Boolean op_Equality(System.Security.Principal.SecurityIdentifier, System.Security.Principal.SecurityIdentifier); static=True; abstract=False; virtual=False; final=False
+  Public Boolean op_Inequality(System.Security.Principal.SecurityIdentifier, System.Security.Principal.SecurityIdentifier); static=True; abstract=False; virtual=False; final=False
+TYPE System.Security.Principal.NTAccount; public=True; abstract=False; sealed=True; base=System.Security.Principal.IdentityReference; interfaces=
+  Public Void .ctor(System.String); static=False; abstract=False; virtual=False; final=False
+  Public Void .ctor(System.String, System.String); static=False; abstract=False; virtual=False; final=False
+  Public Boolean Equals(System.Object); static=False; abstract=False; virtual=True; final=False
+  Public Int32 GetHashCode(); static=False; abstract=False; virtual=True; final=False
+  Public Boolean IsValidTargetType(System.Type); static=False; abstract=False; virtual=True; final=False
+  Public System.String ToString(); static=False; abstract=False; virtual=True; final=False
+  Public System.Security.Principal.IdentityReference Translate(System.Type); static=False; abstract=False; virtual=True; final=False
+  Public System.String get_Value(); static=False; abstract=False; virtual=True; final=False
+  Public Boolean op_Equality(System.Security.Principal.NTAccount, System.Security.Principal.NTAccount); static=True; abstract=False; virtual=False; final=False
+  Public Boolean op_Inequality(System.Security.Principal.NTAccount, System.Security.Principal.NTAccount); static=True; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.AuthorizationRule; public=True; abstract=True; sealed=False; base=System.Object; interfaces=
+  FamORAssem Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags); static=False; abstract=False; virtual=False; final=False
+  FamORAssem Int32 get_AccessMask(); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.Principal.IdentityReference get_IdentityReference(); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.InheritanceFlags get_InheritanceFlags(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean get_IsInherited(); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.PropagationFlags get_PropagationFlags(); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.AccessRule; public=True; abstract=True; sealed=False; base=System.Security.AccessControl.AuthorizationRule; interfaces=
+  Family Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AccessControlType get_AccessControlType(); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.AuditRule; public=True; abstract=True; sealed=False; base=System.Security.AccessControl.AuthorizationRule; interfaces=
+  Family Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AuditFlags get_AuditFlags(); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.ObjectAccessRule; public=True; abstract=True; sealed=False; base=System.Security.AccessControl.AccessRule; interfaces=
+  Family Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AccessControlType); static=False; abstract=False; virtual=False; final=False
+  Public System.Guid get_InheritedObjectType(); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.ObjectAceFlags get_ObjectFlags(); static=False; abstract=False; virtual=False; final=False
+  Public System.Guid get_ObjectType(); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.ObjectAuditRule; public=True; abstract=True; sealed=False; base=System.Security.AccessControl.AuditRule; interfaces=
+  Family Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AuditFlags); static=False; abstract=False; virtual=False; final=False
+  Public System.Guid get_InheritedObjectType(); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.ObjectAceFlags get_ObjectFlags(); static=False; abstract=False; virtual=False; final=False
+  Public System.Guid get_ObjectType(); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.ObjectSecurity; public=True; abstract=True; sealed=False; base=System.Object; interfaces=
+  Family Void .ctor(); static=False; abstract=False; virtual=False; final=False
+  Family Void .ctor(Boolean, Boolean); static=False; abstract=False; virtual=False; final=False
+  Family Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AccessRule AccessRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType); static=False; abstract=True; virtual=True; final=False
+  Public System.Security.AccessControl.AuditRule AuditRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags); static=False; abstract=True; virtual=True; final=False
+  Public System.Security.Principal.IdentityReference GetGroup(System.Type); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.Principal.IdentityReference GetOwner(System.Type); static=False; abstract=False; virtual=False; final=False
+  Public Byte[] GetSecurityDescriptorBinaryForm(); static=False; abstract=False; virtual=False; final=False
+  Public System.String GetSecurityDescriptorSddlForm(System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=False; final=False
+  Public Boolean IsSddlConversionSupported(); static=True; abstract=False; virtual=False; final=False
+  Family Boolean ModifyAccess(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); static=False; abstract=True; virtual=True; final=False
+  Public Boolean ModifyAccessRule(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); static=False; abstract=False; virtual=True; final=False
+  Family Boolean ModifyAudit(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); static=False; abstract=True; virtual=True; final=False
+  Public Boolean ModifyAuditRule(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); static=False; abstract=False; virtual=True; final=False
+  Family Void Persist(Boolean, System.String, System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=True; final=False
+  Family Void Persist(System.Runtime.InteropServices.SafeHandle, System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=True; final=False
+  Family Void Persist(System.String, System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=True; final=False
+  Public Void PurgeAccessRules(System.Security.Principal.IdentityReference); static=False; abstract=False; virtual=True; final=False
+  Public Void PurgeAuditRules(System.Security.Principal.IdentityReference); static=False; abstract=False; virtual=True; final=False
+  Family Void ReadLock(); static=False; abstract=False; virtual=False; final=False
+  Family Void ReadUnlock(); static=False; abstract=False; virtual=False; final=False
+  Public Void SetAccessRuleProtection(Boolean, Boolean); static=False; abstract=False; virtual=False; final=False
+  Public Void SetAuditRuleProtection(Boolean, Boolean); static=False; abstract=False; virtual=False; final=False
+  Public Void SetGroup(System.Security.Principal.IdentityReference); static=False; abstract=False; virtual=False; final=False
+  Public Void SetOwner(System.Security.Principal.IdentityReference); static=False; abstract=False; virtual=False; final=False
+  Public Void SetSecurityDescriptorBinaryForm(Byte[]); static=False; abstract=False; virtual=False; final=False
+  Public Void SetSecurityDescriptorBinaryForm(Byte[], System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=False; final=False
+  Public Void SetSecurityDescriptorSddlForm(System.String); static=False; abstract=False; virtual=False; final=False
+  Public Void SetSecurityDescriptorSddlForm(System.String, System.Security.AccessControl.AccessControlSections); static=False; abstract=False; virtual=False; final=False
+  Family Void WriteLock(); static=False; abstract=False; virtual=False; final=False
+  Family Void WriteUnlock(); static=False; abstract=False; virtual=False; final=False
+  Public System.Type get_AccessRightType(); static=False; abstract=True; virtual=True; final=False
+  Public System.Type get_AccessRuleType(); static=False; abstract=True; virtual=True; final=False
+  Family Boolean get_AccessRulesModified(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean get_AreAccessRulesCanonical(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean get_AreAccessRulesProtected(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean get_AreAuditRulesCanonical(); static=False; abstract=False; virtual=False; final=False
+  Public Boolean get_AreAuditRulesProtected(); static=False; abstract=False; virtual=False; final=False
+  Public System.Type get_AuditRuleType(); static=False; abstract=True; virtual=True; final=False
+  Family Boolean get_AuditRulesModified(); static=False; abstract=False; virtual=False; final=False
+  Family Boolean get_GroupModified(); static=False; abstract=False; virtual=False; final=False
+  Family Boolean get_IsContainer(); static=False; abstract=False; virtual=False; final=False
+  Family Boolean get_IsDS(); static=False; abstract=False; virtual=False; final=False
+  Family Boolean get_OwnerModified(); static=False; abstract=False; virtual=False; final=False
+  Family System.Security.AccessControl.CommonSecurityDescriptor get_SecurityDescriptor(); static=False; abstract=False; virtual=False; final=False
+  Family Void set_AccessRulesModified(Boolean); static=False; abstract=False; virtual=False; final=False
+  Family Void set_AuditRulesModified(Boolean); static=False; abstract=False; virtual=False; final=False
+  Family Void set_GroupModified(Boolean); static=False; abstract=False; virtual=False; final=False
+  Family Void set_OwnerModified(Boolean); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.DirectoryObjectSecurity; public=True; abstract=True; sealed=False; base=System.Security.AccessControl.ObjectSecurity; interfaces=
+  Family Void .ctor(); static=False; abstract=False; virtual=False; final=False
+  Family Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AccessRule AccessRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AccessControlType, System.Guid, System.Guid); static=False; abstract=False; virtual=True; final=False
+  Family Void AddAccessRule(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Void AddAuditRule(System.Security.AccessControl.ObjectAuditRule); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AuditRule AuditRuleFactory(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Security.AccessControl.AuditFlags, System.Guid, System.Guid); static=False; abstract=False; virtual=True; final=False
+  Public System.Security.AccessControl.AuthorizationRuleCollection GetAccessRules(Boolean, Boolean, System.Type); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AuthorizationRuleCollection GetAuditRules(Boolean, Boolean, System.Type); static=False; abstract=False; virtual=False; final=False
+  Family Boolean ModifyAccess(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); static=False; abstract=False; virtual=True; final=False
+  Family Boolean ModifyAudit(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AuditRule, Boolean ByRef); static=False; abstract=False; virtual=True; final=False
+  Family Boolean RemoveAccessRule(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Void RemoveAccessRuleAll(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Void RemoveAccessRuleSpecific(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Boolean RemoveAuditRule(System.Security.AccessControl.ObjectAuditRule); static=False; abstract=False; virtual=False; final=False
+  Family Void RemoveAuditRuleAll(System.Security.AccessControl.ObjectAuditRule); static=False; abstract=False; virtual=False; final=False
+  Family Void RemoveAuditRuleSpecific(System.Security.AccessControl.ObjectAuditRule); static=False; abstract=False; virtual=False; final=False
+  Family Void ResetAccessRule(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Void SetAccessRule(System.Security.AccessControl.ObjectAccessRule); static=False; abstract=False; virtual=False; final=False
+  Family Void SetAuditRule(System.Security.AccessControl.ObjectAuditRule); static=False; abstract=False; virtual=False; final=False
+TYPE System.Security.AccessControl.AuthorizationRuleCollection; public=True; abstract=False; sealed=True; base=System.Collections.ReadOnlyCollectionBase; interfaces=System.Collections.ICollection,System.Collections.IEnumerable
+  Public Void .ctor(); static=False; abstract=False; virtual=False; final=False
+  Public Void AddRule(System.Security.AccessControl.AuthorizationRule); static=False; abstract=False; virtual=False; final=False
+  Public Void CopyTo(System.Security.AccessControl.AuthorizationRule[], Int32); static=False; abstract=False; virtual=False; final=False
+  Public System.Security.AccessControl.AuthorizationRule get_Item(Int32); static=False; abstract=False; virtual=False; final=False

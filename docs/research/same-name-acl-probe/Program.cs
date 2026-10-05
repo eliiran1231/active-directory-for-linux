@@ -15,14 +15,14 @@ if (args.Contains("--inventory"))
         typeof(System.Security.AccessControl.ObjectSecurity), typeof(System.Security.AccessControl.DirectoryObjectSecurity),
         typeof(System.Security.AccessControl.AuthorizationRuleCollection) })
     {
-        Console.WriteLine($"TYPE {type.FullName}; base={type.BaseType}; interfaces={string.Join(",", type.GetInterfaces().Select(t => t.FullName))}");
+        Console.WriteLine($"TYPE {type.FullName}; public={type.IsPublic}; abstract={type.IsAbstract}; sealed={type.IsSealed}; base={type.BaseType}; interfaces={string.Join(",", type.GetInterfaces().Select(t => t.FullName))}");
         const BindingFlags flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
         foreach (var member in type.GetMembers(flags).OrderBy(m => m.Name, StringComparer.Ordinal).ThenBy(m => m.ToString(), StringComparer.Ordinal))
         {
-            if (member is MethodBase method && (method.IsPublic || method.IsFamily || method.IsFamilyOrAssembly))
-                Console.WriteLine($"  {(method.IsPublic ? "public" : "protected")} {method}; virtual={method.IsVirtual}; final={method.IsFinal}");
-            else if (member is FieldInfo field && (field.IsPublic || field.IsFamily || field.IsFamilyOrAssembly))
-                Console.WriteLine($"  field {field}");
+            if (member is MethodBase method && (method.IsPublic || method.IsFamily || method.IsFamilyOrAssembly || method.IsFamilyAndAssembly))
+                Console.WriteLine($"  {method.Attributes & MethodAttributes.MemberAccessMask} {method}; static={method.IsStatic}; abstract={method.IsAbstract}; virtual={method.IsVirtual}; final={method.IsFinal}");
+            else if (member is FieldInfo field && (field.IsPublic || field.IsFamily || field.IsFamilyOrAssembly || field.IsFamilyAndAssembly))
+                Console.WriteLine($"  {field.Attributes & FieldAttributes.FieldAccessMask} field {field}; static={field.IsStatic}; readonly={field.IsInitOnly}; literal={field.IsLiteral}");
         }
     }
     return;

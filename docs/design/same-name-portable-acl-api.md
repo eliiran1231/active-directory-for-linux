@@ -93,7 +93,8 @@ Use `P` for `AdForLinux.Security.Principal`, `A` for
 These are a design specification, not implemented classes. The
 [reflected net8](../research/same-name-acl-probe/results/bcl-surface-net8.txt) and
 [net10](../research/same-name-acl-probe/results/bcl-surface-net10.txt) inventories record
-public/protected BCL declarations and virtual flags; ordinary `System.Object` inherited
+public/protected BCL declarations, exact member-access categories, static/abstract/virtual/final
+flags and abstract/sealed type status; ordinary `System.Object` inherited
 members are not repeated. The inventory is not a claim that all listed dependencies should
 be replicated.
 
@@ -129,7 +130,7 @@ exception ordering.
 
 | Owner | Required candidate members / types |
 |---|---|
-| `A.AuthorizationRule` | `P.IdentityReference IdentityReference`, `bool IsInherited`, `E.InheritanceFlags InheritanceFlags`, `E.PropagationFlags PropagationFlags`; protected `int AccessMask` and corresponding constructor |
+| `A.AuthorizationRule` | `P.IdentityReference IdentityReference`, `bool IsInherited`, `E.InheritanceFlags InheritanceFlags`, `E.PropagationFlags PropagationFlags`; protected-internal `int AccessMask` and corresponding protected-internal constructor |
 | `A.AccessRule` / `A.AuditRule` | `E.AccessControlType AccessControlType` / `E.AuditFlags AuditFlags`; protected constructor accepting portable identity and unchanged scalar/enum parameters |
 | `A.ObjectAccessRule` / `A.ObjectAuditRule` | `Guid ObjectType`, `Guid InheritedObjectType`, `E.ObjectAceFlags ObjectFlags`; protected object-GUID constructor |
 | `A.ObjectSecurity` identity | `P.IdentityReference? GetOwner(Type)`, `GetGroup(Type)`; `void SetOwner(P.IdentityReference)`, `SetGroup(P.IdentityReference)` |
@@ -146,30 +147,48 @@ mutate the descriptor. Null/index/copy behavior and ordering require oracle test
 covariance rules do not bridge unrelated class identities. Collection names alone are not
 compatibility.
 
-### Protected surface: a material scope choice
+### Protected surface: explicit preserve/omit/deferred manifest
 
-Reproduce the protected constructors of portable rule bases, base-type casts within the new
-hierarchy, locking hooks, section-modified flags, `IsContainer`/`IsDS`, and override points
-`ModifyAccess/ModifyAudit` and factories needed by existing-name wrappers and ordinary custom
-subclasses. New portable base implementations can record intent even through their own
-nonvirtual setters; there is no BCL constructor or nonvirtual implementation to intercept.
+**Status labels are proposals, not approval.** Preserve means retain the familiar shape with
+only the reviewed portable type substitutions; behavior still requires implementation/oracle
+coverage. Omit-proposed identifies a possible additional source break that cannot be adopted
+without approval. Deferred means evaluate preservation alternatives before selecting omission.
+The current scaffold is only a constructor/dispatch subset, not this inherited contract.
 
-Do **not** silently promise all existing subclasses still compile. The BCL protected
-`ObjectSecurity.SecurityDescriptor` property and constructors expose `CommonSecurityDescriptor`;
-that exposes additional ACL/SID types. Duplicating that dependency closure substantially
-expands the public model. The bounded candidate instead uses an internal descriptor-state
-constructor and omits that protected public-type dependency. Its prototype has a throwing
-`CommonSecurityDescriptor` scaffold solely to compile the current internal loading constructor;
-that scaffold is **not** a proposed shipping public type.
+| Owner and member | Candidate disposition | Required detail / scaffold limitation |
+|---|---|---|
+| `AuthorizationRule(P.IdentityReference, int, bool, E.InheritanceFlags, E.PropagationFlags)` and `int AccessMask { get; }` | **Preserve**, protected-internal | Retain `FamilyOrAssembly` accessibility, not merely protected. The scaffold currently has narrower protected declarations |
+| `AccessRule` / `AuditRule` protected constructors | **Preserve** | Same identity/mask/inherited/inheritance/propagation parameters plus access-control/audit enum; identity type substituted |
+| `ObjectAccessRule` / `ObjectAuditRule` protected constructors | **Preserve** | Preserve GUID arguments and scalar/enum shape with portable identity; scaffold covers construction but not full validation |
+| `ObjectSecurity()` | **Preserve**, protected | Explicitly specify clean initial state and no write intent; scaffold only has an implicit parameterless base constructor |
+| `ObjectSecurity(bool isContainer, bool isDS)` | **Preserve**, protected | Keep both flags and validate/default descriptor semantics against oracle; absent from scaffold |
+| `DirectoryObjectSecurity()` | **Preserve**, protected | Directory/container state initialization needs oracle; scaffold constructor is empty |
+| `ObjectSecurity(CommonSecurityDescriptor)` and `DirectoryObjectSecurity(CommonSecurityDescriptor)` | **Deferred** | Keeping a usable equivalent expands public descriptor/ACL dependencies. An internal core-state constructor can serve wrappers, but does not preserve these subclass calls. Omission remains a proposal requiring approval |
+| `CommonSecurityDescriptor SecurityDescriptor { get; }` | **Deferred** | Compare a bounded public descriptor adapter with explicitly approved omission; cannot expose an internal core type through a protected public-class member |
+| `ReadLock()`, `ReadUnlock()`, `WriteLock()`, `WriteUnlock()` | **Preserve**, protected | Retain locking semantics and protected access requirements; scaffold has only throwing read-lock hooks |
+| `bool OwnerModified`, `GroupModified`, `AccessRulesModified`, `AuditRulesModified` (`get; set;`) | **Preserve**, protected | Do not use subclass-writable flags as the sole mutation-intent record. Scaffold has placeholder getters and no setters |
+| `bool IsContainer { get; }`, `bool IsDS { get; }` | **Preserve**, protected | Consistent with constructor state; absent from scaffold |
+| `ObjectSecurity.ModifyAccess(E.AccessControlModification, A.AccessRule, out bool)` and audit counterpart | **Preserve**, protected abstract | Keep override signatures after portable rule substitution; absent from scaffold |
+| `DirectoryObjectSecurity.ModifyAccess(...)` / `ModifyAudit(...)` overrides | **Preserve**, protected override | Route through the internal transaction planner; absent from scaffold |
+| `DirectoryObjectSecurity.AddAccessRule(A.ObjectAccessRule)`, `SetAccessRule(...)`, `ResetAccessRule(...)` | **Preserve**, protected nonvirtual, `void` | Familiar helper shapes; scaffold throws rather than modifying descriptors |
+| `RemoveAccessRule(A.ObjectAccessRule)`; `RemoveAccessRuleAll(...)`, `RemoveAccessRuleSpecific(...)` | **Preserve**, protected nonvirtual | First returns `bool`; remaining helpers return `void`. Scaffold throws |
+| `AddAuditRule(A.ObjectAuditRule)`, `SetAuditRule(...)`; `RemoveAuditRule(...)`, `RemoveAuditRuleAll(...)`, `RemoveAuditRuleSpecific(...)` | **Preserve**, protected nonvirtual | Remove returns `bool`, others `void`; there is no corresponding BCL ResetAuditRule helper to invent. Scaffold throws |
+| `Persist(string, E.AccessControlSections)`, `Persist(bool, string, E.AccessControlSections)`, `Persist(SafeHandle, E.AccessControlSections)` | **Deferred**, preserve shape where reasonable | Keeping virtual hooks with explicit unsupported default behavior may preserve override source patterns without implementing local ACL persistence. Compare that against **omit-proposed**, requiring approval. Never reinterpret these automatically as LDAP; absent from scaffold |
 
-Similarly, BCL `Persist` overloads involving local resource names, ownership privilege or
-`SafeHandle` do not provide AD LDAP persistence. Candidate policy is to omit those protected
-local-resource hooks rather than silently interpret them as LDAP. `DirectoryEntry.CommitChanges`
-remains the persistence path. Both omissions are **additional subclass source breaks**, open
-for explicit approval. If complete protected subclass fidelity is required, stop and re-scope;
-do not casually expand into all of System.Security.AccessControl. SDDL, identity translation,
-collection behavior and public descriptor methods cannot be omitted while claiming those
-familiar members work.
+Factories and virtual public modify/purge methods retain the shapes in the public manifest,
+including existing sealed overrides. New portable base implementations can record intent
+through their own nonvirtual setters; there is no BCL constructor or implementation to
+intercept. Derived consumer code still needs the portable base/identity type substitutions.
+
+The public descriptor dependency is the main scope risk: replicating
+`CommonSecurityDescriptor` pulls in further ACL/SID classes. The bounded investigation uses
+an internal descriptor-state loading path as an option, **not an approved removal of subclass
+members**. Its throwing public `CommonSecurityDescriptor` scaffold only binds the current
+internal loading constructor and is not a shipping design. Preserve familiar hooks where
+practical; if complete protected descriptor fidelity is required, explicitly expand the scope
+rather than claiming a small replacement already covers it. `DirectoryEntry.CommitChanges`
+remains the proposed LDAP persistence path. Public SDDL, identity, collection and descriptor
+members likewise need real semantics before claiming the familiar surface works.
 
 ## 4. Portable identity and SID behavior
 
@@ -202,11 +221,13 @@ still require runtime oracle cases; reading source is not executing that oracle.
 
 ### Explicit translation boundary
 
-A SID-only rule needs no network or local account lookup. Name translation is not an ACL
-algorithm. The candidate preserves `Translate(Type)` for same-kind identity and rejects
-unsupported target types; a cross-kind translation without an explicitly supplied resolver
-must fail deterministically. An ambient Windows LSA fallback would create different behavior
-on Windows and Linux and is not proposed as the default.
+A SID-only rule needs no network or local account lookup. **Proposed intrinsic contract,
+not yet adopted:** standalone `P.IdentityReference.Translate(Type)` handles only same-kind
+translation (returning the identity), rejects unsupported target types, and refuses cross-kind
+SID/account translation. Cross-kind work uses an explicit resolver call below. This changes
+BCL name-translation behavior even though the method shape remains familiar; the precise
+exception contract is still a decision. No global/ambient resolver or Windows LSA fallback
+is introduced.
 
 Evaluate an explicit, supporting resolver in `AdForLinux.Security.Principal` (not another
 ACL API):
@@ -232,9 +253,12 @@ opt-in integration implementation, not hidden behavior of portable constructors.
 
 **Open semantic choice:** default rule operations and `GetOwner/GetAccessRules(targetType)`
 can require portable SID results and refuse unresolved names, or the descriptor can expose an
-explicit resolver configuration used by these familiar methods. The latter preserves more
-NTAccount call patterns but adds I/O timing, caching and lifetime behavior. Do not select it
-implicitly. Specify missing-resolver versus identity-not-mapped exception types and payloads
+explicit resolver configuration used **only by operations on that descriptor**. Such a
+configuration cannot service a standalone identity's `Translate(Type)` call: the identity has
+no descriptor context, and must not acquire ambient resolver state when used in a rule.
+Descriptor operations would invoke their configured resolver directly, not depend on
+intrinsic cross-kind `Translate`. This optional descriptor behavior preserves more NTAccount
+call patterns but adds I/O timing, caching and lifetime behavior; it remains undecided. Specify missing-resolver versus identity-not-mapped exception types and payloads
 before publishing. Cloning BCL `IdentityNotMappedException.UnmappedIdentities` also pulls in
 `IdentityReferenceCollection`; that support family is not justified solely by spelling parity.
 The prototype implements no translation, NTAccount or exception-family replacement.
@@ -335,7 +359,7 @@ the raw server representation.
 | Serialization | SID/SD binary formats and supported SDDL semantics are compatibility targets | CLR type-name JSON/custom serializers change. No binary object-serialization guarantee. Public normalized SD bytes and internal lossless bytes are different contracts |
 | Linux behavior | Constructor/type feasibility established | Full mutation, SDDL, identity, exceptions and LDAP behavior unimplemented; no coverage promotion |
 | Windows behavior | Target same member operations and Microsoft outputs for supported inputs | Same portable implementation as Linux; replacement of formerly working BCL behavior needs regression coverage and explicit deviations |
-| Subclassing | Selected portable constructor/factory/locking hooks | Protected CommonSecurityDescriptor/Persist and native SID pointer omissions remain proposed breaks |
+| Subclassing | Selected portable constructor/factory/locking hooks | Protected CommonSecurityDescriptor/Persist preservation alternatives are deferred; any approved omissions and the proposed native SID pointer omission would add source breaks |
 | Security / operational behavior | Raw-preservation and section-intent safeguards | Name resolution, unknown-data refusal, normalized output and server defaults require explicit contract; similar names cannot establish parity |
 
 ## 7. Core and LDAP integration under this candidate
@@ -411,7 +435,7 @@ boundaries needs an explicit reason and decision.
 
 | Priority | Decision / test | Why it matters |
 |---|---|---|
-| 1 | Approve exact public dependency/omission list after this investigation | Public bases, identity types and protected/pointer omissions affect source and binary consumers; direction approval is not final adoption |
+| 1 | Approve exact public dependency/omission list after this investigation | Public bases and identity types change compatibility; review deferred protected preservation and any proposed pointer/member omissions explicitly before adoption |
 | 1 | SID-only default versus explicitly configured name resolver; precise failure contract | Hidden name translation changes network activity, credentials, ambiguity and security semantics |
 | 1 | Public normalized output versus raw preservation; explicit binary replacement of opaque data | Affects whether callers can unknowingly lose ACE data or trigger permission changes |
 | 1 | Detached assignment and LDAP Add creation defaults | Section-scoped Modify cannot make creation safe; requires later authorized real AD comparisons |

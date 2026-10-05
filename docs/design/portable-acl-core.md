@@ -360,6 +360,11 @@ BCL setter that has already run (§8.2):
 
 ## 6. Boundaries and data flow
 
+The diagram below describes the **legacy BCL-derived boundary**, not the proposed replacement
+hierarchy. The [same-name candidate](same-name-portable-acl-api.md#1-concrete-ownership-and-dependency-graph)
+owns portable base implementations on both platforms; its internal state/transport must still
+honor this document's raw, projection and mutation-intent separation.
+
 ```text
 Existing ten public classes + DirectoryEntry.ObjectSecurity
     |  Windows BCL adapter; unchanged-contract Linux adapter BLOCKED
@@ -543,7 +548,7 @@ No broader public-object atomicity guarantee is made until that work is proven.
 
 | Risk | Safeguard |
 |---|---|
-| Dropping unknown data | Opaque ACEs, unknown control/ACE/object flags, `Sbz` fields and trailing bytes are preserved. Test invariant: for every operation, *the opaque-ACE multiset and every unmodified section's bytes are unchanged*. |
+| Dropping unknown data | For semantic edits, preserve opaque ACEs, unknown flags, `Sbz` fields and trailing bytes, or refuse before publishing/sending. Test opaque bytes/order and unmodified section bytes. Deliberate whole-section/binary replacement has a separate unresolved oracle/policy contract: no exception permitting opaque-data loss is adopted here, and the semantic-edit invariant is not claimed for every conceivable replacement operation. |
 | Replacing unread sections | A `NotRetrieved` slot cannot be edited (`InvalidOperationException`) and is never written: `WriteSections ⊆ Retrieved`. Fresh/detached assignment and creation have separate unresolved contracts (§6.1–6.2); ctor defaults are not proof of intent. |
 | Broadening permissions | No implicit `Null` DACL. No allow/deny merge; GUID/scope merges require the full oracle predicate. Splitting keeps each inheritance scope's exact bits. No generic-bit expansion. `Remove` only clears the bits it was asked to. Protection changes only happen through `SetAccessRuleProtection`. |
 | Silent reordering | Raw parse never reorders. Preserve raw unrelated order or refuse; Microsoft projection normalization is a separate contract (§5.4). |
@@ -553,17 +558,20 @@ No broader public-object atomicity guarantee is made until that work is proven.
 
 ## 9. Test and oracle plan
 
-The tests build on the existing suites and keep them green. Linux offline, Windows oracle and
+The research PR leaves shipping code and its existing test expectations unchanged. A future
+adopted candidate must replace blanket surface equality with explicitly approved type
+substitutions/omissions and test every remaining compatibility promise; it must not simply
+weaken failing assertions. Linux offline, Windows oracle and
 live-directory evidence are recorded separately, and **Samba evidence is never counted as AD
 parity**.
 
-### 9.1 Existing suites (unchanged, extended)
+### 9.1 Existing suites and candidate-specific acceptance gates
 
 | Suite | Role going forward |
 |---|---|
 | `ObjectSecurityComparisonTests` (Windows, live AD) | Must stay green. Extend `Dacl_change_round_trips_without_replacing_unrequested_security_sections` to cover owner-only, SACL-retrieved-but-unmodified, and clean-projection normalization. Add a `new ActiveDirectorySecurity()` assignment case to capture O-4. |
 | `SecurityRuleValidationComparisonTests` (Windows) | Extend to all 10 classes × every ctor overload: invalid enums, `AuditFlags.None`, `Guid.Empty` handling, exception type and parameter name. Run the same cases on the internal rule specs (Linux), against recorded expected values; public integration awaits the boundary decision. |
-| `LowLevelPublicSurfaceComparisonTests` | Must stay green: the ten classes' signatures don't change. Add assembly-qualified BCL parameter/base checks and compiled consumer cases: the existing name-normalizing test alone does not establish binary identity or Linux execution. |
+| `LowLevelPublicSurfaceComparisonTests` | The current shipping signatures and test expectations remain unchanged in this research PR. If the same-name candidate is adopted, approve an explicit portable base/identity/collection substitution map and any member omissions before updating expectations. Add protected/static/abstract/virtual metadata checks, assembly-qualified identities, and migrated/unmigrated consumer fixtures. Candidate construction alone cannot pass the full surface gate; blanket BCL equality is not claimed after substitution. |
 | `SidCodecTests` | Move with the codec. Add hex authority ≥ 2³², consumed-length and trailing-bytes cases. |
 | `ChangePasswordAclTests` | Becomes a **byte-exact golden regression** for `ChangePasswordAcl` rewritten on the core. Every existing expected output must be reproduced exactly. |
 
@@ -623,7 +631,7 @@ parity**.
 | G0: public boundary | Investigate the authorized same-name portable-dependency candidate; review final contract | Direction approved, adoption pending; scaffold construction alone does not promote the ten rows |
 | G1: common foundations | Specify internal SID/ACE/ACL/SD codec, raw/splice/projection modes and immutable edit planner; assess internal SidCodec extraction | Offline fixture design covers unknown bytes within changed sections, overlap, alignment and revision; no new public types |
 | G2: Microsoft semantics | Extend offline Windows oracle scripts and inventory inherited entry points | Microsoft DirectoryServices 9.0.0 on net8/net10 separately; capture loaded dependency versions, bytes, flags and exceptions |
-| G3: state/transport | Prove clean projection and mutation-intent capture including nonvirtual base methods; design request-capture seam | Read-only normalization never writes, owner-only and DACL edits preserve unrelated raw data, ambiguous mapping publishes no core patch and sends no commit request; BCL-view rollback remains unproven |
+| G3: state/transport | For the legacy BCL adapter, prove attribution through inherited nonvirtual methods; for the candidate, implement intent capture inside owned portable bases. Both require request capture and raw/projection separation | Read-only normalization never writes, owner-only and DACL edits preserve unrelated raw data, ambiguous mapping publishes no core patch and sends no commit request; BCL-view rollback remains unproven |
 | G4: creation and deviations | Resolve Add defaults and fresh assignment; decide refusal, write-mask and malformed-input deviations | Reviewable behavior matrix and later authorized real AD evidence; Samba kept separate |
 | G5: implementation proposal | Only after relevant gates, scope internal core/reuse and public integration work | Separate approval/scope for production changes; passing codec tests alone does not promote the ten classes |
 

@@ -49,12 +49,18 @@ of every argument combination, null behavior, enum range, GUID eligibility or er
 
 ## Public/protected dependency inventory
 
-`--inventory` reflects the **actual BCL types**, without constructing them. Results are
+`--inventory` reflects the **actual BCL types**, without constructing them. The expanded
+metadata inventory was regenerated during review of PR head `60e8522e35f85aab31438f6fc5ef9220789c36e4`;
+both constructor transcripts were re-executed and remained byte-identical. Results are
 [net8](results/bcl-surface-net8.txt) and [net10](results/bcl-surface-net10.txt). These 11 type
 inventories identify base/interface relationships, constructors, method/accessor signatures,
-virtual/final flags and visible fields. Generic interface strings include runtime assembly
+static/abstract/virtual/final method flags, abstract/sealed type status and visible fields.
+Member access is emitted as exact metadata: `Public`, `Family` (protected), `FamORAssem`
+(protected-internal) or `FamANDAssem` (private-protected). Field static/readonly/literal flags
+are also recorded. This corrects the first inventory's collapsed "protected" label. Generic interface strings include runtime assembly
 versions; apart from that version difference the recorded inventories matched on these hosts.
-The inventory is not a full attribute/nullability/default-value API snapshot and does not
+The scaffold does not implement this inventory; see the design's explicit protected-member
+manifest. The inventory is not a full attribute/nullability/default-value API snapshot and does not
 assert Windows implementations behave like Linux stubs. Reference-source checks also confirm
 the collection constructor/AddRule shape and the protected descriptor dependency:
 [AccessControl reference declarations](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Security.AccessControl/ref/System.Security.AccessControl.cs),
