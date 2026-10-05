@@ -106,7 +106,7 @@ existing `InternalsVisibleTo`. `SidCodec` would move here, and AccountManagement
 the same IVT.
 
 All core values are **immutable**. Edits produce new values. This is the basis for
-"no partial mutation" (§7).
+the internal core's "no partial mutation" guarantee (§8.2).
 
 ### 4.1 SID — `Sid`
 
@@ -336,8 +336,9 @@ projection looks equal. The operation and affected sections must be recorded (§
 
 ### 5.7 Validation failures
 
-All of these are checked **before** any state changes, with the exception types the oracle
-shows:
+For internal core operations, these checks precede publication of any changed core state,
+with exception types guided by the oracle. This is not a rollback guarantee for an inherited
+BCL setter that has already run (§8.2):
 
 - a null rule or identity;
 - an identity that cannot be expressed as a SID (Windows: translation failure; portable: an
@@ -383,9 +384,10 @@ that does not make a private SID assignable to BCL `IdentityReference` on Linux.
    test read-only access. Never compare a BCL projection directly with raw `R` to infer edits.
 3. **Record intent `I`:** which operation deliberately targeted Owner, Group, DACL or SACL,
    including section-owned protection flags and full/partial binary or SDDL setters. Enumerate
-   inherited nonvirtual entry points (`SetOwner`, `SetGroup`, protection methods, binary/SDDL
-   setters, `ModifyAccessRule`, purge) as well as methods declared on our class. Calls through
-   an `ObjectSecurity` reference must be covered. Official [ObjectSecurity source](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ObjectSecurity.cs)
+   inherited nonvirtual entry points (`SetOwner`, `SetGroup`, protection methods and binary/SDDL
+   setters) separately from virtual mutation entry points (`ModifyAccessRule`, `ModifyAuditRule`,
+   `PurgeAccessRules`, `PurgeAuditRules`), which the existing class overrides. Calls through
+   an `ObjectSecurity` reference must be covered in both cases. Official [ObjectSecurity source](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ObjectSecurity.cs)
    confirms protected section flags capture setter intent but not the original payload or an
    operation log; import through binary/SDDL setters can also set flags; the adapter needs a verified clean checkpoint. Method
    hiding cannot intercept a nonvirtual base call. Exact intent capture is a remaining adapter
@@ -399,14 +401,17 @@ that does not make a private SID assignable to BCL `IdentityReference` on Linux.
 5. **Preserve inside each changed section:** reconstruct targeted operations over raw `R`,
    carrying untouched ACEs, unknown flags and tails. A whole normalized DACL is not safe just
    because only DACL is dirty. If correspondence is ambiguous, or the BCL discarded opaque
-   data needed to reconstruct the requested operation, refuse atomically. This can reject
-   calls Microsoft accepts; it is a proposed safety deviation, not established parity.
+   data needed to reconstruct the requested operation, refuse publication of the core patch
+   and send no commit request. This does not undo a setter already executed on the BCL view
+   (§8.2). Refusing a commit Microsoft accepts is a proposed safety deviation, not established
+   parity.
 6. **Send:** splice the approved section patches; validate all lengths/offsets/control bits;
    send `Replace nTSecurityDescriptor` with nonzero `SecurityDescriptorFlagControl(WriteSections)`
    in the existing object's `ModifyRequest`. No dirty section means omit this modification
    and its control; unrelated property updates can still commit. Do not send zero as a
-   shorthand for "nothing". Failed validation or send retains the original cache and pending
-   operations. Successful commit invalidates the cache; reload server-produced bytes.
+   shorthand for "nothing". Failed validation or send retains the raw baseline and the pending
+   local state as it stood at commit entry, including any BCL-view edits already made.
+   Successful commit invalidates the cache; reload server-produced bytes.
 7. **Assignment is separate:** assigning a fresh or detached `ActiveDirectorySecurity` to an
    existing entry has no read-derived raw baseline. Do not call all sections "retrieved" or
    assume defaults were intended. Capture the Microsoft behavior for assignment and agree
@@ -464,9 +469,13 @@ An optional resolver cannot change what an already compiled BCL-typed method acc
 |---|---|---|
 | Internal managed core behind current BCL-derived classes | Blocked at BCL construction and identity creation | Continue foundation design, report coverage honestly; this alone does not meet the end goal. |
 | Parallel portable public API (prior option B) | Does not execute the ten existing types | **Rejected by user.** Removed from recommendation and delivery plan. |
-| Re-root existing names on private/clone bases and replace public identity types | Can make algorithms portable but breaks base assignability, BCL signatures, binary clients and some source callers | Material public-contract change; **not selected or authorized**. Requires explicit caller examples and migration approval. |
+| Re-root existing names on replacement public bases and replace public identity types | Can make algorithms portable but breaks base assignability, BCL signatures, binary clients and some source callers | Material public-contract change; **not selected or authorized**. Requires explicit caller examples and migration approval. |
 | Per-target framework split | Same breaks on the portable target, plus two reference surfaces | Not selected; a `net*-windows` TFM or runtime identifier cannot make stock Linux BCL constructors portable. |
 | Supported upstream .NET change providing these actual BCL implementations on Linux | Could remove the platform premise if upstream provides it | External dependency, no commitment or evidence that it exists; cannot be promised by this library. |
+
+A public class cannot derive from a less-accessible base class. A replacement base hierarchy
+would therefore be a public dependency and a type-identity change, not a private implementation
+detail hidden behind the existing ten names. This alternative remains unselected.
 
 **Smallest decision:** retain exact BCL identity/inheritance and accept that these classes
 remain blocked on stock Linux for now, or explicitly authorize an identified compatibility
@@ -500,14 +509,23 @@ type).
 | Alignment | accepted unaligned input must serialize byte-exactly in raw mode; normalized/new output follows oracle alignment. Refuse edits when safe relocation cannot be proven; final acceptance parity remains O-5 |
 | Size | bound all allocations by validated input and checked output lengths; define an internal resource budget for untrusted descriptors, with deterministic failure and documented limits |
 
-### 8.2 Deterministic failure without partial mutation
+### 8.2 Internal-core atomicity and commit-I/O refusal
+
+Atomic refusal applies to publishing an internal core edit and to validation before commit
+I/O. It does **not** promise rollback of an inherited nonvirtual BCL setter that already
+changed the public object. Such a setter may run before the adapter can validate its effect;
+interception, recovery and caller-visible state require the adapter feasibility work in §6.1.
+No broader public-object atomicity guarantee is made until that work is proven.
 
 - Core values are immutable. An operation builds a new ACL, validates it completely, and only
   then replaces the reference in the descriptor.
-- The DirectoryEntry slot only replaces its state after a successful parse or commit. Input
-  arrays are never written in place (`ChangePasswordAclTests.Malformed_descriptors_fail_without_mutating_the_input`
+- The DirectoryEntry slot publishes a new raw baseline only after a successful parse and
+  invalidates it after a successful commit. Failed pre-send validation sends nothing and
+  retains the pending local state at commit entry. This is not a rollback to before the edit.
+  Input arrays are never written in place (`ChangePasswordAclTests.Malformed_descriptors_fail_without_mutating_the_input`
   is the pattern).
-- Only the declared exception types escape. Fuzz tests (§9.2) enforce this.
+- Only the declared core exception types escape core operations. Fuzz tests (§9.2) enforce
+  this; inherited BCL setters retain their own behavior until adapter parity is established.
 
 ### 8.3 Safeguards
 
@@ -593,7 +611,7 @@ parity**.
 | G0: public boundary | Record the exact compatibility decision in §7 | Explicit decision; all ten rows remain Linux-blocked until actual constructors and inherited surface work |
 | G1: common foundations | Specify internal SID/ACE/ACL/SD codec, raw/splice/projection modes and immutable edit planner; assess internal SidCodec extraction | Offline fixture design covers unknown bytes within changed sections, overlap, alignment and revision; no new public types |
 | G2: Microsoft semantics | Extend offline Windows oracle scripts and inventory inherited entry points | Microsoft DirectoryServices 9.0.0 on net8/net10 separately; capture loaded dependency versions, bytes, flags and exceptions |
-| G3: state/transport | Prove clean projection and mutation-intent capture including nonvirtual base methods; design request-capture seam | Read-only normalization never writes, owner-only and DACL edits preserve unrelated raw data, ambiguous mapping fails atomically |
+| G3: state/transport | Prove clean projection and mutation-intent capture including nonvirtual base methods; design request-capture seam | Read-only normalization never writes, owner-only and DACL edits preserve unrelated raw data, ambiguous mapping publishes no core patch and sends no commit request; BCL-view rollback remains unproven |
 | G4: creation and deviations | Resolve Add defaults and fresh assignment; decide refusal, write-mask and malformed-input deviations | Reviewable behavior matrix and later authorized real AD evidence; Samba kept separate |
 | G5: implementation proposal | Only after relevant gates, scope internal core/reuse and public integration work | Separate approval/scope for production changes; passing codec tests alone does not promote the ten classes |
 
