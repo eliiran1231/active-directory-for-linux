@@ -6,6 +6,41 @@ namespace AdForLinux.FunctionalTests;
 
 public class StreamingSearchResultTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Cached_cursor_retains_current_until_it_moves_or_resets(bool streaming)
+    {
+        using var root = new DirectoryEntry("LDAP://offline.invalid/CN=test");
+        var properties = new ResultPropertyCollection();
+        properties.Set("adspath", new object[] { root.Path });
+        properties.Set("objectGUID", new object[] { new byte[] { 1, 2, 3 } });
+        var rows = new[] { new SearchResult(root, properties) };
+        using var results = streaming
+            ? new SearchResultCollection(rows.Select(row => row), cacheResults: true)
+            : new SearchResultCollection(rows);
+        var cursor = results.GetEnumerator();
+
+        Assert.Throws<InvalidOperationException>(() => cursor.Current);
+        Assert.True(cursor.MoveNext());
+        var first = Assert.IsType<SearchResult>(cursor.Current);
+        var bytes = Assert.IsType<byte[]>(first.Properties["objectGUID"][0]);
+        bytes[0] = 99;
+        Assert.Same(first, cursor.Current);
+        Assert.Same(bytes, ((SearchResult)cursor.Current).Properties["objectGUID"][0]);
+        Assert.Equal(99, ((byte[])((SearchResult)cursor.Current).Properties["objectGUID"][0]!)[0]);
+
+        cursor.Reset();
+        Assert.Throws<InvalidOperationException>(() => cursor.Current);
+        Assert.True(cursor.MoveNext());
+        var replay = Assert.IsType<SearchResult>(cursor.Current);
+        Assert.NotSame(first, replay);
+        Assert.Equal(new byte[] { 1, 2, 3 }, replay.Properties["objectGUID"][0]);
+        Assert.Same(replay, cursor.Current);
+        Assert.False(cursor.MoveNext());
+        Assert.Throws<InvalidOperationException>(() => cursor.Current);
+    }
+
     [Fact]
     public void Cached_enumerators_replay_results_without_advancing_each_others_position()
     {

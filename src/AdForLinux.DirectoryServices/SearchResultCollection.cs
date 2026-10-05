@@ -162,12 +162,21 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
     private sealed class SnapshotEnumerator(IReadOnlyList<SearchResult> results) : IEnumerator<SearchResult>
     {
         private int _index = -1;
+        private SearchResult? _current;
         public SearchResult Current => _index >= 0 && _index < results.Count
-            ? results[_index].Snapshot()
+            ? _current ??= results[_index].Snapshot()
             : throw new InvalidOperationException("The cursor is not positioned on a result.");
         object IEnumerator.Current => Current;
-        public bool MoveNext() => ++_index < results.Count;
-        public void Reset() => _index = -1;
+        public bool MoveNext()
+        {
+            _current = null;
+            return ++_index < results.Count;
+        }
+        public void Reset()
+        {
+            _current = null;
+            _index = -1;
+        }
         public void Dispose() { }
     }
 
