@@ -1,0 +1,14 @@
+Runtime: .NET 10.0.0; linux-x64
+Research only: constructors/properties/type binding; descriptor operations deliberately unsupported.
+CONSTRUCTED ActiveDirectorySecurity: 1 public constructors; base=AdForLinux.Security.AccessControl.DirectoryObjectSecurity
+CONSTRUCTED ActiveDirectoryAccessRule: 6 public constructors; base=AdForLinux.Security.AccessControl.ObjectAccessRule
+CONSTRUCTED ActiveDirectoryAuditRule: 6 public constructors; base=AdForLinux.Security.AccessControl.ObjectAuditRule
+CONSTRUCTED CreateChildAccessRule: 6 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED DeleteChildAccessRule: 6 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED DeleteTreeAccessRule: 3 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED ExtendedRightAccessRule: 6 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED ListChildrenAccessRule: 3 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED PropertyAccessRule: 6 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+CONSTRUCTED PropertySetAccessRule: 3 public constructors; base=AdForLinux.DirectoryServices.ActiveDirectoryAccessRule
+EXPECTED scaffold refusal: Research scaffold: descriptor operations are not implemented.
+PASS: 46 constructors, SID offset/copy, factory dispatch, portable generic base, enum identity, explicit BCL incompatibility.

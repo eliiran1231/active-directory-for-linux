@@ -12,6 +12,10 @@ projects; its project reference builds the actual library. No LDAP, AD, Samba, O
 workflow dispatch, patched framework, private constructor invocation or unsafe allocation is
 used. See [the revised design](../../design/portable-acl-core.md) for decisions and next gates.
 
+Subsequent authorized investigation of replacement dependencies is recorded in the
+[same-name candidate](../../design/same-name-portable-acl-api.md). It does not invalidate these
+original-contract failures.
+
 ## Recorded execution
 
 Research date: 2026-10-05. Input PR head: `e33c444ef4960e49a6f77ce2c0141716aa4213af`;

@@ -1,6 +1,6 @@
 # Design: a portable ACL core for the ten Linux-blocked security classes
 
-Status: **research/design; existing-contract Linux execution blocked** · Issue: #224 · Baseline: `dev` @ `e72a421a` · Related: #5, #90 (closed)
+Status: **research/design; original BCL contract blocked; same-name portable dependencies under authorized investigation** · Issue: #224 · Baseline: `dev` @ `e72a421a` · Related: #5, #90 (closed)
 
 This document is design-only. It records the constraints, the alternatives, a recommended
 direction and the decisions still open. It does not change production code, and it does not
@@ -28,9 +28,12 @@ The ten classes in scope, all in `AdForLinux.DirectoryServices`
 
 The goal remains a portable **internal** ACL core supporting the ten **existing** public
 classes and their callers. A parallel public API was rejected by the user. It is not the
-recommendation, a prerequisite, or an approved fallback. No public contract change is chosen.
+recommendation, a prerequisite, or an approved fallback. The user has since authorized
+investigation of keeping the ten names/method patterns with portable base and identity types.
+[The concrete candidate and evidence](same-name-portable-acl-api.md) record that research;
+no production implementation or final public-contract adoption is chosen.
 
-**Decision-needed blocker:** on stock Linux .NET 8 and 10, the actual BCL base constructors
+**Original-contract blocker:** on stock Linux .NET 8 and 10, the actual BCL base constructors
 and SID constructors throw before our implementation can run. `IdentityReference` cannot
 be subclassed by this library. Preserving those actual type identities **and** making these
 classes execute on those platforms cannot both be delivered by an internal core (§3, §7).
@@ -38,8 +41,9 @@ This is narrower than saying that managed ACL processing is impossible: the byte
 algorithms can be portable; the public BCL boundary cannot currently be made portable.
 
 Continue design of reusable internal foundations, raw preservation, section-aware transport,
-and oracle fixtures. Gate public integration and any production rollout on an explicit
-compatibility decision. Do not mark the ten Linux coverage rows fixed by core work alone.
+and oracle fixtures alongside the authorized same-name candidate. Gate production integration
+and rollout on explicit adoption of the reviewed compatibility changes. Do not mark the ten
+Linux coverage rows fixed by core work alone.
 
 This revision corrects three earlier contradictions: raw versus projected dirty tracking
 (§6.1), LDAP Add versus Modify (§6.2), and lossless bytes versus normalization/merging (§4–5).
@@ -92,7 +96,7 @@ runtime or unsafe constructor bypass is proposed as a supported solution.
 
 | Asset | What to reuse | Limitations to fix in the core |
 |---|---|---|
-| [`SidCodec`](../../src/AdForLinux.DirectoryServices.AccountManagement/SidCodec.cs) | Correct endianness (big-endian 48-bit authority, little-endian sub-authorities), the 15 sub-authority limit, strict numeric parsing (`SidCodecTests`) | It lives in **AccountManagement**, above the intended core. A future internal move down avoids a circular project dependency; no move is made in this design PR. `Format` always prints the authority in decimal. Windows prints `0x…` hex for authorities ≥ 2³²; the oracle must confirm this, and the codec must match. `Format` ignores trailing bytes and reports no consumed length, which an ACE parser needs. It uses `byte[]` only and has no value type, equality or ordering. |
+| [`SidCodec`](../../src/AdForLinux.DirectoryServices.AccountManagement/SidCodec.cs) | Correct endianness (big-endian 48-bit authority, little-endian sub-authorities), the 15 sub-authority limit, strict numeric parsing (`SidCodecTests`) | It lives in **AccountManagement**, above the intended core. A future internal move down avoids a circular project dependency; no move is made in this design PR. `Format` prints the authority in decimal, consistent with the inspected managed .NET 8/9/10 SID source. The previous hex-output claim was incorrect; native SDDL and managed Value need separate oracle cases (see the same-name candidate). `Format` ignores trailing bytes and reports no consumed length, which an ACE parser needs. It uses `byte[]` only and has no value type, equality or ordering. |
 | [`ChangePasswordAcl`](../../src/AdForLinux.DirectoryServices.AccountManagement/ChangePasswordAcl.cs) | The **splice-and-relocate** technique: rewrite only the DACL, copy everything else verbatim, and shift only the owner/group/SACL offsets that follow the DACL. Bounds checks on ACL/ACE sizes. Explicit-ACE-only matching. Its tests are a ready golden corpus. | DACL only. Does not validate the descriptor revision, the `SE_SELF_RELATIVE` flag, ACL revision or SID bounds inside ACEs. `checked((int)offset)` throws `OverflowException`, which is not a domain exception. `IsTarget` slices from the SID offset to the end of the ACE, so trailing ACE padding defeats matching. Does not check whether components overlap. Its canonical insertion heuristic is specific to one right. |
 | `DirectoryEntry` transport (`ReadSecurityDescriptorImmediate`, `ReplaceSecurityDescriptorImmediate`, `AddObjectSecurity`, `ReadObjectSecurity`) | Base-scope read with `SecurityDescriptorFlagControl`. Writes are scoped by `RetrievedMasks`, not by the current `Options.SecurityMasks`. Commit discards the cache and reloads. A failed commit keeps dirty state (`ObjectSecurityComparisonTests`). | Writes **every retrieved section** on any change, not just the modified ones. `new ActiveDirectorySecurity()` reports `RetrievedMasks = Owner\|Group\|Dacl\|Sacl`, so assigning a fresh descriptor sends an SD-flags control that includes SACL. That can require SACL privileges and may replace the SACL on Modify; Add ignores the control (§6.2). The Microsoft behavior is unverified (open question O-4). There is no concurrency protection. There is no request-capture seam for offline tests: every request goes straight to `SendRequestCompatible`. |
 
@@ -113,9 +117,10 @@ the internal core's "no partial mutation" guarantee (§8.2).
 - Fields: revision (must be 1), a 48-bit identifier authority and 0–15 sub-authorities (`uint`).
 - Binary codec: `TryRead(ReadOnlySpan<byte>, out Sid, out int consumed)` and `WriteTo(Span<byte>)`.
   It never reads past `8 + 4·count`.
-- String form: `S-1-<auth>-<sub>…`. Hex authority at or above 2³², and decimal below it
-  (to be confirmed by the oracle). Parsing is strict, with no silent normalization (as in
-  `SidCodecTests`).
+- String form: `S-1-<auth>-<sub>…`, with unsigned decimal authority/subauthorities for
+  managed SID Value. Numeric parsing accepts hex authority as SidCodec already does; full
+  BCL alias/validation compatibility remains to be measured. The prior forced-hex formatting
+  proposal is withdrawn; see the [source correction](same-name-portable-acl-api.md#4-portable-identity-and-sid-behavior).
 - Equality and hashing are ordinal on the canonical bytes. There is no well-known-SID
   translation in the core, apart from a static table of constants (`Everyone`, `Self`, …)
   used by callers.
@@ -375,6 +380,12 @@ that does not make a private SID assignable to BCL `IdentityReference` on Linux.
 
 ### 6.1 Existing-object read → edit → Modify
 
+This adapter discussion describes the **current BCL-derived boundary**. The authorized
+[same-name candidate](same-name-portable-acl-api.md#7-core-and-ldap-integration-under-this-candidate)
+would own the portable base implementations and their intent capture on both platforms. Raw,
+projection, section-intent and commit-safety distinctions below still apply; the BCL
+interception obstacle need not apply to newly owned portable methods.
+
 1. **Read:** retain immutable original response bytes `R`, requested/retrieved mask `Q`,
    parsed section spans, and unknown data. A missing response/attribute is an error, not an
    empty descriptor. `NotRetrieved` comes from the request, not inference from zero offsets.
@@ -456,11 +467,11 @@ An optional resolver cannot change what an already compiled BCL-typed method acc
 
 ---
 
-## 7. Compatibility decision — blocked, not silently relaxed
+## 7. Compatibility decision — investigation approved, adoption pending
 
 | Compatibility dimension | Required distinction |
 |---|---|
-| Source after namespace substitution | The project already substitutes `AdForLinux.DirectoryServices` for Microsoft DirectoryServices. This does not authorize substituting `System.Security.Principal` or AccessControl types. Same method spelling with clone parameter types is a further source migration. |
+| Source after namespace substitution | The project already substitutes `AdForLinux.DirectoryServices` for Microsoft DirectoryServices. That earlier substitution alone did not authorize changing `System.Security.Principal` or AccessControl types; the new investigation explicitly evaluates that additional change. Same method spelling with clone parameter types is a further source migration. |
 | Binary/type identity | The two DirectoryServices libraries are not binary interchangeable merely because signatures normalize in tests. Within this library's existing contract, callers' BCL identities, base casts and compiled member references remain real BCL types. Equal names in another assembly do not satisfy that identity. |
 | Behavior | Byte output, exceptions, no-op/dirty flags, merging, enumeration and server writes must be compared separately. Similar rule semantics do not establish exact compatibility. |
 | Platform support | Successful compile/reflection does not imply construction/execution. Linux PNSE remains even for in-memory methods with analyzers suppressed. |
@@ -469,20 +480,21 @@ An optional resolver cannot change what an already compiled BCL-typed method acc
 |---|---|---|
 | Internal managed core behind current BCL-derived classes | Blocked at BCL construction and identity creation | Continue foundation design, report coverage honestly; this alone does not meet the end goal. |
 | Parallel portable public API (prior option B) | Does not execute the ten existing types | **Rejected by user.** Removed from recommendation and delivery plan. |
-| Re-root existing names on replacement public bases and replace public identity types | Can make algorithms portable but breaks base assignability, BCL signatures, binary clients and some source callers | Material public-contract change; **not selected or authorized**. Requires explicit caller examples and migration approval. |
+| Re-root existing names on replacement public bases and replace public identity types | Can make algorithms portable but breaks base assignability, BCL signatures, binary clients and some source callers | Material public-contract change; **investigation authorized, adoption pending**. The [same-name candidate](same-name-portable-acl-api.md) supplies dependency ownership, caller examples and remaining decisions. |
 | Per-target framework split | Same breaks on the portable target, plus two reference surfaces | Not selected; a `net*-windows` TFM or runtime identifier cannot make stock Linux BCL constructors portable. |
 | Supported upstream .NET change providing these actual BCL implementations on Linux | Could remove the platform premise if upstream provides it | External dependency, no commitment or evidence that it exists; cannot be promised by this library. |
 
 A public class cannot derive from a less-accessible base class. A replacement base hierarchy
 would therefore be a public dependency and a type-identity change, not a private implementation
-detail hidden behind the existing ten names. This alternative remains unselected.
+detail hidden behind the existing ten names. The user approved evaluating this alternative,
+not adopting its complete public surface or implementing it.
 
-**Smallest decision:** retain exact BCL identity/inheritance and accept that these classes
-remain blocked on stock Linux for now, or explicitly authorize an identified compatibility
-relaxation before evaluating a single-surface redesign. The user rejects a parallel API;
-that option is not being asked again. Neither remaining choice has been made here. Continuing
-core research does not implicitly approve a breaking release. An internal facade, aliases,
-implicit conversions, type forwarding, or hiding base methods cannot solve both demonstrated
+**Current decision state:** the user authorized investigation of a same-name, single-surface
+API with portable dependencies. This relaxes the research constraint; it does not make the
+original BCL identities portable or approve every proposed omission. Final adoption needs the
+[specific compatibility review](same-name-portable-acl-api.md#9-prioritized-decisions-and-bounded-next-evidence).
+The parallel API remains rejected. Continuing core research does not approve a breaking release.
+An internal facade, aliases, implicit conversions, type forwarding, or hiding base methods cannot solve both demonstrated
 constructor barriers. Shipping patched framework assemblies or unsafe runtime bypasses is
 outside the approved solution space.
 
@@ -608,7 +620,7 @@ parity**.
 
 | Gate | Work | Exit evidence |
 |---|---|---|
-| G0: public boundary | Record the exact compatibility decision in §7 | Explicit decision; all ten rows remain Linux-blocked until actual constructors and inherited surface work |
+| G0: public boundary | Investigate the authorized same-name portable-dependency candidate; review final contract | Direction approved, adoption pending; scaffold construction alone does not promote the ten rows |
 | G1: common foundations | Specify internal SID/ACE/ACL/SD codec, raw/splice/projection modes and immutable edit planner; assess internal SidCodec extraction | Offline fixture design covers unknown bytes within changed sections, overlap, alignment and revision; no new public types |
 | G2: Microsoft semantics | Extend offline Windows oracle scripts and inventory inherited entry points | Microsoft DirectoryServices 9.0.0 on net8/net10 separately; capture loaded dependency versions, bytes, flags and exceptions |
 | G3: state/transport | Prove clean projection and mutation-intent capture including nonvirtual base methods; design request-capture seam | Read-only normalization never writes, owner-only and DACL edits preserve unrelated raw data, ambiguous mapping publishes no core patch and sends no commit request; BCL-view rollback remains unproven |
@@ -624,7 +636,7 @@ from a claim of general-purpose library compatibility.
 
 | ID | Item | State / next evidence |
 |---|---|---|
-| B-1 | Stock Linux existing BCL contract | **Blocked**, executed on 8.0.0/10.0.0; §7 decision required. No parallel API or re-root chosen. |
+| B-1 | Stock Linux existing BCL contract | **Blocked**, executed on 8.0.0/10.0.0. Portable-dependency investigation now authorized; final adoption pending (§7). |
 | O-1 | Canonical order/merging/splitting | Prior blanket same-inheritance-only rule disproved by official source; exact net8/net10 Windows recordings pending |
 | O-2 | Set/Reset/Purge scope across GUIDs, opaque ACEs and inherited entries | Windows scripts plus explicit safety-deviation review |
 | O-3 | Null/absent/empty ACL mutations and materialization | Offline Windows oracle; never infer equality of these states |
@@ -633,7 +645,7 @@ from a claim of general-purpose library compatibility.
 | O-6 | Opaque/trailing ACE edit policy | Proposed preserve-or-refuse rule resolved in this design (§5.2); public behavioral deviation still needs approval |
 | O-7 | Concurrent edits / atomic conflict detection | No CAS guarantee; protocol research and separately authorized AD validation remain |
 | O-8 | Coverage | No promotion from internal-core or compilation evidence alone |
-| O-9 | Public compatibility decision | Replaces obsolete namespace-selection question; user decision, not implementation discretion |
+| O-9 | Public compatibility decision | Same-name investigation authorized; candidate namespace, dependency surface, omissions and semantic choices require final review |
 | O-10 | InheritanceType on unmappable flags | Capture getter behavior separately from raw retention |
 | O-11 | LDAP Add | SD-flags ignored: **resolved protocol fact**. Creation defaults, inheritance and privilege behavior remain to be measured |
 | O-12 | Incidental normalization | Raw R / clean P0 / edited P1 / section intent design is resolved; complete BCL adapter attribution is not yet proven |
