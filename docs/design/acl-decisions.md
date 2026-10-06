@@ -129,9 +129,21 @@ Accept a narrow, tested allowlist, not the whole group of observed normalization
 Each exception needs exact preconditions, and tests for access and inheritance effects, not
 just matching bytes.
 
-Open: whether dropping the entire inactive InheritOnly-only ACE, as Microsoft does, is itself on
-the allowlist or is refused. The decision rules out clearing only the flag; it does not say which
-of the remaining two options applies.
+**Amendment (2026-10-06): inactive InheritOnly ACEs.** The user chose to allowlist the drop, as
+a narrowly defined exception matching the verified Microsoft behavior (oracle I1 "IO only"):
+
+- **Scope:** a recognized, fully understood ACE with InheritOnly set and **neither**
+  ContainerInherit nor ObjectInherit set. Such an ACE applies neither to the current object nor
+  to descendants, so dropping it from the Microsoft-compatible projection changes no access.
+- **Never** clear just InheritOnly: that would activate the ACE.
+- **Lossless representation:** the original ACE is kept in the raw bytes. Conversion alone must
+  not create write intent.
+- **Refuse instead** if the ACE has unknown flags, an unsupported type or an unvalidated payload.
+
+This is an explicit allowlisted normalization, not general permission to discard ACEs.
+
+Open: the exact set of ACE types counted as "recognized, fully understood" for this exception.
+So far only a plain allow ACE (type 0x00) with flags 0x08 has been recorded.
 
 ### D14. Absent/NULL DACL: follow verified per-operation behavior
 
@@ -154,8 +166,8 @@ Recording them does not by itself decide any further generalization.
 
 These remain open. They are not decided by implication from the decisions above.
 
-- Whether dropping an inactive InheritOnly-only ACE is allowlisted or refused (D13 open item).
-  The rest of the D3 normalization question is answered by D13.
+- Which ACE types qualify as "recognized, fully understood" for the inactive-InheritOnly drop
+  (D13 amendment). The rest of the D3 normalization question is answered by D13.
 - Write-mask policy on commit: `Modified ∩ Retrieved` versus Microsoft's wire mask (O-4).
 - Detached assignment to the same entry, and LDAP Add creation defaults.
 - The protected `CommonSecurityDescriptor` facade surface (D5 asks for an explicit design; none
