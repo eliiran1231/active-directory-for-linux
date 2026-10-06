@@ -4,7 +4,10 @@ Status: **authorized for investigation; not adopted or implemented**. PR #225 / 
 The user approved investigating replacement base and identity types while keeping the ten
 class names and familiar methods. This is a deliberate relaxation of the original BCL-type
 contract, not a finding that the original contract was portable. A parallel ACL API remains
-rejected. No production source, packaging, directory permission or workflow changes occur here.
+rejected. The user subsequently confirmed the library is unreleased and approved the supporting
+`AdForLinux.Security.*` namespace/assembly ownership below. Final surface and Windows behavior
+adoption remain pending. No production source, packaging, directory permission or workflow
+changes occur here.
 
 **Useful result:** an isolated prototype links the actual ten-class wrapper source and rebinds
 its dependencies to portable scaffolding. All **46 public constructor shapes** execute on
@@ -56,13 +59,13 @@ private implementation details, BCL type forwards, or aliases at runtime. New su
 namespaces are dependencies of the single existing-name API, not another family of ACL entry
 points. Do not define types under `System.Security.*` or ship replacement system assemblies.
 
-Proposed ownership is the existing low-level DirectoryServices assembly: it avoids a new
+Approved supporting-type ownership is the existing low-level DirectoryServices assembly: it avoids a new
 package/version edge and keeps AccountManagement's dependency direction intact. Internal SID
 bytes/codec move down only in a later implementation, preserving `InternalsVisibleTo` access.
 A separate portable primitives assembly could be considered if other libraries need it, but
 would add another public assembly identity and release dependency; it is not needed to test
-this candidate. Namespace/assembly ownership must be settled before a public preview, because
-moving public types later creates another migration even when type forwarding is possible.
+this candidate. Keep this approved ownership stable through public preview; moving public types later would
+create another migration even when type forwarding is possible.
 
 Windows would also use the portable bases/core. Keeping BCL bases only on Windows would mean
 platform/TFM-dependent casts, overload binding, generic types and reflection surfaces. That
@@ -147,13 +150,15 @@ mutate the descriptor. Null/index/copy behavior and ordering require oracle test
 covariance rules do not bridge unrelated class identities. Collection names alone are not
 compatibility.
 
-### Protected surface: explicit preserve/omit/deferred manifest
+### Protected surface: explicit preserve/deferred manifest
 
 **Status labels are proposals, not approval.** Preserve means retain the familiar shape with
 only the reviewed portable type substitutions; behavior still requires implementation/oracle
 coverage. Omit-proposed identifies a possible additional source break that cannot be adopted
 without approval. Deferred means evaluate preservation alternatives before selecting omission.
-The current scaffold is only a constructor/dispatch subset, not this inherited contract.
+The original scaffold is only a constructor/dispatch subset, not this inherited contract.
+The [interop/override follow-up](acl-microsoft-interop-and-overrides.md#5-protected-hooks-preserve-extension-points-separate-native-defaults)
+adds executable subclass evidence and recommends preserving ordinary hooks, including Persist.
 
 | Owner and member | Candidate disposition | Required detail / scaffold limitation |
 |---|---|---|
@@ -163,8 +168,8 @@ The current scaffold is only a constructor/dispatch subset, not this inherited c
 | `ObjectSecurity()` | **Preserve**, protected | Explicitly specify clean initial state and no write intent; scaffold only has an implicit parameterless base constructor |
 | `ObjectSecurity(bool isContainer, bool isDS)` | **Preserve**, protected | Keep both flags and validate/default descriptor semantics against oracle; absent from scaffold |
 | `DirectoryObjectSecurity()` | **Preserve**, protected | Directory/container state initialization needs oracle; scaffold constructor is empty |
-| `ObjectSecurity(CommonSecurityDescriptor)` and `DirectoryObjectSecurity(CommonSecurityDescriptor)` | **Deferred** | Keeping a usable equivalent expands public descriptor/ACL dependencies. An internal core-state constructor can serve wrappers, but does not preserve these subclass calls. Omission remains a proposal requiring approval |
-| `CommonSecurityDescriptor SecurityDescriptor { get; }` | **Deferred** | Compare a bounded public descriptor adapter with explicitly approved omission; cannot expose an internal core type through a protected public-class member |
+| `ObjectSecurity(CommonSecurityDescriptor)` and `DirectoryObjectSecurity(CommonSecurityDescriptor)` | **Preserve direction; dependency contract deferred** | Investigate a public portable descriptor facade. Its usable ACL/ACE surface and sharing/tracking behavior need specification; no omission is approved |
+| `CommonSecurityDescriptor SecurityDescriptor { get; }` | **Preserve direction; dependency contract deferred** | A bounded public descriptor facade may serve subclasses; an internal core type cannot be exposed through this protected member. Preserve usable behavior, not just the name |
 | `ReadLock()`, `ReadUnlock()`, `WriteLock()`, `WriteUnlock()` | **Preserve**, protected | Retain locking semantics and protected access requirements; scaffold has only throwing read-lock hooks |
 | `bool OwnerModified`, `GroupModified`, `AccessRulesModified`, `AuditRulesModified` (`get; set;`) | **Preserve**, protected | Do not use subclass-writable flags as the sole mutation-intent record. Scaffold has placeholder getters and no setters |
 | `bool IsContainer { get; }`, `bool IsDS { get; }` | **Preserve**, protected | Consistent with constructor state; absent from scaffold |
@@ -173,7 +178,7 @@ The current scaffold is only a constructor/dispatch subset, not this inherited c
 | `DirectoryObjectSecurity.AddAccessRule(A.ObjectAccessRule)`, `SetAccessRule(...)`, `ResetAccessRule(...)` | **Preserve**, protected nonvirtual, `void` | Familiar helper shapes; scaffold throws rather than modifying descriptors |
 | `RemoveAccessRule(A.ObjectAccessRule)`; `RemoveAccessRuleAll(...)`, `RemoveAccessRuleSpecific(...)` | **Preserve**, protected nonvirtual | First returns `bool`; remaining helpers return `void`. Scaffold throws |
 | `AddAuditRule(A.ObjectAuditRule)`, `SetAuditRule(...)`; `RemoveAuditRule(...)`, `RemoveAuditRuleAll(...)`, `RemoveAuditRuleSpecific(...)` | **Preserve**, protected nonvirtual | Remove returns `bool`, others `void`; there is no corresponding BCL ResetAuditRule helper to invent. Scaffold throws |
-| `Persist(string, E.AccessControlSections)`, `Persist(bool, string, E.AccessControlSections)`, `Persist(SafeHandle, E.AccessControlSections)` | **Deferred**, preserve shape where reasonable | Keeping virtual hooks with explicit unsupported default behavior may preserve override source patterns without implementing local ACL persistence. Compare that against **omit-proposed**, requiring approval. Never reinterpret these automatically as LDAP; absent from scaffold |
+| `Persist(string, E.AccessControlSections)`, `Persist(bool, string, E.AccessControlSections)`, `Persist(SafeHandle, E.AccessControlSections)` | **Preserve virtual hook shapes; native default policy deferred** | New subclass probes exercise all three overloads without I/O. False-ownership forwarding can be managed; true-ownership base behavior may need Windows privileges. Do not omit hooks because defaults concern native resources; never reinterpret them as LDAP |
 
 Factories and virtual public modify/purge methods retain the shapes in the public manifest,
 including existing sealed overrides. New portable base implementations can record intent
@@ -264,6 +269,11 @@ before publishing. Cloning BCL `IdentityNotMappedException.UnmappedIdentities` a
 The prototype implements no translation, NTAccount or exception-family replacement.
 
 ## 5. Exact caller migration examples
+
+Explicit `ToMicrosoftObject()`-style bridges are now under investigation in the
+[conversion follow-up](acl-microsoft-interop-and-overrides.md). They support Windows snapshot
+interoperability, not old BCL casts or binary identity. The examples below remain relevant.
+
 
 Before (the existing library's BCL boundary):
 
@@ -359,7 +369,7 @@ the raw server representation.
 | Serialization | SID/SD binary formats and supported SDDL semantics are compatibility targets | CLR type-name JSON/custom serializers change. No binary object-serialization guarantee. Public normalized SD bytes and internal lossless bytes are different contracts |
 | Linux behavior | Constructor/type feasibility established | Full mutation, SDDL, identity, exceptions and LDAP behavior unimplemented; no coverage promotion |
 | Windows behavior | Target same member operations and Microsoft outputs for supported inputs | Same portable implementation as Linux; replacement of formerly working BCL behavior needs regression coverage and explicit deviations |
-| Subclassing | Selected portable constructor/factory/locking hooks | Protected CommonSecurityDescriptor/Persist preservation alternatives are deferred; any approved omissions and the proposed native SID pointer omission would add source breaks |
+| Subclassing | Selected portable constructor/factory/locking hooks | Persist hook shapes should be preserved; descriptor-facade semantics remain deferred. Any approved omissions, including the proposed native SID pointer omission, would add source breaks |
 | Security / operational behavior | Raw-preservation and section-intent safeguards | Name resolution, unknown-data refusal, normalized output and server defaults require explicit contract; similar names cannot establish parity |
 
 ## 7. Core and LDAP integration under this candidate
@@ -411,13 +421,13 @@ Reusing its technique does not authorize reuse of its entire edit policy for arb
 A future rewrite must preserve its current outputs or declare intentional changes; the helper
 and existing consumers remain untouched in this PR.
 
-Treat adoption as a breaking version/release, even if the library has not yet formalized a
-stable version promise. The current projects do not declare a package version in their own
-csproj files; do not invent a release number or publish anything during research. Keep one
-reference surface across net8/net10; settle whether existing users pin the old release while
-migrating. Coordinate DirectoryServices and dependent AccountManagement packages. A new NuGet
-package ID alone does not fix binary compatibility when the assembly/type names still collide.
-Avoid two same-assembly versions in one ordinary load context as a migration strategy.
+The user confirmed the library is **unreleased**: settle the contract before first stable
+publication rather than assume a mandatory major-version bump from a released API. Existing
+source users and compiled artifacts still need explicit migration. Coordinate DirectoryServices
+and dependent AccountManagement packages; do not invent a release number or publish during
+research. Keep one portable reference surface across net8/net10. A new package ID alone does
+not solve assembly/type collisions in one load context. Optional Microsoft interoperability
+packaging is evaluated in the [follow-up](acl-microsoft-interop-and-overrides.md#4-platform-annotations-ownership-and-references).
 
 Replace blanket BCL public-surface equality tests with **explicitly reviewed** expected type
 substitutions and a checked list of omissions; preserve every other comparison. Add assembly-

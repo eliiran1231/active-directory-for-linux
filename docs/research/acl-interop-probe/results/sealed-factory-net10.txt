@@ -1,0 +1,9 @@
+docs/research/acl-interop-probe/Program.cs(156,34): error CS0239: 'InvalidFactoryOverride.AccessRuleFactory(IdentityReference, int, bool, InheritanceFlags, PropagationFlags, AccessControlType)': cannot override inherited member 'ActiveDirectorySecurity.AccessRuleFactory(IdentityReference, int, bool, InheritanceFlags, PropagationFlags, AccessControlType)' because it is sealed [docs/research/acl-interop-probe/AclInteropProbe.csproj::TargetFramework=net10.0]
+
+Build FAILED.
+
+docs/research/acl-interop-probe/Program.cs(156,34): error CS0239: 'InvalidFactoryOverride.AccessRuleFactory(IdentityReference, int, bool, InheritanceFlags, PropagationFlags, AccessControlType)': cannot override inherited member 'ActiveDirectorySecurity.AccessRuleFactory(IdentityReference, int, bool, InheritanceFlags, PropagationFlags, AccessControlType)' because it is sealed [docs/research/acl-interop-probe/AclInteropProbe.csproj::TargetFramework=net10.0]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:00.31

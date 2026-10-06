@@ -1,0 +1,19 @@
+Runtime: .NET 10.0.0; linux-x64
+Microsoft assembly: System.DirectoryServices, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+ACL assembly: System.Security.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+Directory base assembly: System.IO.FileSystem.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+Identity assembly: System.Security.Principal.Windows, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+EXPECTED InvalidOperationException: modified flag read requires lock: Read/write lock required.
+EXPECTED InvalidOperationException: modified flag write requires lock: Write lock required.
+EXPECTED InvalidOperationException: subclass exception propagates: Probe hook failure.
+EXPECTED InvalidOperationException: outer and recursive write locks released after exception: Read/write lock required.
+EXPECTED NotSupportedException: typed helper reaches unimplemented private path: Research scaffold: general descriptor operations are not implemented.
+EXPECTED PlatformNotSupportedException: research base refuses native privilege path: Research base does not enable native ownership privilege.
+PASS portable hooks: dispatch, recursive locks, writable flags, factories, base constructors, Persist overloads, helper bypass, detached fixture.
+EXPECTED PlatformNotSupportedException: SID export: Windows Principal functionality is not supported on this platform.
+EXPECTED PlatformNotSupportedException: NTAccount export: Windows Principal functionality is not supported on this platform.
+EXPECTED PlatformNotSupportedException: access rule export: Windows Principal functionality is not supported on this platform.
+EXPECTED PlatformNotSupportedException: audit rule export: Windows Principal functionality is not supported on this platform.
+EXPECTED PlatformNotSupportedException: descriptor export: Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+EXPECTED PlatformNotSupportedException: collection export: Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+Windows bidirectional conversion branch: NOT EXECUTED on Linux.

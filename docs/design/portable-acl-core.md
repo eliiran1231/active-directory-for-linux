@@ -31,7 +31,10 @@ classes and their callers. A parallel public API was rejected by the user. It is
 recommendation, a prerequisite, or an approved fallback. The user has since authorized
 investigation of keeping the ten names/method patterns with portable base and identity types.
 [The concrete candidate and evidence](same-name-portable-acl-api.md) record that research;
-no production implementation or final public-contract adoption is chosen.
+no production implementation or final public-contract adoption is chosen. The latest
+[Microsoft interop/protected-hook follow-up](acl-microsoft-interop-and-overrides.md) evaluates
+explicit snapshot conversion and preserving portable extension points. Supporting namespace/
+assembly ownership is approved; native behavior and final contracts remain for review.
 
 **Original-contract blocker:** on stock Linux .NET 8 and 10, the actual BCL base constructors
 and SID constructors throw before our implementation can run. `IdentityReference` cannot

@@ -90,6 +90,7 @@ namespace AdForLinux.Security.AccessControl
         public Guid InheritedObjectType { get; }
         public ObjectAceFlags ObjectFlags { get; }
     }
+#if !EXTENSION_PROBE
     // Only satisfies the existing internal constructor's compile dependency. Not a proposed public type.
     public sealed class CommonSecurityDescriptor
     {
@@ -132,4 +133,5 @@ namespace AdForLinux.Security.AccessControl
         public abstract AccessRule AccessRuleFactory(IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, AccessControlType type, Guid objectType, Guid inheritedObjectType);
         public abstract AuditRule AuditRuleFactory(IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, AuditFlags flags, Guid objectType, Guid inheritedObjectType);
     }
+#endif
 }
