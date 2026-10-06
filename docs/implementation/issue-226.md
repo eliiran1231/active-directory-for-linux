@@ -45,12 +45,23 @@ retain the original NULL representation.
 - Recorded removal precedence skips disjoint self/descendant scopes before GUID narrowing;
   inherited-object GUID narrowing applies only when both ACEs have CI. Audit outcome
   disjointness remains after GUID checks.
+- Distinct inherited-object GUIDs share no descendant scope: an All request can subtract
+  self while retaining the original GUID-qualified descendants; descendant-only requests
+  and descendant-only existing ACEs are no-ops. Disjoint ObjectType rights skip before IOT
+  matching; overlapping global rights still subtract self. Thirty-two new DACL/SACL
+  observations cover mixed masks, immediate/deeper descendants, audit splitting and
+  missing-ObjectType conflict precedence after inherited-GUID no-op filtering.
+- Common ACE OI propagation uses DS semantics: OI contributes no propagation dimension,
+  but permission/audit residuals retain its raw bit. Recomputed propagation omits OI.
+  OI with NP/IO but without CI cannot be subtracted and returns false atomically unless
+  the operation is disjoint. Sixty-four observations cover every odd low flag combination
+  for Add and Remove in both ACL kinds. This does not authorize global OI normalization.
 - Absent/NULL SACL removals return true with modified=false and no write intent.
 - Set/Reset/Purge/RemoveAll keep inherited entries and target explicit SID/qualifier across GUIDs.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 312 newly recorded scripted steps including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 408 newly recorded scripted steps including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -62,9 +73,9 @@ safe mask algebra. Existing codec/SID tests remain part of the explicit offline 
 This draft does not claim completion of all issue 226 acceptance criteria.
 
 Decision dependencies are SACL ordering and expanding the approved import-normalization
-or gap-relocation policy. Additional evidence/implementation work remains for distinct
-inherited-object GUID subtraction and arbitrary OI propagation; these are not assumed to
-require a new product decision. Unknown/trailing-data refusals implement the approved
+or gap-relocation policy. Distinct inherited-object GUID subtraction and common-ACE OI
+propagation now have bounded recorded support. Additional object-ACE OI combinations
+remain evidence/implementation work, not an assumed new product decision. Unknown/trailing-data refusals implement the approved
 preservation boundary. Public API and directory write behavior remain outside this scope.
 
 - The I2 multi-entry SACL sorting policy is unresolved. Mutations with more than one existing
@@ -76,9 +87,9 @@ preservation boundary. Public API and directory write behavior remain outside th
   refuses as a whole. Owner/group or another section may still change while those bytes stay
   exact. This is intentionally narrower than Microsoft's H2 unrelated-add behavior.
 - Full conditional ACE semantics, object-right-specific matching beyond the recorded shape
-  cases (especially distinct InheritedObjectType subtraction), arbitrary OI propagation,
-  duplicate-ACE import compaction and generalized normalization are not established
-  by the current recordings. Active propagation combinations outside 0/2/3/6/10/14 refuse.
+  cases, duplicate-ACE import compaction and generalized normalization are not established
+  by the current recordings. Common ACEs support the recorded OI combinations; object ACE
+  propagation combinations outside 0/2/3/6/10/14 still refuse.
   Additional detached Windows recordings are required before expanding parity claims. No effective-access evaluator is claimed.
 - Active zero-mask and audit-without-success/failure projection are refused; only the exact
   inactive D13 exception may drop them. Meaningful labels/audit entries never disappear.
@@ -109,8 +120,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 426 mutation replay cases (including 312 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 54 mutation safety cases, 139 codec
-cases and 21 SID cases: 718 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 522 mutation replay cases (including 408 recorded steps, sequence
+replay and cross-runtime equality), 78 projection cases, 57 mutation safety cases, 139 codec
+cases and 21 SID cases: 817 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

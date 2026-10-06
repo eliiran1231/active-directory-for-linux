@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 312 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 408 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37535430548](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37535430548),
-head `966c9889c6f151b5a80575205eacfe306bfb43bd`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37537040355](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37537040355),
+head `62b789e3176d618b4c5999fceb34a4b0e28a0710`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,14 +344,32 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 312 individual steps also replay end to end by sequence, retaining the original raw
+The 408 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
-The last twelve observations isolate GUID-removal precedence in DACL/SACL. Disjoint
-self/descendant scopes skip GUID narrowing; inherited-object GUID conflicts apply only
-when both ACEs have CI. Audit outcome disjointness does not bypass GUID narrowing.
-The recording run intentionally failed its freshness comparison because it added these
-twelve probes to the existing 300; those first 300 observations are unchanged. Both
-portable test steps passed. The added evidence reproduced eight individual mismatches
-and one stateful replay failure before the engine fix.
+Twelve earlier observations isolate GUID-removal precedence in DACL/SACL: disjoint
+self/descendant scopes skip GUID narrowing, inherited-object GUID conflicts apply only
+when both ACEs have CI, and audit disjointness does not bypass GUID narrowing.
+
+The final 96 observations add bounded distinct-IOT and OI coverage:
+
+- Sixteen distinct-IOT cases cover All/Descendents requests against All, SelfAndChildren,
+  Descendents and Children existing scopes, with mixed masks and both audit outcomes.
+  Differing child GUIDs permit only self subtraction; descendant-only requests are no-ops.
+- Eight cases combine distinct ObjectType and InheritedObjectType GUIDs. Disjoint qualified
+  rights are no-ops; overlapping global rights can still be subtracted from self.
+- Eight cases confirm that a missing existing ObjectType GUID conflict is deferred until
+  inherited-GUID filtering establishes shared scope: six successful no-ops and two false
+  unchanged removals. This distinction changes return/modified values, not descriptor bytes.
+- Sixty-four common-ACE OI cases cover flags 1/3/5/7/9/11/13/15 with three Remove scopes
+  and same-mask Add, for DACL and SACL. Import preserves every input. DS propagation math
+  ignores OI, while permission/audit splits retain it. NP/IO without CI yields invalid
+  propagation and false/no-change removal unless scopes are already disjoint.
+
+The latest recording run intentionally failed its freshness comparison because it added
+these 96 observations to the committed 312; those first 312 observations are unchanged.
+Both portable test steps passed. Against the expanded evidence, the previous engine
+reproduced 86 individual failures and one stateful replay failure before the fix. No SACL
+sorting, import compaction or descriptor relocation decision was expanded. Object-ACE OI
+combinations beyond the previously supported flags remain conservatively refused.

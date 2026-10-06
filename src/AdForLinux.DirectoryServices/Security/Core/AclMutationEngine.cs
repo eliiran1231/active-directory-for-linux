@@ -200,7 +200,8 @@ internal sealed class AclMutationEngine
         // D13 normalization is explicit here as part of the requested section mutation.
         var cleanHeader = Acl.Read(DescriptorRewriter.EncodeAcl(null, acl.Aces));
         var projected = MicrosoftObservableProjector.NormalizeForEdit(cleanHeader, isDacl).Aces.ToList();
-        if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)))
+        if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)
+            && !(ace.Kind is AceKind.Access or AceKind.Audit && (ace.AceFlags & 1) != 0)))
             throw new InvalidOperationException("This propagation flag combination is outside the recorded directory semantics.");
         if (!isDacl && projected.Count(Explicit) > 1
             && (auditReplacementSid is null || projected.Any(ace => Explicit(ace) && !auditReplacementSid.Equals(ace.Sid))))
@@ -262,11 +263,11 @@ internal sealed class AclMutationEngine
                 result.Add(ace);
                 continue;
             }
-            var oldScope = Scope(ace);
-            var removeScope = Scope(rule);
-            // Recorded self/descendants disjointness takes precedence over GUID
-            // narrowing. Audit outcome disjointness deliberately stays below it.
-            if ((oldScope & removeScope) == 0)
+            var removeFlags = rule.AceFlags;
+            // DS scope-disjointness uses CI/IO, not OI. In particular OI|IO without
+            // CI is retained raw and is an invalid propagation matrix, not an empty one.
+            if (((ace.AceFlags & 2) == 0 && (removeFlags & 10) == 10)
+                || ((removeFlags & 2) == 0 && (ace.AceFlags & 10) == 10))
             {
                 result.Add(ace);
                 continue;
@@ -274,21 +275,34 @@ internal sealed class AclMutationEngine
             // ObjectType qualifies only DS object-specific bits. Global rights still
             // match across GUIDs (recorded mixed RP|ListChildren subtraction).
             var removeMask = rule.AccessMask;
-            if (rule.ObjectType.HasValue && !ace.ObjectType.HasValue
-                && (ace.AccessMask & removeMask & ObjectQualifiedRights) != 0) return false;
-            if (rule.ObjectType.HasValue && rule.ObjectType != ace.ObjectType)
+            var objectTypesConflict = rule.ObjectType.HasValue && !ace.ObjectType.HasValue
+                && (ace.AccessMask & removeMask & ObjectQualifiedRights) != 0;
+            if (!objectTypesConflict && rule.ObjectType.HasValue && rule.ObjectType != ace.ObjectType)
                 removeMask &= ~ObjectQualifiedRights;
-            if ((ace.AceFlags & rule.AceFlags & 2) != 0 && rule.InheritedObjectType.HasValue)
-            {
-                if (!ace.InheritedObjectType.HasValue) return false;
-                if (rule.InheritedObjectType != ace.InheritedObjectType)
-                    throw new InvalidOperationException("Removal across distinct inherited-object GUIDs is not validated.");
-            }
             if ((ace.AccessMask & removeMask) == 0)
             {
                 result.Add(ace);
                 continue;
             }
+            if ((ace.AceFlags & rule.AceFlags & 2) != 0 && rule.InheritedObjectType.HasValue)
+            {
+                if (!ace.InheritedObjectType.HasValue) return false;
+                if (rule.InheritedObjectType != ace.InheritedObjectType)
+                {
+                    // Different child types share no propagation. A descendants-only
+                    // request cannot remove self; an all-scope request can remove self
+                    // while retaining the existing GUID-qualified descendants.
+                    if ((rule.AceFlags & 8) != 0 || (ace.AceFlags & 8) != 0)
+                    {
+                        result.Add(ace);
+                        continue;
+                    }
+                    removeFlags &= 0xf0;
+                }
+            }
+            // A missing object GUID is a conflict only after inherited-GUID filtering
+            // establishes shared scope; recorded descendant no-ops take precedence.
+            if (objectTypesConflict) return false;
             var oldAudit = ace.AceFlags & 0xC0;
             var removeAudit = rule.AceFlags & 0xC0;
             if (oldAudit != 0 && (oldAudit & removeAudit) == 0)
@@ -296,6 +310,9 @@ internal sealed class AclMutationEngine
                 result.Add(ace);
                 continue;
             }
+            var oldScope = Scope(ace);
+            var removeScope = Scope(removeFlags);
+            if (oldScope < 0 || removeScope < 0) return false;
             var remainingScope = oldScope & ~removeScope;
             if (!TryFlags(remainingScope, out var remainingFlags)) return false;
             var overlapMask = ace.AccessMask & removeMask;
@@ -338,9 +355,12 @@ internal sealed class AclMutationEngine
     }
 
     // Directory-service propagation: self, immediate containers, deeper containers.
-    private static int Scope(Ace ace)
+    private static int Scope(Ace ace) => Scope(ace.AceFlags);
+    private static int Scope(byte flags)
     {
-        var flags = ace.AceFlags;
+        // In DS ACL propagation OI contributes no scope. NP/IO without CI is invalid
+        // even when OI kept the ACE alive during import; removal must fail atomically.
+        if ((flags & 2) == 0 && (flags & 12) != 0) return -1;
         var self = (flags & 8) == 0 ? 1 : 0;
         return self | ((flags & 2) == 0 ? 0 : (flags & 4) != 0 ? 2 : 6);
     }

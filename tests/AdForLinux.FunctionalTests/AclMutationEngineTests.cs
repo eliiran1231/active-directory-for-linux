@@ -382,9 +382,9 @@ public class AclMutationEngineTests
     [InlineData(5)]
     [InlineData(9)]
     [InlineData(15)]
-    public void Unrecorded_propagation_refuses_atomically(byte flags)
+    public void Unrecorded_object_ace_oi_propagation_refuses_atomically(byte flags)
     {
-        var raw = WithDacl(Ace(0, flags, 0x10, U1));
+        var raw = WithDacl(ObjAce(5, flags, 0x10, 1, G1, null, U1));
         var engine = Engine(raw);
         Assert.Throws<InvalidOperationException>(() => engine.Modify(SecurityMasks.Dacl, AclModification.Remove, Rule()));
         Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
@@ -530,6 +530,28 @@ public class AclMutationEngineTests
         Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
         Assert.Equal(raw, engine.OriginalDescriptor.GetBinaryForm());
         Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+    }
+
+    [Theory]
+    [InlineData((byte)5)]
+    [InlineData((byte)9)]
+    [InlineData((byte)13)]
+    public void Invalid_ds_oi_propagation_fails_after_staging_without_publishing(byte flags)
+    {
+        var original = WithDacl(Ace(0, 0, 4, U1), Ace(0, flags, 0x10, U1));
+        var engine = Engine(original).SetGroup(Trustee(U2)).Engine;
+        var current = engine.Descriptor.GetBinaryForm();
+        var result = engine.ModifyAccessRule(AclModification.Remove, Rule(0x14));
+        Assert.False(result.ReturnValue);
+        Assert.False(result.Modified);
+        Assert.Same(engine, result.Engine);
+        Assert.Equal(current, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.Group, engine.WriteIntent);
+        // A rule with no matching rights must not reinterpret invalid propagation.
+        var noMatch = engine.ModifyAccessRule(AclModification.Remove, Rule(0x20));
+        Assert.True(noMatch.ReturnValue);
+        Assert.Same(engine, noMatch.Engine);
     }
 
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
