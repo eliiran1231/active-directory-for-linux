@@ -83,8 +83,9 @@ no AD secrets, environment, OU steps, privilege changes or Persist calls. Existi
 and self-hosted differential workflows are untouched.
 
 The copied standalone oracle records detached Microsoft System.DirectoryServices 9.0.0
-behavior. Successful process exit records execution, not parity; replay assertions supply
-that evidence. Exact head validation and run URLs are reported in the draft PR.
+behavior. The workflow compares the fresh observation bodies against the committed
+recordings, and the portable replay assertions compare against the same evidence. Process
+exit alone is not treated as parity. Exact head validation and run URLs are reported in the draft PR.
 
 The exact seeded recording provenance is documented in the oracle README. Tests replay actual Windows outputs on
 both Linux and Windows, not generated expectations. The original J6 examples include

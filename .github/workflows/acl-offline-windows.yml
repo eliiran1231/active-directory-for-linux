@@ -38,6 +38,13 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/oracle | Out-Null
           dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }} -- --sequence-json artifacts/oracle/seeded-${{ matrix.framework }}.json 2>&1 | Tee-Object -FilePath artifacts/oracle/windows-${{ matrix.framework }}.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $actual = Get-Content artifacts/oracle/seeded-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordingFramework = '${{ matrix.framework }}'.Replace('.0', '')
+          $expected = Get-Content "docs/research/acl-windows-oracle/results/seeded-windows-$recordingFramework.json" -Raw | ConvertFrom-Json
+          $actualObservations = ConvertTo-Json -InputObject $actual.Observations -Depth 20 -Compress
+          $expectedObservations = ConvertTo-Json -InputObject $expected.Observations -Depth 20 -Compress
+          if ($actualObservations -cne $expectedObservations) { throw 'Fresh Microsoft observations differ from the committed replay evidence.' }
+          Write-Output "Verified $($actual.Observations.Count) fresh Microsoft observations against committed replay evidence."
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4
