@@ -343,6 +343,8 @@ no new public `Canonicalize()` method is part of this design.
   - Absent and NULL DACLs both enumerate as one `Allow Everyone 0xFFFFFFFF CI|OI` rule.
   - Both export as **absent**. A NULL DACL is not written back as NULL.
   - Any mutation, including protection, materializes that Everyone full-control ACE as a real ACE.
+    This keeps the existing unrestricted access rather than granting new access; what changes is
+    the representation (absent/NULL becomes a populated DACL).
   - `RemoveAccess(Everyone, Allow)` yields an **empty** DACL.
 
   The earlier belief that NULL is written back as NULL was wrong. Whether the portable
@@ -670,7 +672,7 @@ from a claim of general-purpose library compatibility.
 | O-2 | Set/Reset/Purge scope across GUIDs, opaque ACEs and inherited entries | **Recorded for the fixture:** Set removes all explicit same-type ACEs for the SID regardless of GUID; Reset also removes the other type; Purge removes all explicit ACEs; inherited ACEs are kept. Opaque-ACE interaction and safety-deviation review still pending |
 | O-3 | Null/absent/empty ACL mutations and materialization | **Recorded:** absent and NULL both enumerate as Everyone full control, export as absent, and materialize an explicit ACE on mutation (§5.5). Whether to copy this is undecided |
 | O-4 | Modify masks, fresh assignment and dirty/intent semantics | Windows request capture and inherited-entry-point audit; narrowed mask not yet approved as behavioral parity |
-| O-5 | Unaligned/contradictory/revision-mismatched input | Partly recorded: ACL revision 2 with an object ACE, trailing ACE bytes, unknown ACE/object flags and callback ACEs are preserved by Microsoft. Mandatory-label ACEs in the SACL, audit ACEs in the DACL and IO-only ACEs are **dropped**, and control bit 0x0100 is cleared. Unaligned input is not yet tested |
+| O-5 | Unaligned/contradictory/revision-mismatched input | Partly recorded: ACL revision 2 with an object ACE, trailing ACE bytes, unknown ACE/object flags are preserved by Microsoft, as was one callback ACE (0x09) and one callback object ACE (0x0B), each with a fixed 4-byte payload. That callback evidence does not establish conditional-ACE support or safe edit-back. Mandatory-label ACEs in the SACL, audit ACEs in the DACL and IO-only ACEs are **dropped**, and control bit 0x0100 is cleared. Unaligned input is not yet tested |
 | O-6 | Opaque/trailing ACE edit policy | Proposed preserve-or-refuse rule resolved in this design (§5.2); public behavioral deviation still needs approval |
 | O-7 | Concurrent edits / atomic conflict detection | No CAS guarantee; protocol research and separately authorized AD validation remain |
 | O-8 | Coverage | No promotion from internal-core or compilation evidence alone |

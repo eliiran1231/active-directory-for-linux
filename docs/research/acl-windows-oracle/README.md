@@ -42,11 +42,32 @@ Case IDs refer to the transcript.
 
 - **A1** `new ActiveDirectorySecurity()` serializes as 28 bytes: no owner/group, absent SACL,
   **present empty DACL** (revision 4). All modified flags are false.
-- **B1–B5, J3** `SetSecurityDescriptorBinaryForm` sets **all four** modified flags to true,
-  including with `AccessControlSections.Access` (J1). Even a read-only import looks
-  "modified", so these flags cannot serve as mutation intent.
+- **J5** Flag effects measured in isolation, from a fresh object (all flags false) and from a
+  loaded object whose flags were reset under the write lock:
+
+  | Setter call | Flags set (owner/group/access/audit) |
+  |---|---|
+  | `SetSecurityDescriptorBinaryForm(bytes)` (one-argument, all sections) | 1111 |
+  | `…(bytes, Access)` | 0010 |
+  | `…(bytes, Audit)` | 0001 |
+  | `…(bytes, Owner)` | 1000 |
+  | `…(bytes, Group)` | 0100 |
+
+  `GetSecurityDescriptorBinaryForm` and `GetAccessRules` afterwards did not change the flags.
+  The flags therefore track **which sections a setter was called for**, not whether bytes
+  changed. A read-only load through the one-argument overload marks all four sections as
+  modified, so these flags cannot serve as mutation intent for a read-derived descriptor.
 - **J1** `SetSecurityDescriptorBinaryForm(bytes, Access)` replaced only the DACL. An owner set
-  earlier stayed. **J2** an `All` import from bytes without owner/group leaves them absent.
+  earlier stayed. With flags reset immediately before the call, only the access flag became
+  true. **J2** an `All` import from bytes without owner/group leaves them absent.
+- **J3** With flags reset first: a `RemoveAccessRule` that matched nothing (bytes unchanged,
+  returned `true`) set the access flag. So did a `ModifyAccessRule(Add)` of an already
+  present rule (bytes unchanged, returned `modified=true`).
+
+  *Correction (2026-10-06):* an earlier version of this report claimed the Access-only
+  overload sets all four flags. That test never reset the flags left by the preceding load and
+  `SetOwner`, so it could not support the claim. J1 and J3 now reset the flags first, and J5
+  was added.
 
 ### Null, absent and empty ACLs
 
@@ -55,8 +76,10 @@ Case IDs refer to the transcript.
   DACL offset 0). The NULL-DACL input is **not preserved**: DACL_PRESENT is dropped.
 - **B2/B4** Any mutation of an absent or NULL DACL, including `AddAccessRule` and
   `SetAccessRuleProtection`, **materializes that Everyone full-control ACE as a real ACE**
-  (flags 0x03, mask 0xFFFFFFFF) alongside the change. The original breadth is kept, now in
-  explicit form.
+  (flags 0x03, mask 0xFFFFFFFF) alongside the change. This does **not** newly grant access:
+  a NULL DACL already allowed everything, and the explicit ACE keeps that existing breadth. The
+  change is to the **representation**: the absent/NULL state becomes a populated DACL. That
+  matters for raw-byte preservation and for how the result reads, not as a permission increase.
 - **B3** `RemoveAccess(Everyone, Allow)` on an absent or NULL DACL yields an **empty** DACL.
 - Empty and populated DACLs round-trip byte-exactly. **B5** `AddAuditRule` on an absent SACL
   creates a present SACL (revision 4).
@@ -66,7 +89,7 @@ Case IDs refer to the transcript.
 | Second rule added to first | Result |
 |---|---|
 | Same SID/type/scope, RP then WP | One ACE, mask OR'd (0x30) |
-| Identical rule twice | Unchanged bytes; `ModifyAccessRule` still returns `modified=true` |
+| Identical rule twice | Unchanged bytes; `ModifyAccessRule` still returns `modified=true` (flag effect: see J3) |
 | RP None + RP All | One ACE, scope All (CI) |
 | RP None + RP Descendents (complementary scopes) | **Merged** into one ACE, scope All |
 | RP Children + RP SelfAndChildren | One ACE, SelfAndChildren |
@@ -143,8 +166,16 @@ allow WP, and an inherited allow RP. It also has an explicit allow for U2.
 | ACE flags IO only (no CI/OI) | **ACE dropped** | — |
 | ACE flags NP only | **NP flag cleared** | — |
 
-Callback ACEs are therefore **not** universally unsupported by Microsoft's in-memory path:
-those cases were preserved and edits beside them worked.
+Callback ACEs are therefore **not** universally unsupported by Microsoft's in-memory path. The
+evidence is narrow, though:
+- each callback case used one ACE with a fixed 4-byte payload (`artx` marker only, not a
+  well-formed conditional expression);
+- it was preserved on import/export, and one unrelated add beside it worked.
+
+This does **not** show full conditional-ACE support: real conditional expressions, larger
+payloads, callback audit/deny types, enumeration or editing of the callback ACE itself, and
+SDDL round-trips are all untested. It also says nothing about **safe edit-back** through a
+conversion bridge, which has not been built.
 
 ### InheritanceType getter (I1)
 

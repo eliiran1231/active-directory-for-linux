@@ -125,4 +125,5 @@ These remain open. They are not decided by implication from the decisions above.
   has been chosen).
 - The resolver's final helper and overload names, and its error categories.
 - Whether the portable implementation follows Microsoft's absent/NULL-DACL materialization of an
-  explicit Everyone full-control ACE (observed in the oracle), or refuses that transition.
+  explicit Everyone full-control ACE (observed in the oracle), or refuses that transition. This is
+  a representation question, not a new grant: a NULL DACL is already unrestricted.

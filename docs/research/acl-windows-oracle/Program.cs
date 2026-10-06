@@ -285,9 +285,36 @@ Case("J1 section-limited SetSecurityDescriptorBinaryForm(bytes, Access) keeps ow
     var p = Load(WithDacl(Ace(0x00, 0, 0x10, Everyone)));
     p.SetOwner(u1);
     Snap("after SetOwner(U1)", p);
+    p.ResetFlags();
+    Console.WriteLine($"  flags reset: {p.Flags()}");
     Step("set Access only", () => p.SetSecurityDescriptorBinaryForm(Build(U2, U2, Acl(4, Ace(0x00, 0, 0x20, U2))), E.AccessControlSections.Access));
+    Console.WriteLine($"  flags immediately after Access-only set: {p.Flags()}");
     Snap("after", p);
 });
+// Flag effects of each binary setter in isolation: fresh or reset object, one call, then flags only.
+var flagInput = Build(Admins, Admins, Acl(4, Ace(0x00, 0, 0x10, U1)), sacl: Acl(4));
+foreach (var (name, sections) in new (string, E.AccessControlSections?)[]
+{
+    ("All (1-arg overload)", null), ("Access", E.AccessControlSections.Access), ("Audit", E.AccessControlSections.Audit),
+    ("Owner", E.AccessControlSections.Owner), ("Group", E.AccessControlSections.Group),
+})
+{
+    Case($"J5 flags from SetSecurityDescriptorBinaryForm {name}", () =>
+    {
+        var fresh = new Probe();
+        Console.WriteLine($"  fresh: {fresh.Flags()}");
+        Step("set", () => { if (sections is { } s) fresh.SetSecurityDescriptorBinaryForm(flagInput, s); else fresh.SetSecurityDescriptorBinaryForm(flagInput); });
+        Console.WriteLine($"  after set on fresh object: {fresh.Flags()}");
+        var reset = Load(flagInput);
+        reset.ResetFlags();
+        Console.WriteLine($"  loaded then reset: {reset.Flags()}");
+        Step("set again", () => { if (sections is { } s) reset.SetSecurityDescriptorBinaryForm(flagInput, s); else reset.SetSecurityDescriptorBinaryForm(flagInput); });
+        Console.WriteLine($"  after set on reset object: {reset.Flags()}");
+        _ = reset.GetSecurityDescriptorBinaryForm();
+        _ = reset.GetAccessRules(true, true, typeof(B.SecurityIdentifier));
+        Console.WriteLine($"  after Get/GetAccessRules only: {reset.Flags()}");
+    });
+}
 Case("J2 SetSecurityDescriptorBinaryForm(All) from input lacking owner/group", () =>
 {
     var p = Load(WithDacl(Ace(0x00, 0, 0x10, Everyone)));
@@ -295,14 +322,18 @@ Case("J2 SetSecurityDescriptorBinaryForm(All) from input lacking owner/group", (
     Step("set All", () => p.SetSecurityDescriptorBinaryForm(input));
     Snap("after", p, input);
 });
-Case("J3 dirty flags: get-only, failed remove, no-op add", () =>
+Case("J3 dirty flags (reset before each op): failed remove, no-op add", () =>
 {
     var p = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
     Snap("import only", p);
     var fresh = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
+    fresh.ResetFlags();
+    Console.WriteLine($"  fresh reset: {fresh.Flags()}");
     StepBool("remove absent rule", () => fresh.RemoveAccessRule(R(u2, WP, allow)));
     Snap("after failed remove", fresh);
     var noop = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
+    noop.ResetFlags();
+    Console.WriteLine($"  noop reset: {noop.Flags()}");
     Step2("add existing rule", () => (noop.ModifyAccessRule(E.AccessControlModification.Add, R(u1, RP, allow), out var m), m));
     Snap("after no-op add", noop);
 });
@@ -417,6 +448,14 @@ sealed class Probe : M.ActiveDirectorySecurity
             return $"modified(owner/group/access/audit)={B(OwnerModified)}{B(GroupModified)}{B(AccessRulesModified)}{B(AuditRulesModified)}";
         }
         finally { ReadUnlock(); }
+    }
+
+    /// <summary>Clears all four modified flags under the write lock, isolating the next call's effect.</summary>
+    public void ResetFlags()
+    {
+        WriteLock();
+        try { OwnerModified = GroupModified = AccessRulesModified = AuditRulesModified = false; }
+        finally { WriteUnlock(); }
     }
 
     static char B(bool value) => value ? '1' : '0';

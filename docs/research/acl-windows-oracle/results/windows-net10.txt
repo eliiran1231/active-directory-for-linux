@@ -819,12 +819,54 @@ Identity assembly: System.Security.Principal.Windows, Version=10.0.0.0, Culture=
     canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
     sddl=O:S-1-5-21-1-2-3-1001G:BAD:(A;;RP;;;WD)
     rule ActiveDirectoryAccessRule Allow rights=0x10 Everyone inh=False IF=None PF=None OF=None ot=- it=- IT=None
+  flags reset: modified(owner/group/access/audit)=0000
   set Access only: ok
+  flags immediately after Access-only set: modified(owner/group/access/audit)=0010
   [after] len=108 ctrl=0x8004 O@20 G@48 S@0 D@64 owner=U1 group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x20 U2]
     hex=0100048014000000300000000000000040000000010500000000000515000000010000000200000003000000E90300000102000000000005200000002002000004002C00010000000000240020000000010500000000000515000000010000000200000003000000EA030000
-    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
     sddl=O:S-1-5-21-1-2-3-1001G:BAD:(A;;WP;;;S-1-5-21-1-2-3-1002)
     rule ActiveDirectoryAccessRule Allow rights=0x20 U2 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== J5 flags from SetSecurityDescriptorBinaryForm All (1-arg overload)
+  fresh: modified(owner/group/access/audit)=0000
+  set: ok
+  after set on fresh object: modified(owner/group/access/audit)=1111
+  loaded then reset: modified(owner/group/access/audit)=0000
+  set again: ok
+  after set on reset object: modified(owner/group/access/audit)=1111
+  after Get/GetAccessRules only: modified(owner/group/access/audit)=1111
+== J5 flags from SetSecurityDescriptorBinaryForm Access
+  fresh: modified(owner/group/access/audit)=0000
+  set: ok
+  after set on fresh object: modified(owner/group/access/audit)=0010
+  loaded then reset: modified(owner/group/access/audit)=0000
+  set again: ok
+  after set on reset object: modified(owner/group/access/audit)=0010
+  after Get/GetAccessRules only: modified(owner/group/access/audit)=0010
+== J5 flags from SetSecurityDescriptorBinaryForm Audit
+  fresh: modified(owner/group/access/audit)=0000
+  set: ok
+  after set on fresh object: modified(owner/group/access/audit)=0001
+  loaded then reset: modified(owner/group/access/audit)=0000
+  set again: ok
+  after set on reset object: modified(owner/group/access/audit)=0001
+  after Get/GetAccessRules only: modified(owner/group/access/audit)=0001
+== J5 flags from SetSecurityDescriptorBinaryForm Owner
+  fresh: modified(owner/group/access/audit)=0000
+  set: ok
+  after set on fresh object: modified(owner/group/access/audit)=1000
+  loaded then reset: modified(owner/group/access/audit)=0000
+  set again: ok
+  after set on reset object: modified(owner/group/access/audit)=1000
+  after Get/GetAccessRules only: modified(owner/group/access/audit)=1000
+== J5 flags from SetSecurityDescriptorBinaryForm Group
+  fresh: modified(owner/group/access/audit)=0000
+  set: ok
+  after set on fresh object: modified(owner/group/access/audit)=0100
+  loaded then reset: modified(owner/group/access/audit)=0000
+  set again: ok
+  after set on reset object: modified(owner/group/access/audit)=0100
+  after Get/GetAccessRules only: modified(owner/group/access/audit)=0100
 == J2 SetSecurityDescriptorBinaryForm(All) from input lacking owner/group
   set All: ok
   [after] len=64 ctrl=0x8004 O@0 G@0 S@0 D@20 SACL=absent DACL=rev4/1[Allow f=0x00 m=0x20 U2]
@@ -833,22 +875,24 @@ Identity assembly: System.Security.Principal.Windows, Version=10.0.0.0, Culture=
     canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
     sddl=D:(A;;WP;;;S-1-5-21-1-2-3-1002)
     rule ActiveDirectoryAccessRule Allow rights=0x20 U2 inh=False IF=None PF=None OF=None ot=- it=- IT=None
-== J3 dirty flags: get-only, failed remove, no-op add
+== J3 dirty flags (reset before each op): failed remove, no-op add
   [import only] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
     hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000
     canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
     sddl=O:BAG:BAD:(A;;RP;;;S-1-5-21-1-2-3-1001)
     rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+  fresh reset: modified(owner/group/access/audit)=0000
   remove absent rule: returned=True
   [after failed remove] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
     hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000
-    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
     sddl=O:BAG:BAD:(A;;RP;;;S-1-5-21-1-2-3-1001)
     rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+  noop reset: modified(owner/group/access/audit)=0000
   add existing rule: returned=True modified=True
   [after no-op add] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
     hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000
-    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
     sddl=O:BAG:BAD:(A;;RP;;;S-1-5-21-1-2-3-1001)
     rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
 == J4 component order DACL-before-owner round trip
