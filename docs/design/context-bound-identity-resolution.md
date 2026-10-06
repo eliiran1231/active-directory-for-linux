@@ -27,6 +27,20 @@ resolution fails, but captured SID/descriptor data and pending SID-based edits r
 This lifecycle recommendation is a reviewable policy, not an already established compatibility
 promise. See [offline evidence](../research/identity-context-probe/README.md).
 
+> **Superseded in part by user decision [D11](acl-decisions.md#d11-identity-resolution-and-ambient-kerberos)
+> (2026-10-06).** The blanket refusal of ambient/default authentication above is replaced:
+> - Ambient Kerberos **is allowed** for ordinary SID → name lookups.
+> - A newly opened connection must still not be assumed to carry the identity that originally
+>   read the descriptor.
+> - Lookup caches are invalidated on rebind and on context changes.
+> - Name → SID resolution used for permission changes must go through a valid, unambiguous
+>   context before mutation.
+> - Stale descriptors require explicit context reacquisition.
+>
+> The rest of this document's analysis (ownership evidence, scope, escaping, error categories,
+> concurrency) is unchanged. Where §3 and §8 below say ambient lookup must be refused, read them
+> as applying only to name → SID resolution that feeds a mutation, subject to D11's open items.
+
 ## 1. Actual ownership and binding evidence
 
 All observations below refer to current source, not proposed implementations:
@@ -367,11 +381,12 @@ as approval for all tests.
 
 ## 8. Decisions to carry forward
 
-1. Establish ambient/default authentication policy: reject automatic lookup until a proven
-   owner-scoped identity-pinned lease exists; fresh explicit context must actually establish
-   authority, not merely wrap the same ambient settings.
-2. Review borrowed-epoch expiry versus automatic rebinding, especially retained dirty objects;
-   this draft recommends explicit reacquisition after authority changes.
+1. ~~Reject automatic ambient lookup until a pinned lease exists.~~ **Decided ([D11](acl-decisions.md)):**
+   ambient Kerberos is allowed for SID → name. Name → SID for mutation needs a valid, unambiguous
+   context first. Still open: what makes such a context "valid" under ambient authentication.
+2. **Decided in part ([D11](acl-decisions.md)):** stale descriptors require explicit context
+   reacquisition, and lookup caches are invalidated on rebind and context changes. Still open:
+   the exact invalidation triggers, and how retained dirty objects report a stale context.
 3. Implement the approved cross-entry data-copy/authority-isolation policy only after defining
    intent/provenance/partial-section validation and atomic publication; same-entry and detached
    assignment details remain open. Do not reopen the approved independent-copy decision.

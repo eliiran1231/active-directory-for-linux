@@ -3,9 +3,11 @@
 Status: **investigation authorized, names and final API policy not adopted**. PR #225.
 This extends the [same-name candidate](same-name-portable-acl-api.md), rather than proposing
 another portable ACL API. The user confirmed the library is unreleased and approved
-`AdForLinux.Security.*` in `AdForLinux.DirectoryServices.dll`. Windows behavior changes,
-resolver policy, `Principal.Sid` changes and final conversion policy remain unapproved.
-The subsequent [context resolver investigation](context-bound-identity-resolution.md) proposes
+`AdForLinux.Security.*` in `AdForLinux.DirectoryServices.dll`. **Update 2026-10-06:** the user
+has since decided the one-surface Windows behavior, the export shape, the data-loss default,
+protected hooks, the `Persist(true)` limitation, companion packaging, `Principal.Sid` and the
+ambient resolver policy. See [decisions D1–D12](acl-decisions.md). Analysis below that predates
+those decisions is kept; where it conflicts, the decision record wins. The subsequent [context resolver investigation](context-bound-identity-resolution.md) proposes
 a library-built AD resolver using existing entries/contexts and records lifecycle decisions.
 
 **Conclusion:** a `ToMicrosoftObject()`-style explicit bridge is a useful solution for passing
@@ -19,7 +21,11 @@ because it concerns local resources was too broad.
 [Executable evidence](../research/acl-interop-probe/README.md): both net8/net10 builds pass;
 portable subclass dispatch, lock/flag access and all three Persist overrides execute on Linux.
 Actual Microsoft exports throw PNSE there. A real Microsoft consumer subclass and conversion
-pairs compile against System.DirectoryServices 9.0.0, but their Windows execution is **pending**.
+pairs compile against System.DirectoryServices 9.0.0. **Windows execution, 2026-10-06:** the
+limited Windows branch passed on net8.0 (runtime 8.0.29) and net10.0 (runtime 10.0.10), win-x64,
+Windows 11 build 26200 ([net8](../research/acl-interop-probe/results/windows-net8.txt),
+[net10](../research/acl-interop-probe/results/windows-net10.txt)). That covers the fixture set
+only; it is not a general conversion or parity suite.
 No production implementation, live directory, token/privilege change or workflow was run.
 
 ## 1. What explicit conversion would solve
@@ -233,22 +239,22 @@ approved by this research.
 The [new probe](../research/acl-interop-probe/README.md) compiles real wrapper source against
 experimental portable bases, plus a consumer subclass against Microsoft's actual package.
 
-| Case | Linux net8.0 / 8.0.0 and net10.0 / 10.0.0 | Windows net8/net10 with Microsoft 9.0.0 |
+| Case | Linux net8.0 / 8.0.0 and net10.0 / 10.0.0 | Windows net8.0 / 8.0.29 and net10.0 / 10.0.10 with Microsoft 9.0.0 (executed 2026-10-06) |
 |---|---|---|
-| Portable base-typed access/audit dispatch, recursive locks, writable flag guards, exception cleanup | Executed, pass | Same probe runnable; not executed here |
-| Portable constructors, custom base factory, three Persist overrides, false forwarding | Executed, pass; no I/O | Same probe runnable; not executed here |
+| Portable base-typed access/audit dispatch, recursive locks, writable flag guards, exception cleanup | Executed, pass | Executed, pass |
+| Portable constructors, custom base factory, three Persist overrides, false forwarding | Executed, pass; no I/O | Executed, pass; no I/O |
 | Sealed concrete AD factory override | Expected CS0239 on both compilations | Compiler restriction, not platform-dependent |
-| Actual Microsoft SID/name/access/audit/descriptor/collection export | Six expected PNSE results per runtime | Representative conversions compiled; run pending |
-| Import back from actual Microsoft values | Cannot arrange usable source objects on Linux | Offline branch supplied for SID/name/rule fields, inherited GUID rules, collection and empty-DACL snapshot; run pending |
-| Real Microsoft consumer protected hooks / helper bypass / Persist overrides | Consumer compiles, cannot construct here | Offline branch supplied; no base true-ownership/native privilege call; run pending |
+| Actual Microsoft SID/name/access/audit/descriptor/collection export | Six expected PNSE results per runtime | Executed, pass for the fixture set (SID, NTAccount, inherited GUID access/audit rules, two-rule collection, empty-DACL descriptor) |
+| Import back from actual Microsoft values | Cannot arrange usable source objects on Linux | Executed, pass for the same fixture set; the descriptor copy is detached from later Microsoft edits |
+| Real Microsoft consumer protected hooks / helper bypass / Persist overrides | Consumer compiles, cannot construct here | Executed, pass: base-typed dispatch reaches overrides; typed `AddAccessRule` bypasses `ModifyAccess`; three Persist overrides; base `Persist(false)` forwards. Base `Persist(true)` deliberately not called |
 | Mixed/unknown rule subtypes, all seven specialized subtypes, unknown flags, all constructor validation | Not validated by this probe | Add explicit conversion policy/field round-trip/exception tests |
-| Null/absent/empty/populated and unread sections; owner/group/SACL; object GUID present-but-zero; callbacks/opaque/trailing data; revisions/alignment | Not covered beyond fixed empty-DACL fixture | Build fixture grid, compare raw R vs clean M0 vs edited M1; unsafe cases must reject under strict policy |
+| Null/absent/empty/populated and unread sections; owner/group/SACL; object GUID present-but-zero; callbacks/opaque/trailing data; revisions/alignment | Not covered beyond fixed empty-DACL fixture | Microsoft in-memory import/edit behavior recorded by the [Windows oracle](../research/acl-windows-oracle/README.md). A bridge comparing raw R vs clean M0 vs edited M1 is not built yet |
 | Read-only conversion, edit/revert/no-op, stale export session, same-section unknown data, deliberate replacement | No transport implementation | Offline state/request-capture tests before any live integration |
 | Actual permission changes / server defaults / concurrent writers | Not authorized or executed | Later separately authorized real AD tests; Samba evidence separate |
 
 No live AD operation is needed to settle most bridge and subclass questions. Prioritize the
 Windows offline field/descriptor/hook matrix, then provenance and intent reconciliation, then
-any required server evidence. Two remaining design decisions materially affect callers:
-strict descriptor conversion/export-session shape, and default native ownership behavior in
-base Persist. Neither should block preserving the ordinary portable hooks or researching
-value-copy interop. Final API names/adoption remain for review.
+any required server evidence. The two caller-facing decisions this section previously listed
+are now made: export shape and strictness ([D2, D3](acl-decisions.md)), and the base
+`Persist(true)` path documented as unsupported for now ([D6](acl-decisions.md)). Final API
+names and overall adoption remain for review.

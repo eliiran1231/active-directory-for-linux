@@ -24,13 +24,35 @@ No Windows host was available. Build success is not Windows runtime evidence.
 | Name / SafeHandle / bool Persist overrides | Pass, only counters change; no resource I/O |
 | False-valued base Persist forwarding to name override | Pass |
 | True-valued research-base ownership path | Intentional PNSE, no privilege call |
-| Typed AddAccessRule helper bypasses protected ModifyAccess | Probe confirms intended path distinction; actual Microsoft behavior is source-backed, pending Windows run |
+| Typed AddAccessRule helper bypasses protected ModifyAccess | Probe confirms intended path distinction; actual Microsoft behavior verified on Windows (see below) |
 | SID, NTAccount, access rule, audit rule, descriptor, collection exports into real Microsoft targets | Six expected **PlatformNotSupportedException** results on each runtime |
-| Reverse conversions and real Microsoft subclass execution | Compiled only; Windows conditional branch **not executed** |
+| Reverse conversions and real Microsoft subclass execution | Compiled only on Linux; Windows branch executed separately (see below) |
 
 Recorded outputs: [Linux net8](results/linux-net8.txt), [Linux net10](results/linux-net10.txt),
 [sealed override net8](results/sealed-factory-net8.txt), [sealed override net10](results/sealed-factory-net10.txt).
 Only machine-specific repository prefixes are removed from compile diagnostics.
+
+### Windows execution (added 2026-10-06)
+
+The unchanged probe source (PR head `d7214a7`) was run on Windows 11 Pro 10.0.26200
+(build 26200.9457), x64, built with SDK 10.0.302. Execution runtimes were the installed
+**servicing** releases, not 8.0.0/10.0.0: Microsoft.NETCore.App **8.0.29** (net8.0) and
+**10.0.10** (net10.0). Loaded assemblies: System.DirectoryServices 9.0.0.0, with the ACL,
+directory-base and identity assemblies at 8.0.0.0 and 10.0.0.0 respectively.
+
+| Case | Executed result on both Windows runtimes |
+|---|---|
+| Portable hook checks (same as Linux table above) | Pass, same messages |
+| Real Microsoft subclass: base-typed ModifyAccessRule/ModifyAuditRule reach protected overrides | Pass |
+| Real Microsoft typed `AddAccessRule` helper does **not** dispatch to protected `ModifyAccess` | Pass (verified, no longer only source-backed) |
+| Real Microsoft Persist name / SafeHandle / bool overrides, and base `Persist(false)` forwarding | Pass; base `Persist(true)` not called |
+| SID, NTAccount, access/audit rule (inherited, both GUIDs), collection: export and import | Pass for this fixture set |
+| Empty-DACL descriptor snapshot export/import; later Microsoft `SetOwner` not reflected in source | Pass |
+
+Outputs: [Windows net8](results/windows-net8.txt), [Windows net10](results/windows-net10.txt).
+Exit code 0 on both. This is the limited fixture set described below. It is not a general
+conversion, data-loss or parity suite; for Microsoft's broader in-memory behavior see the
+[Windows oracle](../acl-windows-oracle/README.md).
 
 ## How the scaffold is bounded
 

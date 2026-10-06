@@ -1,0 +1,423 @@
+// RESEARCH ORACLE. Records Microsoft System.DirectoryServices 9.0.0 in-memory descriptor behavior.
+// Every object is a detached in-memory ActiveDirectorySecurity: no DirectoryEntry, LDAP, AD writes,
+// Persist calls, token or privilege changes. Outputs are observations, not a parity verdict.
+using System.Runtime.InteropServices;
+using static Sd;
+using B = System.Security.Principal;
+using E = System.Security.AccessControl;
+using M = System.DirectoryServices;
+
+if (!OperatingSystem.IsWindows())
+{
+    Console.WriteLine("Windows-only oracle: nothing executed on this platform.");
+    return 2;
+}
+
+Console.WriteLine($"Runtime: {RuntimeInformation.FrameworkDescription}; {RuntimeInformation.RuntimeIdentifier}");
+Console.WriteLine($"OS: {RuntimeInformation.OSDescription}");
+Console.WriteLine($"Microsoft assembly: {typeof(M.ActiveDirectorySecurity).Assembly.GetName()}");
+Console.WriteLine($"ACL assembly: {typeof(E.ObjectSecurity).Assembly.GetName()}");
+Console.WriteLine($"Directory base assembly: {typeof(E.DirectoryObjectSecurity).Assembly.GetName()}");
+Console.WriteLine($"Identity assembly: {typeof(B.SecurityIdentifier).Assembly.GetName()}");
+
+var everyone = new B.SecurityIdentifier(Everyone, 0);
+var u1 = new B.SecurityIdentifier(U1, 0);
+var u2 = new B.SecurityIdentifier(U2, 0);
+const M.ActiveDirectoryRights RP = M.ActiveDirectoryRights.ReadProperty;
+const M.ActiveDirectoryRights WP = M.ActiveDirectoryRights.WriteProperty;
+const M.ActiveDirectoryRights XR = M.ActiveDirectoryRights.ExtendedRight;
+const M.ActiveDirectoryRights LC = M.ActiveDirectoryRights.ListChildren;
+var allow = E.AccessControlType.Allow;
+var deny = E.AccessControlType.Deny;
+var all = M.ActiveDirectorySecurityInheritance.All;
+
+M.ActiveDirectoryAccessRule R(B.SecurityIdentifier sid, M.ActiveDirectoryRights rights, E.AccessControlType type,
+    Guid? objectType = null, M.ActiveDirectorySecurityInheritance inheritance = M.ActiveDirectorySecurityInheritance.None,
+    Guid? inheritedType = null) =>
+    new(sid, rights, type, objectType ?? Guid.Empty, inheritance, inheritedType ?? Guid.Empty);
+
+M.ActiveDirectoryAuditRule A(B.SecurityIdentifier sid, M.ActiveDirectoryRights rights, E.AuditFlags flags,
+    M.ActiveDirectorySecurityInheritance inheritance = M.ActiveDirectorySecurityInheritance.None) =>
+    new(sid, rights, flags, Guid.Empty, inheritance, Guid.Empty);
+
+byte[] EmptyDacl() => Build(Admins, Admins, Acl(4));
+byte[] WithDacl(params byte[][] aces) => Build(Admins, Admins, Acl(4, aces));
+
+// ---------------------------------------------------------------- A. initial state
+Case("A1 new ActiveDirectorySecurity()", () => Snap("initial", new Probe()));
+
+// ---------------------------------------------------------------- B. ACL states
+var daclStates = new (string Name, byte[] Bytes)[]
+{
+    ("absent DACL", Build(Admins, Admins, null)),
+    ("NULL DACL", Build(Admins, Admins, null, nullDacl: true)),
+    ("empty DACL", EmptyDacl()),
+    ("populated DACL", WithDacl(Ace(0x00, 0, 0x10, Everyone))),
+};
+foreach (var (name, bytes) in daclStates)
+{
+    Case($"B1 {name}: import", () => Snap("import", Load(bytes), bytes));
+    Case($"B2 {name}: AddAccessRule(allow U1 RP)", () =>
+    {
+        var p = Load(bytes);
+        Step("add", () => p.AddAccessRule(R(u1, RP, allow)));
+        Snap("after", p);
+    });
+    Case($"B3 {name}: RemoveAccess(Everyone, Allow)", () =>
+    {
+        var p = Load(bytes);
+        Step("remove", () => p.RemoveAccess(everyone, allow));
+        Snap("after", p);
+    });
+    Case($"B4 {name}: SetAccessRuleProtection(true, true)", () =>
+    {
+        var p = Load(bytes);
+        Step("protect", () => p.SetAccessRuleProtection(true, true));
+        Snap("after", p);
+    });
+}
+var saclAbsent = Build(Admins, Admins, Acl(4));
+var saclEmpty = Build(Admins, Admins, Acl(4), sacl: Acl(4));
+foreach (var (name, bytes) in new[] { ("absent SACL", saclAbsent), ("empty SACL", saclEmpty) })
+{
+    Case($"B5 {name}: import + AddAuditRule(U1 RP Success)", () =>
+    {
+        var p = Load(bytes);
+        Snap("import", p, bytes);
+        Step("add audit", () => p.AddAuditRule(A(u1, RP, E.AuditFlags.Success)));
+        Snap("after", p);
+    });
+}
+
+// ---------------------------------------------------------------- C. merging
+var mergeCases = new (string Name, M.ActiveDirectoryAccessRule First, M.ActiveDirectoryAccessRule Second)[]
+{
+    ("RP + WP, same scope", R(u1, RP, allow), R(u1, WP, allow)),
+    ("identical rule twice", R(u1, RP, allow), R(u1, RP, allow)),
+    ("RP None + RP All", R(u1, RP, allow), R(u1, RP, allow, inheritance: all)),
+    ("RP None + RP Descendents (complementary scopes)", R(u1, RP, allow),
+        R(u1, RP, allow, inheritance: M.ActiveDirectorySecurityInheritance.Descendents)),
+    ("RP Children + RP SelfAndChildren", R(u1, RP, allow, inheritance: M.ActiveDirectorySecurityInheritance.Children),
+        R(u1, RP, allow, inheritance: M.ActiveDirectorySecurityInheritance.SelfAndChildren)),
+    ("RP no GUID + RP G1", R(u1, RP, allow), R(u1, RP, allow, G1)),
+    ("RP G1 + WP G1", R(u1, RP, allow, G1), R(u1, WP, allow, G1)),
+    ("RP G1 + RP G2", R(u1, RP, allow, G1), R(u1, RP, allow, G2)),
+    ("RP G1/All/inh G2 + RP G1/All", R(u1, RP, allow, G1, all, G2), R(u1, RP, allow, G1, all)),
+    ("allow RP + deny RP", R(u1, RP, allow), R(u1, RP, deny)),
+};
+foreach (var (name, first, second) in mergeCases)
+{
+    Case($"C1 merge: {name}", () =>
+    {
+        var p = Load(EmptyDacl());
+        p.AddAccessRule(first);
+        Snap("after first", p);
+        Step2("ModifyAccessRule(Add, second)", () => (p.ModifyAccessRule(E.AccessControlModification.Add, second, out var m), m));
+        Snap("after second", p);
+    });
+}
+Case("C2 audit merge: Success + Failure same mask", () =>
+{
+    var p = Load(saclEmpty);
+    p.AddAuditRule(A(u1, RP, E.AuditFlags.Success));
+    p.AddAuditRule(A(u1, RP, E.AuditFlags.Failure));
+    Snap("after", p);
+});
+Case("C3 audit merge: Success RP + Success WP", () =>
+{
+    var p = Load(saclEmpty);
+    p.AddAuditRule(A(u1, RP, E.AuditFlags.Success));
+    p.AddAuditRule(A(u1, WP, E.AuditFlags.Success));
+    Snap("after", p);
+});
+
+// ---------------------------------------------------------------- D. ordering
+Case("D1 order of added explicit rules", () =>
+{
+    var p = Load(EmptyDacl());
+    p.AddAccessRule(R(u1, RP, allow));
+    p.AddAccessRule(R(u2, RP, deny));
+    p.AddAccessRule(R(u2, RP, allow, G1));
+    p.AddAccessRule(R(u1, WP, deny, G1));
+    p.AddAccessRule(R(u2, LC, allow, inheritance: all));
+    Snap("after", p);
+});
+Case("D2 explicit added to DACL holding inherited ACEs", () =>
+{
+    var input = WithDacl(Ace(0x00, Inherited | Ci, 0x10, Everyone), Ace(0x01, Inherited, 0x20, U2));
+    var p = Load(input);
+    Snap("import", p, input);
+    p.AddAccessRule(R(u1, RP, allow));
+    p.AddAccessRule(R(u1, WP, deny));
+    Snap("after", p);
+});
+
+// ---------------------------------------------------------------- E. removal and splitting
+void SplitCase(string name, M.ActiveDirectoryAccessRule start, Action<Probe> remove)
+{
+    Case($"E1 {name}", () =>
+    {
+        var p = Load(EmptyDacl());
+        p.AddAccessRule(start);
+        Snap("start", p);
+        remove(p);
+        Snap("after", p);
+    });
+}
+SplitCase("RemoveAccessRule(WP None) from RP|WP All", R(u1, RP | WP, allow, inheritance: all),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, WP, allow))));
+SplitCase("RemoveAccessRule(RP Children) from RP|WP All", R(u1, RP | WP, allow, inheritance: all),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, RP, allow, inheritance: M.ActiveDirectorySecurityInheritance.Children))));
+SplitCase("RemoveAccessRule(RP|WP Descendents) from RP|WP All", R(u1, RP | WP, allow, inheritance: all),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, RP | WP, allow, inheritance: M.ActiveDirectorySecurityInheritance.Descendents))));
+SplitCase("RemoveAccessRule(RP G1) from non-object RP", R(u1, RP, allow),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, RP, allow, G1))));
+SplitCase("RemoveAccessRule(RP) from object RP G1", R(u1, RP, allow, G1),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, RP, allow))));
+SplitCase("RemoveAccessRuleSpecific(RP All) from RP|WP All (inexact)", R(u1, RP | WP, allow, inheritance: all),
+    p => Step("remove specific", () => p.RemoveAccessRuleSpecific(R(u1, RP, allow, inheritance: all))));
+SplitCase("RemoveAccessRuleSpecific(RP|WP All) exact", R(u1, RP | WP, allow, inheritance: all),
+    p => Step("remove specific", () => p.RemoveAccessRuleSpecific(R(u1, RP | WP, allow, inheritance: all))));
+SplitCase("RemoveAccessRule(RP) when absent", R(u1, WP, allow),
+    p => StepBool("remove", () => p.RemoveAccessRule(R(u1, RP, allow))));
+Case("E2 audit split: RemoveAuditRule(Failure) from Success|Failure", () =>
+{
+    var p = Load(saclEmpty);
+    p.AddAuditRule(A(u1, RP, E.AuditFlags.Success | E.AuditFlags.Failure, all));
+    Snap("start", p);
+    StepBool("remove", () => p.RemoveAuditRule(A(u1, RP, E.AuditFlags.Failure)));
+    Snap("after", p);
+});
+
+// ---------------------------------------------------------------- F. Set / Reset / Purge scope
+byte[] ScopeFixture() => WithDacl(
+    ObjAce(0x06, 0, 0x100, 1, G2, null, U1),
+    ObjAce(0x05, 0, 0x10, 1, G1, null, U1),
+    Ace(0x00, 0, 0x20, U1),
+    Ace(0x00, 0, 0x10, U2),
+    Ace(0x00, Inherited, 0x10, U1));
+var scopeOps = new (string Name, Action<Probe> Op)[]
+{
+    ("SetAccessRule(allow U1 XR G2)", p => p.SetAccessRule(R(u1, XR, allow, G2))),
+    ("SetAccessRule(allow U1 RP no GUID)", p => p.SetAccessRule(R(u1, RP, allow))),
+    ("ResetAccessRule(allow U1 LC)", p => p.ResetAccessRule(R(u1, LC, allow))),
+    ("PurgeAccessRules(U1)", p => p.PurgeAccessRules(u1)),
+    ("RemoveAccess(U1, Allow)", p => p.RemoveAccess(u1, allow)),
+    ("RemoveAccess(U1, Deny)", p => p.RemoveAccess(u1, deny)),
+};
+foreach (var (name, op) in scopeOps)
+{
+    Case($"F1 {name}", () =>
+    {
+        var input = ScopeFixture();
+        var p = Load(input);
+        Snap("import", p, input);
+        Step("op", () => op(p));
+        Snap("after", p);
+    });
+}
+
+// ---------------------------------------------------------------- G. non-canonical input
+var nonCanonical = new (string Name, byte[] Bytes)[]
+{
+    ("explicit allow before explicit deny", WithDacl(Ace(0x00, 0, 0x10, U1), Ace(0x01, 0, 0x10, U2))),
+    ("inherited before explicit", WithDacl(Ace(0x00, Inherited, 0x10, U1), Ace(0x00, 0, 0x20, U2))),
+};
+foreach (var (name, bytes) in nonCanonical)
+{
+    Case($"G1 {name}: import", () => Snap("import", Load(bytes), bytes));
+    Case($"G2 {name}: AddAccessRule(allow U2 WP)", () =>
+    {
+        var p = Load(bytes);
+        Step("add", () => p.AddAccessRule(R(u2, WP, allow)));
+        Snap("after", p);
+    });
+    Case($"G3 {name}: PurgeAccessRules(U2)", () =>
+    {
+        var p = Load(bytes);
+        Step("purge", () => p.PurgeAccessRules(u2));
+        Snap("after", p);
+    });
+}
+
+// ---------------------------------------------------------------- H. unusual payloads
+var mandatoryLabel = Sid("S-1-16-8192");
+var appData = new byte[] { 0x61, 0x72, 0x74, 0x78 }; // "artx" conditional-expression marker
+var unusual = new (string Name, byte[] Bytes)[]
+{
+    ("callback allow ACE (0x09) with app data", WithDacl(Ace(0x09, 0, 0x10, U1, appData))),
+    ("callback allow object ACE (0x0B) with app data", WithDacl(ObjAce(0x0B, 0, 0x10, 1, G1, null, U1, appData))),
+    ("unknown ACE type 0x20", WithDacl(Ace(0x20, 0, 0x10, U1))),
+    ("allow ACE with 4 trailing bytes", WithDacl(Ace(0x00, 0, 0x10, U1, new byte[4]))),
+    ("ACL revision 2 holding object ACE", Build(Admins, Admins, Acl(2, ObjAce(0x05, 0, 0x10, 1, G1, null, U1)))),
+    ("object ACE with object flags 0", WithDacl(ObjAce(0x05, 0, 0x10, 0, null, null, U1))),
+    ("object ACE with present all-zero GUID", WithDacl(ObjAce(0x05, 0, 0x10, 1, Guid.Empty, null, U1))),
+    ("object ACE with unknown object flag 0x4", WithDacl(ObjAce(0x05, 0, 0x10, 5, G1, null, U1))),
+    ("unknown ACE flag bit 0x20", WithDacl(Ace(0x00, 0x20, 0x10, U1))),
+    ("auto-inherit control bits 0x0500", Build(Admins, Admins, Acl(4, Ace(0x00, 0, 0x10, U1)), extraControl: 0x0500)),
+    ("mandatory label ACE in SACL", Build(Admins, Admins, Acl(4), sacl: Acl(2, Ace(0x11, 0, 1, mandatoryLabel)))),
+    ("audit ACE inside DACL", WithDacl(Ace(0x02, Success, 0x10, U1))),
+    ("generic-read bit 0x80000000 in mask", WithDacl(Ace(0x00, 0, 0x80000000, U1))),
+};
+foreach (var (name, bytes) in unusual)
+{
+    Case($"H1 {name}: import", () => Snap("import", Load(bytes), bytes));
+    Case($"H2 {name}: unrelated AddAccessRule(allow U2 WP)", () =>
+    {
+        var p = Load(bytes);
+        Step("add", () => p.AddAccessRule(R(u2, WP, allow)));
+        Snap("after", p);
+    });
+}
+
+// ---------------------------------------------------------------- I. InheritanceType getter
+var inheritanceFlags = new (string Name, byte Flags)[]
+{
+    ("OI only", Oi), ("OI|CI", (byte)(Oi | Ci)), ("CI|NP", (byte)(Ci | Np)),
+    ("CI|IO|NP", (byte)(Ci | Io | Np)), ("IO only", Io), ("NP only", Np),
+};
+foreach (var (name, flags) in inheritanceFlags)
+    Case($"I1 imported ACE flags {name}", () => { var b = WithDacl(Ace(0x00, flags, 0x10, U1)); Snap("import", Load(b), b); });
+
+// ---------------------------------------------------------------- J. binary setters and dirty flags
+Case("J1 section-limited SetSecurityDescriptorBinaryForm(bytes, Access) keeps owner?", () =>
+{
+    var p = Load(WithDacl(Ace(0x00, 0, 0x10, Everyone)));
+    p.SetOwner(u1);
+    Snap("after SetOwner(U1)", p);
+    Step("set Access only", () => p.SetSecurityDescriptorBinaryForm(Build(U2, U2, Acl(4, Ace(0x00, 0, 0x20, U2))), E.AccessControlSections.Access));
+    Snap("after", p);
+});
+Case("J2 SetSecurityDescriptorBinaryForm(All) from input lacking owner/group", () =>
+{
+    var p = Load(WithDacl(Ace(0x00, 0, 0x10, Everyone)));
+    var input = Build(null, null, Acl(4, Ace(0x00, 0, 0x20, U2)));
+    Step("set All", () => p.SetSecurityDescriptorBinaryForm(input));
+    Snap("after", p, input);
+});
+Case("J3 dirty flags: get-only, failed remove, no-op add", () =>
+{
+    var p = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
+    Snap("import only", p);
+    var fresh = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
+    StepBool("remove absent rule", () => fresh.RemoveAccessRule(R(u2, WP, allow)));
+    Snap("after failed remove", fresh);
+    var noop = Load(WithDacl(Ace(0x00, 0, 0x10, U1)));
+    Step2("add existing rule", () => (noop.ModifyAccessRule(E.AccessControlModification.Add, R(u1, RP, allow), out var m), m));
+    Snap("after no-op add", noop);
+});
+Case("J4 component order DACL-before-owner round trip", () =>
+{
+    var forward = WithDacl(Ace(0x00, 0, 0x10, U1));
+    // Rebuild with DACL placed directly after the header and owner/group after it.
+    var acl = Acl(4, Ace(0x00, 0, 0x10, U1));
+    var bytes = new byte[20 + acl.Length + Admins.Length * 2];
+    bytes[0] = 1;
+    System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(2), SelfRelative | DaclPresent);
+    acl.CopyTo(bytes, 20);
+    Admins.CopyTo(bytes, 20 + acl.Length);
+    Admins.CopyTo(bytes, 20 + acl.Length + Admins.Length);
+    System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), (uint)(20 + acl.Length));
+    System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), (uint)(20 + acl.Length + Admins.Length));
+    System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(16), 20);
+    Snap("import", Load(bytes), bytes);
+    Console.WriteLine($"    equals forward-order bytes after export: {Load(bytes).GetSecurityDescriptorBinaryForm().AsSpan().SequenceEqual(forward)}");
+});
+
+Console.WriteLine("END");
+return 0;
+
+// ---------------------------------------------------------------- helpers
+Probe Load(byte[] bytes)
+{
+    var p = new Probe();
+    p.SetSecurityDescriptorBinaryForm(bytes);
+    return p;
+}
+
+void Case(string name, Action body)
+{
+    Console.WriteLine($"== {name}");
+    try { body(); }
+    catch (Exception ex) { Console.WriteLine($"  CASE EXC {Ex(ex)}"); }
+}
+
+void Step(string label, Action action)
+{
+    try { action(); Console.WriteLine($"  {label}: ok"); }
+    catch (Exception ex) { Console.WriteLine($"  {label}: EXC {Ex(ex)}"); }
+}
+
+void StepBool(string label, Func<bool> action)
+{
+    try { Console.WriteLine($"  {label}: returned={action()}"); }
+    catch (Exception ex) { Console.WriteLine($"  {label}: EXC {Ex(ex)}"); }
+}
+
+void Step2(string label, Func<(bool Result, bool Modified)> action)
+{
+    try { var (r, m) = action(); Console.WriteLine($"  {label}: returned={r} modified={m}"); }
+    catch (Exception ex) { Console.WriteLine($"  {label}: EXC {Ex(ex)}"); }
+}
+
+void Snap(string label, Probe p, byte[]? input = null)
+{
+    var bytes = p.GetSecurityDescriptorBinaryForm();
+    Console.WriteLine($"  [{label}] {Describe(bytes)}");
+    if (input is not null)
+    {
+        var reimported = Load(bytes).GetSecurityDescriptorBinaryForm();
+        Console.WriteLine($"    input-bytes-preserved={bytes.AsSpan().SequenceEqual(input)} reexport-stable={reimported.AsSpan().SequenceEqual(bytes)}");
+        if (!bytes.AsSpan().SequenceEqual(input)) Console.WriteLine($"    input={Convert.ToHexString(input)}");
+    }
+    Console.WriteLine($"    hex={Convert.ToHexString(bytes)}");
+    Console.WriteLine($"    canonical(access/audit)={p.AreAccessRulesCanonical}/{p.AreAuditRulesCanonical} protected={p.AreAccessRulesProtected} {p.Flags()}");
+    Console.WriteLine($"    sddl={Try(() => p.GetSecurityDescriptorSddlForm(E.AccessControlSections.All))}");
+    foreach (E.AuthorizationRule rule in p.GetAccessRules(true, true, typeof(B.SecurityIdentifier)))
+        Console.WriteLine($"    rule {Rule(rule)}");
+    foreach (E.AuthorizationRule rule in p.GetAuditRules(true, true, typeof(B.SecurityIdentifier)))
+        Console.WriteLine($"    audit {Rule(rule)}");
+}
+
+string Rule(E.AuthorizationRule rule)
+{
+    var common = $"{Who(rule.IdentityReference)} inh={rule.IsInherited} IF={rule.InheritanceFlags} PF={rule.PropagationFlags}";
+    return rule switch
+    {
+        M.ActiveDirectoryAccessRule a => $"{a.GetType().Name} {a.AccessControlType} rights=0x{(int)a.ActiveDirectoryRights:X} {common} OF={a.ObjectFlags} ot={G(a.ObjectType)} it={G(a.InheritedObjectType)} IT={Try(() => a.InheritanceType)}",
+        M.ActiveDirectoryAuditRule u => $"{u.GetType().Name} {u.AuditFlags} rights=0x{(int)u.ActiveDirectoryRights:X} {common} OF={u.ObjectFlags} ot={G(u.ObjectType)} it={G(u.InheritedObjectType)} IT={Try(() => u.InheritanceType)}",
+        _ => $"{rule.GetType().FullName} {common}",
+    };
+}
+
+string Who(B.IdentityReference id) => id.Value switch
+{
+    "S-1-1-0" => "Everyone", "S-1-5-32-544" => "Admins",
+    "S-1-5-21-1-2-3-1001" => "U1", "S-1-5-21-1-2-3-1002" => "U2", var v => v,
+};
+
+string G(Guid g) => g == G1 ? "G1" : g == G2 ? "G2" : g == Guid.Empty ? "-" : g.ToString();
+
+string Try<T>(Func<T> f)
+{
+    try { return f()?.ToString() ?? "null"; }
+    catch (Exception ex) { return "EXC " + Ex(ex); }
+}
+
+string Ex(Exception ex) => $"{ex.GetType().FullName}{(ex is ArgumentException { ParamName: { } p } ? $"(param={p})" : "")}: {ex.Message.Replace(Environment.NewLine, " ")}";
+
+/// <summary>Reads Microsoft's protected modified flags under the required lock.</summary>
+sealed class Probe : M.ActiveDirectorySecurity
+{
+    public string Flags()
+    {
+        ReadLock();
+        try
+        {
+            return $"modified(owner/group/access/audit)={B(OwnerModified)}{B(GroupModified)}{B(AccessRulesModified)}{B(AuditRulesModified)}";
+        }
+        finally { ReadUnlock(); }
+    }
+
+    static char B(bool value) => value ? '1' : '0';
+}

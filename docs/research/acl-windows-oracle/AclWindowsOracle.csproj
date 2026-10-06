@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Research-only Windows oracle. In-memory Microsoft ActiveDirectorySecurity objects only:
+       no DirectoryEntry, LDAP, AD writes, Persist calls, token or privilege changes. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0" />
+  </ItemGroup>
+</Project>

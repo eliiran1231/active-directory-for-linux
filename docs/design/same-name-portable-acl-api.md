@@ -5,9 +5,12 @@ The user approved investigating replacement base and identity types while keepin
 class names and familiar methods. This is a deliberate relaxation of the original BCL-type
 contract, not a finding that the original contract was portable. A parallel ACL API remains
 rejected. The user subsequently confirmed the library is unreleased and approved the supporting
-`AdForLinux.Security.*` namespace/assembly ownership below. Final surface and Windows behavior
-adoption remain pending. No production source, packaging, directory permission or workflow
-changes occur here.
+`AdForLinux.Security.*` namespace/assembly ownership below. **Update 2026-10-06:** the user
+decided that the same portable types are used on Windows and Linux, with explicit snapshot
+bridges to Microsoft objects. Protected hooks, including all `Persist` overloads, are preserved.
+`Principal.Sid` moves to the portable type in the same pre-release design. See
+[decisions D1–D12](acl-decisions.md). The final member-by-member surface is still under review.
+No production source, packaging, directory permission or workflow changes occur here.
 
 **Useful result:** an isolated prototype links the actual ten-class wrapper source and rebinds
 its dependencies to portable scaffolding. All **46 public constructor shapes** execute on
@@ -340,9 +343,12 @@ var rule = new ActiveDirectoryAccessRule(
     new AdForLinux.Security.Principal.SecurityIdentifier(value), rights, type);
 ```
 
-Changing `Principal.Sid` itself would be another public-contract change requiring separate
-scope/approval. The proposed supporting identity namespace could be reused later, but that
-is not authorized implementation in this PR.
+**Decided ([D9](acl-decisions.md#d9-principalsid)):** `Principal.Sid`'s return type becomes the
+portable `AdForLinux.Security.Principal.SecurityIdentifier` in the coordinated pre-release design,
+on both platforms. `SidValue` stays. Migration and interoperability must be documented,
+including the Windows bridge below. This is a design decision, not implementation in this PR.
+It is currently the only other BCL identity use in the source tree
+([Principal.cs](../../src/AdForLinux.DirectoryServices.AccountManagement/Principal.cs)).
 
 Windows BCL SID interoperability can use explicit copying without adding ambiguous constructor
 overloads accepting both BCL and portable identities:

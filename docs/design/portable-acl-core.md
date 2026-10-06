@@ -39,6 +39,8 @@ The [built-in identity resolver follow-up](context-bound-identity-resolution.md)
 automatic propagation from the actual DirectoryEntry and explicit standalone context, with
 offline ownership evidence. Cross-entry independent data copying is now approved, without
 source authority transfer; lifetime, intent-transfer validation and other contract gates remain.
+User decisions of 2026-10-06 are recorded in [acl-decisions.md](acl-decisions.md); that file is
+the authority on what is decided versus recommended.
 
 **Original-contract blocker:** on stock Linux .NET 8 and 10, the actual BCL base constructors
 and SID constructors throw before our implementation can run. `IdentityReference` cannot
@@ -320,8 +322,14 @@ not replace exact output comparison or establish effective-access equivalence fo
 
 Raw parse/serialize never reorder. Normalized projection may sort and compact as Microsoft
 does. Explicit deny/allow/inherited ordering alone is insufficient to describe all object-ACE
-and inherited ordering rules. Mutations on noncanonical ACLs and the constructor's handling
-of initially noncanonical data require separate oracle cases. Raw edits preserve untouched
+and inherited ordering rules. **Observed** (Windows oracle D1, F1, G1–G3):
+- Within explicit deny and within explicit allow, non-object ACEs precede object ACEs.
+- Import plus export alone re-emitted an object allow after non-object allows.
+- Noncanonical DACLs (allow before deny, inherited before explicit, unknown ACE type) are
+  preserved byte-exact on import, report `AreAccessRulesCanonical == false`, and make
+  Add/Purge throw `InvalidOperationException`.
+
+Raw edits preserve untouched
 order or fail; normalized results are not automatically suitable for splicing back. An
 internal normalization operation is explicit and carries a proposed section mutation intent;
 no new public `Canonicalize()` method is part of this design.
@@ -330,11 +338,17 @@ no new public `Canonicalize()` method is part of this design.
 
 - Operations never turn `Empty` into `Null`. Removing the last ACE gives `Empty` (deny all),
   not `Null` (allow all).
-- Adding to a `Null` DACL: Microsoft is believed to materialize a single
-  "Everyone: full control" ACE first, so the result *keeps* the original null-DACL breadth,
-  and to write it back as null if it is unchanged. This is **oracle item O-3**, and the core
-  will copy whatever is observed. Either way, the core never **creates** a null DACL from
-  `Absent`, `Empty` or `Populated`.
+- Adding to a `Null` DACL. **Observed** ([Windows oracle](../research/acl-windows-oracle/README.md)
+  B1–B4, Microsoft 9.0.0 on 8.0.29/10.0.10):
+  - Absent and NULL DACLs both enumerate as one `Allow Everyone 0xFFFFFFFF CI|OI` rule.
+  - Both export as **absent**. A NULL DACL is not written back as NULL.
+  - Any mutation, including protection, materializes that Everyone full-control ACE as a real ACE.
+  - `RemoveAccess(Everyone, Allow)` yields an **empty** DACL.
+
+  The earlier belief that NULL is written back as NULL was wrong. Whether the portable
+  implementation copies this materialization or refuses it is **not decided**
+  ([open items](acl-decisions.md#still-open-not-decided)). Either way, the core never
+  **creates** a null DACL from `Absent`, `Empty` or `Populated`.
 - An `Absent` SACL becomes `Present` on the first `AddAuditRule`, and only if the SACL was
   retrieved.
 
@@ -579,7 +593,7 @@ parity**.
 | `ObjectSecurityComparisonTests` (Windows, live AD) | Must stay green. Extend `Dacl_change_round_trips_without_replacing_unrequested_security_sections` to cover owner-only, SACL-retrieved-but-unmodified, and clean-projection normalization. Add a `new ActiveDirectorySecurity()` assignment case to capture O-4. |
 | `SecurityRuleValidationComparisonTests` (Windows) | Extend to all 10 classes × every ctor overload: invalid enums, `AuditFlags.None`, `Guid.Empty` handling, exception type and parameter name. Run the same cases on the internal rule specs (Linux), against recorded expected values; public integration awaits the boundary decision. |
 | `LowLevelPublicSurfaceComparisonTests` | The current shipping signatures and test expectations remain unchanged in this research PR. If the same-name candidate is adopted, approve an explicit portable base/identity/collection substitution map and any member omissions before updating expectations. Add protected/static/abstract/virtual metadata checks, assembly-qualified identities, and migrated/unmigrated consumer fixtures. Candidate construction alone cannot pass the full surface gate; blanket BCL equality is not claimed after substitution. |
-| `SidCodecTests` | Move with the codec. Add hex authority ≥ 2³², consumed-length and trailing-bytes cases. |
+| `SidCodecTests` | Move with the codec. Add cases for: parsing `0x`-prefixed authority input, formatting authority ≥ 2³² in decimal (managed `Value` behavior), consumed length, and trailing bytes. |
 | `ChangePasswordAclTests` | Becomes a **byte-exact golden regression** for `ChangePasswordAcl` rewritten on the core. Every existing expected output must be reproduced exactly. |
 
 ### 9.2 Linux offline (FunctionalTests, runs on Linux and Windows, no directory)
@@ -652,18 +666,20 @@ from a claim of general-purpose library compatibility.
 | ID | Item | State / next evidence |
 |---|---|---|
 | B-1 | Stock Linux existing BCL contract | **Blocked**, executed on 8.0.0/10.0.0. Portable-dependency investigation now authorized; final adoption pending (§7). |
-| O-1 | Canonical order/merging/splitting | Prior blanket same-inheritance-only rule disproved by official source; exact net8/net10 Windows recordings pending |
-| O-2 | Set/Reset/Purge scope across GUIDs, opaque ACEs and inherited entries | Windows scripts plus explicit safety-deviation review |
-| O-3 | Null/absent/empty ACL mutations and materialization | Offline Windows oracle; never infer equality of these states |
+| O-1 | Canonical order/merging/splitting | **First recordings made** ([Windows oracle](../research/acl-windows-oracle/README.md), 8.0.29/10.0.10, identical). Complementary scopes merge; object/non-object and differing GUIDs do not; splits and `false` returns recorded. Broader scripted coverage still pending |
+| O-2 | Set/Reset/Purge scope across GUIDs, opaque ACEs and inherited entries | **Recorded for the fixture:** Set removes all explicit same-type ACEs for the SID regardless of GUID; Reset also removes the other type; Purge removes all explicit ACEs; inherited ACEs are kept. Opaque-ACE interaction and safety-deviation review still pending |
+| O-3 | Null/absent/empty ACL mutations and materialization | **Recorded:** absent and NULL both enumerate as Everyone full control, export as absent, and materialize an explicit ACE on mutation (§5.5). Whether to copy this is undecided |
 | O-4 | Modify masks, fresh assignment and dirty/intent semantics | Windows request capture and inherited-entry-point audit; narrowed mask not yet approved as behavioral parity |
-| O-5 | Unaligned/contradictory/revision-mismatched input | Raw accepted bytes remain exact; final reject-vs-accept parity requires Windows cases |
+| O-5 | Unaligned/contradictory/revision-mismatched input | Partly recorded: ACL revision 2 with an object ACE, trailing ACE bytes, unknown ACE/object flags and callback ACEs are preserved by Microsoft. Mandatory-label ACEs in the SACL, audit ACEs in the DACL and IO-only ACEs are **dropped**, and control bit 0x0100 is cleared. Unaligned input is not yet tested |
 | O-6 | Opaque/trailing ACE edit policy | Proposed preserve-or-refuse rule resolved in this design (§5.2); public behavioral deviation still needs approval |
 | O-7 | Concurrent edits / atomic conflict detection | No CAS guarantee; protocol research and separately authorized AD validation remain |
 | O-8 | Coverage | No promotion from internal-core or compilation evidence alone |
 | O-9 | Public compatibility decision | Same-name investigation authorized; candidate namespace, dependency surface, omissions and semantic choices require final review |
-| O-10 | InheritanceType on unmappable flags | Capture getter behavior separately from raw retention |
+| O-10 | InheritanceType on unmappable flags | **Recorded:** OI only → `None`, OI\|CI → `All`, CI\|NP → `SelfAndChildren`, CI\|IO\|NP → `Children`; no exception in these cases |
 | O-11 | LDAP Add | SD-flags ignored: **resolved protocol fact**. Creation defaults, inheritance and privilege behavior remain to be measured |
 | O-12 | Incidental normalization | Raw R / clean P0 / edited P1 / section intent design is resolved; complete BCL adapter attribution is not yet proven |
 
-No Windows oracle or live AD/Samba test was executed in this research environment. See the
-[probe report](../research/acl-contract-probe/README.md) for the narrower executed evidence.
+No live AD or Samba test was executed. An offline, in-memory Windows oracle was executed on
+2026-10-06 ([report](../research/acl-windows-oracle/README.md)). It records Microsoft behavior
+only; no portable implementation exists to compare against it. See the
+[probe report](../research/acl-contract-probe/README.md) for the Linux constructor evidence.
