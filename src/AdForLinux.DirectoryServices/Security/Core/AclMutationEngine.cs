@@ -156,6 +156,8 @@ internal sealed class AclMutationEngine
             if (!isDacl) return new();
             return new() { Create(0, 3, uint.MaxValue, Sid.Parse("S-1-1-0")) };
         }
+        if (acl.AclRevision is not (Acl.Revision or Acl.RevisionDS))
+            throw new InvalidOperationException("Mutation of this ACL revision has not been validated.");
         var lastGroup = -1;
         foreach (var ace in acl.Aces)
         {
@@ -169,6 +171,8 @@ internal sealed class AclMutationEngine
         // D13 normalization is explicit here as part of the requested section mutation.
         var cleanHeader = Acl.Read(DescriptorRewriter.EncodeAcl(null, acl.Aces));
         var projected = MicrosoftObservableProjector.ProjectAcl(cleanHeader, isDacl).Aces.ToList();
+        if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)))
+            throw new InvalidOperationException("This propagation flag combination is outside the recorded directory semantics.");
         if (!isDacl && projected.Count(Explicit) > 1)
             throw new InvalidOperationException("Mutation of multiple explicit SACL entries awaits the I2 ordering decision.");
         return projected;
