@@ -18,4 +18,10 @@
     <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices.AccountManagement\AdForLinux.DirectoryServices.AccountManagement.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Literal Windows observations; replay remains fully offline on every target. -->
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net8.json" LogicalName="AclOracle.Seeded.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net10.json" LogicalName="AclOracle.Seeded.net10.json" />
+  </ItemGroup>
+
 </Project>

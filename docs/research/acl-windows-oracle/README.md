@@ -299,3 +299,34 @@ dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj -f
 ```
 
 On any other OS the executable prints a notice and exits 2 without running a case.
+
+## Issue 226 seeded recording and replay
+
+`SeededSequences.cs` supplements the original report with 266 bounded observations (seed 226).
+The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
+unchanged from [GitHub-hosted Windows run 37532241340](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37532241340),
+head `d1f1fc36c00460469ca14a0d41f34bd709a50f2d`. Microsoft DirectoryServices remains pinned at
+9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
+The functional replay embeds both exact files and asserts output bytes, returns, modified
+flags, exceptions, original immutability and section intent on Linux and Windows.
+
+The generator records the **effective constructed Microsoft rule**, as well as its requested
+shape. This distinction matters: a requested object GUID on `ListChildren` is removed by the
+Microsoft rule constructor. Earlier exploratory runs logged only the requested shape; those
+outputs are retained in their Actions artifacts and are not used as replay expectations.
+
+New measured findings:
+
+- The bounded common/object access/audit sequences successfully execute Add, Set, Reset,
+  Remove, RemoveSpecific, RemoveAll, Purge, protection and owner/group changes.
+- Combined audit mask, audit qualifier and scope subtraction produces three ACEs in the
+  recorded order (four common/object, success/failure cases).
+- Detached `SetAccessRuleProtection(true, true)` preserves inherited flags and order. It does
+  **not** convert those ACEs into explicit ACEs in these recordings, correcting the earlier
+  design assumption. Protection with `preserveInheritance=false` removes them.
+- One sequence temporarily contains two audit ACEs for one SID (common ListChildren plus
+  object-qualified Self). Replacing all of those entries with Set succeeds without adopting
+  any existing-entry sort policy.
+
+These findings do not resolve the I2 SACL sorting decision. Unsupported movement/loss is
+still refused by the portable implementation, and no directory-write behavior is claimed.

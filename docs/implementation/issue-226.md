@@ -31,6 +31,8 @@ retain the original NULL representation.
 
 - Add, Set, Reset, Remove, RemoveSpecific and RemoveAll dispatch for access/audit sections;
   explicit SID purge, owner/group replacement and protection changes.
+  Detached protection preserves inherited flags/order when requested, as the new Windows
+  recordings establish; removing inheritance drops the entries.
 - Mask OR, complementary container scopes, same-shape audit success/failure merge;
   no merge across qualifier, object/non-object or distinct GUID shape.
 - Remove splits remaining mask, audit and container propagation dimensions; returns false
@@ -39,7 +41,9 @@ retain the original NULL representation.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3. `MicrosoftObservableProjectorTests` exercises exact D13
+D1/D2, E1/E2, F1 and G1–G3, plus 266 newly recorded scripted steps including all audit
+operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
+allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
 unknown-data preservation outside changed ACLs, overlap, bounded sizes and deterministic
 safe mask algebra. Existing codec/SID tests remain part of the explicit offline filter.
@@ -49,15 +53,17 @@ safe mask algebra. Existing codec/SID tests remain part of the explicit offline 
 This draft does not claim completion of all issue 226 acceptance criteria.
 
 - The I2 multi-entry SACL sorting policy is unresolved. Mutations with more than one existing
-  explicit audit entry refuse before publication; simple single-entry merges/splits and
-  replacements remain supported. No existing audit entries are silently sorted.
+  explicit audit entry refuse before publication, except Set/Reset that replace every
+  explicit audit for the same SID; simple single-entry merges/splits and replacements remain
+  supported. No existing audit entries are silently sorted. Decreasing explicit SID order
+  within an otherwise canonical subgroup also refuses instead of adopting unreviewed sorting.
 - A changed ACL containing opaque/callback/unknown flags or recognized ACE trailing payload
   refuses as a whole. Owner/group or another section may still change while those bytes stay
   exact. This is intentionally narrower than Microsoft's H2 unrelated-add behavior.
 - Full conditional ACE semantics, object-right-specific matching beyond the recorded shape
   cases, arbitrary OI propagation, and generalized multi-step normalization are not established
-  by the current recordings. Seeded detached Windows recordings are required before expanding
-  parity claims. No effective-access evaluator is claimed.
+  by the current recordings. Active propagation combinations outside 0/2/3/6/10/14 refuse.
+  Additional detached Windows recordings are required before expanding parity claims. No effective-access evaluator is claimed.
 - Active zero-mask and audit-without-success/failure projection are refused; only the exact
   inactive D13 exception may drop them. Meaningful labels/audit entries never disappear.
 - Descriptor gap/tail relocation, public exception/constructor parity and write-mask policy
@@ -74,3 +80,8 @@ and self-hosted differential workflows are untouched.
 The copied standalone oracle records detached Microsoft System.DirectoryServices 9.0.0
 behavior. Successful process exit records execution, not parity; replay assertions supply
 that evidence. Exact head validation and run URLs are reported in the draft PR.
+
+The exact seeded recording provenance is documented in the oracle README. Tests replay both
+Linux and Windows outputs, not generated expectations. The original J6 examples include
+orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
+shared-storage examples successfully unshare and preserve all referenced components.

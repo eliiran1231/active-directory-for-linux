@@ -73,6 +73,17 @@ internal static class MicrosoftObservableProjector
             else result.Add(ace);
         }
 
+        if (isDacl && !HasCanonicalQualifierOrder(result))
+        {
+            // G: Microsoft leaves a known noncanonical ACL in its original order. Do not
+            // apply the canonical object partition to such a list. Mixed normalization of
+            // noncanonical input is not independently established by these recordings.
+            if (result.Count != acl.Aces.Count
+                || result.Where((ace, index) => !ace.RawBytes.SequenceEqual(acl.Aces[index].RawBytes)).Any())
+                throw new InvalidOperationException("Normalization of a noncanonical DACL is not validated.");
+            return acl;
+        }
+
         // Only partition inside existing explicit qualifier groups. Never move an inherited
         // ACE, cross deny/allow boundaries, or adopt the unresolved SACL sorting behavior.
         if (isDacl)
@@ -91,7 +102,51 @@ internal static class MicrosoftObservableProjector
             }
         }
 
+        RefuseUnreviewedExplicitOrdering(result, isDacl);
         return Acl.Read(DescriptorRewriter.EncodeAcl(acl, result));
+    }
+
+    private static void RefuseUnreviewedExplicitOrdering(IReadOnlyList<Ace> aces, bool isDacl)
+    {
+        Ace? previous = null;
+        var previousGroup = -1;
+        foreach (var ace in aces)
+        {
+            // Inherited order belongs to the parent and is never sorted by this projector.
+            if ((ace.AceFlags & Inherited) != 0) { previous = null; previousGroup = -1; continue; }
+            var objectAce = ace.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit;
+            var group = (isDacl && !IsDeny(ace) ? 2 : 0) + (objectAce ? 1 : 0);
+            if (!isDacl && group < previousGroup)
+                throw new InvalidOperationException("Microsoft SACL object-family reordering is not approved.");
+            if (previous is not null && group == previousGroup && CompareSid(previous.Sid!, ace.Sid!) > 0)
+                throw new InvalidOperationException("Microsoft explicit-subgroup SID reordering is not approved.");
+            previous = ace;
+            previousGroup = group;
+        }
+    }
+
+    private static int CompareSid(Sid left, Sid right)
+    {
+        var comparison = left.IdentifierAuthority.CompareTo(right.IdentifierAuthority);
+        if (comparison != 0) return comparison;
+        for (var index = 0; index < Math.Min(left.SubAuthorityCount, right.SubAuthorityCount); index++)
+        {
+            comparison = left.GetSubAuthority(index).CompareTo(right.GetSubAuthority(index));
+            if (comparison != 0) return comparison;
+        }
+        return left.SubAuthorityCount.CompareTo(right.SubAuthorityCount);
+    }
+
+    private static bool HasCanonicalQualifierOrder(IReadOnlyList<Ace> aces)
+    {
+        var previous = -1;
+        foreach (var ace in aces)
+        {
+            var group = (ace.AceFlags & Inherited) != 0 ? 2 : IsDeny(ace) ? 0 : 1;
+            if (group < previous) return false;
+            previous = group;
+        }
+        return true;
     }
 
     private static bool IsDeny(Ace ace) => ace.AceType is Ace.AccessDeniedType or Ace.AccessDeniedObjectType;

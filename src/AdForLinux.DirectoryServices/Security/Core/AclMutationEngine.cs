@@ -31,7 +31,7 @@ internal sealed class AclMutationEngine
         var isDacl = ValidateSection(section);
         ValidateRule(rule, isDacl);
         var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
-        var aces = Prepare(section, isDacl);
+        var aces = Prepare(section, isDacl, operation is AclModification.Set or AclModification.Reset ? rule.Sid : null);
         var returned = true;
         switch (operation)
         {
@@ -74,18 +74,9 @@ internal sealed class AclMutationEngine
         var aces = Prepare(section, isDacl);
         var bit = isDacl ? 0x1000 : 0x2000;
         var control = (ushort)(isProtected ? Descriptor.Control | bit : Descriptor.Control & ~bit);
-        if (isProtected)
-        {
-            if (!preserveInheritance) aces.RemoveAll(ace => !Explicit(ace));
-            else
-            {
-                // Converting inherited ACEs can require movement. Only understood ACEs reach here.
-                aces = aces.Select(ace => With(ace, ace.AccessMask, (byte)(ace.AceFlags & ~0x10))).ToList();
-                if (!isDacl && aces.Count > 1)
-                    throw new InvalidOperationException("SACL reordering after inheritance conversion is deferred.");
-                aces = aces.OrderBy(ace => Rank(ace, isDacl)).ToList();
-            }
-        }
+        // The detached AD oracle retains INHERITED bits when preserving inheritance;
+        // conversion/recalculation at a directory write is outside this internal engine.
+        if (isProtected && !preserveInheritance) aces.RemoveAll(ace => !Explicit(ace));
         return PublishAcl(section, baseline, aces, control, true, true);
     }
 
@@ -120,6 +111,13 @@ internal sealed class AclMutationEngine
             var old = new byte[baseline.BinaryLength];
             baseline.WriteTo(old);
             if (bytes.AsSpan().SequenceEqual(old)) return new(this, returned, modified);
+            // A clean projection is not write intent: no-match/identical operations must
+            // not publish incidental IO/NP/order normalization of the raw baseline.
+            var clean = Acl.Read(DescriptorRewriter.EncodeAcl(null, baseline.Aces));
+            var projected = MicrosoftObservableProjector.ProjectAcl(clean, section == SecurityMasks.Dacl);
+            if (projected.Aces.Count == aces.Count
+                && projected.Aces.Select((ace, index) => ace.RawBytes.SequenceEqual(aces[index].RawBytes)).All(equal => equal))
+                return new(this, returned, modified);
         }
         var descriptor = DescriptorRewriter.Rewrite(Descriptor, control,
             new Dictionary<SecurityMasks, byte[]?> { [section] = bytes });
@@ -148,7 +146,7 @@ internal sealed class AclMutationEngine
         if (!Descriptor.IsRetrieved(section)) throw new InvalidOperationException("The section was not retrieved.");
     }
 
-    private List<Ace> Prepare(SecurityMasks section, bool isDacl)
+    private List<Ace> Prepare(SecurityMasks section, bool isDacl, Sid? auditReplacementSid = null)
     {
         var acl = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
         if (acl is null)
@@ -173,7 +171,8 @@ internal sealed class AclMutationEngine
         var projected = MicrosoftObservableProjector.ProjectAcl(cleanHeader, isDacl).Aces.ToList();
         if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)))
             throw new InvalidOperationException("This propagation flag combination is outside the recorded directory semantics.");
-        if (!isDacl && projected.Count(Explicit) > 1)
+        if (!isDacl && projected.Count(Explicit) > 1
+            && (auditReplacementSid is null || projected.Any(ace => Explicit(ace) && !auditReplacementSid.Equals(ace.Sid))))
             throw new InvalidOperationException("Mutation of multiple explicit SACL entries awaits the I2 ordering decision.");
         return projected;
     }

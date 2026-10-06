@@ -1,0 +1,92 @@
+using System.Text.Json;
+using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.Security.Core;
+using Xunit;
+using CoreAce = AdForLinux.DirectoryServices.Security.Core.Ace;
+
+namespace AdForLinux.FunctionalTests;
+
+public partial class AclMutationReplayTests
+{
+    // Each case begins with the actual serialized Microsoft input of that step, so a
+    // failure identifies one operation independently of earlier portable mutations.
+    [Theory]
+    [MemberData(nameof(RecordedSeededSteps))]
+    public void Seeded_Microsoft_step_matches_recorded_outcome(string sequence, int index, string json)
+    {
+        Assert.False(string.IsNullOrEmpty(sequence));
+        Assert.True(index >= 0);
+        using var document = JsonDocument.Parse(json);
+        var step = document.RootElement;
+        var original = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
+        var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+        var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
+        var operation = step.GetProperty("Operation").GetString()!;
+        var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
+        AclMutationResult? result = null;
+        var exception = Record.Exception(() =>
+        {
+            var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
+            result = operation switch
+            {
+                "Owner" => engine.SetOwner(sid),
+                "Group" => engine.SetGroup(sid),
+                "Purge" => engine.Purge(section, sid),
+                "Protect" => engine.SetProtection(section, true, true),
+                "ProtectDrop" => engine.SetProtection(section, true, false),
+                "Unprotect" => engine.SetProtection(section, false, true),
+                _ => engine.Modify(section, Enum.Parse<AclModification>(operation),
+                    CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
+            };
+        });
+        Assert.Equal(step.GetProperty("ExceptionType").GetString(), exception?.GetType().FullName);
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+        if (exception is not null)
+        {
+            Assert.Null(result);
+            Assert.Equal(original, expected); // Recorded failures must also be atomic.
+            return;
+        }
+        Assert.NotNull(result);
+        Assert.Equal(expected, result.Engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+        if (step.GetProperty("ReturnValue").ValueKind != JsonValueKind.Null)
+            Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
+        if (step.GetProperty("Modified").ValueKind != JsonValueKind.Null)
+            Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
+        var target = operation switch
+        {
+            "Owner" => SecurityMasks.Owner,
+            "Group" => SecurityMasks.Group,
+            _ => section,
+        };
+        Assert.Equal(original.SequenceEqual(expected) ? SecurityMasks.None : target, result.Engine.WriteIntent);
+    }
+
+    [Fact]
+    public void Seeded_net8_and_net10_recordings_have_identical_observations()
+    {
+        using var net8 = ReadSeededRecording("net8");
+        using var net10 = ReadSeededRecording("net10");
+        Assert.Equal(net8.RootElement.GetProperty("Seed").GetInt32(), net10.RootElement.GetProperty("Seed").GetInt32());
+        Assert.Equal(net8.RootElement.GetProperty("MicrosoftAssembly").GetString(), net10.RootElement.GetProperty("MicrosoftAssembly").GetString());
+        Assert.Equal(net8.RootElement.GetProperty("Observations").GetRawText(), net10.RootElement.GetProperty("Observations").GetRawText());
+    }
+
+    public static IEnumerable<object[]> RecordedSeededSteps()
+    {
+        using var recording = ReadSeededRecording("net8");
+        Assert.Equal(1, recording.RootElement.GetProperty("SchemaVersion").GetInt32());
+        foreach (var step in recording.RootElement.GetProperty("Observations").EnumerateArray())
+            yield return new object[] { step.GetProperty("Sequence").GetString()!, step.GetProperty("Index").GetInt32(), step.GetRawText() };
+    }
+
+    private static JsonDocument ReadSeededRecording(string framework)
+    {
+        using var stream = typeof(AclMutationReplayTests).Assembly.GetManifestResourceStream($"AclOracle.Seeded.{framework}.json")
+            ?? throw new InvalidOperationException("Missing embedded Microsoft oracle recording.");
+        return JsonDocument.Parse(stream);
+    }
+}

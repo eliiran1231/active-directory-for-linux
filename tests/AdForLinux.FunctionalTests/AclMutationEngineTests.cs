@@ -46,6 +46,31 @@ public class AclMutationEngineTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Trailing_payload_refuses_all_acl_operation_families(bool audit, bool objectAce)
+    {
+        var tail = new byte[] { 0xFA, 0xCE, 0xBA, 0xBE };
+        var type = (byte)(audit ? objectAce ? 7 : 2 : objectAce ? 5 : 0);
+        var flags = (byte)(audit ? 0x40 : 0);
+        var rawAce = objectAce ? ObjAce(type, flags, 0x10, 1, G1, null, U1, tail)
+            : Ace(type, flags, 0x10, U1, tail);
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var raw = audit ? Build(Admins, Admins, Acl(4), Acl(4, rawAce)) : WithDacl(rawAce);
+        var engine = Engine(raw);
+        foreach (var operation in Enum.GetValues<AclModification>())
+            Assert.Throws<InvalidOperationException>(() => engine.Modify(section, operation, Rule(0x10, (byte)(audit ? 2 : 0), flags)));
+        Assert.Throws<InvalidOperationException>(() => engine.Purge(section, Trustee(U1)));
+        Assert.Throws<InvalidOperationException>(() => engine.SetProtection(section, true, false));
+        Assert.Throws<InvalidOperationException>(() => engine.SetProtection(section, true, true));
+        Assert.Throws<InvalidOperationException>(() => engine.SetProtection(section, false, true));
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+    }
+
+    [Theory]
     [MemberData(nameof(UnsafeDacls))]
     public void Owner_and_group_edits_preserve_opaque_acl_bytes(string reason, byte[] acl)
     {
@@ -133,8 +158,8 @@ public class AclMutationEngineTests
             var added = original.Modify(SecurityMasks.Dacl, AclModification.Add, Rule(second));
             var removed = added.Engine.Modify(SecurityMasks.Dacl, AclModification.Remove, Rule(second));
             Assert.True(removed.ReturnValue);
-            Assert.Equal(first, Assert.Single(removed.Engine.Descriptor.Dacl!.Aces.Where(a => a.Sid!.Equals(Trustee(U1)))).AccessMask);
-            Assert.Equal(other, Assert.Single(removed.Engine.Descriptor.Dacl.Aces.Where(a => a.Sid!.Equals(Trustee(U2)))).RawBytes.ToArray());
+            Assert.Equal(first, Assert.Single(removed.Engine.Descriptor.Dacl!.Aces, a => a.Sid!.Equals(Trustee(U1))).AccessMask);
+            Assert.Equal(other, Assert.Single(removed.Engine.Descriptor.Dacl.Aces, a => a.Sid!.Equals(Trustee(U2))).RawBytes.ToArray());
             Assert.Equal(sacl, AclBytes(removed.Engine.Descriptor, 12));
             Assert.Equal(SecurityMasks.Dacl, removed.Engine.WriteIntent);
             Assert.Equal(bytes, original.Descriptor.GetBinaryForm());
@@ -202,7 +227,7 @@ public class AclMutationEngineTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Protection_removes_or_converts_inherited_aces_without_editing_original(bool preserve)
+    public void Protection_removes_or_preserves_inherited_aces_without_editing_original(bool preserve)
     {
         var explicitAce = Ace(0, 0, 0x10, U1);
         var inheritedAce = Ace(0, 0x12, 0x20, U2);
@@ -211,9 +236,9 @@ public class AclMutationEngineTests
         var result = engine.SetProtection(SecurityMasks.Dacl, true, preserve);
         Assert.Equal(0x1000, result.Engine.Descriptor.Control & 0x1000);
         Assert.Equal(preserve ? 2 : 1, result.Engine.Descriptor.Dacl!.Aces.Count);
-        Assert.All(result.Engine.Descriptor.Dacl.Aces, a => Assert.Equal(0, a.AceFlags & 0x10));
+        if (!preserve) Assert.All(result.Engine.Descriptor.Dacl.Aces, a => Assert.Equal(0, a.AceFlags & 0x10));
         Assert.Equal(explicitAce, result.Engine.Descriptor.Dacl.Aces[0].RawBytes.ToArray());
-        if (preserve) Assert.Equal(Ace(0, 2, 0x20, U2), result.Engine.Descriptor.Dacl.Aces[1].RawBytes.ToArray());
+        if (preserve) Assert.Equal(inheritedAce, result.Engine.Descriptor.Dacl.Aces[1].RawBytes.ToArray());
         Assert.Equal(SecurityMasks.Dacl, result.Engine.WriteIntent);
         Assert.Equal(bytes, engine.Descriptor.GetBinaryForm());
     }
@@ -306,6 +331,34 @@ public class AclMutationEngineTests
         Assert.Throws<InvalidOperationException>(() => engine.SetProtection(SecurityMasks.Sacl, true, true));
         Assert.Equal(bytes, engine.Descriptor.GetBinaryForm());
         Assert.Equal((SecurityMasks)0, engine.WriteIntent);
+    }
+
+    [Fact]
+    public void Noop_does_not_publish_projection_normalization_as_write_intent()
+    {
+        var objectAce = ObjAce(5, 0, 0x10, 1, G1, null, U1);
+        var raw = WithDacl(objectAce, Ace(0, 0, 0x20, U2), Ace(0, 8, 0x10, U1));
+        var engine = Engine(raw);
+        var duplicate = engine.Modify(SecurityMasks.Dacl, AclModification.Add, CoreAce.Read(objectAce));
+        var missing = engine.Modify(SecurityMasks.Dacl, AclModification.Remove, Rule(0x100));
+        Assert.Same(engine, duplicate.Engine);
+        Assert.Same(engine, missing.Engine);
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(9)]
+    [InlineData(15)]
+    public void Unrecorded_propagation_refuses_atomically(byte flags)
+    {
+        var raw = WithDacl(Ace(0, flags, 0x10, U1));
+        var engine = Engine(raw);
+        Assert.Throws<InvalidOperationException>(() => engine.Modify(SecurityMasks.Dacl, AclModification.Remove, Rule()));
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
     }
 
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
