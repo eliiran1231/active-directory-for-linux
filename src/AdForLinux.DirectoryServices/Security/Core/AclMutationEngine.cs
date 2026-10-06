@@ -233,13 +233,15 @@ internal sealed class AclMutationEngine
                 aces[i] = With(ace, ace.AccessMask | rule.AccessMask, ace.AceFlags);
                 return;
             }
-            if (!sameShape || ace.AccessMask != rule.AccessMask) continue;
-            if ((ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
+            if (ace.AccessMask != rule.AccessMask) continue;
+            if ((sameShape || CanMergeEmptyObjectAudit(ace, rule))
+                && (ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
             {
                 aces[i] = With(ace, ace.AccessMask, (byte)(ace.AceFlags | rule.AceFlags));
                 return;
             }
-            if ((ace.AceFlags & 0xC0) == (rule.AceFlags & 0xC0)
+            if ((sameShape || CanMergeUnqualifiedDescendants(ace, rule))
+                && (ace.AceFlags & 0xC0) == (rule.AceFlags & 0xC0)
                 && TryFlags(Scope(ace) | Scope(rule), out var flags))
             {
                 aces[i] = With(ace, ace.AccessMask, (byte)((ace.AceFlags & 0xC0) | flags));
@@ -255,7 +257,7 @@ internal sealed class AclMutationEngine
 
     // Recorded asymmetric Stage 1 merge only. The existing unqualified ACE already
     // covers every incoming object-qualified bit; only additional global bits widen it.
-    // Keep its exact GUID shape. Reverse direction and later merge stages stay separate.
+    // Keep its exact GUID shape. Later stages have their own recorded predicates.
     private static bool CanAbsorbObjectMask(Ace existing, Ace incoming) =>
         existing.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit
         && (existing.ObjectFlags & Ace.ObjectTypePresent) == 0
@@ -263,6 +265,24 @@ internal sealed class AclMutationEngine
         && existing.InheritedObjectType == incoming.InheritedObjectType
         && (existing.AccessMask & incoming.AccessMask & ObjectQualifiedRights)
             == (incoming.AccessMask & ObjectQualifiedRights);
+
+    // Recorded Stage 2: GUID-value equality permits audit merging despite an
+    // existing present-empty OT versus an absent incoming OT. Preserve existing bytes.
+    private static bool CanMergeEmptyObjectAudit(Ace existing, Ace incoming) =>
+        existing.Kind == AceKind.ObjectAudit
+        && existing.ObjectFlags == 3 && incoming.ObjectFlags == 2
+        && existing.ObjectType == Guid.Empty
+        && existing.InheritedObjectType == incoming.InheritedObjectType
+        && (existing.AceFlags & 0x0F) == 2;
+
+    // Recorded Stage 3 direction only: self (or the already merged All scope)
+    // without IOT absorbs same-OT descendants with IOT. The reverse stays separate.
+    private static bool CanMergeUnqualifiedDescendants(Ace existing, Ace incoming) =>
+        existing.AceType == 5
+        && existing.ObjectFlags == 1 && incoming.ObjectFlags == 3
+        && existing.ObjectType != Guid.Empty && existing.ObjectType == incoming.ObjectType
+        && incoming.InheritedObjectType != Guid.Empty
+        && existing.AceFlags is 0 or 2 && incoming.AceFlags == 0x0A;
 
     private static bool Remove(List<Ace> aces, Ace rule)
     {

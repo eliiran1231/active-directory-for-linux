@@ -589,6 +589,66 @@ public class AclMutationEngineTests
         Assert.Equal(rule.RawBytes.ToArray(), result.Engine.Descriptor.Dacl.Aces[1].RawBytes.ToArray());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Later_stage_merge_preserves_shape_metadata_snapshots_and_prior_intent(bool audit)
+    {
+        var existing = audit ? ObjAce(7, 0x42, 0x10, 3, Guid.Empty, G2, U1)
+            : ObjAce(5, 0, 0x10, 1, G1, null, U1);
+        var incoming = audit ? ObjAce(7, 0x82, 0x10, 2, null, G2, U1)
+            : ObjAce(5, 0x0A, 0x10, 3, G1, G2, U1);
+        var acl = AclWithTail(4, new byte[] { 0xFA, 0xCE, 0xBA, 0xBE }, existing);
+        acl[1] = 0x71;
+        acl[6] = 0x39;
+        var opaque = Acl(4, Ace(0x20, 0x20, 0x10, U2));
+        var original = audit ? Build(Admins, Admins, opaque, acl) : Build(Admins, Admins, acl, opaque);
+        var engine = Engine(original).SetOwner(Trustee(U2)).Engine;
+        var current = engine.Descriptor.GetBinaryForm();
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var rule = CoreAce.Read(incoming);
+        var result = engine.Modify(section, AclModification.Add, rule);
+        Assert.True(result.ReturnValue);
+        Assert.True(result.Modified);
+        var expectedAcl = acl.ToArray();
+        expectedAcl[9] = (byte)(audit ? 0xC2 : 2); // only flags change; GUID presence stays exact
+        Assert.Equal(expectedAcl, AclBytes(result.Engine.Descriptor, audit ? 12 : 16));
+        Assert.Equal(opaque, AclBytes(result.Engine.Descriptor, audit ? 16 : 12));
+        Assert.Equal(SecurityMasks.Owner | section, result.Engine.WriteIntent);
+        var repeated = result.Engine.Modify(section, AclModification.Add, rule);
+        Assert.True(repeated.ReturnValue);
+        Assert.True(repeated.Modified);
+        Assert.Same(result.Engine, repeated.Engine);
+        Assert.Equal(SecurityMasks.Owner | section, repeated.Engine.WriteIntent);
+        Assert.Equal(current, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, repeated.Engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(incoming, rule.RawBytes.ToArray());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Later_stage_merge_does_not_absorb_distinct_rights_or_guid_scopes(int boundary)
+    {
+        var audit = boundary >= 2;
+        var existing = audit ? ObjAce(7, 0x42, 0x10, 3, boundary == 3 ? G1 : Guid.Empty, G2, U1)
+            : ObjAce(5, 0, 0x10, 1, G1, null, U1);
+        var incoming = audit ? ObjAce(7, 0x82, 0x10, 2, null, boundary == 2 ? G1 : G2, U1)
+            : ObjAce(5, 0x0A, boundary == 1 ? 0x20u : 0x10u, 3, boundary == 0 ? G2 : G1, G2, U1);
+        var original = audit ? Build(Admins, Admins, Acl(4), Acl(4, existing)) : WithDacl(existing);
+        var engine = Engine(original);
+        var result = engine.Modify(audit ? SecurityMasks.Sacl : SecurityMasks.Dacl,
+            AclModification.Add, CoreAce.Read(incoming));
+        var aces = (audit ? result.Engine.Descriptor.Sacl : result.Engine.Descriptor.Dacl)!.Aces;
+        Assert.Equal(2, aces.Count);
+        Assert.Equal(existing, aces[0].RawBytes.ToArray());
+        Assert.Equal(incoming, aces[1].RawBytes.ToArray());
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+    }
+
     [Fact]
     public void Mixed_success_false_exception_noop_and_recovery_preserve_every_snapshot()
     {

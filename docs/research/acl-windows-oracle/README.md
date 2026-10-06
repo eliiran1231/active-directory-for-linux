@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 666 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 674 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37539461545](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37539461545),
-head `d956d2c00e61b7f58adebb717b426bf6c1c898df`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37542059850](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37542059850),
+head `0df679d6f03146f166e3199a86101434ee3d4799`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,7 +344,7 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 666 individual steps also replay end to end by sequence, retaining the original raw
+The 674 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
@@ -387,7 +387,7 @@ stateful failure against those 216 observations. Removing that gate lets the exi
 recorded DS algorithms handle the matrix without changes to merge/split logic. Late-failure
 safety tests cover invalid common and object OI propagation after staging an earlier edit.
 
-The final 42 observations isolate asymmetric object-mask Add. Seven existing/incoming
+A 42-observation extension isolate asymmetric object-mask Add. Seven existing/incoming
 mask pairs run forward and reverse, for DACL and matching/different audit flags. The
 forward existing ACE has only IOT=G2; the incoming rule adds OT=G1 with the same IOT.
 Eight cases merge into the existing object ACE: four absorbed no-ops and four mask changes
@@ -396,12 +396,31 @@ flags retain two ACEs in the other 34 cases. All return/modified values are true
 no exceptions or raw import differences. The issue concerns byte shape, no-op and intent
 parity; these recordings do not establish an effective-access escalation.
 
-The latest recording run intentionally failed freshness comparison because it added
+The earlier run 37539461545 intentionally failed freshness comparison because it added
 those 42 cases to the committed 624; the first 624 are unchanged. Both portable test steps
 passed. The old SameShape gate caused eight individual replay failures and one stateful
 failure. The fix relaxes only Stage 1 mask merging for identical type/SID/flags and inherited
 GUID, an absent existing ObjectType flag, and coverage of every incoming 0x13B-qualified
 bit. It retains the existing GUID shape. A present Guid.Empty is not an absent field.
-Later merge stages, unknown/trailing checks, SACL sorting, import compaction and descriptor
-relocation policy remain unchanged. Other asymmetric GUID/scope or constructor parity
+That change left later merge stages, unknown/trailing checks, SACL sorting, import compaction
+and descriptor relocation policy unchanged. Other asymmetric GUID/scope or constructor parity
 is not established by this bounded matrix.
+
+
+The latest eight observations (`later-merge-*`) close two concrete source-supported leads:
+
+- Stage 3 forward: same-OT self with absent IOT plus descendants with IOT becomes All,
+  retaining absent IOT. Reverse retains two ACEs. Repeated Add is byte-identical in both.
+- Stage 2 forward: success with present-empty OT plus failure with absent OT (same mask,
+  IOT and CI) combines audit flags, retaining the existing present-empty field. Reverse
+  requested-empty OT is normalized to absent by the rule constructor; actual RuleHex
+  records this and the existing same-shape merge retains absent OT. Repeats are unchanged.
+- All eight return true/modified=true; all requested descriptor bytes survive import.
+  This demonstrates mutation behavior without new import or SACL sorting policy.
+
+Run 37542059850 intentionally failed freshness because the new 674 observations differed
+from the committed 666; both portable steps passed. The first 666 observations are exactly
+unchanged, and .NET 8/10 agree on all 674. The previous engine failed four new individual
+steps plus stateful replay. Narrow Stage 2/3 predicates fix those cases, with exact GUID
+shape preservation, prior-intent/no-op tests and negative mask/OT/IOT boundary coverage.
+The implementation acceptance matrix documents predicate scope and remaining policy gaps.
