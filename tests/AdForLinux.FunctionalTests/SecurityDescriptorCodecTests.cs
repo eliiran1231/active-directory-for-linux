@@ -76,6 +76,44 @@ public class SecurityDescriptorCodecTests
 
         Assert.Equal(input, descriptor.GetBinaryForm());
         Assert.Equal(snapshot, input);
+        Assert.False(descriptor.HasOverlappingComponents);
+    }
+
+    // Layouts whose components share bytes. Microsoft RawSecurityDescriptor and
+    // ActiveDirectorySecurity 9.0.0 accept all of these (offline Windows oracle, case J6).
+    private static readonly Dictionary<string, byte[]> Overlapping = new()
+    {
+        ["owner offset equals group offset"] = WithOffset(Corpus["SACL and DACL"], 8, ReadU32(Corpus["SACL and DACL"], 4)),
+        ["SACL offset equals DACL offset"] = WithOffset(Corpus["SACL and DACL"], 12, ReadU32(Corpus["SACL and DACL"], 16)),
+        ["group SID inside a DACL ACE"] = WithOffset(Corpus["populated DACL"], 8, ReadU32(Corpus["populated DACL"], 16) + 16),
+        ["owner SID inside a DACL ACE"] = WithOffset(Corpus["populated DACL"], 4, ReadU32(Corpus["populated DACL"], 16) + 16),
+    };
+
+    public static TheoryData<string> OverlappingNames => new(Overlapping.Keys);
+
+    [Theory]
+    [MemberData(nameof(OverlappingNames))]
+    public void Shared_component_storage_is_accepted_and_round_trips(string name)
+    {
+        var input = Overlapping[name];
+
+        var descriptor = SecurityDescriptor.Parse(input, All);
+
+        Assert.True(descriptor.HasOverlappingComponents);
+        Assert.Equal(input, descriptor.GetBinaryForm());
+    }
+
+    [Fact]
+    public void Shared_storage_components_read_the_same_bytes()
+    {
+        var sameOwnerGroup = SecurityDescriptor.Parse(Overlapping["owner offset equals group offset"], All);
+        var sharedAcl = SecurityDescriptor.Parse(Overlapping["SACL offset equals DACL offset"], All);
+        var groupInAce = SecurityDescriptor.Parse(Overlapping["group SID inside a DACL ACE"], All);
+
+        Assert.Equal(sameOwnerGroup.Owner, sameOwnerGroup.Group);
+        Assert.Equal(sharedAcl.Dacl!.Aces.Single().RawBytes.ToArray(), sharedAcl.Sacl!.Aces.Single().RawBytes.ToArray());
+        Assert.Equal("S-1-1-0", groupInAce.Group!.ToString());
+        Assert.Equal(groupInAce.Dacl!.Aces.Single().Sid, groupInAce.Group);
     }
 
     [Theory]
@@ -290,8 +328,6 @@ public class SecurityDescriptorCodecTests
         ["ACE count with missing ACE header"] = () => With(Corpus["populated DACL"], d => WriteU16(d, DaclAt(d) + 4, 2)),
         ["ACE size below 4"] = () => With(Corpus["populated DACL"], d => WriteU16(d, DaclAt(d) + 10, 3)),
         ["ACE size past ACL end"] = () => With(Corpus["populated DACL"], d => WriteU16(d, DaclAt(d) + 10, 200)),
-        ["owner and group share bytes"] = () => { var d = Corpus["populated DACL"]; return WithOffset(d, 8, ReadU32(d, 4)); },
-        ["SACL and DACL share bytes"] = () => { var d = Corpus["SACL and DACL"]; return WithOffset(d, 12, ReadU32(d, 16)); },
         ["SACL offset inside header"] = () => WithOffset(Corpus["SACL and DACL"], 12, 19),
     };
 

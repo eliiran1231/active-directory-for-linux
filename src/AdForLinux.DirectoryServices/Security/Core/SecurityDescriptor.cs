@@ -23,9 +23,10 @@ internal enum AclState
 
 /// <summary>
 /// An immutable self-relative security descriptor. Parsing never reorders or normalizes:
-/// component order, gaps, unknown control bits, reserved fields, opaque ACEs and trailing bytes
-/// are all retained, and <see cref="GetBinaryForm"/> reproduces an accepted input byte for byte.
-/// Sections that the read did not request are tracked separately from sections that are absent.
+/// component order and offsets, gaps, unknown control bits, reserved fields, opaque ACEs and
+/// trailing bytes are all retained, and <see cref="GetBinaryForm"/> reproduces an accepted input
+/// byte for byte. Components may share storage (Microsoft accepts this; oracle J6). Sections that
+/// the read did not request are tracked separately from sections that are absent.
 /// </summary>
 internal sealed class SecurityDescriptor
 {
@@ -34,35 +35,41 @@ internal sealed class SecurityDescriptor
     internal const ushort DaclPresent = 0x0004;
     internal const ushort SaclPresent = 0x0010;
     private const SecurityMasks AllSections = SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
+    private const int OwnerField = 4;
+    private const int GroupField = 8;
+    private const int SaclField = 12;
+    private const int DaclField = 16;
 
     private readonly Sid? _owner;
     private readonly Sid? _group;
     private readonly Acl? _sacl;
     private readonly Acl? _dacl;
-    private readonly Segment[] _layout;
 
-    private SecurityDescriptor(
-        byte revision, byte sbz1, ushort control, SecurityMasks retrievedSections,
-        Sid? owner, Sid? group, Acl? sacl, Acl? dacl, Segment[] layout)
+    // Original layout: the input image supplies gap and trailing bytes; components are written
+    // over it from the model at their original offsets (0 = component not stored).
+    private readonly byte[] _image;
+    private readonly int _ownerOffset;
+    private readonly int _groupOffset;
+    private readonly int _saclOffset;
+    private readonly int _daclOffset;
+
+    private SecurityDescriptor(byte[] image, SecurityMasks retrievedSections,
+        Sid? owner, Sid? group, Acl? sacl, Acl? dacl, bool hasOverlappingComponents)
     {
-        Revision = revision;
-        Sbz1 = sbz1;
-        Control = control;
+        _image = image;
+        Revision = image[0];
+        Sbz1 = image[1];
+        Control = BinaryPrimitives.ReadUInt16LittleEndian(image.AsSpan(2));
         RetrievedSections = retrievedSections;
         _owner = owner;
         _group = group;
         _sacl = sacl;
         _dacl = dacl;
-        _layout = layout;
-    }
-
-    private enum Component
-    {
-        Gap,
-        Owner,
-        Group,
-        Sacl,
-        Dacl,
+        _ownerOffset = owner is null ? 0 : ReadOffset(image, OwnerField);
+        _groupOffset = group is null ? 0 : ReadOffset(image, GroupField);
+        _saclOffset = sacl is null ? 0 : ReadOffset(image, SaclField);
+        _daclOffset = dacl is null ? 0 : ReadOffset(image, DaclField);
+        HasOverlappingComponents = hasOverlappingComponents;
     }
 
     public byte Revision { get; }
@@ -75,6 +82,13 @@ internal sealed class SecurityDescriptor
 
     /// <summary>Gets the sections the read requested. Only these have known content.</summary>
     public SecurityMasks RetrievedSections { get; }
+
+    /// <summary>
+    /// Gets whether two components share bytes, fully (equal offsets) or partially. Such a
+    /// descriptor is valid and round-trips exactly, but an edit to one component cannot be
+    /// spliced in place without also affecting the other.
+    /// </summary>
+    public bool HasOverlappingComponents { get; }
 
     /// <summary>Gets the owner, or null when absent or not retrieved (see <see cref="IsRetrieved"/>).</summary>
     public Sid? Owner => IsRetrieved(SecurityMasks.Owner) ? _owner : null;
@@ -133,82 +147,43 @@ internal sealed class SecurityDescriptor
             throw Malformed("The security descriptor is not in self-relative form.");
         }
 
-        var regions = new List<(int Start, int End, Component Component)>(4);
-        var owner = ReadSid(binaryForm, 4, Component.Owner, regions);
-        var group = ReadSid(binaryForm, 8, Component.Group, regions);
-        var sacl = ReadAcl(binaryForm, 12, Component.Sacl, regions);
-        var dacl = ReadAcl(binaryForm, 16, Component.Dacl, regions);
+        var regions = new List<(int Start, int End)>(4);
+        var owner = ReadSid(binaryForm, OwnerField, regions);
+        var group = ReadSid(binaryForm, GroupField, regions);
+        var sacl = ReadAcl(binaryForm, SaclField, regions);
+        var dacl = ReadAcl(binaryForm, DaclField, regions);
 
         regions.Sort((left, right) => left.Start.CompareTo(right.Start));
-        var layout = new List<Segment>(regions.Count * 2 + 1);
-        var cursor = HeaderLength;
-        foreach (var (start, end, component) in regions)
+        var overlapping = false;
+        for (var index = 1; index < regions.Count; index++)
         {
-            if (start < cursor)
-            {
-                throw Malformed("Security descriptor components overlap.");
-            }
-
-            if (start > cursor)
-            {
-                layout.Add(Segment.Gap(binaryForm[cursor..start].ToArray()));
-            }
-
-            layout.Add(new Segment(component, null));
-            cursor = end;
+            overlapping |= regions[index].Start < regions[index - 1].End;
         }
 
-        if (cursor < binaryForm.Length)
-        {
-            layout.Add(Segment.Gap(binaryForm[cursor..].ToArray()));
-        }
-
-        return new SecurityDescriptor(
-            binaryForm[0], binaryForm[1], control, retrievedSections,
-            owner, group, sacl, dacl, layout.ToArray());
+        return new SecurityDescriptor(binaryForm.ToArray(), retrievedSections, owner, group, sacl, dacl, overlapping);
     }
 
     /// <summary>
-    /// Serializes from the model, laying components out in their original order with original
-    /// gaps. For a parsed, unmodified descriptor the result equals the parsed input.
+    /// Serializes from the model in the original layout: header fields and every component are
+    /// written from the parsed values at their original offsets over the original image, which
+    /// supplies gap and trailing bytes. For a parsed, unmodified descriptor the result equals
+    /// the parsed input; components that share storage write identical bytes.
     /// </summary>
     public byte[] GetBinaryForm()
     {
-        var length = HeaderLength + _layout.Sum(SegmentLength);
-        var result = new byte[length];
+        var result = new byte[_image.Length];
+        _image.CopyTo(result, 0);
         result[0] = Revision;
         result[1] = Sbz1;
         BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(2), Control);
-        var cursor = HeaderLength;
-        foreach (var segment in _layout)
-        {
-            var destination = result.AsSpan(cursor);
-            switch (segment.Component)
-            {
-                case Component.Gap:
-                    segment.Bytes!.CopyTo(destination);
-                    break;
-                case Component.Owner:
-                    WriteOffset(result, 4, cursor);
-                    _owner!.WriteTo(destination);
-                    break;
-                case Component.Group:
-                    WriteOffset(result, 8, cursor);
-                    _group!.WriteTo(destination);
-                    break;
-                case Component.Sacl:
-                    WriteOffset(result, 12, cursor);
-                    _sacl!.WriteTo(destination);
-                    break;
-                case Component.Dacl:
-                    WriteOffset(result, 16, cursor);
-                    _dacl!.WriteTo(destination);
-                    break;
-            }
-
-            cursor += SegmentLength(segment);
-        }
-
+        WriteOffset(result, OwnerField, _ownerOffset);
+        WriteOffset(result, GroupField, _groupOffset);
+        WriteOffset(result, SaclField, _saclOffset);
+        WriteOffset(result, DaclField, _daclOffset);
+        _owner?.WriteTo(result.AsSpan(_ownerOffset));
+        _group?.WriteTo(result.AsSpan(_groupOffset));
+        _sacl?.WriteTo(result.AsSpan(_saclOffset));
+        _dacl?.WriteTo(result.AsSpan(_daclOffset));
         return result;
     }
 
@@ -234,15 +209,8 @@ internal sealed class SecurityDescriptor
         return acl.Aces.Count == 0 ? AclState.Empty : AclState.Populated;
     }
 
-    private int SegmentLength(Segment segment) => segment.Component switch
-    {
-        Component.Gap => segment.Bytes!.Length,
-        Component.Owner => _owner!.BinaryLength,
-        Component.Group => _group!.BinaryLength,
-        Component.Sacl => _sacl!.BinaryLength,
-        Component.Dacl => _dacl!.BinaryLength,
-        _ => throw new InvalidOperationException(),
-    };
+    private static int ReadOffset(byte[] descriptor, int field) =>
+        (int)BinaryPrimitives.ReadUInt32LittleEndian(descriptor.AsSpan(field));
 
     private static void WriteOffset(byte[] descriptor, int field, int offset) =>
         BinaryPrimitives.WriteUInt32LittleEndian(descriptor.AsSpan(field), checked((uint)offset));
@@ -256,6 +224,7 @@ internal sealed class SecurityDescriptor
             return false;
         }
 
+        // Offsets into the header itself are rejected; Microsoft's handling of them is untested.
         if (value < HeaderLength || value >= (uint)descriptor.Length)
         {
             throw Malformed("A security descriptor component offset is outside the descriptor.");
@@ -265,8 +234,7 @@ internal sealed class SecurityDescriptor
         return true;
     }
 
-    private static Sid? ReadSid(
-        ReadOnlySpan<byte> descriptor, int field, Component component, List<(int, int, Component)> regions)
+    private static Sid? ReadSid(ReadOnlySpan<byte> descriptor, int field, List<(int, int)> regions)
     {
         if (!TryReadOffset(descriptor, field, out var offset))
         {
@@ -278,12 +246,11 @@ internal sealed class SecurityDescriptor
             throw Malformed("An owner or group SID is invalid or truncated.");
         }
 
-        regions.Add((offset, offset + consumed, component));
+        regions.Add((offset, offset + consumed));
         return sid;
     }
 
-    private static Acl? ReadAcl(
-        ReadOnlySpan<byte> descriptor, int field, Component component, List<(int, int, Component)> regions)
+    private static Acl? ReadAcl(ReadOnlySpan<byte> descriptor, int field, List<(int, int)> regions)
     {
         if (!TryReadOffset(descriptor, field, out var offset))
         {
@@ -302,12 +269,7 @@ internal sealed class SecurityDescriptor
         }
 
         var acl = Acl.Read(descriptor.Slice(offset, size));
-        regions.Add((offset, offset + size, component));
+        regions.Add((offset, offset + size));
         return acl;
-    }
-
-    private readonly record struct Segment(Component Component, byte[]? Bytes)
-    {
-        public static Segment Gap(byte[] bytes) => new(Component.Gap, bytes);
     }
 }
