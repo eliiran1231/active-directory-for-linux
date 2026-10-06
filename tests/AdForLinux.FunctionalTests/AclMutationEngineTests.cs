@@ -348,6 +348,36 @@ public class AclMutationEngineTests
     }
 
     [Theory]
+    [InlineData("NP")]
+    [InlineData("IO")]
+    [InlineData("Order")]
+    public void Every_no_match_family_preserves_raw_normalization_and_creates_no_intent(string normalization)
+    {
+        var raw = normalization switch
+        {
+            "NP" => WithDacl(Ace(0, 4, 0x10, U2)),
+            "IO" => WithDacl(Ace(0, 8, 0x10, U2)),
+            _ => WithDacl(ObjAce(5, 0, 0x10, 1, G1, null, U2), Ace(0, 0, 0x20, U2)),
+        };
+        var engine = Engine(raw);
+        foreach (var operation in new[] { AclModification.Remove, AclModification.RemoveSpecific, AclModification.RemoveAll })
+        {
+            var result = engine.Modify(SecurityMasks.Dacl, operation, Rule());
+            Assert.True(result.ReturnValue);
+            Assert.Same(engine, result.Engine);
+            Assert.Equal(raw, result.Engine.Descriptor.GetBinaryForm());
+            Assert.Equal(SecurityMasks.None, result.Engine.WriteIntent);
+        }
+        var purge = engine.Purge(SecurityMasks.Dacl, Trustee(U1));
+        Assert.Same(engine, purge.Engine);
+        Assert.Equal(raw, purge.Engine.Descriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, purge.Engine.WriteIntent);
+        var projected = MicrosoftObservableProjector.Project(engine.Descriptor);
+        Assert.NotEqual(raw, projected.GetBinaryForm()); // ensure each case really normalizes
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+    }
+
+    [Theory]
     [InlineData(1)]
     [InlineData(5)]
     [InlineData(9)]

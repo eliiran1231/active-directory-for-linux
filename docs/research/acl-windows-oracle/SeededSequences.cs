@@ -88,6 +88,8 @@ internal static class SeededSequences
         }
         RecordInheritedProtection(observations);
         RecordAuditSplits(observations);
+        RecordMixedObjectRemovals(observations);
+        RecordRevisionAndAbsentAudit(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -165,6 +167,110 @@ internal static class SeededSequences
         }
     }
 
+    private static void RecordMixedObjectRemovals(List<Observation> observations)
+    {
+        // Object GUIDs constrain only object-specific mask bits, and inherited-object GUIDs
+        // constrain propagation. Observe mixed residuals before choosing portable behavior.
+        var cases = new (string Name, uint Mask, byte Flags, uint ObjectFlags, Guid? Ot, Guid? It,
+            uint RemoveMask, Guid RemoveOt, M.ActiveDirectorySecurityInheritance Scope)[]
+        {
+            ("mixed-different-object", 0x14, 0, 1, Sd.G1, null, 0x14, Sd.G2, M.ActiveDirectorySecurityInheritance.None),
+            ("mixed-remove-specific-leaves-global", 0x14, 0, 1, Sd.G1, null, 0x10, Sd.G1, M.ActiveDirectorySecurityInheritance.None),
+            ("mixed-remove-global", 0x14, 0, 1, Sd.G1, null, 4, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+            ("mixed-inherited-guid-remove-global-self", 0x14, Sd.Ci, 3, Sd.G1, Sd.G2, 4, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+            ("both-guids-remove-wp-self", 0x30, Sd.Ci, 3, Sd.G1, Sd.G2, 0x20, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+            ("inherited-guid-remove-descendants", 0x30, Sd.Ci, 2, null, Sd.G2, 0x30, Guid.Empty, M.ActiveDirectorySecurityInheritance.Descendents),
+        };
+        foreach (var test in cases)
+        foreach (var audit in new[] { false, true })
+        {
+            var source = Sd.ObjAce((byte)(audit ? 7 : 5), (byte)(test.Flags | (audit ? 0x40 : 0)),
+                test.Mask, test.ObjectFlags, test.Ot, test.It, Sd.U1);
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(audit
+                ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source)));
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)test.RemoveMask,
+                        E.AuditFlags.Success, test.RemoveOt, test.Scope, Guid.Empty);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(E.AccessControlModification.Remove, rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)test.RemoveMask,
+                        E.AccessControlType.Allow, test.RemoveOt, test.Scope, Guid.Empty);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(E.AccessControlModification.Remove, rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation($"object-remove-{test.Name}-{(audit ? "Sacl" : "Dacl")}", 0,
+                audit ? "Sacl" : "Dacl", "Remove", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message));
+        }
+    }
+
+    private static void RecordRevisionAndAbsentAudit(List<Observation> observations)
+    {
+        foreach (var populated in new[] { false, true })
+        foreach (var operation in new[] { E.AccessControlModification.Add, E.AccessControlModification.Set, E.AccessControlModification.Reset })
+        {
+            var acl = populated ? Sd.Acl(2, Sd.Ace(0, 0, 0x20, Sd.U1)) : Sd.Acl(2);
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(Sd.Build(Sd.Admins, Sd.Admins, acl));
+            var rule = new M.ActiveDirectoryAccessRule(new B.SecurityIdentifier(Sd.U1, 0),
+                M.ActiveDirectoryRights.ReadProperty, E.AccessControlType.Allow, Sd.G1);
+            Capture($"revision2-{(populated ? "common" : "empty")}-{operation}", descriptor, "Dacl", operation.ToString(), RuleBytes(rule),
+                () => { var returned = descriptor.ModifyAccessRule(operation, rule, out var modified); return (returned, modified); });
+        }
+        {
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(Sd.Build(Sd.Admins, Sd.Admins,
+                Sd.Acl(2, Sd.ObjAce(5, 0, 0x10, 1, Sd.G1, null, Sd.U1))));
+            var rule = new M.ActiveDirectoryAccessRule(new B.SecurityIdentifier(Sd.U2, 0),
+                M.ActiveDirectoryRights.WriteProperty, E.AccessControlType.Allow);
+            Capture("revision2-already-object-common-add", descriptor, "Dacl", "Add", RuleBytes(rule),
+                () => { var returned = descriptor.ModifyAccessRule(E.AccessControlModification.Add, rule, out var modified); return (returned, modified); }, trustee: "S-1-5-21-1-2-3-1002");
+        }
+        foreach (var nullSacl in new[] { false, true })
+        foreach (var operation in new[] { E.AccessControlModification.Remove, E.AccessControlModification.RemoveAll, E.AccessControlModification.RemoveSpecific })
+        {
+            var input = Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4));
+            if (nullSacl) input[2] |= 0x10; // SACL_PRESENT with zero SACL offset.
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(input);
+            var rule = new M.ActiveDirectoryAuditRule(new B.SecurityIdentifier(Sd.U1, 0),
+                M.ActiveDirectoryRights.ReadProperty, E.AuditFlags.Success);
+            Capture($"{(nullSacl ? "null" : "absent")}-sacl-{operation}", descriptor, "Sacl", operation.ToString(), RuleBytes(rule),
+                () => { var returned = descriptor.ModifyAuditRule(operation, rule, out var modified); return (returned, modified); }, requestedInput: input);
+        }
+
+        void Capture(string sequence, M.ActiveDirectorySecurity descriptor, string section,
+            string operation, byte[] rule, Func<(bool Returned, bool Modified)> action,
+            string trustee = "S-1-5-21-1-2-3-1001", byte[]? requestedInput = null)
+        {
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            try { (returned, modified) = action(); }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation(sequence, 0, section, operation, trustee,
+                Convert.ToHexString(rule), input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()),
+                returned, modified, exception, message, RequestedDescriptorHex: requestedInput is null ? null : Convert.ToHexString(requestedInput)));
+        }
+    }
+
     // Construct the recorded ACE from the actual Microsoft rule after its constructor
     // normalizes GUID applicability. Requested arguments are not the resulting rule.
     private static byte[] RuleBytes(M.ActiveDirectoryAccessRule rule) => RuleBytes(rule,
@@ -197,5 +303,5 @@ internal static class SeededSequences
 
     private sealed record Observation(string Sequence, int Index, string Section, string Operation,
         string Sid, string RuleHex, string InputHex, string OutputHex, bool? ReturnValue,
-        bool? Modified, string? ExceptionType, string? ExceptionMessage, string? RequestedRuleHex = null);
+        bool? Modified, string? ExceptionType, string? ExceptionMessage, string? RequestedRuleHex = null, string? RequestedDescriptorHex = null);
 }

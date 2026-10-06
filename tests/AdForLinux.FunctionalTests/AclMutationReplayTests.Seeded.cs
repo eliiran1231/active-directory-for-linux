@@ -26,18 +26,7 @@ public partial class AclMutationReplayTests
         AclMutationResult? result = null;
         var exception = Record.Exception(() =>
         {
-            var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
-            result = operation switch
-            {
-                "Owner" => engine.SetOwner(sid),
-                "Group" => engine.SetGroup(sid),
-                "Purge" => engine.Purge(section, sid),
-                "Protect" => engine.SetProtection(section, true, true),
-                "ProtectDrop" => engine.SetProtection(section, true, false),
-                "Unprotect" => engine.SetProtection(section, false, true),
-                _ => engine.Modify(section, Enum.Parse<AclModification>(operation),
-                    CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
-            };
+            result = ApplyRecordedStep(engine, step);
         });
         Assert.Equal(step.GetProperty("ExceptionType").GetString(), exception?.GetType().FullName);
         Assert.Equal(original, engine.Descriptor.GetBinaryForm());
@@ -63,6 +52,63 @@ public partial class AclMutationReplayTests
             _ => section,
         };
         Assert.Equal(original.SequenceEqual(expected) ? SecurityMasks.None : target, result.Engine.WriteIntent);
+    }
+
+    [Fact]
+    public void Recorded_sequences_replay_end_to_end_with_accumulated_intent()
+    {
+        using var recording = ReadSeededRecording("net8");
+        foreach (var sequence in recording.RootElement.GetProperty("Observations").EnumerateArray()
+            .GroupBy(step => step.GetProperty("Sequence").GetString()))
+        {
+            var first = Convert.FromHexString(sequence.First().GetProperty("InputHex").GetString()!);
+            var engine = new AclMutationEngine(SecurityDescriptor.Parse(first, All));
+            var intent = SecurityMasks.None;
+            foreach (var step in sequence.OrderBy(step => step.GetProperty("Index").GetInt32()))
+            {
+                var input = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
+                var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+                Assert.Equal(input, engine.Descriptor.GetBinaryForm());
+                var previous = engine;
+                AclMutationResult? result = null;
+                var exception = Record.Exception(() => result = ApplyRecordedStep(engine, step));
+                Assert.Equal(step.GetProperty("ExceptionType").GetString(), exception?.GetType().FullName);
+                if (exception is null)
+                {
+                    Assert.NotNull(result);
+                    engine = result.Engine;
+                    if (!input.SequenceEqual(expected))
+                        intent |= step.GetProperty("Operation").GetString() switch
+                        {
+                            "Owner" => SecurityMasks.Owner,
+                            "Group" => SecurityMasks.Group,
+                            _ => Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!),
+                        };
+                    else Assert.Same(previous, engine);
+                }
+                Assert.Equal(input, previous.Descriptor.GetBinaryForm());
+                Assert.Equal(expected, engine.Descriptor.GetBinaryForm());
+                Assert.Equal(first, engine.OriginalDescriptor.GetBinaryForm());
+                Assert.Equal(intent, engine.WriteIntent);
+            }
+        }
+    }
+
+    private static AclMutationResult ApplyRecordedStep(AclMutationEngine engine, JsonElement step)
+    {
+        var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
+        var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
+        return step.GetProperty("Operation").GetString() switch
+        {
+            "Owner" => engine.SetOwner(sid),
+            "Group" => engine.SetGroup(sid),
+            "Purge" => engine.Purge(section, sid),
+            "Protect" => engine.SetProtection(section, true, true),
+            "ProtectDrop" => engine.SetProtection(section, true, false),
+            "Unprotect" => engine.SetProtection(section, false, true),
+            var operation => engine.Modify(section, Enum.Parse<AclModification>(operation!),
+                CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
+        };
     }
 
     [Fact]
