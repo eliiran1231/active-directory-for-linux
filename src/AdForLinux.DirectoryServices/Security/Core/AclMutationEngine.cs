@@ -226,13 +226,14 @@ internal sealed class AclMutationEngine
         for (var i = 0; i < aces.Count; i++)
         {
             var ace = aces[i];
-            if (!Explicit(ace) || !SameShape(ace, rule)) continue;
-            if (ace.AceFlags == rule.AceFlags)
+            if (!Explicit(ace) || ace.AceType != rule.AceType || !SameSid(ace, rule)) continue;
+            var sameShape = SameShape(ace, rule);
+            if (ace.AceFlags == rule.AceFlags && (sameShape || CanAbsorbObjectMask(ace, rule)))
             {
                 aces[i] = With(ace, ace.AccessMask | rule.AccessMask, ace.AceFlags);
                 return;
             }
-            if (ace.AccessMask != rule.AccessMask) continue;
+            if (!sameShape || ace.AccessMask != rule.AccessMask) continue;
             if ((ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
             {
                 aces[i] = With(ace, ace.AccessMask, (byte)(ace.AceFlags | rule.AceFlags));
@@ -251,6 +252,17 @@ internal sealed class AclMutationEngine
             || (Rank(ace, isDacl) == rank && CompareSid(ace.Sid!, rule.Sid!) > 0));
         aces.Insert(at < 0 ? aces.Count : at, rule);
     }
+
+    // Recorded asymmetric Stage 1 merge only. The existing unqualified ACE already
+    // covers every incoming object-qualified bit; only additional global bits widen it.
+    // Keep its exact GUID shape. Reverse direction and later merge stages stay separate.
+    private static bool CanAbsorbObjectMask(Ace existing, Ace incoming) =>
+        existing.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit
+        && (existing.ObjectFlags & Ace.ObjectTypePresent) == 0
+        && (incoming.ObjectFlags & Ace.ObjectTypePresent) != 0
+        && existing.InheritedObjectType == incoming.InheritedObjectType
+        && (existing.AccessMask & incoming.AccessMask & ObjectQualifiedRights)
+            == (incoming.AccessMask & ObjectQualifiedRights);
 
     private static bool Remove(List<Ace> aces, Ace rule)
     {

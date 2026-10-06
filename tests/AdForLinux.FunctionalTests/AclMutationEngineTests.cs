@@ -544,6 +544,51 @@ public class AclMutationEngineTests
         Assert.Same(engine, noMatch.Engine);
     }
 
+    [Theory]
+    [InlineData(false, 0x10u)]
+    [InlineData(false, 0x14u)]
+    [InlineData(true, 0x10u)]
+    [InlineData(true, 0x14u)]
+    public void Asymmetric_add_preserves_raw_metadata_other_acl_and_prior_intent(bool audit, uint incomingMask)
+    {
+        var type = (byte)(audit ? 7 : 5);
+        var flags = (byte)(audit ? 0x42 : 2);
+        var acl = AclWithTail(4, new byte[] { 0xFA, 0xCE, 0xBA, 0xBE },
+            ObjAce(type, flags, 0x10, 2, null, G2, U1));
+        acl[1] = 0x71;
+        acl[6] = 0x39;
+        var opaque = Acl(4, Ace(0x20, 0x20, 0x10, U2));
+        var original = audit ? Build(Admins, Admins, opaque, acl) : Build(Admins, Admins, acl, opaque);
+        var engine = Engine(original).SetOwner(Trustee(U2)).Engine;
+        var current = engine.Descriptor.GetBinaryForm();
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var rule = CoreAce.Read(ObjAce(type, flags, incomingMask, 3, G1, G2, U1));
+        var result = engine.Modify(section, AclModification.Add, rule);
+        Assert.True(result.ReturnValue);
+        Assert.True(result.Modified);
+        if (incomingMask == 0x10) Assert.Same(engine, result.Engine);
+        else Assert.NotSame(engine, result.Engine);
+        var expectedAcl = acl.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(expectedAcl.AsSpan(12), incomingMask);
+        Assert.Equal(expectedAcl, AclBytes(result.Engine.Descriptor, audit ? 12 : 16));
+        Assert.Equal(opaque, AclBytes(result.Engine.Descriptor, audit ? 16 : 12));
+        Assert.Equal(SecurityMasks.Owner | (incomingMask == 0x10 ? SecurityMasks.None : section), result.Engine.WriteIntent);
+        Assert.Equal(current, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+    }
+
+    [Fact]
+    public void Present_empty_object_guid_is_not_an_unqualified_object_mask()
+    {
+        var existing = ObjAce(5, 2, 0x10, 3, Guid.Empty, G2, U1);
+        var rule = CoreAce.Read(ObjAce(5, 2, 0x10, 3, G1, G2, U1));
+        var engine = Engine(WithDacl(existing));
+        var result = engine.ModifyAccessRule(AclModification.Add, rule);
+        Assert.Equal(2, result.Engine.Descriptor.Dacl!.Aces.Count);
+        Assert.Equal(existing, result.Engine.Descriptor.Dacl.Aces[0].RawBytes.ToArray());
+        Assert.Equal(rule.RawBytes.ToArray(), result.Engine.Descriptor.Dacl.Aces[1].RawBytes.ToArray());
+    }
+
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
     {
         var bytes = descriptor.GetBinaryForm();

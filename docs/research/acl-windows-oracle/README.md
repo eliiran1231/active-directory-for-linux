@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 624 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 666 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37538276766](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37538276766),
-head `ecc13fa3c27d2b002933979847a5d36c9fe04e75`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37539461545](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37539461545),
+head `d956d2c00e61b7f58adebb717b426bf6c1c898df`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,7 +344,7 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 624 individual steps also replay end to end by sequence, retaining the original raw
+The 666 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
@@ -370,7 +370,7 @@ A 96-observation extension establishes bounded distinct-IOT and common-ACE OI co
 Against that 96-case extension, the earlier engine reproduced 86 individual failures
 and one stateful replay failure before its inherited-GUID/common-OI fix.
 
-The final 216 observations establish object-ACE OI and combined-sequence behavior:
+A 216-observation extension establishes object-ACE OI and combined-sequence behavior:
 
 - A 192-case matrix combines OT-only, IOT-only and both-GUID object ACEs with every odd
   low flag combination, Remove(None/All/Descendents), same-mask Add(All), and both ACL kinds.
@@ -382,11 +382,26 @@ The final 216 observations establish object-ACE OI and combined-sequence behavio
   no exceptions and no raw import differences. Inheritance merging retains original GUID
   fields; removal cleans GUID applicability per residual. Invalid propagation stays atomic.
 
-The latest recording run intentionally failed its freshness comparison because it added
-216 observations to the committed 408; the first 408 are unchanged. Both portable test
-steps passed. The previous object-OI refusal gate caused 172 individual replay failures
-and one stateful failure against the new evidence. Removing that gate lets the existing
+The previous object-OI refusal gate caused 172 individual replay failures and one
+stateful failure against those 216 observations. Removing that gate lets the existing
 recorded DS algorithms handle the matrix without changes to merge/split logic. Late-failure
-safety tests now cover invalid common and object OI propagation after staging an earlier edit.
-No SACL sorting, import compaction or descriptor relocation decision was expanded. This
-bounded matrix does not establish arbitrary/asymmetric GUID-merge or constructor parity.
+safety tests cover invalid common and object OI propagation after staging an earlier edit.
+
+The final 42 observations isolate asymmetric object-mask Add. Seven existing/incoming
+mask pairs run forward and reverse, for DACL and matching/different audit flags. The
+forward existing ACE has only IOT=G2; the incoming rule adds OT=G1 with the same IOT.
+Eight cases merge into the existing object ACE: four absorbed no-ops and four mask changes
+that add global rights. Reverse direction, uncovered qualified rights and different audit
+flags retain two ACEs in the other 34 cases. All return/modified values are true. There are
+no exceptions or raw import differences. The issue concerns byte shape, no-op and intent
+parity; these recordings do not establish an effective-access escalation.
+
+The latest recording run intentionally failed freshness comparison because it added
+those 42 cases to the committed 624; the first 624 are unchanged. Both portable test steps
+passed. The old SameShape gate caused eight individual replay failures and one stateful
+failure. The fix relaxes only Stage 1 mask merging for identical type/SID/flags and inherited
+GUID, an absent existing ObjectType flag, and coverage of every incoming 0x13B-qualified
+bit. It retains the existing GUID shape. A present Guid.Empty is not an absent field.
+Later merge stages, unknown/trailing checks, SACL sorting, import compaction and descriptor
+relocation policy remain unchanged. Other asymmetric GUID/scope or constructor parity
+is not established by this bounded matrix.
