@@ -90,6 +90,7 @@ internal static class SeededSequences
         RecordAuditSplits(observations);
         RecordMixedObjectRemovals(observations);
         RecordRevisionAndAbsentAudit(observations);
+        RecordRestorationAndSidOrder(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -268,6 +269,58 @@ internal static class SeededSequences
             observations.Add(new Observation(sequence, 0, section, operation, trustee,
                 Convert.ToHexString(rule), input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()),
                 returned, modified, exception, message, RequestedDescriptorHex: requestedInput is null ? null : Convert.ToHexString(requestedInput)));
+        }
+    }
+
+    private static void RecordRestorationAndSidOrder(List<Observation> observations)
+    {
+        var cases = new (string Name, byte[] Input, (E.AccessControlModification Operation, uint Mask)[] Steps)[]
+        {
+            ("split-then-restore", Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, Sd.Ace(0, Sd.Ci, 0x30, Sd.U1))),
+                new[] { (E.AccessControlModification.Remove, 0x20u), (E.AccessControlModification.Add, 0x20u), (E.AccessControlModification.Add, 0x20u) }),
+            ("import-split-then-restore", Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4,
+                Sd.Ace(0, Sd.Ci, 0x10, Sd.U1), Sd.Ace(0, Sd.Ci | Sd.Io, 0x20, Sd.U1))),
+                new[] { (E.AccessControlModification.Add, 0x20u), (E.AccessControlModification.Add, 0x20u) }),
+            ("import-complementary-scopes", Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4,
+                Sd.Ace(0, 0, 0x10, Sd.U1), Sd.Ace(0, Sd.Ci | Sd.Io, 0x10, Sd.U1))),
+                new[] { (E.AccessControlModification.Add, 0x10u), (E.AccessControlModification.Add, 0x10u) }),
+        };
+        foreach (var test in cases)
+        {
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(test.Input);
+            var index = 0;
+            foreach (var (operation, mask) in test.Steps)
+            {
+                var rule = new M.ActiveDirectoryAccessRule(new B.SecurityIdentifier(Sd.U1, 0),
+                    (M.ActiveDirectoryRights)mask, E.AccessControlType.Allow);
+                Capture(test.Name, index++, descriptor, operation, rule, test.Input);
+            }
+        }
+        foreach (var adminsFirst in new[] { true, false })
+        {
+            var input = Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4,
+                Sd.Ace(0, 0, 0x10, adminsFirst ? Sd.Admins : Sd.U1)));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(input);
+            var rule = new M.ActiveDirectoryAccessRule(new B.SecurityIdentifier(adminsFirst ? Sd.U1 : Sd.Admins, 0),
+                M.ActiveDirectoryRights.WriteProperty, E.AccessControlType.Allow);
+            Capture($"sid-order-{(adminsFirst ? "admins-first" : "domain-first")}", 0, descriptor,
+                E.AccessControlModification.Add, rule, input);
+        }
+
+        void Capture(string sequence, int index, M.ActiveDirectorySecurity descriptor,
+            E.AccessControlModification operation, M.ActiveDirectoryAccessRule rule, byte[] requestedInput)
+        {
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            try { returned = descriptor.ModifyAccessRule(operation, rule, out var changed); modified = changed; }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation(sequence, index, "Dacl", operation.ToString(), rule.IdentityReference.Value,
+                Convert.ToHexString(RuleBytes(rule)), input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()),
+                returned, modified, exception, message,
+                RequestedDescriptorHex: index == 0 ? Convert.ToHexString(requestedInput) : null));
         }
     }
 
