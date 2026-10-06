@@ -377,20 +377,6 @@ public class AclMutationEngineTests
         Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(5)]
-    [InlineData(9)]
-    [InlineData(15)]
-    public void Unrecorded_object_ace_oi_propagation_refuses_atomically(byte flags)
-    {
-        var raw = WithDacl(ObjAce(5, flags, 0x10, 1, G1, null, U1));
-        var engine = Engine(raw);
-        Assert.Throws<InvalidOperationException>(() => engine.Modify(SecurityMasks.Dacl, AclModification.Remove, Rule()));
-        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
-        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
-    }
-
     [Fact]
     public void Late_remove_failure_preserves_prior_intent_and_current_and_original_images()
     {
@@ -533,12 +519,16 @@ public class AclMutationEngineTests
     }
 
     [Theory]
-    [InlineData((byte)5)]
-    [InlineData((byte)9)]
-    [InlineData((byte)13)]
-    public void Invalid_ds_oi_propagation_fails_after_staging_without_publishing(byte flags)
+    [InlineData((byte)5, false)]
+    [InlineData((byte)9, false)]
+    [InlineData((byte)13, false)]
+    [InlineData((byte)5, true)]
+    [InlineData((byte)9, true)]
+    [InlineData((byte)13, true)]
+    public void Invalid_ds_oi_propagation_fails_after_staging_without_publishing(byte flags, bool objectAce)
     {
-        var original = WithDacl(Ace(0, 0, 4, U1), Ace(0, flags, 0x10, U1));
+        var invalid = objectAce ? ObjAce(5, flags, 0x10, 3, G1, G2, U1) : Ace(0, flags, 0x10, U1);
+        var original = WithDacl(Ace(0, 0, 4, U1), invalid);
         var engine = Engine(original).SetGroup(Trustee(U2)).Engine;
         var current = engine.Descriptor.GetBinaryForm();
         var result = engine.ModifyAccessRule(AclModification.Remove, Rule(0x14));

@@ -200,9 +200,9 @@ internal sealed class AclMutationEngine
         // D13 normalization is explicit here as part of the requested section mutation.
         var cleanHeader = Acl.Read(DescriptorRewriter.EncodeAcl(null, acl.Aces));
         var projected = MicrosoftObservableProjector.NormalizeForEdit(cleanHeader, isDacl).Aces.ToList();
-        if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)
-            && !(ace.Kind is AceKind.Access or AceKind.Audit && (ace.AceFlags & 1) != 0)))
-            throw new InvalidOperationException("This propagation flag combination is outside the recorded directory semantics.");
+        // Recognized common/object OI flags use the recorded DS scope rules. Scope()
+        // retains invalid propagation as a failed operation rather than discarding data;
+        // only the reviewed D13 normalization above may remove an inactive ACE.
         if (!isDacl && projected.Count(Explicit) > 1
             && (auditReplacementSid is null || projected.Any(ace => Explicit(ace) && !auditReplacementSid.Equals(ace.Sid))))
             throw new InvalidOperationException("Mutation of multiple explicit SACL entries awaits the I2 ordering decision.");

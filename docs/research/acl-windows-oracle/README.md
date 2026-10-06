@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 408 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 624 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37537040355](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37537040355),
-head `62b789e3176d618b4c5999fceb34a4b0e28a0710`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37538276766](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37538276766),
+head `ecc13fa3c27d2b002933979847a5d36c9fe04e75`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,7 +344,7 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 408 individual steps also replay end to end by sequence, retaining the original raw
+The 624 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
@@ -352,7 +352,7 @@ Twelve earlier observations isolate GUID-removal precedence in DACL/SACL: disjoi
 self/descendant scopes skip GUID narrowing, inherited-object GUID conflicts apply only
 when both ACEs have CI, and audit disjointness does not bypass GUID narrowing.
 
-The final 96 observations add bounded distinct-IOT and OI coverage:
+A 96-observation extension establishes bounded distinct-IOT and common-ACE OI coverage:
 
 - Sixteen distinct-IOT cases cover All/Descendents requests against All, SelfAndChildren,
   Descendents and Children existing scopes, with mixed masks and both audit outcomes.
@@ -367,9 +367,26 @@ The final 96 observations add bounded distinct-IOT and OI coverage:
   ignores OI, while permission/audit splits retain it. NP/IO without CI yields invalid
   propagation and false/no-change removal unless scopes are already disjoint.
 
+Against that 96-case extension, the earlier engine reproduced 86 individual failures
+and one stateful replay failure before its inherited-GUID/common-OI fix.
+
+The final 216 observations establish object-ACE OI and combined-sequence behavior:
+
+- A 192-case matrix combines OT-only, IOT-only and both-GUID object ACEs with every odd
+  low flag combination, Remove(None/All/Descendents), same-mask Add(All), and both ACL kinds.
+- Three eight-step sequences combine object OI, different inherited GUIDs, global-right
+  splits, no-ops, protection/unprotection, inherited-entry removal and specific removal.
+  The SACL sequence uses Set to replace all explicit splits for one SID; it does not adopt
+  a multi-entry SACL sorting policy. Owner edits during the split state stay independent.
+- There are 141 descriptor changes, 39 successful no-ops and 36 failed unchanged removals;
+  no exceptions and no raw import differences. Inheritance merging retains original GUID
+  fields; removal cleans GUID applicability per residual. Invalid propagation stays atomic.
+
 The latest recording run intentionally failed its freshness comparison because it added
-these 96 observations to the committed 312; those first 312 observations are unchanged.
-Both portable test steps passed. Against the expanded evidence, the previous engine
-reproduced 86 individual failures and one stateful replay failure before the fix. No SACL
-sorting, import compaction or descriptor relocation decision was expanded. Object-ACE OI
-combinations beyond the previously supported flags remain conservatively refused.
+216 observations to the committed 408; the first 408 are unchanged. Both portable test
+steps passed. The previous object-OI refusal gate caused 172 individual replay failures
+and one stateful failure against the new evidence. Removing that gate lets the existing
+recorded DS algorithms handle the matrix without changes to merge/split logic. Late-failure
+safety tests now cover invalid common and object OI propagation after staging an earlier edit.
+No SACL sorting, import compaction or descriptor relocation decision was expanded. This
+bounded matrix does not establish arbitrary/asymmetric GUID-merge or constructor parity.
