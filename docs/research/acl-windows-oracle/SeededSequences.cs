@@ -96,6 +96,9 @@ internal static class SeededSequences
         RecordObjectOiAndCombinedSequences(observations);
         RecordAsymmetricObjectMaskAdds(observations);
         RecordLaterStageMergeLeads(observations);
+        RecordScopeMergeQualifiers(observations);
+        RecordEmptyObjectMaskMerge(observations);
+        RecordMergeValuePresenceMatrix(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -111,6 +114,153 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordMergeValuePresenceMatrix(List<Observation> observations)
+    {
+        var shapes = new (Guid? Ot, Guid? Iot, Guid? NewOt, Guid? NewIot)[]
+        {
+            (Guid.Empty, Sd.G2, null, Sd.G2), (null, Sd.G2, Guid.Empty, Sd.G2),
+            (Sd.G1, Guid.Empty, Sd.G1, null), (Sd.G1, null, Sd.G1, Guid.Empty),
+            (Sd.G1, Sd.G2, Sd.G1, Sd.G2), (Sd.G2, Sd.G2, Sd.G1, Sd.G2),
+            (null, Sd.G2, Sd.G1, Sd.G2), (Sd.G1, Sd.G2, null, Sd.G2),
+            (Sd.G1, null, Sd.G1, Sd.G2), (Sd.G1, Sd.G2, Sd.G1, null),
+            (Sd.G1, Sd.G1, Sd.G1, Sd.G2), (Guid.Empty, Sd.G2, Sd.G1, Sd.G2),
+        };
+        foreach (var stage in new[] { 1, 2, 3 })
+        foreach (var mode in (stage == 2 ? new[] { "Audit" } : new[] { "Allow", "Deny", "Audit" }))
+        for (var shape = 0; shape < shapes.Length; shape++)
+        {
+            var pair = shapes[shape];
+            var audit = mode == "Audit";
+            var type = (byte)(audit ? 7 : mode == "Deny" ? 6 : 5);
+            var flags = (byte)((audit ? 0x40 : 0) | (stage == 3 ? 0 : 2));
+            var of = (pair.Ot.HasValue ? 1u : 0u) | (pair.Iot.HasValue ? 2u : 0u);
+            var source = Sd.ObjAce(type, flags, 0x10, of, pair.Ot, pair.Iot, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                var rights = stage == 1 ? M.ActiveDirectoryRights.WriteProperty : M.ActiveDirectoryRights.ReadProperty;
+                var inheritance = stage == 3 ? M.ActiveDirectorySecurityInheritance.Descendents : M.ActiveDirectorySecurityInheritance.All;
+                if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, rights,
+                        stage == 2 ? E.AuditFlags.Failure : E.AuditFlags.Success,
+                        pair.NewOt ?? Guid.Empty, inheritance, pair.NewIot ?? Guid.Empty);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(E.AccessControlModification.Add, rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, rights,
+                        mode == "Deny" ? E.AccessControlType.Deny : E.AccessControlType.Allow,
+                        pair.NewOt ?? Guid.Empty, inheritance, pair.NewIot ?? Guid.Empty);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(E.AccessControlModification.Add, rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation($"merge-value-stage{stage}-{mode}-{shape}", 0,
+                audit ? "Sacl" : "Dacl", "Add", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                RequestedDescriptorHex: Convert.ToHexString(requested)));
+        }
+    }
+
+    private static void RecordEmptyObjectMaskMerge(List<Observation> observations)
+    {
+        foreach (var reverse in new[] { false, true })
+        {
+            var source = Sd.ObjAce(7, 0x42, reverse ? 0x20u : 0x10u,
+                reverse ? 2u : 3u, reverse ? null : Guid.Empty, Sd.G2, Sd.U1);
+            var requested = Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var rule = new M.ActiveDirectoryAuditRule(new B.SecurityIdentifier(Sd.U1, 0),
+                reverse ? M.ActiveDirectoryRights.ReadProperty : M.ActiveDirectoryRights.WriteProperty,
+                E.AuditFlags.Success, Guid.Empty, M.ActiveDirectorySecurityInheritance.All, Sd.G2);
+            var requestedRule = Sd.ObjAce(7, 0x42, reverse ? 0x10u : 0x20u,
+                reverse ? 3u : 2u, reverse ? Guid.Empty : null, Sd.G2, Sd.U1);
+            for (var index = 0; index < 2; index++)
+            {
+                var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+                bool? returned = null, modified = null;
+                string? exception = null, message = null;
+                try
+                {
+                    returned = descriptor.ModifyAuditRule(E.AccessControlModification.Add, rule, out var changed);
+                    modified = changed;
+                }
+                catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+                observations.Add(new Observation($"empty-ot-mask-{reverse}", index, "Sacl", "Add",
+                    "S-1-5-21-1-2-3-1001", Convert.ToHexString(RuleBytes(rule)), input,
+                    Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                    Convert.ToHexString(requestedRule), index == 0 ? Convert.ToHexString(requested) : null));
+            }
+        }
+    }
+
+    private static void RecordScopeMergeQualifiers(List<Observation> observations)
+    {
+        foreach (var mode in new[] { "Deny", "Success", "Failure", "Both" })
+        foreach (var reverse in new[] { false, true })
+        {
+            var audit = mode != "Deny";
+            var auditFlags = mode == "Success" ? E.AuditFlags.Success : mode == "Failure" ? E.AuditFlags.Failure
+                : audit ? E.AuditFlags.Success | E.AuditFlags.Failure : E.AuditFlags.None;
+            var flags = (byte)(mode == "Success" ? 0x40 : mode == "Failure" ? 0x80 : audit ? 0xC0 : 0);
+            var source = Sd.ObjAce((byte)(audit ? 7 : 6), (byte)(flags | (reverse ? 0x0A : 0)),
+                0x10, reverse ? 3u : 1u, Sd.G1, reverse ? Sd.G2 : null, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            // Reverse audit produces a multi-entry SACL; do not conflate the next edit
+            // with the unresolved existing-multi-entry SACL ordering policy.
+            for (var index = 0; index < (audit && reverse ? 1 : 2); index++)
+            {
+                var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+                bool? returned = null, modified = null;
+                string? exception = null, message = null;
+                byte[] ruleBytes = Array.Empty<byte>();
+                try
+                {
+                    var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                    var inheritance = reverse ? M.ActiveDirectorySecurityInheritance.None : M.ActiveDirectorySecurityInheritance.Descendents;
+                    if (audit)
+                    {
+                        var rule = new M.ActiveDirectoryAuditRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                            auditFlags, Sd.G1, inheritance, reverse ? Guid.Empty : Sd.G2);
+                        ruleBytes = RuleBytes(rule);
+                        returned = descriptor.ModifyAuditRule(E.AccessControlModification.Add, rule, out var changed);
+                        modified = changed;
+                    }
+                    else
+                    {
+                        var rule = new M.ActiveDirectoryAccessRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                            E.AccessControlType.Deny, Sd.G1, inheritance, reverse ? Guid.Empty : Sd.G2);
+                        ruleBytes = RuleBytes(rule);
+                        returned = descriptor.ModifyAccessRule(E.AccessControlModification.Add, rule, out var changed);
+                        modified = changed;
+                    }
+                }
+                catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+                observations.Add(new Observation($"scope-qualifier-{mode}-{reverse}", index,
+                    audit ? "Sacl" : "Dacl", "Add", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                    input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                    RequestedDescriptorHex: index == 0 ? Convert.ToHexString(requested) : null));
+            }
+        }
     }
 
     private static void RecordLaterStageMergeLeads(List<Observation> observations)
