@@ -126,6 +126,9 @@ internal static class SeededSequences
         foreach (var mask in new uint[] { 0x10, 0x14 })
         foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
             cases.Add(($"distinct-both-guids-{mask}-{scope}", 2, mask, Sd.G1, mask, Sd.G2, scope, "Remove", Sd.G1, Sd.G2));
+        foreach (var flags in new byte[] { 2, 10 })
+        foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
+            cases.Add(($"missing-object-guid-distinct-inherited-{flags}-{scope}", flags, 0x10, Sd.G1, 0x10, Sd.G2, scope, "Remove", null, Sd.G2));
         foreach (var test in cases)
         foreach (var audit in new[] { false, true })
         {
