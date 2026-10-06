@@ -44,6 +44,7 @@ internal static class SeededSequences
                     var ruleBytes = objectType == Guid.Empty
                         ? Sd.Ace((byte)(isAudit ? 2 : 0), (byte)(isAudit ? auditAceFlags : 0), rights, Sd.Sid(trustee))
                         : Sd.ObjAce((byte)(isAudit ? 7 : 5), (byte)(isAudit ? auditAceFlags : 0), rights, 1, objectType, null, Sd.Sid(trustee));
+                    var requestedRuleHex = Convert.ToHexString(ruleBytes);
                     var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
                     bool? returned = null, modified = null;
                     string? exception = null, message = null;
@@ -65,6 +66,7 @@ internal static class SeededSequences
                         {
                             var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)rights,
                                 auditFlags, objectType, M.ActiveDirectorySecurityInheritance.None, Guid.Empty);
+                            ruleBytes = RuleBytes(rule);
                             returned = descriptor.ModifyAuditRule(Enum.Parse<E.AccessControlModification>(operation), rule, out var changed);
                             modified = changed;
                         }
@@ -72,6 +74,7 @@ internal static class SeededSequences
                         {
                             var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)rights,
                                 E.AccessControlType.Allow, objectType, M.ActiveDirectorySecurityInheritance.None, Guid.Empty);
+                            ruleBytes = RuleBytes(rule);
                             returned = descriptor.ModifyAccessRule(Enum.Parse<E.AccessControlModification>(operation), rule, out var changed);
                             modified = changed;
                         }
@@ -79,7 +82,7 @@ internal static class SeededSequences
                     catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
                     observations.Add(new Observation(sequence, index++, section, operation, trustee,
                         Convert.ToHexString(ruleBytes), input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()),
-                        returned, modified, exception, message));
+                        returned, modified, exception, message, requestedRuleHex));
                 }
             }
         }
@@ -151,6 +154,7 @@ internal static class SeededSequences
                 var rule = new M.ActiveDirectoryAuditRule(new B.SecurityIdentifier(Sd.U1, 0),
                     M.ActiveDirectoryRights.ReadProperty, flags, objectAce ? Sd.G1 : Guid.Empty,
                     M.ActiveDirectorySecurityInheritance.None, Guid.Empty);
+                removeAce = RuleBytes(rule);
                 returned = descriptor.ModifyAuditRule(E.AccessControlModification.Remove, rule, out var changed);
                 modified = changed;
             }
@@ -161,7 +165,37 @@ internal static class SeededSequences
         }
     }
 
+    // Construct the recorded ACE from the actual Microsoft rule after its constructor
+    // normalizes GUID applicability. Requested arguments are not the resulting rule.
+    private static byte[] RuleBytes(M.ActiveDirectoryAccessRule rule) => RuleBytes(rule,
+        unchecked((int)rule.ActiveDirectoryRights),
+        rule.AccessControlType == E.AccessControlType.Allow ? E.AceQualifier.AccessAllowed : E.AceQualifier.AccessDenied,
+        E.AceFlags.None, rule.ObjectFlags, rule.ObjectType, rule.InheritedObjectType);
+
+    private static byte[] RuleBytes(M.ActiveDirectoryAuditRule rule) => RuleBytes(rule,
+        unchecked((int)rule.ActiveDirectoryRights), E.AceQualifier.SystemAudit,
+        ((rule.AuditFlags & E.AuditFlags.Success) != 0 ? E.AceFlags.SuccessfulAccess : E.AceFlags.None)
+        | ((rule.AuditFlags & E.AuditFlags.Failure) != 0 ? E.AceFlags.FailedAccess : E.AceFlags.None),
+        rule.ObjectFlags, rule.ObjectType, rule.InheritedObjectType);
+
+    private static byte[] RuleBytes(E.AuthorizationRule rule, int mask, E.AceQualifier qualifier,
+        E.AceFlags flags, E.ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
+    {
+        if ((rule.InheritanceFlags & E.InheritanceFlags.ContainerInherit) != 0) flags |= E.AceFlags.ContainerInherit;
+        if ((rule.InheritanceFlags & E.InheritanceFlags.ObjectInherit) != 0) flags |= E.AceFlags.ObjectInherit;
+        if ((rule.PropagationFlags & E.PropagationFlags.NoPropagateInherit) != 0) flags |= E.AceFlags.NoPropagateInherit;
+        if ((rule.PropagationFlags & E.PropagationFlags.InheritOnly) != 0) flags |= E.AceFlags.InheritOnly;
+        if (rule.IsInherited) flags |= E.AceFlags.Inherited;
+        var sid = (B.SecurityIdentifier)rule.IdentityReference;
+        E.GenericAce ace = objectFlags == E.ObjectAceFlags.None
+            ? new E.CommonAce(flags, qualifier, mask, sid, false, null)
+            : new E.ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedObjectType, false, null);
+        var bytes = new byte[ace.BinaryLength];
+        ace.GetBinaryForm(bytes, 0);
+        return bytes;
+    }
+
     private sealed record Observation(string Sequence, int Index, string Section, string Operation,
         string Sid, string RuleHex, string InputHex, string OutputHex, bool? ReturnValue,
-        bool? Modified, string? ExceptionType, string? ExceptionMessage);
+        bool? Modified, string? ExceptionType, string? ExceptionMessage, string? RequestedRuleHex = null);
 }
