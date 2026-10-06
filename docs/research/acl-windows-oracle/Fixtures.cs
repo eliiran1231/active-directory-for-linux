@@ -95,6 +95,25 @@ static class Sd
         return sd;
     }
 
+    /// <summary>Raw ACE byte arrays of the DACL or SACL, in order; empty when the ACL is absent/NULL.</summary>
+    public static List<byte[]> AceList(byte[] sd, bool sacl)
+    {
+        var result = new List<byte[]>();
+        var control = BinaryPrimitives.ReadUInt16LittleEndian(sd.AsSpan(2));
+        if ((control & (sacl ? SaclPresent : DaclPresent)) == 0) return result;
+        var offset = (int)BinaryPrimitives.ReadUInt32LittleEndian(sd.AsSpan(sacl ? 12 : 16));
+        if (offset == 0) return result;
+        var count = BinaryPrimitives.ReadUInt16LittleEndian(sd.AsSpan(offset + 4));
+        var cursor = offset + 8;
+        for (var i = 0; i < count; i++)
+        {
+            var size = BinaryPrimitives.ReadUInt16LittleEndian(sd.AsSpan(cursor + 2));
+            result.Add(sd.AsSpan(cursor, size).ToArray());
+            cursor += size;
+        }
+        return result;
+    }
+
     public static string SidText(ReadOnlySpan<byte> b)
     {
         ulong authority = 0;

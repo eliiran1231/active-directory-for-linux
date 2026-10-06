@@ -143,7 +143,11 @@ a narrowly defined exception matching the verified Microsoft behavior (oracle I1
 This is an explicit allowlisted normalization, not general permission to discard ACEs.
 
 Open: the exact set of ACE types counted as "recognized, fully understood" for this exception.
-So far only a plain allow ACE (type 0x00) with flags 0x08 has been recorded.
+The [I2 matrix](../research/acl-windows-oracle/README.md#inactive-inheritonly-matrix-i2) now
+records deny, object and audit variants. The user directed that the allowlist be expanded only
+after reviewing those results. Until that review, the allowlist covers only what this amendment
+states. Callback, conditional and unknown ACEs stay excluded unless separately validated, even
+though Microsoft drops them too.
 
 ### D14. Absent/NULL DACL: follow verified per-operation behavior
 

@@ -212,6 +212,54 @@ conversion bridge, which has not been built.
 OI only → `None` (no exception). OI|CI → `All`. CI|NP → `SelfAndChildren`.
 CI|IO|NP → `Children`.
 
+### Inactive InheritOnly matrix (I2)
+
+"Inactive" means InheritOnly (0x08) set with neither ContainerInherit nor ObjectInherit. Each
+target ACE was placed between two neighbor ACEs for U2: deny then allow in the DACL, or two audits
+in the SACL. Microsoft then imported it, and an unrelated rule for a distinct SID (Everyone) was
+added. Verdicts come from parsing the output ACL:
+- **PRESERVED** means a byte-identical ACE exists.
+- **MODIFIED** means the same mask and SID exist with changed bytes.
+- **DROPPED** means neither exists.
+- **Rejected** means an exception was thrown.
+
+The summary block `== I2 SUMMARY` in the transcript lists every row.
+
+| ACE kind | Flag / GUID variants tested | Import | After unrelated add |
+|---|---|---|---|
+| Allow (0x00) | IO; IO\|NP; IO\|INHERITED | DROPPED | DROPPED |
+| Deny (0x01) | IO; IO\|INHERITED | DROPPED | DROPPED |
+| Allow object (0x05) | IO with object flags 0, 1 (ot=G1), 2 (it=G2), 3 (both); IO\|INHERITED with flags 1 | DROPPED | DROPPED |
+| Deny object (0x06) | IO with object flags 1, 2, 3 | DROPPED | DROPPED |
+| Audit (0x02, in SACL) | IO\|S; IO\|F; IO\|S\|F; IO with no audit flags; IO\|S\|INHERITED | DROPPED | DROPPED |
+| Audit object (0x07, in SACL) | IO\|S with object flags 1, 2; IO\|S\|F with flags 3 | DROPPED | DROPPED |
+| **Controls** (IO\|CI): Allow, Deny, Allow object (flags 2), Audit | — | **PRESERVED** | PRESERVED |
+| *Excluded, recorded only:* Allow IO with unknown ACE flag 0x20 | — | DROPPED | DROPPED |
+| *Excluded:* Allow object IO with unknown object flag 0x4 | — | DROPPED | DROPPED |
+| *Excluded:* Allow IO with 4 trailing bytes | — | DROPPED | DROPPED |
+| *Excluded:* Callback allow (0x09) IO with application data | — | DROPPED | DROPPED |
+| *Excluded:* Callback allow object (0x0B) IO with application data | — | DROPPED | DROPPED |
+| *Excluded:* Unknown type 0x20 with IO | — | DROPPED | DROPPED |
+
+No case was rejected. In every case both neighbors survived byte-exact. No row produced
+MODIFIED: Microsoft never cleared only InheritOnly or otherwise activated the entry.
+
+Observations (not allowlist decisions):
+- Microsoft drops **every** inactive-IO ACE tested, regardless of ACE type, object flags,
+  GUIDs, audit flags, the INHERITED flag, unknown flag bits, trailing bytes or callback payload.
+- An unknown ACE type 0x20 **with** IO is dropped, and the ACL stays canonical. Without IO, the
+  same type is preserved and makes the ACL non-canonical (H1/H2). So an IO-only flag changes
+  whether Microsoft keeps an unknown ACE at all.
+- Dropping is unconditional on Microsoft's side, so Microsoft's behavior cannot tell
+  "understood" from "unknown" entries. Any narrower allowlist is a policy choice on our side.
+
+**Separate finding, SACL ordering:** after `AddAuditRule` (Everyone XR Success), Microsoft
+re-emitted the SACL as `[new Everyone audit; U2 Failure 0x04; U2 Success 0x20]`. The two existing
+U2 audits swapped relative order, and the IO|CI control behaved the same way. This is
+independent of the InheritOnly drop, but it means an unrelated audit edit can reorder existing
+explicit audit ACEs. It is not yet analyzed and has no allowlist status. In the DACL, the added
+Everyone allow was inserted between the deny and the existing allow; existing order was kept.
+
 ## What this does not establish
 
 - Behavior on 8.0.0/10.0.0, other servicing releases, other architectures or other Windows builds.

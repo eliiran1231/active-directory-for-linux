@@ -327,6 +327,85 @@ var inheritanceFlags = new (string Name, byte Flags)[]
 foreach (var (name, flags) in inheritanceFlags)
     Case($"I1 imported ACE flags {name}", () => { var b = WithDacl(Ace(0x00, flags, 0x10, U1)); Snap("import", Load(b), b); });
 
+// ---------------------------------------------------------------- I2. inactive InheritOnly matrix
+// "Inactive" = InheritOnly set, neither ContainerInherit nor ObjectInherit. Each target ACE sits
+// between two neighbor ACEs so neighbor survival and order are visible. CI controls show the
+// same ACE kind with an active inheritance flag. Callback/unknown rows are recorded only; they
+// are excluded from any allowlist regardless of outcome.
+const byte IO = Io, CI = Ci, INH = Inherited, S = Success, F = Failure;
+var ioCases = new (string Group, string Name, bool Sacl, byte[] Target)[]
+{
+    ("DACL common", "Allow IO (baseline)", false, Ace(0x00, IO, 0x10, U1)),
+    ("DACL common", "Allow IO|CI (control)", false, Ace(0x00, (byte)(IO | CI), 0x10, U1)),
+    ("DACL common", "Allow IO|NP", false, Ace(0x00, (byte)(IO | Np), 0x10, U1)),
+    ("DACL common", "Allow IO|INHERITED", false, Ace(0x00, (byte)(IO | INH), 0x10, U1)),
+    ("DACL common", "Deny IO", false, Ace(0x01, IO, 0x10, U1)),
+    ("DACL common", "Deny IO|CI (control)", false, Ace(0x01, (byte)(IO | CI), 0x10, U1)),
+    ("DACL common", "Deny IO|INHERITED", false, Ace(0x01, (byte)(IO | INH), 0x10, U1)),
+    ("DACL object", "AllowObj IO of=0", false, ObjAce(0x05, IO, 0x10, 0, null, null, U1)),
+    ("DACL object", "AllowObj IO of=1 ot=G1", false, ObjAce(0x05, IO, 0x10, 1, G1, null, U1)),
+    ("DACL object", "AllowObj IO of=2 it=G2", false, ObjAce(0x05, IO, 0x10, 2, null, G2, U1)),
+    ("DACL object", "AllowObj IO of=3 ot=G1 it=G2", false, ObjAce(0x05, IO, 0x10, 3, G1, G2, U1)),
+    ("DACL object", "AllowObj IO|CI of=2 it=G2 (control)", false, ObjAce(0x05, (byte)(IO | CI), 0x10, 2, null, G2, U1)),
+    ("DACL object", "DenyObj IO of=1 ot=G1", false, ObjAce(0x06, IO, 0x10, 1, G1, null, U1)),
+    ("DACL object", "DenyObj IO of=2 it=G2", false, ObjAce(0x06, IO, 0x10, 2, null, G2, U1)),
+    ("DACL object", "DenyObj IO of=3 ot=G1 it=G2", false, ObjAce(0x06, IO, 0x10, 3, G1, G2, U1)),
+    ("DACL object", "AllowObj IO|INHERITED of=1 ot=G1", false, ObjAce(0x05, (byte)(IO | INH), 0x10, 1, G1, null, U1)),
+    ("SACL audit", "Audit IO|S", true, Ace(0x02, (byte)(IO | S), 0x10, U1)),
+    ("SACL audit", "Audit IO|F", true, Ace(0x02, (byte)(IO | F), 0x10, U1)),
+    ("SACL audit", "Audit IO|S|F", true, Ace(0x02, (byte)(IO | S | F), 0x10, U1)),
+    ("SACL audit", "Audit IO (no audit flags)", true, Ace(0x02, IO, 0x10, U1)),
+    ("SACL audit", "Audit IO|CI|S (control)", true, Ace(0x02, (byte)(IO | CI | S), 0x10, U1)),
+    ("SACL audit", "Audit IO|S|INHERITED", true, Ace(0x02, (byte)(IO | S | INH), 0x10, U1)),
+    ("SACL audit", "AuditObj IO|S of=1 ot=G1", true, ObjAce(0x07, (byte)(IO | S), 0x10, 1, G1, null, U1)),
+    ("SACL audit", "AuditObj IO|S of=2 it=G2", true, ObjAce(0x07, (byte)(IO | S), 0x10, 2, null, G2, U1)),
+    ("SACL audit", "AuditObj IO|S|F of=3 ot=G1 it=G2", true, ObjAce(0x07, (byte)(IO | S | F), 0x10, 3, G1, G2, U1)),
+    ("Excluded (record only)", "Allow IO with unknown flag 0x20", false, Ace(0x00, (byte)(IO | 0x20), 0x10, U1)),
+    ("Excluded (record only)", "AllowObj IO unknown object flag 0x4", false, ObjAce(0x05, IO, 0x10, 5, G1, null, U1)),
+    ("Excluded (record only)", "Allow IO with 4 trailing bytes", false, Ace(0x00, IO, 0x10, U1, new byte[4])),
+    ("Excluded (record only)", "AllowCallback IO with app data", false, Ace(0x09, IO, 0x10, U1, appData)),
+    ("Excluded (record only)", "AllowCallbackObj IO with app data", false, ObjAce(0x0B, IO, 0x10, 1, G1, null, U1, appData)),
+    ("Excluded (record only)", "Unknown type 0x20 with IO", false, Ace(0x20, IO, 0x10, U1)),
+};
+var verdicts = new List<string>();
+foreach (var (group, name, sacl, target) in ioCases)
+{
+    Case($"I2 {group}: {name}", () =>
+    {
+        // Neighbors: canonical explicit deny/allow (DACL) or two audits (SACL) around the target.
+        var before = sacl ? Ace(0x02, S, 0x20, U2) : Ace(0x01, 0, 0x20, U2);
+        var after = sacl ? Ace(0x02, F, 0x04, U2) : Ace(0x00, 0, 0x04, U2);
+        var aclBytes = Acl(4, before, target, after);
+        var input = sacl ? Build(Admins, Admins, Acl(4), sacl: aclBytes) : Build(Admins, Admins, aclBytes);
+        Probe p;
+        try { p = Load(input); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  import: EXC {Ex(ex)}");
+            verdicts.Add($"{group} | {name} | REJECTED on import ({ex.GetType().Name}) | - | -");
+            return;
+        }
+        var output = p.GetSecurityDescriptorBinaryForm();
+        Snap("import", p, input);
+        var importVerdict = Verdict(output, target, before, after, sacl);
+        Console.WriteLine($"  verdict(import): {importVerdict}");
+        // Unrelated edit in the same ACL, then re-check.
+        string editVerdict;
+        try
+        {
+            if (sacl) p.AddAuditRule(A(everyone, XR, E.AuditFlags.Success)); else p.AddAccessRule(R(everyone, XR, allow)); // distinct SID: cannot merge with neighbors
+            var edited = p.GetSecurityDescriptorBinaryForm();
+            Snap("after unrelated add", p);
+            editVerdict = Verdict(edited, target, before, after, sacl);
+        }
+        catch (Exception ex) { editVerdict = $"edit REJECTED ({ex.GetType().Name})"; Console.WriteLine($"  edit: EXC {Ex(ex)}"); }
+        Console.WriteLine($"  verdict(after unrelated add): {editVerdict}");
+        verdicts.Add($"{group} | {name} | {importVerdict} | {editVerdict} | canonical={p.AreAccessRulesCanonical}/{p.AreAuditRulesCanonical}");
+    });
+}
+Console.WriteLine("== I2 SUMMARY (group | case | import | after unrelated add | canonical access/audit)");
+foreach (var line in verdicts) Console.WriteLine("  " + line);
+
 // ---------------------------------------------------------------- J. binary setters and dirty flags
 Case("J1 section-limited SetSecurityDescriptorBinaryForm(bytes, Access) keeps owner?", () =>
 {
@@ -456,6 +535,22 @@ void Snap(string label, Probe p, byte[]? input = null)
         Console.WriteLine($"    rule {Rule(rule)}");
     foreach (E.AuthorizationRule rule in p.GetAuditRules(true, true, typeof(B.SecurityIdentifier)))
         Console.WriteLine($"    audit {Rule(rule)}");
+}
+
+// Classifies the target ACE against the parsed ACEs of the ACL it was placed in.
+// PRESERVED = an ACE byte-identical to the target exists; MODIFIED = no identical ACE, but one
+// with the same access mask whose body contains U1's SID (flags/type/payload changed);
+// DROPPED = neither. Neighbors are checked for exact survival and relative order.
+string Verdict(byte[] output, byte[] target, byte[] before, byte[] after, bool sacl)
+{
+    var aces = AceList(output, sacl);
+    int Index(byte[] ace) => aces.FindIndex(a => a.AsSpan().SequenceEqual(ace));
+    var targetState = Index(target) >= 0 ? "PRESERVED"
+        : aces.Any(a => a.Length >= 8 && a.AsSpan(4, 4).SequenceEqual(target.AsSpan(4, 4)) && a.AsSpan(8).IndexOf(U1) >= 0) ? "MODIFIED"
+        : "DROPPED";
+    var b = Index(before); var f = Index(after);
+    var neighbors = b < 0 || f < 0 ? "NEIGHBOR CHANGED" : b < f ? "neighbors intact, order kept" : "neighbors intact, ORDER CHANGED";
+    return $"{targetState}; {neighbors}; aces={aces.Count}";
 }
 
 string Rule(E.AuthorizationRule rule)
