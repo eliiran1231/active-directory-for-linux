@@ -84,6 +84,36 @@ Case IDs refer to the transcript.
 - Empty and populated DACLs round-trip byte-exactly. **B5** `AddAuditRule` on an absent SACL
   creates a present SACL (revision 4).
 
+#### Per-operation matrix (B6)
+
+Each operation ran on a freshly loaded object with its modified flags reset first, for each
+of absent, NULL and empty DACL inputs. "Everyone" below means the explicit
+`Allow Everyone 0xFFFFFFFF CI|OI` ACE.
+
+| Operation | Absent or NULL DACL result | Empty DACL result | Flags set |
+|---|---|---|---|
+| Getters only (binary form, rules, SDDL, canonical) | Unchanged representation (NULL still exports as absent, as in B1) | Unchanged | none |
+| `SetOwner` / `SetGroup` | DACL stays absent | Unchanged DACL | owner / group only |
+| `AddAuditRule` (SACL only) | DACL stays absent; SACL created | DACL unchanged; SACL created | audit only |
+| `SetAccessRuleProtection(false, true)` on an unprotected DACL | **Everyone materialized** | Bytes unchanged | access |
+| `SetAccessRuleProtection(true, false)` | Everyone materialized, protected | Empty, protected | access |
+| `AddAccessRule` of a rule identical to the implied Everyone rule | Everyone materialized (one ACE) | One Everyone ACE added | access |
+| `AddAccessRule(deny U1 RP)` | Deny U1 + Everyone | Deny U1 | access |
+| `SetAccessRule` / `ResetAccessRule(allow U1 RP)` | Everyone + Allow U1 | Allow U1 | access |
+| `RemoveAccessRule` / `RemoveAccessRuleSpecific` / `RemoveAccess` / `PurgeAccessRules`, **no match** | **Everyone materialized** (`RemoveAccessRule` returned true) | Bytes unchanged | access |
+| `PurgeAccessRules(Everyone)` | **Empty DACL** | Unchanged | access |
+| `RemoveAccessRuleSpecific(exact Everyone rule)` | **Empty DACL** | Unchanged | access |
+| `RemoveAccessRule(allow Everyone RP)`, partial | Split: `Everyone 0xFFFFFFEF CI\|OI` + `Everyone RP CI\|IO` | Unchanged, returned true | access |
+| `AddAccessRule(null)` / `ModifyAccessRule(Add, null)` | `ArgumentNullException(rule)`; unchanged | Same | none |
+
+Reading of this matrix (observations, not design decisions):
+- Materialization is triggered by **any DACL-targeted call that gets past argument
+  validation**, including calls that change nothing semantically.
+- Owner, group and SACL changes, getters and failed calls do not materialize anything.
+- Removing the Everyone entry, fully or partly, is the path from unrestricted to restricted.
+  Full removal yields an empty, deny-all DACL.
+- For the empty DACL, no-op calls leave the bytes unchanged but still set the access flag.
+
 ### Merging (C1–C3)
 
 | Second rule added to first | Result |

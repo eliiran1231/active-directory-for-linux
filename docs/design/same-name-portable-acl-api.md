@@ -9,7 +9,7 @@ rejected. The user subsequently confirmed the library is unreleased and approved
 decided that the same portable types are used on Windows and Linux, with explicit snapshot
 bridges to Microsoft objects. Protected hooks, including all `Persist` overloads, are preserved.
 `Principal.Sid` moves to the portable type in the same pre-release design. See
-[decisions D1–D12](acl-decisions.md). The final member-by-member surface is still under review.
+[decisions](acl-decisions.md). The final member-by-member surface is still under review.
 No production source, packaging, directory permission or workflow changes occur here.
 
 **Useful result:** an isolated prototype links the actual ten-class wrapper source and rebinds

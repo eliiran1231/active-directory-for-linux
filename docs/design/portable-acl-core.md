@@ -347,10 +347,12 @@ no new public `Canonicalize()` method is part of this design.
     the representation (absent/NULL becomes a populated DACL).
   - `RemoveAccess(Everyone, Allow)` yields an **empty** DACL.
 
-  The earlier belief that NULL is written back as NULL was wrong. Whether the portable
-  implementation copies this materialization or refuses it is **not decided**
-  ([open items](acl-decisions.md#still-open-not-decided)). Either way, the core never
-  **creates** a null DACL from `Absent`, `Empty` or `Populated`.
+  The earlier belief that NULL is written back as NULL was wrong. **Decided
+  ([D14](acl-decisions.md#d14-absentnull-dacl-follow-verified-per-operation-behavior)):** follow
+  Microsoft's verified **per-operation** behavior (the [B6 matrix](../research/acl-windows-oracle/README.md#per-operation-matrix-b6)),
+  not a blanket rule. Keep the original absent/NULL/empty distinction internally, and never let
+  getter normalization become write intent. How the model represents both at once is still
+  open. The core never **creates** a null DACL from `Absent`, `Empty` or `Populated`.
 - An `Absent` SACL becomes `Present` on the first `AddAuditRule`, and only if the SACL was
   retrieved.
 
@@ -670,7 +672,7 @@ from a claim of general-purpose library compatibility.
 | B-1 | Stock Linux existing BCL contract | **Blocked**, executed on 8.0.0/10.0.0. Portable-dependency investigation now authorized; final adoption pending (§7). |
 | O-1 | Canonical order/merging/splitting | **First recordings made** ([Windows oracle](../research/acl-windows-oracle/README.md), 8.0.29/10.0.10, identical). Complementary scopes merge; object/non-object and differing GUIDs do not; splits and `false` returns recorded. Broader scripted coverage still pending |
 | O-2 | Set/Reset/Purge scope across GUIDs, opaque ACEs and inherited entries | **Recorded for the fixture:** Set removes all explicit same-type ACEs for the SID regardless of GUID; Reset also removes the other type; Purge removes all explicit ACEs; inherited ACEs are kept. Opaque-ACE interaction and safety-deviation review still pending |
-| O-3 | Null/absent/empty ACL mutations and materialization | **Recorded:** absent and NULL both enumerate as Everyone full control, export as absent, and materialize an explicit ACE on mutation (§5.5). Whether to copy this is undecided |
+| O-3 | Null/absent/empty ACL mutations and materialization | **Recorded:** absent and NULL both enumerate as Everyone full control, export as absent, and materialize an explicit ACE on mutation (§5.5). Follow verified per-operation behavior ([D14](acl-decisions.md)); per-operation matrix recorded (oracle B6) |
 | O-4 | Modify masks, fresh assignment and dirty/intent semantics | Windows request capture and inherited-entry-point audit; narrowed mask not yet approved as behavioral parity |
 | O-5 | Unaligned/contradictory/revision-mismatched input | Partly recorded: ACL revision 2 with an object ACE, trailing ACE bytes, unknown ACE/object flags are preserved by Microsoft, as was one callback ACE (0x09) and one callback object ACE (0x0B), each with a fixed 4-byte payload. That callback evidence does not establish conditional-ACE support or safe edit-back. Mandatory-label ACEs in the SACL, audit ACEs in the DACL and IO-only ACEs are **dropped**, and control bit 0x0100 is cleared. Unaligned input is not yet tested |
 | O-6 | Opaque/trailing ACE edit policy | Proposed preserve-or-refuse rule resolved in this design (§5.2); public behavioral deviation still needs approval |

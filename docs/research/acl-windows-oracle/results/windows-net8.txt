@@ -143,6 +143,522 @@ Identity assembly: System.Security.Principal.Windows, Version=8.0.0.0, Culture=n
     canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1111
     sddl=O:BAG:BAD:S:(AU;SA;RP;;;S-1-5-21-1-2-3-1001)
     audit ActiveDirectoryAuditRule Success rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 absent DACL: getters only (bytes, rules, SDDL, canonical)
+  op: done
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=True reexport-stable=True
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: SetOwner(U1)
+  op: done
+  [after] len=64 ctrl=0x8000 O@20 G@48 S@0 D@0 owner=U1 group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100008014000000300000000000000000000000010500000000000515000000010000000200000003000000E903000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1000
+    sddl=O:S-1-5-21-1-2-3-1001G:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: SetGroup(U1)
+  op: done
+  [after] len=64 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=U1 SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010000801400000024000000000000000000000001020000000000052000000020020000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0100
+    sddl=O:BAG:S-1-5-21-1-2-3-1001
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: AddAuditRule(U1 RP Success) [SACL only]
+  op: done
+  [after] len=96 ctrl=0x8010 O@20 G@36 S@52 D@0 owner=Admins group=Admins SACL=rev4/1[Audit f=0x40 m=0x10 U1] DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100108014000000240000003400000000000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000240240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0001
+    sddl=O:BAG:BAS:(AU;SA;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    audit ActiveDirectoryAuditRule Success rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 absent DACL: SetAccessRuleProtection(false, true) [already unprotected]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: SetAccessRuleProtection(true, false)
+  op: done
+  [after] len=80 ctrl=0x9004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100049014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=True modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:P(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: AddAccessRule(Everyone 0xFFFFFFFF CI|OI) [identical to implied rule]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: AddAccessRule(deny U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Deny f=0x00 m=0x10 U1; Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004004000020000000100240010000000010500000000000515000000010000000200000003000000E903000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(D;;RP;;;S-1-5-21-1-2-3-1001)(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Deny rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: SetAccessRule(allow U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFFF Everyone; Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040040000200000000031400FFFFFFFF0101000000000001000000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 absent DACL: ResetAccessRule(allow U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFFF Everyone; Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040040000200000000031400FFFFFFFF0101000000000001000000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 absent DACL: RemoveAccessRule(allow U2 RP) [no match]
+  op: returned=True
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: RemoveAccessRuleSpecific(allow U2 RP) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: RemoveAccess(U2, Allow) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: RemoveAccess(Everyone, Deny) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: PurgeAccessRules(U2) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: PurgeAccessRules(Everyone)
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 absent DACL: RemoveAccessRule(allow Everyone RP) [partial]
+  op: returned=True
+  [after] len=100 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFEF Everyone; Allow f=0x0A m=0x10 Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040030000200000000031400EFFFFFFF010100000000000100000000000A140010000000010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffef;;;WD)(A;CIIO;RP;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFEF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 Everyone inh=False IF=ContainerInherit PF=InheritOnly OF=None ot=- it=- IT=Descendents
+== B6 absent DACL: RemoveAccessRuleSpecific(Everyone 0xFFFFFFFF CI|OI) [exact]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 absent DACL: AddAccessRule(null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=True reexport-stable=True
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 absent DACL: ModifyAccessRule(Add, null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=True reexport-stable=True
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: getters only (bytes, rules, SDDL, canonical)
+  op: done
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: SetOwner(U1)
+  op: done
+  [after] len=64 ctrl=0x8000 O@20 G@48 S@0 D@0 owner=U1 group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100008014000000300000000000000000000000010500000000000515000000010000000200000003000000E903000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1000
+    sddl=O:S-1-5-21-1-2-3-1001G:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: SetGroup(U1)
+  op: done
+  [after] len=64 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=U1 SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010000801400000024000000000000000000000001020000000000052000000020020000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0100
+    sddl=O:BAG:S-1-5-21-1-2-3-1001
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: AddAuditRule(U1 RP Success) [SACL only]
+  op: done
+  [after] len=96 ctrl=0x8010 O@20 G@36 S@52 D@0 owner=Admins group=Admins SACL=rev4/1[Audit f=0x40 m=0x10 U1] DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100108014000000240000003400000000000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000240240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0001
+    sddl=O:BAG:BAS:(AU;SA;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    audit ActiveDirectoryAuditRule Success rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 NULL DACL: SetAccessRuleProtection(false, true) [already unprotected]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: SetAccessRuleProtection(true, false)
+  op: done
+  [after] len=80 ctrl=0x9004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100049014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=True modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:P(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: AddAccessRule(Everyone 0xFFFFFFFF CI|OI) [identical to implied rule]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: AddAccessRule(deny U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Deny f=0x00 m=0x10 U1; Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004004000020000000100240010000000010500000000000515000000010000000200000003000000E903000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(D;;RP;;;S-1-5-21-1-2-3-1001)(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Deny rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: SetAccessRule(allow U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFFF Everyone; Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040040000200000000031400FFFFFFFF0101000000000001000000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 NULL DACL: ResetAccessRule(allow U1 RP)
+  op: done
+  [after] len=116 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFFF Everyone; Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040040000200000000031400FFFFFFFF0101000000000001000000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 NULL DACL: RemoveAccessRule(allow U2 RP) [no match]
+  op: returned=True
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: RemoveAccessRuleSpecific(allow U2 RP) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: RemoveAccess(U2, Allow) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: RemoveAccess(Everyone, Deny) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: PurgeAccessRules(U2) [no match]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: PurgeAccessRules(Everyone)
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 NULL DACL: RemoveAccessRule(allow Everyone RP) [partial]
+  op: returned=True
+  [after] len=100 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/2[Allow f=0x03 m=0xFFFFFFEF Everyone; Allow f=0x0A m=0x10 Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000480140000002400000000000000340000000102000000000005200000002002000001020000000000052000000020020000040030000200000000031400EFFFFFFF010100000000000100000000000A140010000000010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffef;;;WD)(A;CIIO;RP;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFEF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+    rule ActiveDirectoryAccessRule Allow rights=0x10 Everyone inh=False IF=ContainerInherit PF=InheritOnly OF=None ot=- it=- IT=Descendents
+== B6 NULL DACL: RemoveAccessRuleSpecific(Everyone 0xFFFFFFFF CI|OI) [exact]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 NULL DACL: AddAccessRule(null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 NULL DACL: ModifyAccessRule(Add, null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=52 ctrl=0x8000 O@20 G@36 S@0 D@0 owner=Admins group=Admins SACL=absent DACL=absent
+    input-bytes-preserved=False reexport-stable=True
+    input=01000480140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    hex=01000080140000002400000000000000000000000102000000000005200000002002000001020000000000052000000020020000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BA
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 empty DACL: getters only (bytes, rules, SDDL, canonical)
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BAD:
+== B6 empty DACL: SetOwner(U1)
+  op: done
+  [after] len=72 ctrl=0x8004 O@20 G@48 S@0 D@64 owner=U1 group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100048014000000300000000000000040000000010500000000000515000000010000000200000003000000E9030000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=1000
+    sddl=O:S-1-5-21-1-2-3-1001G:BAD:
+== B6 empty DACL: SetGroup(U1)
+  op: done
+  [after] len=72 ctrl=0x8004 O@20 G@36 S@0 D@64 owner=Admins group=U1 SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=010004801400000024000000000000004000000001020000000000052000000020020000010500000000000515000000010000000200000003000000E90300000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0100
+    sddl=O:BAG:S-1-5-21-1-2-3-1001D:
+== B6 empty DACL: AddAuditRule(U1 RP Success) [SACL only]
+  op: done
+  [after] len=104 ctrl=0x8014 O@20 G@36 S@52 D@96 owner=Admins group=Admins SACL=rev4/1[Audit f=0x40 m=0x10 U1] DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100148014000000240000003400000060000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000240240010000000010500000000000515000000010000000200000003000000E90300000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0001
+    sddl=O:BAG:BAD:S:(AU;SA;RP;;;S-1-5-21-1-2-3-1001)
+    audit ActiveDirectoryAuditRule Success rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 empty DACL: SetAccessRuleProtection(false, true) [already unprotected]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: SetAccessRuleProtection(true, false)
+  op: done
+  [after] len=60 ctrl=0x9004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=010004901400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=True modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:P
+== B6 empty DACL: AddAccessRule(Everyone 0xFFFFFFFF CI|OI) [identical to implied rule]
+  op: done
+  [after] len=80 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x03 m=0xFFFFFFFF Everyone]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004001C000100000000031400FFFFFFFF010100000000000100000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;OICI;0xffffffff;;;WD)
+    rule ActiveDirectoryAccessRule Allow rights=0xFFFFFFFF Everyone inh=False IF=ContainerInherit, ObjectInherit PF=None OF=None ot=- it=- IT=All
+== B6 empty DACL: AddAccessRule(deny U1 RP)
+  op: done
+  [after] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Deny f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000100240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(D;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Deny rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 empty DACL: SetAccessRule(allow U1 RP)
+  op: done
+  [after] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 empty DACL: ResetAccessRule(allow U1 RP)
+  op: done
+  [after] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
+    input-bytes-preserved=False reexport-stable=True
+    input=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:(A;;RP;;;S-1-5-21-1-2-3-1001)
+    rule ActiveDirectoryAccessRule Allow rights=0x10 U1 inh=False IF=None PF=None OF=None ot=- it=- IT=None
+== B6 empty DACL: RemoveAccessRule(allow U2 RP) [no match]
+  op: returned=True
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: RemoveAccessRuleSpecific(allow U2 RP) [no match]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: RemoveAccess(U2, Allow) [no match]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: RemoveAccess(Everyone, Deny) [no match]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: PurgeAccessRules(U2) [no match]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: PurgeAccessRules(Everyone)
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: RemoveAccessRule(allow Everyone RP) [partial]
+  op: returned=True
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: RemoveAccessRuleSpecific(Everyone 0xFFFFFFFF CI|OI) [exact]
+  op: done
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0010
+    sddl=O:BAG:BAD:
+== B6 empty DACL: AddAccessRule(null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BAD:
+== B6 empty DACL: ModifyAccessRule(Add, null) [failed call]
+  op: EXC System.ArgumentNullException(param=rule): Value cannot be null. (Parameter 'rule')
+  [after] len=60 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/0[]
+    input-bytes-preserved=True reexport-stable=True
+    hex=010004801400000024000000000000003400000001020000000000052000000020020000010200000000000520000000200200000400080000000000
+    canonical(access/audit)=True/True protected=False modified(owner/group/access/audit)=0000
+    sddl=O:BAG:BAD:
 == C1 merge: RP + WP, same scope
   [after first] len=96 ctrl=0x8004 O@20 G@36 S@0 D@52 owner=Admins group=Admins SACL=absent DACL=rev4/1[Allow f=0x00 m=0x10 U1]
     hex=0100048014000000240000000000000034000000010200000000000520000000200200000102000000000005200000002002000004002C00010000000000240010000000010500000000000515000000010000000200000003000000E9030000

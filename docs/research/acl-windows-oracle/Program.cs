@@ -89,6 +89,54 @@ foreach (var (name, bytes) in new[] { ("absent SACL", saclAbsent), ("empty SACL"
     });
 }
 
+// ---------------------------------------------------------------- B6. per-operation DACL-state matrix
+// Each op runs on a freshly loaded object whose modified flags were reset first, so the
+// recorded flags and bytes show only that operation's effect.
+var everyoneFull = (M.ActiveDirectoryAccessRule)new M.ActiveDirectorySecurity().AccessRuleFactory(
+    everyone, -1, false, E.InheritanceFlags.ContainerInherit | E.InheritanceFlags.ObjectInherit,
+    E.PropagationFlags.None, allow);
+var stateOps = new (string Name, Func<Probe, string> Op)[]
+{
+    ("getters only (bytes, rules, SDDL, canonical)", p =>
+    {
+        _ = p.GetSecurityDescriptorBinaryForm(); _ = p.GetAccessRules(true, true, typeof(B.SecurityIdentifier));
+        _ = p.GetSecurityDescriptorSddlForm(E.AccessControlSections.All); _ = p.AreAccessRulesCanonical; return "done";
+    }),
+    ("SetOwner(U1)", p => { p.SetOwner(u1); return "done"; }),
+    ("SetGroup(U1)", p => { p.SetGroup(u1); return "done"; }),
+    ("AddAuditRule(U1 RP Success) [SACL only]", p => { p.AddAuditRule(A(u1, RP, E.AuditFlags.Success)); return "done"; }),
+    ("SetAccessRuleProtection(false, true) [already unprotected]", p => { p.SetAccessRuleProtection(false, true); return "done"; }),
+    ("SetAccessRuleProtection(true, false)", p => { p.SetAccessRuleProtection(true, false); return "done"; }),
+    ("AddAccessRule(Everyone 0xFFFFFFFF CI|OI) [identical to implied rule]", p => { p.AddAccessRule(everyoneFull); return "done"; }),
+    ("AddAccessRule(deny U1 RP)", p => { p.AddAccessRule(R(u1, RP, deny)); return "done"; }),
+    ("SetAccessRule(allow U1 RP)", p => { p.SetAccessRule(R(u1, RP, allow)); return "done"; }),
+    ("ResetAccessRule(allow U1 RP)", p => { p.ResetAccessRule(R(u1, RP, allow)); return "done"; }),
+    ("RemoveAccessRule(allow U2 RP) [no match]", p => $"returned={p.RemoveAccessRule(R(u2, RP, allow))}"),
+    ("RemoveAccessRuleSpecific(allow U2 RP) [no match]", p => { p.RemoveAccessRuleSpecific(R(u2, RP, allow)); return "done"; }),
+    ("RemoveAccess(U2, Allow) [no match]", p => { p.RemoveAccess(u2, allow); return "done"; }),
+    ("RemoveAccess(Everyone, Deny) [no match]", p => { p.RemoveAccess(everyone, deny); return "done"; }),
+    ("PurgeAccessRules(U2) [no match]", p => { p.PurgeAccessRules(u2); return "done"; }),
+    ("PurgeAccessRules(Everyone)", p => { p.PurgeAccessRules(everyone); return "done"; }),
+    ("RemoveAccessRule(allow Everyone RP) [partial]", p => $"returned={p.RemoveAccessRule(R(everyone, RP, allow))}"),
+    ("RemoveAccessRuleSpecific(Everyone 0xFFFFFFFF CI|OI) [exact]", p => { p.RemoveAccessRuleSpecific(everyoneFull); return "done"; }),
+    ("AddAccessRule(null) [failed call]", p => { p.AddAccessRule(null!); return "done"; }),
+    ("ModifyAccessRule(Add, null) [failed call]", p => $"returned={p.ModifyAccessRule(E.AccessControlModification.Add, null!, out _)}"),
+};
+foreach (var (state, bytes) in daclStates.Where(s => s.Name != "populated DACL"))
+{
+    foreach (var (opName, op) in stateOps)
+    {
+        Case($"B6 {state}: {opName}", () =>
+        {
+            var p = Load(bytes);
+            p.ResetFlags();
+            try { Console.WriteLine($"  op: {op(p)}"); }
+            catch (Exception ex) { Console.WriteLine($"  op: EXC {Ex(ex)}"); }
+            Snap("after", p, bytes);
+        });
+    }
+}
+
 // ---------------------------------------------------------------- C. merging
 var mergeCases = new (string Name, M.ActiveDirectoryAccessRule First, M.ActiveDirectoryAccessRule Second)[]
 {

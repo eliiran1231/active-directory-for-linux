@@ -114,16 +114,53 @@ Offline Windows oracle recordings are the right next step: merge/split, ordering
 null/empty/absent DACLs and conversion round-trips. Keep them in memory, with no AD writes and
 no token or privilege changes. First recordings: [acl-windows-oracle](../research/acl-windows-oracle/README.md).
 
+### D13. Accepted normalizations: a narrow, tested allowlist
+
+Accept a narrow, tested allowlist, not the whole group of observed normalizations automatically:
+
+| Observed Microsoft change | Decision |
+|---|---|
+| Repacking descriptor components with correct offsets | Reasonable |
+| Clearing NoPropagate when neither inheritance flag is present | Reasonable |
+| InheritOnly without inheritance flags (Microsoft drops the entire inactive ACE) | Do **not** clear just InheritOnly: that would activate the ACE |
+| Moving object ACEs | Only within the appropriate explicit deny/allow groups, preserving inherited order. Never globally move object ACEs last |
+| Loss of meaningful audit/label entries, conditions or unknown data | Keep refusing |
+
+Each exception needs exact preconditions, and tests for access and inheritance effects, not
+just matching bytes.
+
+Open: whether dropping the entire inactive InheritOnly-only ACE, as Microsoft does, is itself on
+the allowlist or is refused. The decision rules out clearing only the flag; it does not say which
+of the remaining two options applies.
+
+### D14. Absent/NULL DACL: follow verified per-operation behavior
+
+Follow Microsoft's verified **per-operation** behavior, not a blanket "Everyone on any edit" rule.
+The recordings show:
+- `AddAccessRule` and the tested protection change materialize Everyone;
+- removing Everyone instead produces an empty DACL, which is very different.
+
+Add cases for owner/group/SACL-only changes, no-ops and failed calls before generalizing.
+Preserve the original absent/null/empty distinction internally, and never turn getter
+normalization into write intent. Compatibility stays the goal, without adopting an overly
+broad rule.
+
+Those cases were then recorded ([oracle B6](../research/acl-windows-oracle/README.md#per-operation-matrix-b6)).
+They show materialization for every DACL-targeted call past argument validation, including
+no-match removes, but not for owner/group/SACL-only changes, getters or failed calls.
+Recording them does not by itself decide any further generalization.
+
 ## Still open (not decided)
 
 These remain open. They are not decided by implication from the decisions above.
 
-- Which observed Microsoft normalizations are accepted as harmless (D3 open item).
+- Whether dropping an inactive InheritOnly-only ACE is allowlisted or refused (D13 open item).
+  The rest of the D3 normalization question is answered by D13.
 - Write-mask policy on commit: `Modified ∩ Retrieved` versus Microsoft's wire mask (O-4).
 - Detached assignment to the same entry, and LDAP Add creation defaults.
 - The protected `CommonSecurityDescriptor` facade surface (D5 asks for an explicit design; none
   has been chosen).
 - The resolver's final helper and overload names, and its error categories.
-- Whether the portable implementation follows Microsoft's absent/NULL-DACL materialization of an
-  explicit Everyone full-control ACE (observed in the oracle), or refuses that transition. This is
-  a representation question, not a new grant: a NULL DACL is already unrestricted.
+- How the internal model represents a materialized Everyone ACE while preserving the original
+  absent/NULL/empty state (D14 requires both). This is a representation question, not a new
+  grant: a NULL DACL is already unrestricted.

@@ -6,7 +6,7 @@ another portable ACL API. The user confirmed the library is unreleased and appro
 `AdForLinux.Security.*` in `AdForLinux.DirectoryServices.dll`. **Update 2026-10-06:** the user
 has since decided the one-surface Windows behavior, the export shape, the data-loss default,
 protected hooks, the `Persist(true)` limitation, companion packaging, `Principal.Sid` and the
-ambient resolver policy. See [decisions D1–D12](acl-decisions.md). Analysis below that predates
+ambient resolver policy. See [decisions](acl-decisions.md). Analysis below that predates
 those decisions is kept; where it conflicts, the decision record wins. The subsequent [context resolver investigation](context-bound-identity-resolution.md) proposes
 a library-built AD resolver using existing entries/contexts and records lifecycle decisions.
 
