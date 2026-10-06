@@ -23,6 +23,9 @@ internal sealed class Acl
         Sbz2 = sbz2;
         _aces = aces;
         _trailing = trailing;
+
+        // A wrapper, not the array itself: callers must not be able to cast back and edit.
+        Aces = Array.AsReadOnly(aces);
     }
 
     public byte AclRevision { get; }
@@ -31,7 +34,7 @@ internal sealed class Acl
 
     public ushort Sbz2 { get; }
 
-    public IReadOnlyList<Ace> Aces => _aces;
+    public IReadOnlyList<Ace> Aces { get; }
 
     public ReadOnlySpan<byte> Trailing => _trailing;
 

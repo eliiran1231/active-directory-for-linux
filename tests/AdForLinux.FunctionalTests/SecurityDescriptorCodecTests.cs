@@ -235,6 +235,33 @@ public class SecurityDescriptorCodecTests
     }
 
     [Fact]
+    public void Ace_list_cannot_be_cast_back_and_edited()
+    {
+        var input = Corpus["object ACEs with flags 0-3"];
+        var acl = SecurityDescriptor.Parse(input, All).Dacl!;
+        var first = acl.Aces[0];
+
+        Assert.IsNotType<Ace[]>(acl.Aces);
+        Assert.False(acl.Aces is IList<Ace> { IsReadOnly: false });
+        Assert.Throws<NotSupportedException>(() => ((IList<Ace>)acl.Aces)[0] = acl.Aces[1]);
+        Assert.Same(first, acl.Aces[0]);
+    }
+
+    [Fact]
+    public void Returned_byte_arrays_are_independent_copies()
+    {
+        var descriptor = SecurityDescriptor.Parse(Corpus["SACL and DACL"], All);
+        var output = descriptor.GetBinaryForm();
+        var sid = descriptor.Owner!.ToArray();
+
+        output[0] = 9;
+        sid[0] = 9;
+
+        Assert.Equal(Corpus["SACL and DACL"], descriptor.GetBinaryForm());
+        Assert.Equal(1, descriptor.Owner!.AsSpan()[0]);
+    }
+
+    [Fact]
     public void Acl_revision_is_kept_even_with_object_aces()
     {
         var acl = SecurityDescriptor.Parse(Corpus["ACL revision 2 with object ACE"], All).Dacl!;
@@ -303,7 +330,8 @@ public class SecurityDescriptorCodecTests
     public void Random_corruption_either_round_trips_or_fails_cleanly(string name)
     {
         var input = Corpus[name];
-        var random = new Random(HashCode.Combine(224, name.Length, input.Length));
+        // HashCode and string.GetHashCode are randomized per process; derive a stable seed instead.
+        var random = new Random(StableSeed(name));
 
         for (var iteration = 0; iteration < 300; iteration++)
         {
@@ -334,6 +362,18 @@ public class SecurityDescriptorCodecTests
             () => SecurityDescriptor.Parse(Corpus["populated DACL"], (SecurityMasks)16));
 
         Assert.Equal("retrievedSections", error.ParamName);
+    }
+
+    /// <summary>FNV-1a over the case name's UTF-16 code units: identical on every run and platform.</summary>
+    private static int StableSeed(string name)
+    {
+        var hash = 2166136261u;
+        foreach (var character in name)
+        {
+            hash = (hash ^ character) * 16777619u;
+        }
+
+        return unchecked((int)hash);
     }
 
     private static byte[] With(byte[] source, Action<byte[]> change)
