@@ -11,3 +11,9 @@ EXPECTED ObjectDisposedException: disposed owner capability
 EXPECTED InvalidOperationException: detached descriptor has no context
 PASS model only: borrowed epoch revocation, no-lookup SID reads, explicit reacquisition, mid-lookup invalidation, disposal and detached data.
 LDAP resolution, production invalidation hooks, Windows oracle and credential/network isolation: NOT exercised.
+EXPECTED InvalidOperationException: destination expired; no source fallback
+EXPECTED InvalidOperationException: copy without destination authority
+EXPECTED InvalidOperationException: copy cannot establish ambient identity pinning
+EXPECTED InvalidOperationException: copy validation failure before publication
+EXPECTED InvalidOperationException: unpermitted intent refuses transfer
+PASS MODEL cross-entry copy: independent data, destination-only authority, expiry isolation, missing/ambient refusal and validation-before-publication. Production assignment/OS identity NOT tested.

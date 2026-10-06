@@ -6,7 +6,8 @@ and is non-packable. No directory connection, bind, search, permission write or 
 
 Research date: 2026-10-06. Source inspected at PR225 head
 `930d0f55d4e0a297c70b7caa2441f16d0a68dbc0`; ambient-auth correction inspected at
-`8fc21cedeef7d2709d901ee88546ee5d4acb4ad8`. SDK **10.0.100**, Linux x64 execution
+`8fc21cedeef7d2709d901ee88546ee5d4acb4ad8`; cross-entry copy policy added atop
+`74c927a75c0783c789341ad525b3f48ded35f242`. SDK **10.0.100**, Linux x64 execution
 runtimes **8.0.0** and **10.0.0**. The real projects reference Protocols **9.0.0**;
 that package version is distinct from the runtime version. The Microsoft DirectoryServices
 9.0.0 Windows behavioral oracle remains outstanding.
@@ -42,6 +43,21 @@ authentication isolation, real descriptor attachment, races or atomic publicatio
 final check and EditCount increment are not a coordinated concurrency guard. Retained actual
 ObjectSecurity state across credential changes is source evidence, not exercised on Linux's
 BCL stub. Full SID validation and ill-formed UTF-16 handling need separate fixtures.
+
+## Cross-entry copy policy fixture
+
+The approved policy is independent descriptor-data copying with no source authority transfer.
+The separate CopyDescriptor fixture exports only cloned bytes and a synthetic intent bit;
+Assign receives destination authority separately. It checks bidirectional data isolation,
+source/destination authority expiry independently, refusal for missing or unpinned ambient
+authority, and failure before replacing the destination for validation/unpermitted-intent cases.
+Call counters check that assignment performs no hidden fake lookup or source fallback.
+
+The two-byte fixture is **not a security descriptor**. A boolean stands in for destination,
+provenance and partial-section validation; the synthetic bit is not a decided intent allowlist.
+This tests the proposed transfer boundary only, not actual ObjectSecurity assignment,
+production parser/validation, races, authentication or OS identity continuity. No source
+credentials or real leases are involved, and no live connection is opened.
 
 ## Reproduce
 

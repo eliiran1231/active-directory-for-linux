@@ -263,8 +263,10 @@ its descriptor, so `GetOwner/GetAccessRules(targetType)` and name-bearing edits 
 library's built-in resolver. Standalone identities still have no descriptor context and must
 not acquire ambient resolver state when used in a rule. The follow-up specifies a borrowed,
 revocable capability, lookup timing, domain scope and failure-before-mutation; final lifecycle
-and exception contracts remain unapproved. In particular, shared descriptor assignment cannot
-silently retarget existing callers' authority. An options epoch also cannot pin ambient/default
+and exception contracts remain unapproved except the bounded cross-entry assignment decision:
+an independent descriptor-data snapshot is approved, with no source resolver/credential/lease
+transfer. This intentionally breaks current shared-reference aliasing; the destination must
+establish its own valid authority. Intent/provenance validation details remain open. An options epoch also cannot pin ambient/default
 authentication; automatic lookup requires a proven identity-pinned lease or explicit refusal
 until a fresh context establishes explicit authority. Specify missing-context versus identity-not-mapped
 exception types and payloads before publishing. Cloning BCL

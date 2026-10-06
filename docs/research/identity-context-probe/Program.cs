@@ -82,6 +82,35 @@ Check(detached.GetSid() == "S-1-5-21-1-2-3-1001", "detached SID data remains usa
 Console.WriteLine("PASS model only: borrowed epoch revocation, no-lookup SID reads, explicit reacquisition, mid-lookup invalidation, disposal and detached data.");
 Console.WriteLine("LDAP resolution, production invalidation hooks, Windows oracle and credential/network isolation: NOT exercised.");
 
+// Copy-policy fixture: synthetic bytes/intent, not a real security descriptor or validator.
+var sourceAuthority = new CopyAuthority("SOURCE");
+var destinationAuthority = new CopyAuthority("DESTINATION");
+var sourceCopy = new CopyDescriptor(new byte[] { 1, 2 }, 1, sourceAuthority);
+var destinationCopy = CopyDescriptor.Assign(sourceCopy.ExportData(), destinationAuthority, true, 1);
+Check(!ReferenceEquals(sourceCopy, destinationCopy), "cross-entry state independent");
+Check(destinationCopy.Name() == "DESTINATION" && sourceCopy.Name() == "SOURCE", "destination uses own authority");
+destinationCopy.Bytes[0] = 9;
+Check(sourceCopy.Bytes[0] == 1, "destination edit does not change source");
+sourceCopy.Bytes[1] = 8;
+Check(destinationCopy.Bytes[1] == 2, "source edit does not change destination");
+sourceAuthority.Valid = false;
+Check(destinationCopy.Name() == "DESTINATION", "source authority expiry does not affect destination");
+sourceAuthority.Valid = true;
+destinationAuthority.Valid = false;
+Expect<InvalidOperationException>(() => destinationCopy.Name(), "destination expired; no source fallback");
+Check(sourceCopy.Name() == "SOURCE", "destination expiry leaves source unchanged");
+var noAuthorityCopy = CopyDescriptor.Assign(sourceCopy.ExportData(), null, true, 1);
+Expect<InvalidOperationException>(() => noAuthorityCopy.Name(), "copy without destination authority");
+var ambientAuthority = new CopyAuthority("AMBIENT") { Ambient = true };
+var ambientCopy = CopyDescriptor.Assign(sourceCopy.ExportData(), ambientAuthority, true, 1);
+Expect<InvalidOperationException>(() => ambientCopy.Name(), "copy cannot establish ambient identity pinning");
+var previousDestination = destinationCopy;
+Expect<InvalidOperationException>(() => destinationCopy = CopyDescriptor.Assign(sourceCopy.ExportData(), null, false, 1), "copy validation failure before publication");
+Expect<InvalidOperationException>(() => destinationCopy = CopyDescriptor.Assign(sourceCopy.ExportData(), null, true, 0), "unpermitted intent refuses transfer");
+Check(ReferenceEquals(previousDestination, destinationCopy) && sourceCopy.Intent == 1, "failed assignments preserve states and intent");
+Check(sourceAuthority.Calls == 2 && destinationAuthority.Calls == 2 && ambientAuthority.Calls == 0, "no hidden lookup during assignment or fallback");
+Console.WriteLine("PASS MODEL cross-entry copy: independent data, destination-only authority, expiry isolation, missing/ambient refusal and validation-before-publication. Production assignment/OS identity NOT tested.");
+
 static void RequireAuthority(bool ambientOrDefault, bool provenPinnedLease)
 {
     if (ambientOrDefault && !provenPinnedLease)
@@ -147,4 +176,32 @@ sealed class ModelDescriptor(BorrowedCapability? capability)
     public string GetSid() => "S-1-5-21-1-2-3-1001";
     public string GetName(FakeLookup sink) => (capability ?? throw new InvalidOperationException("Explicit context required.")).Resolve(sink);
     public void AddResolvedRule(FakeLookup sink) { _ = GetName(sink); EditCount++; }
+}
+
+// Data transfer has no authority field. Intent and validation flags are fixture-only stand-ins.
+sealed record CopyData(byte[] Bytes, int Intent);
+sealed class CopyAuthority(string label)
+{
+    public bool Valid = true;
+    public bool Ambient;
+    public int Calls;
+    public string Resolve()
+    {
+        if (!Valid || Ambient) throw new InvalidOperationException("Destination authority unavailable or unpinned.");
+        Calls++;
+        return label;
+    }
+}
+sealed class CopyDescriptor(byte[] bytes, int intent, CopyAuthority? authority)
+{
+    public byte[] Bytes { get; } = bytes;
+    public int Intent { get; } = intent;
+    public CopyData ExportData() => new((byte[])Bytes.Clone(), Intent);
+    public string Name() => (authority ?? throw new InvalidOperationException("No destination authority.")).Resolve();
+    public static CopyDescriptor Assign(CopyData data, CopyAuthority? destinationAuthority, bool validated, int permittedIntent)
+    {
+        if (!validated || (data.Intent & ~permittedIntent) != 0)
+            throw new InvalidOperationException("Provenance/coverage/intent validation required.");
+        return new((byte[])data.Bytes.Clone(), data.Intent, destinationAuthority);
+    }
 }

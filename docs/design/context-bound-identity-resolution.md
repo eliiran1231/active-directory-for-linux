@@ -1,6 +1,8 @@
 # Research: built-in identity resolution through existing directory context
 
-Status: **requested investigation, not adopted or implemented**. PR #225. The library should
+Status: **research, not production implementation**. PR #225. Cross-entry independent
+descriptor-data assignment is approved with the authority-isolation constraint below; other
+policy choices remain proposals unless explicitly identified as approved. The library should
 ship its AD resolver; callers should not need to implement LDAP lookup themselves. The common
 path uses `DirectoryEntry.ObjectSecurity` and the entry's existing binding. Standalone values
 require an explicit context/resolver. No new `ActiveDirectoryContext` or `GetAccessControl`
@@ -122,15 +124,54 @@ part of this candidate.
 | Refresh containing nTSecurityDescriptor, successful commit, move/rename/rebinding | Invalidate prior attachment/read generation along with current cache behavior. Reloaded descriptor gets a fresh capability; stale detached references cannot merge back without validation |
 | Credential change while dirty descriptor is still the cached object | Keep pending SID edits. Do not automatically refresh its resolver just because ObjectSecurity returns the same reference. Fresh explicit resolution uses the entry overload/helper; a later intentional reload can create a new default attachment |
 | Clone, binary/SDDL construction, Microsoft import/export | Copy data/provenance as allowed, **not** the credential capability. Detached objects need explicit resolution context; export/import does not smuggle credential authority |
-| Assign a descriptor to another entry | No transfer of source resolver authority. Snapshot assignment/default reattachment semantics need final review; validate destination and preserve pending intent. Do not silently mutate a shared descriptor's resolver and change what another entry/caller observes |
+| Assign a descriptor to another entry | **Approved:** independent descriptor-data snapshot; never copy source authority. Validate destination/provenance/sections and transfer only explicitly permitted mutation intent. Destination establishes its own valid authority; failed name lookup cannot fall back to the source |
 | PrincipalContext.Dispose | Direct context resolver is revoked. An independently created entry follows its own existing ownership semantics; do not add new durable credential copies to emulate independence |
 | Principal.Save(otherContext) / move | Resolver follows the actual entry's binding/generation, not ContextRef alone. No automatic credential/domain escalation through the new context. Failed save retains data and correctly revoked capabilities; no stale session revival |
 
-The assignment row is an important remaining choice: current ObjectSecurity setter stores the
-same reference. Attaching a new owner on that shared instance would redirect other callers'
-lookups. Prefer an entry-local attachment wrapper/state or an explicitly documented detached
-snapshot on assignment, but do not silently change reference/alias semantics before review.
-It cannot be solved by setting one mutable `Resolver` field on every descriptor.
+### Approved cross-entry assignment: copy data, never authority
+
+User decision (2026-10-06): approve an independent copy when assigning a descriptor to a
+**different entry**, with the explicit constraint: “don't blindly clone the resolver capability
+from source to destination.” This approves the bounded assignment policy, not implementation,
+all portable type changes, same-entry setter semantics or every detached-assignment case.
+
+Current ObjectSecurity setter stores the supplied reference. The approved cross-entry behavior
+instead creates a distinct descriptor state for the destination. After `b.ObjectSecurity =
+a.ObjectSecurity`, edits to the original descriptor no longer change b's assigned state, and
+edits to b's copy no longer change the source. Reference identity is no longer preserved for
+this assignment. This is an intentional aliasing/behavior break, not exact compatibility.
+The source object, its pending edits, attachment and lookup authority remain unchanged.
+
+The transfer boundary contains descriptor **data only**: independent raw section/opaque bytes,
+retrieved/absent/unread markers, clean projected baseline and the non-secret provenance needed
+for validation. Mutable buffers/state must not alias. Preserve raw unknown data under the
+existing preservation/refusal rules. Do not reinterpret unread sections as empty, promote
+source retrieval coverage into destination coverage, or mark every copied section modified.
+Only explicitly permitted per-section pending mutation intent may cross the boundary; do not
+infer intent by comparing normalized serialization. An unsupported/undecided transfer refuses
+before assignment publication, rather than dropping edits or silently widening a write.
+
+Validate destination identity/type and generation, source provenance and partial-section
+coverage, plus allowed intent and opaque-data edit policy, before accepting a transfer. Source
+baselines describe the source read; they cannot serve as the destination's concurrency baseline.
+Establish destination baselines/coverage under the existing read/Modify policy before a write;
+any necessary reads must be explicit in that operation's contract. This approval does not
+settle the full intent allowlist, detached creation defaults or LDAP Add inheritance semantics.
+A failed validation leaves both source and previously assigned destination state unchanged.
+
+**Never copy** source resolver, credentials, connection, session, lease, capability, ambient
+authority, cached name mappings or authority-bearing callbacks, including indirect references
+hidden inside a data snapshot. The destination may attach only a capability created from its
+own valid owner-scoped authority. Assignment itself performs no hidden authentication/rebind
+and does not renew source or destination epochs. If destination authority is missing, expired
+or ambient without proven pinning, name lookup fails clearly; valid SID/data operations can
+remain available. Merely having a destination entry is not proof of effective authentication.
+The explicit-versus-ambient safeguards below apply unchanged. No source lookup fallback.
+
+The offline copy-isolation fixture tests fake data/authority separation and refusal paths;
+it does not exercise the production ObjectSecurity setter, real provenance validation, LDAP
+or OS credential continuity. Remaining implementation gates include the intent-transfer
+allowlist, provenance/coverage checks, coordinated publication, and same-entry/detached cases.
 
 Resolution sequence: validate owner/generation -> reserve operation lease -> perform bounded
 lookup outside descriptor write lock -> revalidate binding **and** descriptor generation ->
@@ -331,8 +372,9 @@ as approval for all tests.
    authority, not merely wrap the same ambient settings.
 2. Review borrowed-epoch expiry versus automatic rebinding, especially retained dirty objects;
    this draft recommends explicit reacquisition after authority changes.
-3. Settle assignment/reference semantics before automatic propagation is implemented. A shared
-   descriptor cannot hold one mutable owner resolver without redirecting other callers.
+3. Implement the approved cross-entry data-copy/authority-isolation policy only after defining
+   intent/provenance/partial-section validation and atomic publication; same-entry and detached
+   assignment details remain open. Do not reopen the approved independent-copy decision.
 4. Define initial domain/name/well-known scope and error contract; multiforest lookup is not
    implied by a built-in resolver.
 5. Approve the final helper/overload and higher-layer adapter shapes. The resolver is shipped
