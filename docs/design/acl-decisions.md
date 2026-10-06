@@ -142,12 +142,31 @@ a narrowly defined exception matching the verified Microsoft behavior (oracle I1
 
 This is an explicit allowlisted normalization, not general permission to discard ACEs.
 
-Open: the exact set of ACE types counted as "recognized, fully understood" for this exception.
-The [I2 matrix](../research/acl-windows-oracle/README.md#inactive-inheritonly-matrix-i2) now
-records deny, object and audit variants. The user directed that the allowlist be expanded only
-after reviewing those results. Until that review, the allowlist covers only what this amendment
-states. Callback, conditional and unknown ACEs stay excluded unless separately validated, even
-though Microsoft drops them too.
+**Second amendment (2026-10-06): allowlist scope after reviewing the
+[I2 matrix](../research/acl-windows-oracle/README.md#inactive-inheritonly-matrix-i2).** The user
+agreed to include inactive audit ACEs "under those exact restrictions", meaning the proposed
+restrictions below, which were reviewed against I2. An inactive ACE qualifies for the drop only
+if **all** of these hold:
+
+| Restriction | Allowed |
+|---|---|
+| ACE type | Allow 0x00, Deny 0x01, Audit 0x02, Allow-object 0x05, Deny-object 0x06, Audit-object 0x07 |
+| ACE flags | InheritOnly (0x08) set; ContainerInherit and ObjectInherit clear; otherwise only NoPropagate (0x04), Inherited (0x10), and for audit types Success (0x40) / Failure (0x80). Any other bit → refuse |
+| Object ACEs | Object flags in {0, 1, 2, 3} only; each GUID present exactly when its flag says so |
+| Body | Valid SID; ACE size matches the parsed content exactly (no trailing bytes) |
+
+**Audit rationale (user):** InheritOnly prevents the ACE applying to the current object, and
+without ContainerInherit/ObjectInherit it cannot propagate. This **does not** authorize dropping
+meaningful audit entries; D13's refusal of meaningful audit and label loss stands.
+
+**Still excluded, refuse instead:** callback, conditional and unknown-type ACEs, unknown ACE or
+object flags, and trailing bytes. They stay excluded unless separately validated, even though
+Microsoft drops them too (I2).
+
+All other parts of this amendment still apply: the original ACE is kept in the lossless
+representation, conversion alone creates no write intent, and InheritOnly is never cleared on
+its own. Each allowed case still needs exact-precondition tests for access and inheritance
+effects before implementation.
 
 ### D14. Absent/NULL DACL: follow verified per-operation behavior
 
@@ -170,8 +189,8 @@ Recording them does not by itself decide any further generalization.
 
 These remain open. They are not decided by implication from the decisions above.
 
-- Which ACE types qualify as "recognized, fully understood" for the inactive-InheritOnly drop
-  (D13 amendment). The rest of the D3 normalization question is answered by D13.
+- SACL re-sorting on `AddAuditRule` (oracle I2 separate finding): not analyzed and has no
+  allowlist status.
 - Write-mask policy on commit: `Modified ∩ Retrieved` versus Microsoft's wire mask (O-4).
 - Detached assignment to the same entry, and LDAP Add creation defaults.
 - The protected `CommonSecurityDescriptor` facade surface (D5 asks for an explicit design; none
