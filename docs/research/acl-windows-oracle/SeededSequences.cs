@@ -92,6 +92,7 @@ internal static class SeededSequences
         RecordRevisionAndAbsentAudit(observations);
         RecordRestorationAndSidOrder(observations);
         RecordRemovalScopePrecedence(observations);
+        RecordInheritedGuidAndObjectInherit(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -107,6 +108,63 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordInheritedGuidAndObjectInherit(List<Observation> observations)
+    {
+        var cases = new List<(string Name, byte Flags, uint Mask, Guid? ExistingIt,
+            uint RuleMask, Guid RuleIt, M.ActiveDirectorySecurityInheritance Scope, string Operation)>();
+        foreach (var flags in new byte[] { 2, 6, 10, 14 })
+        foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
+            cases.Add(($"distinct-inherited-{flags}-{scope}", flags, 0x30, Sd.G1, 0x10, Sd.G2, scope, "Remove"));
+        foreach (var flags in new byte[] { 1, 3, 5, 7, 9, 11, 13, 15 })
+        {
+            foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.None, M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
+                cases.Add(($"oi-{flags}-remove-{scope}", flags, 0x30, null, 0x10, Guid.Empty, scope, "Remove"));
+            cases.Add(($"oi-{flags}-add-same-mask", flags, 0x10, null, 0x10, Guid.Empty, M.ActiveDirectorySecurityInheritance.None, "Add"));
+        }
+        foreach (var test in cases)
+        foreach (var audit in new[] { false, true })
+        {
+            var flags = (byte)(test.Flags | (audit ? 0xC0 : 0));
+            var source = test.ExistingIt.HasValue
+                ? Sd.ObjAce((byte)(audit ? 7 : 5), flags, test.Mask, 2, null, test.ExistingIt, Sd.U1)
+                : Sd.Ace((byte)(audit ? 2 : 0), flags, test.Mask, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                var operation = Enum.Parse<E.AccessControlModification>(test.Operation);
+                if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)test.RuleMask,
+                        E.AuditFlags.Success, Guid.Empty, test.Scope, test.RuleIt);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(operation, rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)test.RuleMask,
+                        E.AccessControlType.Allow, Guid.Empty, test.Scope, test.RuleIt);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(operation, rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation($"propagation-{test.Name}-{(audit ? "Sacl" : "Dacl")}", 0,
+                audit ? "Sacl" : "Dacl", test.Operation, "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                RequestedDescriptorHex: Convert.ToHexString(requested)));
+        }
     }
 
     private static void RecordRemovalScopePrecedence(List<Observation> observations)
