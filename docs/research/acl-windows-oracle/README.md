@@ -114,6 +114,23 @@ Reading of this matrix (observations, not design decisions):
   Full removal yields an empty, deny-all DACL.
 - For the empty DACL, no-op calls leave the bytes unchanged but still set the access flag.
 
+### Shared component storage (J6)
+
+Added for PR #227 review finding 4. Each case points two offset fields at the same bytes (or
+reads a SID from inside an ACE). Both `RawSecurityDescriptor` and `ActiveDirectorySecurity`:
+
+| Layout | Microsoft result |
+|---|---|
+| Owner offset == group offset (one SID stored once) | **Accepted**; re-emitted with separate owner and group copies |
+| SACL offset == DACL offset, shared empty ACL | **Accepted**; re-emitted as two separate empty ACLs |
+| SACL offset == DACL offset, shared ACL with one audit ACE | **Accepted**. `RawSecurityDescriptor` re-emits two copies. `ActiveDirectorySecurity` keeps the SACL audit ACE and drops the audit ACE from the DACL copy (consistent with H1 "audit ACE inside DACL") |
+| Group SID read from inside the DACL's ACE (partial overlap) | **Accepted**; group = that SID, re-emitted as a separate copy |
+| Owner SID read from inside the DACL's ACE (partial overlap) | **Accepted**; same |
+
+None of the outputs equal the input bytes: Microsoft always un-shares the storage. A parser
+that rejects overlapping components therefore rejects descriptors Microsoft treats as valid.
+Offsets pointing into the 20-byte header were not tested.
+
 ### Merging (C1–C3)
 
 | Second rule added to first | Result |

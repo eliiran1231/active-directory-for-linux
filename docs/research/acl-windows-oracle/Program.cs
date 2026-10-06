@@ -464,6 +464,50 @@ Case("J3 dirty flags (reset before each op): failed remove, no-op add", () =>
     Step2("add existing rule", () => (noop.ModifyAccessRule(E.AccessControlModification.Add, R(u1, RP, allow), out var m), m));
     Snap("after no-op add", noop);
 });
+// J6: descriptors whose components share bytes. The portable codec currently rejects any
+// overlap; this records whether Microsoft accepts them (managed ActiveDirectorySecurity and
+// RawSecurityDescriptor) and what it re-emits.
+byte[] WithOffsets(byte[] source, params (int Field, int Offset)[] patches)
+{
+    var copy = source.ToArray();
+    foreach (var (field, offset) in patches)
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(copy.AsSpan(field), (uint)offset);
+    return copy;
+}
+int OffsetOf(byte[] sd, int field) => (int)System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(sd.AsSpan(field));
+var shareBase = Build(Admins, U2, Acl(4, Ace(0x00, 0, 0x10, U1)), sacl: Acl(4));
+var sharedEmpty = Build(Admins, Admins, Acl(4), sacl: Acl(4));
+var sharedPopulated = Build(Admins, Admins, Acl(4, Ace(0x02, Success, 0x10, U1)), sacl: Acl(4, Ace(0x02, Success, 0x10, U1)));
+var shareCases = new (string Name, byte[] Bytes)[]
+{
+    ("owner offset == group offset (identical SID storage)", WithOffsets(shareBase, (8, OffsetOf(shareBase, 4)))),
+    ("SACL offset == DACL offset (shared empty ACL)", WithOffsets(sharedEmpty, (12, OffsetOf(sharedEmpty, 16)))),
+    ("SACL offset == DACL offset (shared ACL with one audit ACE)", WithOffsets(sharedPopulated, (12, OffsetOf(sharedPopulated, 16)))),
+    ("group SID read from inside the DACL's ACE (partial overlap)", WithOffsets(shareBase, (8, OffsetOf(shareBase, 16) + 8 + 8))),
+    ("owner SID read from inside the DACL's ACE (partial overlap)", WithOffsets(shareBase, (4, OffsetOf(shareBase, 16) + 8 + 8))),
+};
+foreach (var (name, bytes) in shareCases)
+{
+    Case($"J6 shared storage: {name}", () =>
+    {
+        Console.WriteLine($"    input={Convert.ToHexString(bytes)}");
+        try
+        {
+            var raw = new E.RawSecurityDescriptor(bytes, 0);
+            var rawOut = new byte[raw.BinaryLength];
+            raw.GetBinaryForm(rawOut, 0);
+            Console.WriteLine($"  RawSecurityDescriptor: accepted; {Describe(rawOut)}; output-equals-input={rawOut.AsSpan().SequenceEqual(bytes)}");
+        }
+        catch (Exception ex) { Console.WriteLine($"  RawSecurityDescriptor: EXC {Ex(ex)}"); }
+
+        Probe p;
+        try { p = Load(bytes); }
+        catch (Exception ex) { Console.WriteLine($"  ActiveDirectorySecurity: EXC {Ex(ex)}"); return; }
+        Console.WriteLine("  ActiveDirectorySecurity: accepted");
+        Snap("import", p, bytes);
+    });
+}
+
 Case("J4 component order DACL-before-owner round trip", () =>
 {
     var forward = WithDacl(Ace(0x00, 0, 0x10, U1));
