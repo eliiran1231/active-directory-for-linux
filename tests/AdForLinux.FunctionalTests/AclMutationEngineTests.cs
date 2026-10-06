@@ -391,6 +391,122 @@ public class AclMutationEngineTests
         Assert.Equal(SecurityMasks.None, engine.WriteIntent);
     }
 
+    [Fact]
+    public void Late_remove_failure_preserves_prior_intent_and_current_and_original_images()
+    {
+        // The first common ACE loses its global ListChildren bit. The second cannot
+        // narrow unqualified RP to G1. Nothing from that private candidate may escape.
+        var original = WithDacl(Ace(0, 0, 4, U1), Ace(0, 0, 0x10, U1));
+        var engine = Engine(original).SetOwner(Trustee(U2)).Engine;
+        var current = engine.Descriptor.GetBinaryForm();
+        var result = engine.ModifyAccessRule(AclModification.Remove,
+            CoreAce.Read(ObjAce(5, 0, 0x14, 1, G1, null, U1)));
+        Assert.False(result.ReturnValue);
+        Assert.False(result.Modified);
+        Assert.Same(engine, result.Engine);
+        Assert.Equal(current, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.Owner, engine.WriteIntent);
+    }
+
+    [Theory]
+    [InlineData(1)] // Set removes the old ACE before adding a larger object ACE.
+    [InlineData(2)] // Reset also stages removal before insertion.
+    [InlineData(3)] // Remove WP/self splits the source CI ACE and grows the ACL.
+    public void Candidate_size_failure_does_not_publish_staged_removal_or_split(int operation)
+    {
+        var sourceAce = Ace(0, 2, 0x30, U1);
+        var tail = Enumerable.Repeat((byte)0xA5, ushort.MaxValue - 8 - sourceAce.Length).ToArray();
+        var original = Build(Admins, Admins, AclWithTail(4, tail, sourceAce));
+        var engine = Engine(original).SetGroup(Trustee(U2)).Engine;
+        var current = engine.Descriptor.GetBinaryForm();
+        var rule = operation == 3 ? Rule(0x20)
+            : CoreAce.Read(ObjAce(5, 2, 0x10, 1, G1, null, U1));
+        Assert.Throws<InvalidOperationException>(() => engine.ModifyAccessRule((AclModification)operation, rule));
+        Assert.Equal(current, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.Group, engine.WriteIntent);
+        Assert.Equal(tail, engine.Descriptor.Dacl!.Trailing.ToArray());
+    }
+
+    [Fact]
+    public void Shared_populated_acl_is_unshared_without_reinterpreting_the_untouched_slot()
+    {
+        // One physical audit ACL is referenced by both slots. Editing the valid SACL
+        // must retain the exact wrong-kind DACL copy, never merge into their shared bytes.
+        var rawAcl = Acl(4, Ace(2, 0x40, 0x10, U1));
+        var original = Build(Admins, Admins, null, rawAcl, nullDacl: true);
+        original.AsSpan(12, 4).CopyTo(original.AsSpan(16, 4));
+        var engine = Engine(original);
+        Assert.True(engine.Descriptor.HasOverlappingComponents);
+        Assert.Throws<InvalidOperationException>(() => engine.ModifyAccessRule(AclModification.Add, Rule()));
+        var result = engine.ModifyAuditRule(AclModification.Add, Rule(0x20, 2, 0x40));
+        Assert.False(result.Engine.Descriptor.HasOverlappingComponents);
+        Assert.Equal(rawAcl, AclBytes(result.Engine.Descriptor, 16));
+        Assert.Equal(0x30u, Assert.Single(result.Engine.Descriptor.Sacl!.Aces).AccessMask);
+        Assert.Equal(SecurityMasks.Sacl, result.Engine.WriteIntent);
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Every_successful_acl_family_preserves_an_opaque_other_acl_exactly(bool audit)
+    {
+        var opaque = AclWithTail(4, new byte[] { 0xF0, 0x0D, 0xFA, 0xCE },
+            Ace(0x20, 0x20, 0x80000000, U2, new byte[] { 1, 2, 3, 4 }));
+        opaque[1] = 0x9A;
+        opaque[6] = 0xBC;
+        opaque[7] = 0xDE;
+        var type = (byte)(audit ? 2 : 0);
+        var flags = (byte)(audit ? 0xC0 : 0);
+        var editable = Acl(4, Ace(type, flags, 0x30, U1));
+        var original = audit ? Build(Admins, Admins, opaque, editable)
+            : Build(Admins, Admins, editable, opaque);
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var otherOffset = audit ? 16 : 12;
+        var engine = Engine(original);
+        var results = new List<AclMutationResult>();
+        foreach (var operation in Enum.GetValues<AclModification>())
+        {
+            var mask = operation == AclModification.Add ? 0x100u
+                : operation == AclModification.RemoveSpecific ? 0x30u : 0x10u;
+            results.Add(engine.Modify(section, operation, Rule(mask, type, flags)));
+        }
+        results.Add(engine.Purge(section, Trustee(U1)));
+        results.Add(engine.SetProtection(section, true, true));
+        foreach (var result in results)
+        {
+            Assert.NotSame(engine, result.Engine);
+            Assert.Equal(opaque, AclBytes(result.Engine.Descriptor, otherOffset));
+            Assert.Equal(section, result.Engine.WriteIntent);
+            Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+            Assert.Equal(Trustee(Admins), result.Engine.Descriptor.Owner);
+            Assert.Equal(Trustee(Admins), result.Engine.Descriptor.Group);
+        }
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+    }
+
+    [Fact]
+    public void Maximum_sized_acl_can_merge_without_losing_reserved_fields_or_tail()
+    {
+        var sourceAce = Ace(0, 0, 0x10, U1);
+        var tail = Enumerable.Repeat((byte)0xA5, ushort.MaxValue - 8 - sourceAce.Length).ToArray();
+        var rawAcl = AclWithTail(4, tail, sourceAce);
+        rawAcl[1] = 0x19;
+        rawAcl[6] = 0x37;
+        var original = Build(Admins, Admins, rawAcl);
+        var result = Engine(original).ModifyAccessRule(AclModification.Add, Rule(0x20));
+        var actual = AclBytes(result.Engine.Descriptor, 16);
+        var expected = rawAcl.ToArray();
+        BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(12), 0x30);
+        Assert.Equal(ushort.MaxValue, actual.Length);
+        Assert.Equal(expected, actual);
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+    }
+
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
     {
         var bytes = descriptor.GetBinaryForm();

@@ -145,7 +145,7 @@ internal sealed class AclMutationEngine
             // A clean projection is not write intent: no-match/identical operations must
             // not publish incidental IO/NP/order normalization of the raw baseline.
             var clean = Acl.Read(DescriptorRewriter.EncodeAcl(null, baseline.Aces));
-            var projected = MicrosoftObservableProjector.ProjectAcl(clean, section == SecurityMasks.Dacl);
+            var projected = MicrosoftObservableProjector.NormalizeForEdit(clean, section == SecurityMasks.Dacl);
             if (projected.Aces.Count == aces.Count
                 && projected.Aces.Select((ace, index) => ace.RawBytes.SequenceEqual(aces[index].RawBytes)).All(equal => equal))
                 return new(this, returned, modified);
@@ -199,7 +199,7 @@ internal sealed class AclMutationEngine
         }
         // D13 normalization is explicit here as part of the requested section mutation.
         var cleanHeader = Acl.Read(DescriptorRewriter.EncodeAcl(null, acl.Aces));
-        var projected = MicrosoftObservableProjector.ProjectAcl(cleanHeader, isDacl).Aces.ToList();
+        var projected = MicrosoftObservableProjector.NormalizeForEdit(cleanHeader, isDacl).Aces.ToList();
         if (projected.Any(ace => (ace.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14)))
             throw new InvalidOperationException("This propagation flag combination is outside the recorded directory semantics.");
         if (!isDacl && projected.Count(Explicit) > 1

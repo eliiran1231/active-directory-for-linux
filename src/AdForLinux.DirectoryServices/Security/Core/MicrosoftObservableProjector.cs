@@ -51,6 +51,35 @@ internal static class MicrosoftObservableProjector
 
     internal static Acl ProjectAcl(Acl acl, bool isDacl)
     {
+        var normalized = NormalizeForEdit(acl, isDacl);
+        // Import can compact explicit ACEs even though a live Microsoft ACL can retain
+        // the same pair after split-then-restore. This boundary belongs only to detached
+        // read/import projection; applying it during edits would reject recorded live states.
+        if (!isDacl || HasCanonicalQualifierOrder(normalized.Aces))
+        {
+            for (var i = 0; i < normalized.Aces.Count; i++)
+            for (var j = i + 1; j < normalized.Aces.Count; j++)
+            {
+                var a = normalized.Aces[i];
+                var b = normalized.Aces[j];
+                if (a.Kind is not (AceKind.Access or AceKind.Audit)
+                    || a.AceType != b.AceType || !a.Sid!.Equals(b.Sid)
+                    || ((a.AceFlags | b.AceFlags) & Inherited) != 0
+                    || (a.AceFlags & 0xc0) != (b.AceFlags & 0xc0)) continue;
+                var aScope = a.AceFlags & 0x0f;
+                var bScope = b.AceFlags & 0x0f;
+                if (aScope == bScope || (a.AccessMask == b.AccessMask
+                    && ((aScope == 0 && bScope == 10) || (aScope == 10 && bScope == 0))))
+                    throw new InvalidOperationException("Microsoft import compaction of compatible explicit ACEs is not approved.");
+            }
+        }
+        return normalized;
+    }
+
+    // Reviewed D13 normalization used by the live mutation engine, independently of
+    // whether a fresh Microsoft import could compact that engine's current ACE list.
+    internal static Acl NormalizeForEdit(Acl acl, bool isDacl)
+    {
         ArgumentNullException.ThrowIfNull(acl);
         if (acl.AclRevision is not (Acl.Revision or Acl.RevisionDS)
             || acl.Sbz1 != 0 || acl.Sbz2 != 0 || !acl.Trailing.IsEmpty)

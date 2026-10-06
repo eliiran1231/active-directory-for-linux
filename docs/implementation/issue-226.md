@@ -74,6 +74,12 @@ This draft does not claim completion of all issue 226 acceptance criteria.
 - Descriptor gap/tail relocation, public exception/constructor parity and write-mask policy
   are outside the implemented evidence. This engine makes no DirectoryEntry rollback promise.
 
+Raw complementary-scope common ACE import compaction is explicitly refused by the strict
+read projector. Mutation uses reviewed D13 normalization separately: recorded live
+split-then-restore states can retain compatible ACE pairs without a fresh import. Raw
+bytes and section intent are never replaced by an imported recording. The recorded
+`RequestedDescriptorHex` boundary is tested independently of live `InputHex` replay.
+
 ## Validation and Windows isolation
 
 Only the five named fixture-free functional test classes run. The new workflow uses
@@ -92,8 +98,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 413 mutation replay cases (including 300 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 43 mutation safety cases, 139 codec
-cases and 21 SID cases: 694 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 414 mutation replay cases (including 300 recorded steps, sequence
+replay and cross-runtime equality), 78 projection cases, 51 mutation safety cases, 139 codec
+cases and 21 SID cases: 703 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

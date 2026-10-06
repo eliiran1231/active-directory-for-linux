@@ -91,6 +91,7 @@ internal static class SeededSequences
         RecordMixedObjectRemovals(observations);
         RecordRevisionAndAbsentAudit(observations);
         RecordRestorationAndSidOrder(observations);
+        RecordRemovalScopePrecedence(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -106,6 +107,59 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordRemovalScopePrecedence(List<Observation> observations)
+    {
+        var cases = new (string Name, byte Flags, uint ObjectFlags, Guid? Ot, Guid? It,
+            Guid RemoveOt, Guid RemoveIt, M.ActiveDirectorySecurityInheritance Scope, E.AuditFlags Audit)[]
+        {
+            ("self-vs-qualified-descendants", 0, 0, null, null, Sd.G1, Guid.Empty, M.ActiveDirectorySecurityInheritance.Descendents, E.AuditFlags.Success),
+            ("descendants-vs-qualified-self", 10, 0, null, null, Sd.G1, Guid.Empty, M.ActiveDirectorySecurityInheritance.None, E.AuditFlags.Success),
+            ("self-vs-inherited-guid-all", 0, 0, null, null, Guid.Empty, Sd.G1, M.ActiveDirectorySecurityInheritance.All, E.AuditFlags.Success),
+            ("self-unused-inherited-guid", 0, 3, Sd.G1, Sd.G2, Sd.G1, Sd.G1, M.ActiveDirectorySecurityInheritance.All, E.AuditFlags.Success),
+            ("propagating-inherited-guid-narrowing", 2, 0, null, null, Guid.Empty, Sd.G1, M.ActiveDirectorySecurityInheritance.All, E.AuditFlags.Success),
+            ("qualified-before-audit-disjoint", 0, 0, null, null, Sd.G1, Guid.Empty, M.ActiveDirectorySecurityInheritance.None, E.AuditFlags.Failure),
+        };
+        foreach (var test in cases)
+        foreach (var audit in new[] { false, true })
+        {
+            var flags = (byte)(test.Flags | (audit ? 0x40 : 0));
+            var source = test.ObjectFlags == 0 ? Sd.Ace((byte)(audit ? 2 : 0), flags, 0x10, Sd.U1)
+                : Sd.ObjAce((byte)(audit ? 7 : 5), flags, 0x10, test.ObjectFlags, test.Ot, test.It, Sd.U1);
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(audit
+                ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source)));
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                        test.Audit, test.RemoveOt, test.Scope, test.RemoveIt);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(E.AccessControlModification.Remove, rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                        E.AccessControlType.Allow, test.RemoveOt, test.Scope, test.RemoveIt);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(E.AccessControlModification.Remove, rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation($"remove-precedence-{test.Name}-{(audit ? "Sacl" : "Dacl")}", 0,
+                audit ? "Sacl" : "Dacl", "Remove", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message));
+        }
     }
 
     private static void RecordInheritedProtection(List<Observation> observations)
