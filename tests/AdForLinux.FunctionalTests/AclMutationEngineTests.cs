@@ -649,6 +649,60 @@ public class AclMutationEngineTests
         Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
     }
 
+    [Theory]
+    [InlineData((byte)6, (byte)0, false)]
+    [InlineData((byte)7, (byte)0x40, false)]
+    [InlineData((byte)7, (byte)0x80, false)]
+    [InlineData((byte)7, (byte)0xC0, false)]
+    [InlineData((byte)7, (byte)0x40, true)]
+    public void Consolidated_add_keeps_raw_layout_metadata_and_accumulated_intent(byte type, byte auditFlags, bool maskMerge)
+    {
+        var audit = type == 7;
+        var existing = maskMerge ? ObjAce(type, 0x42, 0x10, 3, Guid.Empty, G2, U1)
+            : ObjAce(type, auditFlags, 0x10, 1, G1, null, U1);
+        var incoming = maskMerge ? ObjAce(type, 0x42, 0x20, 2, null, G2, U1)
+            : ObjAce(type, (byte)(auditFlags | 0x0A), 0x10, 3, G1, G2, U1);
+        var acl = AclWithTail(4, new byte[] { 0xFA, 0xCE, 0xBA, 0xBE }, existing);
+        acl[1] = 0x71;
+        acl[6] = 0x39;
+        var opaque = Acl(4, Ace(0x20, 0x20, 0x10, U2));
+        var original = audit ? Build(Admins, Admins, opaque, acl) : Build(Admins, Admins, acl, opaque);
+        var engine = Engine(original).SetGroup(Trustee(U2)).Engine;
+        var before = engine.Descriptor.GetBinaryForm();
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var rule = CoreAce.Read(incoming);
+        var result = engine.Modify(section, AclModification.Add, rule);
+        var expected = acl.ToArray();
+        if (maskMerge) BinaryPrimitives.WriteUInt32LittleEndian(expected.AsSpan(12), 0x30);
+        else expected[9] = (byte)(auditFlags | 2);
+        Assert.Equal(expected, AclBytes(result.Engine.Descriptor, audit ? 12 : 16));
+        Assert.Equal(opaque, AclBytes(result.Engine.Descriptor, audit ? 16 : 12));
+        Assert.True(result.ReturnValue);
+        Assert.True(result.Modified);
+        Assert.Equal(SecurityMasks.Group | section, result.Engine.WriteIntent);
+        var repeat = result.Engine.Modify(section, AclModification.Add, rule);
+        Assert.True(repeat.ReturnValue);
+        Assert.True(repeat.Modified);
+        Assert.Same(result.Engine, repeat.Engine);
+        Assert.Equal(original, repeat.Engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(before, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(incoming, rule.RawBytes.ToArray());
+    }
+
+    [Fact]
+    public void Add_guid_value_comparison_does_not_change_specific_removal_identity()
+    {
+        var original = Build(Admins, Admins, Acl(4), Acl(4, ObjAce(7, 0x42, 0x10, 3, Guid.Empty, G2, U1)));
+        var engine = Engine(original);
+        var absent = CoreAce.Read(ObjAce(7, 0x42, 0x10, 2, null, G2, U1));
+        var result = engine.ModifyAuditRule(AclModification.RemoveSpecific, absent);
+        Assert.Same(engine, result.Engine);
+        Assert.Equal(SecurityMasks.None, result.Engine.WriteIntent);
+        Assert.Equal(original, result.Engine.Descriptor.GetBinaryForm());
+        // Same input/rule can be absorbed by Add without redefining raw identity.
+        Assert.Same(engine, engine.ModifyAuditRule(AclModification.Add, absent).Engine);
+    }
+
     [Fact]
     public void Mixed_success_false_exception_noop_and_recovery_preserve_every_snapshot()
     {

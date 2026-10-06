@@ -1,6 +1,6 @@
 # Internal ACL mutation engine — issue 226 draft
 
-See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured fixes for two concrete later-stage merge defects.
+See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured three-stage Add algorithm and remaining parity boundaries.
 
 The implementation is internal only. It does not change public API, DirectoryEntry,
 LDAP, identity resolution, the Microsoft interop boundary or any live-directory workflow.
@@ -44,12 +44,13 @@ retain the original NULL representation.
   covered, flags and inherited GUID match. New global bits are ORed into the existing
   mask, retaining its GUID shape. Reverse direction, uncovered qualified bits and different
   audit flags keep separate ACEs. Absorbed no-ops preserve raw bytes and prior intent.
-- Directed later-stage Add fixes preserve the existing GUID layout: a same-OT self ACE
-  without IOT absorbs descendants carrying IOT; the reverse remains separate. Audit merging
-  matches existing present-empty OT against incoming absent OT with equal mask/IOT/CI scope.
-  Eight Windows observations include both directions and repeated Adds, exposing reverse
-  audit constructor normalization separately from effective rule bytes. No sorting/import
-  policy changes; metadata and prior-intent preservation have six additional safety cases.
+- Add now follows three coherent stages: mask merging with matching GUID values or
+  absent-existing-OT containment; audit merging with equal mask/inheritance/GUID values;
+  then valid DS scope union with matching IOT values or absent existing IOT. Matching
+  explicit type/SID is required throughout. Existing GUID layout is retained, and value
+  equality stays local to Add. The 101-case qualifier/value-presence extension covers
+  the reported Deny/Audit scope and present-empty OT mask analogues without changing
+  SACL ordering, import compaction or specific-removal identity.
 - Remove splits remaining mask, audit and container propagation dimensions; returns false
   atomically for unrepresentable narrowing and true for no-match access removes.
 - Object-specific subtraction qualifies only the measured DS rights; global rights still
@@ -81,7 +82,7 @@ retain the original NULL representation.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 674 newly recorded scripted steps including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 775 newly recorded scripted steps including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -95,7 +96,7 @@ This draft does not claim completion of all issue 226 acceptance criteria.
 Decision dependencies are SACL ordering and expanding the approved import-normalization
 or gap-relocation policy. Distinct inherited-object GUID subtraction and common/object
 ACE OI propagation and the recorded asymmetric object-mask Add now have bounded support.
-Other GUID/scope merging and combinations beyond the matrix remain outside the parity claim. Unknown/trailing-data refusals implement the approved
+Combinations beyond the matrix remain outside the parity claim. Accepted unrecorded inputs may still differ; the documented refusal gates do not guarantee that every unsupported parity case fails closed. Unknown/trailing-data refusals implement the approved
 preservation boundary. Public API and directory write behavior remain outside this scope.
 
 - The I2 multi-entry SACL sorting policy is unresolved. Mutations with more than one existing
@@ -140,8 +141,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 788 mutation replay cases (including 674 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 68 mutation safety cases, 139 codec
-cases and 21 SID cases: 1094 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 889 mutation replay cases (including 775 recorded steps, sequence
+replay and cross-runtime equality), 78 projection cases, 74 mutation safety cases, 139 codec
+cases and 21 SID cases: 1201 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

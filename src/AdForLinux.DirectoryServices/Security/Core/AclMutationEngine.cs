@@ -227,21 +227,34 @@ internal sealed class AclMutationEngine
         {
             var ace = aces[i];
             if (!Explicit(ace) || ace.AceType != rule.AceType || !SameSid(ace, rule)) continue;
-            var sameShape = SameShape(ace, rule);
-            if (ace.AceFlags == rule.AceFlags && (sameShape || CanAbsorbObjectMask(ace, rule)))
+            // Microsoft compares GUID values locally during Add merging, while
+            // asymmetric absorption checks actual presence bits. Never rewrite the
+            // existing GUID layout or apply this equivalence to other operations.
+            var objectTypesMatch = ace.ObjectType.GetValueOrDefault() == rule.ObjectType.GetValueOrDefault();
+            var inheritedTypesMatch = ace.InheritedObjectType.GetValueOrDefault() == rule.InheritedObjectType.GetValueOrDefault();
+            var masksMergeable = objectTypesMatch
+                || ((ace.ObjectFlags & Ace.ObjectTypePresent) == 0
+                    && (ace.AccessMask & rule.AccessMask & ObjectQualifiedRights)
+                        == (rule.AccessMask & ObjectQualifiedRights));
+            // Stage 1: identical flags and inherited GUID values; OR the masks.
+            if (ace.AceFlags == rule.AceFlags && inheritedTypesMatch && masksMergeable)
             {
                 aces[i] = With(ace, ace.AccessMask | rule.AccessMask, ace.AceFlags);
                 return;
             }
             if (ace.AccessMask != rule.AccessMask) continue;
-            if ((sameShape || CanMergeEmptyObjectAudit(ace, rule))
+            // Stage 2: identical inheritance and GUID values; combine audit flags.
+            if (objectTypesMatch && inheritedTypesMatch
                 && (ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
             {
                 aces[i] = With(ace, ace.AccessMask, (byte)(ace.AceFlags | rule.AceFlags));
                 return;
             }
-            if ((sameShape || CanMergeUnqualifiedDescendants(ace, rule))
+            // Stage 3: equal rights/audit; absent existing IOT permits asymmetric
+            // scope absorption. Only this stage recalculates DS propagation flags.
+            if (objectTypesMatch && (inheritedTypesMatch || (ace.ObjectFlags & Ace.InheritedObjectTypePresent) == 0)
                 && (ace.AceFlags & 0xC0) == (rule.AceFlags & 0xC0)
+                && Scope(ace) >= 0 && Scope(rule) >= 0
                 && TryFlags(Scope(ace) | Scope(rule), out var flags))
             {
                 aces[i] = With(ace, ace.AccessMask, (byte)((ace.AceFlags & 0xC0) | flags));
@@ -254,35 +267,6 @@ internal sealed class AclMutationEngine
             || (Rank(ace, isDacl) == rank && CompareSid(ace.Sid!, rule.Sid!) > 0));
         aces.Insert(at < 0 ? aces.Count : at, rule);
     }
-
-    // Recorded asymmetric Stage 1 merge only. The existing unqualified ACE already
-    // covers every incoming object-qualified bit; only additional global bits widen it.
-    // Keep its exact GUID shape. Later stages have their own recorded predicates.
-    private static bool CanAbsorbObjectMask(Ace existing, Ace incoming) =>
-        existing.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit
-        && (existing.ObjectFlags & Ace.ObjectTypePresent) == 0
-        && (incoming.ObjectFlags & Ace.ObjectTypePresent) != 0
-        && existing.InheritedObjectType == incoming.InheritedObjectType
-        && (existing.AccessMask & incoming.AccessMask & ObjectQualifiedRights)
-            == (incoming.AccessMask & ObjectQualifiedRights);
-
-    // Recorded Stage 2: GUID-value equality permits audit merging despite an
-    // existing present-empty OT versus an absent incoming OT. Preserve existing bytes.
-    private static bool CanMergeEmptyObjectAudit(Ace existing, Ace incoming) =>
-        existing.Kind == AceKind.ObjectAudit
-        && existing.ObjectFlags == 3 && incoming.ObjectFlags == 2
-        && existing.ObjectType == Guid.Empty
-        && existing.InheritedObjectType == incoming.InheritedObjectType
-        && (existing.AceFlags & 0x0F) == 2;
-
-    // Recorded Stage 3 direction only: self (or the already merged All scope)
-    // without IOT absorbs same-OT descendants with IOT. The reverse stays separate.
-    private static bool CanMergeUnqualifiedDescendants(Ace existing, Ace incoming) =>
-        existing.AceType == 5
-        && existing.ObjectFlags == 1 && incoming.ObjectFlags == 3
-        && existing.ObjectType != Guid.Empty && existing.ObjectType == incoming.ObjectType
-        && incoming.InheritedObjectType != Guid.Empty
-        && existing.AceFlags is 0 or 2 && incoming.AceFlags == 0x0A;
 
     private static bool Remove(List<Ace> aces, Ace rule)
     {
@@ -368,8 +352,6 @@ internal sealed class AclMutationEngine
     private static bool IsDeny(Ace ace) => ace.AceType is 1 or 6;
     private static bool SameSid(Ace a, Ace b) => a.Sid!.Equals(b.Sid);
     private static bool SameQualifier(Ace a, Ace b) => IsDeny(a) == IsDeny(b);
-    private static bool SameShape(Ace a, Ace b) => a.AceType == b.AceType && SameSid(a, b)
-        && a.ObjectFlags == b.ObjectFlags && a.ObjectType == b.ObjectType && a.InheritedObjectType == b.InheritedObjectType;
     private static int Rank(Ace ace, bool isDacl) => !Explicit(ace) ? 4
         : (isDacl && !IsDeny(ace) ? 2 : 0) + (ace.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit ? 1 : 0);
     private static int CompareSid(Sid a, Sid b)

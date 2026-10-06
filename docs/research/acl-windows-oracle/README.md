@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 674 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 775 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37542059850](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37542059850),
-head `0df679d6f03146f166e3199a86101434ee3d4799`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37543448512](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37543448512),
+head `f0305cda0cd62a0fd3cd46293608012448bdde0d`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,7 +344,7 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 674 individual steps also replay end to end by sequence, retaining the original raw
+The 775 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
@@ -407,7 +407,7 @@ and descriptor relocation policy unchanged. Other asymmetric GUID/scope or const
 is not established by this bounded matrix.
 
 
-The latest eight observations (`later-merge-*`) close two concrete source-supported leads:
+An eight-observation extension (`later-merge-*`) close two concrete source-supported leads:
 
 - Stage 3 forward: same-OT self with absent IOT plus descendants with IOT becomes All,
   retaining absent IOT. Reverse retains two ACEs. Repeated Add is byte-identical in both.
@@ -424,3 +424,23 @@ unchanged, and .NET 8/10 agree on all 674. The previous engine failed four new i
 steps plus stateful replay. Narrow Stage 2/3 predicates fix those cases, with exact GUID
 shape preservation, prior-intent/no-op tests and negative mask/OT/IOT boundary coverage.
 The implementation acceptance matrix documents predicate scope and remaining policy gaps.
+
+
+The latest 101 observations consolidate the three native Add stages instead of retaining
+qualifier-specific exceptions. `scope-qualifier-*` supplies 13 Deny/audit forward/reverse
+and repeat calls; reverse audit stops before editing its resulting multi-entry SACL.
+`empty-ot-mask-*` supplies four forward/reverse/repeat mask calls. `merge-value-stage*`
+adds 84 directed cases: 12 OT/IOT value/presence pairs across Stage 1 Allow/Deny/Audit,
+Stage 2 Audit and Stage 3 Allow/Deny/Audit. The matrix covers absent, present-empty,
+matching and different nonempty GUID values and asymmetric absence controls.
+
+All 101 return true/modified=true, with unchanged raw imports: 44 changed one-ACE outputs,
+50 changed two-ACE outputs, six one-ACE no-ops and one two-ACE no-op. Both runtimes agree
+and the prior 674 are unchanged. Run 37543448512 intentionally failed freshness against
+674 committed observations while both portable steps passed. The old narrow predicates
+failed 25 individual new observations plus stateful replay. The coherent three-stage
+algorithm matches all 775, preserves existing raw GUID layout and uses GUID value equality
+only during Add. Presence bits remain essential to asymmetric absorption. Six added
+safety cases cover metadata, opaque sections, prior intent, repeats and specific-removal
+identity. No SACL sorting/import/gap policy was expanded; this is bounded evidence, not
+proof of parity for every accepted descriptor/rule combination.

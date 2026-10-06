@@ -1,6 +1,6 @@
 # Issue 226 — morning review acceptance matrix
 
-This is a partial implementation for [issue 226](https://github.com/eliiran1231/active-directory-for-linux/issues/226), submitted in [draft PR 228](https://github.com/eliiran1231/active-directory-for-linux/pull/228). It does not complete or close the issue. The two concrete later-stage merge leads have now been recorded and fixed within narrow predicates. The PR records the final tested head and actual Windows run URL.
+This is a partial implementation for [issue 226](https://github.com/eliiran1231/active-directory-for-linux/issues/226), submitted in [draft PR 228](https://github.com/eliiran1231/active-directory-for-linux/pull/228). It does not complete or close the issue. The concrete merge leads and their reported analogues have been recorded, and Add now uses the evidenced three-stage algorithm. The PR records the final tested head and actual Windows run URL.
 
 “Validated” below means the specified recorded or invariant cases, not universal Microsoft parity. “Refused” means no candidate is published. “Deferred” identifies an unresolved policy or parity requirement. Confirmed later-stage mutation defects and their bounded fixes are recorded separately below; they did not change import or ordering policy.
 
@@ -10,7 +10,7 @@ This is a partial implementation for [issue 226](https://github.com/eliiran1231/
 | --- | --- | --- |
 | Internal Add/Set/Reset/Remove/RemoveSpecific/RemoveAll for DACL and SACL | Implemented; successful recorded operations in both ACL kinds. Multi-entry SACL gate below limits subsequent edits. | [Engine](../../src/AdForLinux.DirectoryServices/Security/Core/AclMutationEngine.cs), [literal replay](../../tests/AdForLinux.FunctionalTests/AclMutationReplayTests.cs), [seeded replay](../../tests/AdForLinux.FunctionalTests/AclMutationReplayTests.Seeded.cs) |
 | Purge, access/audit wrappers, protection, owner/group | Implemented and validated for explicit SID targeting, inherited-entry retention/removal and detached protection behavior. Owner/group changes preserve unrelated opaque ACLs. | Engine; literal `Recorded_state_call_matches_bytes`, `Recorded_B4_protection_preserve_inheritance`; seeded sequences; [safety tests](../../tests/AdForLinux.FunctionalTests/AclMutationEngineTests.cs) |
-| C1–C3 mask OR, complementary scopes, audit merging | Partial parity: same-shape merges and recorded asymmetric Stage 1 object-mask absorption work. Qualifier and common/object families remain separate. The two later-stage directed merge fixes are detailed below; broader combinations remain outside the parity claim. | Engine `Add`, `CanAbsorbObjectMask`; literal replay; 42 recorded Stage 1 observations and seeded stateful replay |
+| C1–C3 mask OR, complementary scopes, audit merging | Partial parity: same-shape merges and recorded asymmetric Stage 1 object-mask absorption work. Qualifier and common/object families remain separate. The three-stage merge algorithm and directed evidence are detailed below; broader combinations remain outside the parity claim. | Engine `Add`; literal replay; 42 recorded Stage 1 observations and seeded stateful replay |
 | E1/E2 split removal, false on unrepresentable narrowing, true no-match | Implemented for recorded mask/audit/DS propagation and GUID precedence. Includes OI preservation in untouched residuals, recomputed propagation, global versus qualified rights, IOT disjointness and atomic late failure. | Engine `Remove`, `Scope`, `Split`; literal E1/E2; seeded replay; safety tests |
 | D1/D2/F1 ordering | Validated explicit deny/allow then inherited order, object placement within qualifier groups. No global object-last rule or inherited reorder. Unreviewed SID/import ordering is refused. | Engine `Prepare`; [projector](../../src/AdForLinux.DirectoryServices/Security/Core/MicrosoftObservableProjector.cs); literal D1/D2/F1 and [projection tests](../../tests/AdForLinux.FunctionalTests/MicrosoftObservableProjectorTests.cs) |
 | Set/Reset/Purge/RemoveAll across GUIDs, explicit only | Implemented and recorded; inherited entries survive. Same-SID SACL Set/Reset may replace every explicit entry without sorting surviving entries. | Engine operation dispatch; literal state calls and seeded sequences |
@@ -25,39 +25,48 @@ This is a partial implementation for [issue 226](https://github.com/eliiran1231/
 | Offline recorded replay on Linux/Windows, .NET 8/10 | Implemented with five explicit fixture-free classes. Fresh detached Microsoft 9 observations compared to committed observations on Windows; portable tests replay actual recorded bytes and outcomes on both OSes. | [Workflow](../../.github/workflows/acl-offline-windows.yml), [oracle provenance](../research/acl-windows-oracle/README.md), [recorder](../research/acl-windows-oracle/SeededSequences.cs) |
 | J probe scope and public behavior | Selected J4/J6 import/storage evidence covered. Public modified flags/instrumentation, constructor/exception parity, public ten-type API, DirectoryEntry/LDAP, resolver, Microsoft interop and effective access are not covered by this internal task. Internal section intent is not a public write-mask promise. | Internal engine/projector tests only; existing directory workflows untouched |
 
-## Two concrete accepted-input leads recorded and fixed
+## Concrete merge leads and coherent Add predicates
 
-Both source-supported leads were confirmed by detached Microsoft Windows recording, then fixed. [Recording run 37542059850](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37542059850), head `0df679d6f03146f166e3199a86101434ee3d4799`, added four directed cases with a repeated Add each: eight observations, identical on .NET 8/10. The original 666 observations are unchanged. The run deliberately failed the freshness comparison against the then-committed 666-case baseline; its portable test steps passed. Before the fix, the new replay produced four individual failures plus one stateful sequence failure.
+The original two leads were confirmed and fixed with eight directed/repeat observations in [run 37542059850](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37542059850). Follow-up review identified qualifier analogues and Stage 1 present-empty OT mask merging. Rather than retain case-specific helpers, [run 37543448512](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37543448512), head `f0305cda0cd62a0fd3cd46293608012448bdde0d`, recorded 101 additional observations:
 
-Use the same SID and mask `0x10` in each pair, with distinct nonempty GUIDs G1/G2:
+- 13 Deny/Audit scope cases: forward/reverse plus repeats, covering success, failure and both audit bits. Reverse audit stops after its first Add because a further edit would enter the deferred existing-multi-entry SACL policy.
+- Four present-empty versus absent OT mask cases: forward/reverse and repeat, with success+CI and RP/WP masks. Actual Microsoft rule bytes expose reverse constructor normalization.
+- An 84-case matrix: 12 directed OT/IOT value/presence pairs, Stage 1 with Allow/Deny/Audit, Stage 2 with Audit, and Stage 3 with Allow/Deny/Audit. It includes matching/different nonempty values, absent/present-empty values and asymmetric absence controls.
 
-1. **Stage 3 inherited-GUID/scope merge:** existing AllowObject flags `0x00`, object flags `1`, OT=G1, no IOT; incoming AllowObject flags `0x0A`, object flags `3`, OT=G1, IOT=G2. Microsoft produces one ACE with flags `0x02`, object flags `1`, OT=G1. Reverse direction retains two ACEs. The fix supports that forward direction and repeated Add against its already merged `0x02` state, preserving the existing GUID shape. It is limited to AllowObject, equal mask/type/SID, matching nonempty OT and the recorded flags/presence patterns.
-2. **Stage 2 audit GUID-presence merge:** existing AuditObject flags `0x42`, object flags `3`, OT=Guid.Empty, IOT=G2; incoming flags `0x82`, object flags `2`, no OT, IOT=G2. Microsoft produces one ACE with flags `0xC2`, preserving the existing present-empty OT. The fix permits this equal-mask audit merge with matching inherited GUID and CI scope. In reverse, the requested empty OT normalizes to absent in the actual Microsoft rule; the existing same-shape merge already produces one ACE with flags `0xC2`, object flags `2`.
+All 101 return true/modified=true and preserve requested descriptor imports. Outputs comprise 44 changed one-ACE results, 50 changed two-ACE results, six one-ACE no-ops and one two-ACE no-op. Both runtimes agree, and the prior 674 observations remain unchanged. The recording run deliberately failed freshness against the older baseline while portable tests passed. Before consolidation, 25 new individual observations plus stateful replay failed.
 
-All eight calls return true/modified=true. Each repeat leaves bytes unchanged and creates no new internal intent. Every requested descriptor imports unchanged; requested versus effective rule bytes explicitly expose the reverse-audit constructor normalization. These are mutation outcomes, not SACL sorting or import compaction. Raw-input, return/modified, independent-step and stateful accumulated-intent assertions remain in the replay suite. Two added metadata/snapshot tests cover prior intent, exact neighboring opaque ACLs, ACL tails/reserved bytes and repeat no-ops; four negative boundary tests retain distinct masks/OT/IOT scopes.
+`Add` now follows three ordered stages for matching explicit type/SID, retaining the existing ACE's raw GUID layout:
 
-Source basis: [Microsoft .NET 9 ACL.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ACL.cs), `ObjectTypesMatch`, `AceFlagsAreMergeable` and `MergeAces`. No confirmed mismatch remains in the 674 recorded observations. Other GUID/audit/propagation combinations remain untested breadth; this does not claim general later-stage parity.
+1. Identical flags and inherited-GUID **values**: OR masks when OT values match, or when the existing OT flag is absent and its mask already covers every incoming qualified bit.
+2. Equal masks, inheritance flags and OT/IOT **values**: combine audit flags.
+3. Equal masks/audit flags and OT values: union valid DS scopes when IOT values match or the existing IOT flag is absent. Only this stage recalculates propagation flags.
+
+GUID-value comparisons are local to Add. Presence bits still govern asymmetric absorption; no global absent-versus-empty equivalence, raw rule identity change, GUID cleanup, import compaction or SACL sorting was introduced. Same ACE type keeps Allow/Deny/Audit separate. Existing no-op, atomicity and preservation gates remain intact.
+
+The original self/no-IOT plus same-OT descendants/IOT lead now works for Allow, Deny and each audit outcome; reverse direction retains two ACEs. The present-empty OT audit lead combines audit flags and, with identical flags, disjoint masks while preserving its existing layout. Raw-input, independent-step, stateful sequence, return/modified and accumulated-intent assertions cover the observations. Six additional safety cases check metadata, opaque neighbors, snapshots, prior intent, repeated Add and unchanged specific-removal identity.
+
+Source basis: [Microsoft .NET 9 ACL.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ACL.cs), GUID matching helpers and `MergeAces`. No confirmed mismatch remains in the 775 recorded observations. This is not proof that all accepted inputs match Microsoft: unrecorded accepted combinations may still differ. Refusals document known preservation/policy boundaries, not a guarantee that every unsupported parity case fails closed.
 
 ## Validation inventory
 
 | Offline xUnit group | Cases |
 | --- | ---: |
-| Mutation replay (including 674 newly recorded steps, sequence and cross-runtime checks) | 788 |
+| Mutation replay (including 775 newly recorded steps, sequence and cross-runtime checks) | 889 |
 | Read projection | 78 |
-| Mutation safety and preservation | 68 |
+| Mutation safety and preservation | 74 |
 | Lossless codec | 139 |
 | SID | 21 |
-| Total per OS/runtime | 1094 |
+| Total per OS/runtime | 1201 |
 
-The safety group also executes 100 deterministic disjoint-mask iterations with seed 2262026. Exhaustive projector flag loops and sequence steps are not additional xUnit cases. Newly recorded steps include 256 seeded operations, operation/state boundaries, removal precedence, 32 IOT cases, 64 common OI cases, 192 object OI cases, 24 combined sequence steps, 42 asymmetric object-mask Add cases and eight directed later-stage merge/repeat observations; exact case definitions and provenance are in the recorder/README. Recordings use Microsoft System.DirectoryServices 9.0.0 on Windows runtimes 8.0.31 and 10.0.12; local replay uses runtimes 8.0.0 and 10.0.12.
+The safety group also executes 100 deterministic disjoint-mask iterations with seed 2262026. Exhaustive projector flag loops and sequence steps are not additional xUnit cases. Newly recorded steps include 256 seeded operations, operation/state boundaries, removal precedence, 32 IOT cases, 64 common OI cases, 192 object OI cases, 24 combined sequence steps, 42 asymmetric object-mask Add cases and eight initial later-stage merge/repeat observations plus 101 qualifier/value-presence observations; exact case definitions and provenance are in the recorder/README. Recordings use Microsoft System.DirectoryServices 9.0.0 on Windows runtimes 8.0.31 and 10.0.12; local replay uses runtimes 8.0.0 and 10.0.12.
 
-The final revision must pass 1094 cases on Linux .NET 8/10 and Windows .NET 8/10, with all 674 fresh Windows observations matching. Consult PR 228 for its exact head and run evidence rather than treating the inventory as a CI status assertion.
+The final revision must pass 1201 cases on Linux .NET 8/10 and Windows .NET 8/10, with all 775 fresh Windows observations matching. Consult PR 228 for its exact head and run evidence rather than treating the inventory as a CI status assertion.
 
 ## Acceptance decision
 
 - Internal operation entrypoints exist and perform meaningful successful edits, but full requested semantic parity remains partial.
 - Recorded replay is validated for the enumerated cases; selected I2/J rows intentionally verify refusals rather than adopting unreviewed Microsoft output.
 - Failure/no-op immutability and read/intent separation have substantial deterministic coverage, including mixed success/failure/recovery snapshots.
-- Not all deviations are approved or resolved: the two concrete later-stage leads are now fixed, but general merge parity is not established; SACL sorting and import/gap policies remain decisions.
+- Not all deviations are approved or resolved: the concrete merge leads and analogues are fixed, but general accepted-input parity is not established; SACL sorting and import/gap policies remain decisions.
 
 Keep issue 226 open and PR 228 draft. No merge or automatic issue closure is requested.
