@@ -35,6 +35,9 @@ no production implementation or final public-contract adoption is chosen. The la
 [Microsoft interop/protected-hook follow-up](acl-microsoft-interop-and-overrides.md) evaluates
 explicit snapshot conversion and preserving portable extension points. Supporting namespace/
 assembly ownership is approved; native behavior and final contracts remain for review.
+The [built-in identity resolver follow-up](context-bound-identity-resolution.md) investigates
+automatic propagation from the actual DirectoryEntry and explicit standalone context, with
+offline ownership evidence and unresolved lifetime/assignment decisions.
 
 **Original-contract blocker:** on stock Linux .NET 8 and 10, the actual BCL base constructors
 and SID constructors throw before our implementation can run. `IdentityReference` cannot

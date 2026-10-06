@@ -1,0 +1,54 @@
+# Offline entry ownership and identity resolver model probe
+
+Research only; supports the [built-in resolver design](../../design/context-bound-identity-resolution.md).
+No production resolver or lifecycle hook is implemented. The project is outside the solution
+and is non-packable. No directory connection, bind, search, permission write or workflow is run.
+
+Research date: 2026-10-06. Source inspected at PR225 head
+`930d0f55d4e0a297c70b7caa2441f16d0a68dbc0`. SDK **10.0.100**, Linux x64 execution
+runtimes **8.0.0** and **10.0.0**. The real projects reference Protocols **9.0.0**;
+that package version is distinct from the runtime version. The Microsoft DirectoryServices
+9.0.0 Windows behavioral oracle remains outstanding.
+
+## Results and boundaries
+
+Both [net8 output](results/linux-net8.txt) and [net10 output](results/linux-net10.txt) passed:
+
+- **Actual repository:** lazy option acquisition, configured endpoint/identity/timeout,
+  credential changes resetting Options in place, old option snapshots and independently
+  created entries retaining their settings, Close reuse, disposal checks, and entries remaining
+  independently configured after their creating PrincipalContext is disposed.
+- **Existing helpers:** source-linked, unmodified SidCodec and LdapFilter produce the exact
+  escaped binary SID assertion and escape text metacharacters for the fixtures.
+- **Model only:** explicit fake epoch rotation rejects stale lookup, invalidation after a fake
+  query prevents edit publication, explicit reacquisition succeeds, detached SID data remains
+  usable and disposed owners reject lookup.
+
+The executable uses synthetic credentials and reserved `.invalid` hosts; it never prints
+passwords or connection options. Reflection invokes only configuration methods (`BuildOptions`,
+`CreateEntryForDn`, `CreateDirectoryEntry`) and reads the disposal flag. These methods were
+inspected for lazy behavior. No GetConnection, Bind, Search, ObjectSecurity or Save is called.
+Private reflection here inspects this repository, not a bypass of platform runtime constructors.
+
+The model explicitly calls Rotate around chosen mutations; **production setters do not yet
+emit these epochs**. FakeLookup returns fixed data and cannot demonstrate LDAP, domain discovery,
+authentication isolation, real descriptor attachment, races or atomic publication. The model's
+final check and EditCount increment are not a coordinated concurrency guard. Retained actual
+ObjectSecurity state across credential changes is source evidence, not exercised on Linux's
+BCL stub. Full SID validation and ill-formed UTF-16 handling need separate fixtures.
+
+## Reproduce
+
+From the repository root with SDK 10.0.100 and both runtimes installed:
+
+```bash
+dotnet build docs/research/identity-context-probe/IdentityContextProbe.csproj -c Release
+/path/to/net8/dotnet docs/research/identity-context-probe/bin/Release/net8.0/IdentityContextProbe.dll
+/path/to/net10/dotnet docs/research/identity-context-probe/bin/Release/net10.0/IdentityContextProbe.dll
+```
+
+Build restores the referenced projects' NuGet packages if needed. The executed environment used
+`/tmp/acl-interop/dotnet8/dotnet` for runtime 8 and `/tmp/acl-interop/dotnet/dotnet` for SDK/runtime
+10. Normal builds completed with zero warnings/errors. Outputs record exact runtime versions.
+No Windows execution or live AD success is implied; next request-capture, lifecycle integration,
+concurrency, Windows-oracle and separately authorized read-only AD cases are in the design.

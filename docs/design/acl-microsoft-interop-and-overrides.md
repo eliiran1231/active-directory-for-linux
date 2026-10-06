@@ -5,6 +5,8 @@ This extends the [same-name candidate](same-name-portable-acl-api.md), rather th
 another portable ACL API. The user confirmed the library is unreleased and approved
 `AdForLinux.Security.*` in `AdForLinux.DirectoryServices.dll`. Windows behavior changes,
 resolver policy, `Principal.Sid` changes and final conversion policy remain unapproved.
+The subsequent [context resolver investigation](context-bound-identity-resolution.md) proposes
+a library-built AD resolver using existing entries/contexts and records lifecycle decisions.
 
 **Conclusion:** a `ToMicrosoftObject()`-style explicit bridge is a useful solution for passing
 portable values to existing **Windows** libraries. It should be investigated as a detached

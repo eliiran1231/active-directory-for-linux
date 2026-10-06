@@ -234,8 +234,10 @@ BCL name-translation behavior even though the method shape remains familiar; the
 exception contract is still a decision. No global/ambient resolver or Windows LSA fallback
 is introduced.
 
-Evaluate an explicit, supporting resolver in `AdForLinux.Security.Principal` (not another
-ACL API):
+The [built-in context resolver follow-up](context-bound-identity-resolution.md) now recommends
+a library-supplied AD implementation, automatically available to entry-derived descriptors
+and explicitly supplied for standalone identities. Callers need not implement LDAP lookup.
+This supporting extension seam remains illustrative (not another ACL API):
 
 ```csharp
 // Candidate helper contract, not implemented in this PR.
@@ -256,16 +258,16 @@ cache of credentials or guessed cross-domain search. LDAP escaping, foreign secu
 principals, trusts and name ambiguity need dedicated tests. A Windows resolver can be an
 opt-in integration implementation, not hidden behavior of portable constructors.
 
-**Open semantic choice:** default rule operations and `GetOwner/GetAccessRules(targetType)`
-can require portable SID results and refuse unresolved names, or the descriptor can expose an
-explicit resolver configuration used **only by operations on that descriptor**. Such a
-configuration cannot service a standalone identity's `Translate(Type)` call: the identity has
-no descriptor context, and must not acquire ambient resolver state when used in a rule.
-Descriptor operations would invoke their configured resolver directly, not depend on
-intrinsic cross-kind `Translate`. This optional descriptor behavior preserves more NTAccount
-call patterns but adds I/O timing, caching and lifetime behavior; it remains undecided. Specify missing-resolver versus identity-not-mapped exception types and payloads
-before publishing. Cloning BCL `IdentityNotMappedException.UnmappedIdentities` also pulls in
-`IdentityReferenceCollection`; that support family is not justified solely by spelling parity.
+**Current research direction:** automatically propagate the actual DirectoryEntry binding to
+its descriptor, so `GetOwner/GetAccessRules(targetType)` and name-bearing edits use the
+library's built-in resolver. Standalone identities still have no descriptor context and must
+not acquire ambient resolver state when used in a rule. The follow-up specifies a borrowed,
+revocable capability, lookup timing, domain scope and failure-before-mutation; final lifecycle
+and exception contracts remain unapproved. In particular, shared descriptor assignment cannot
+silently retarget existing callers' authority. Specify missing-context versus identity-not-mapped
+exception types and payloads before publishing. Cloning BCL
+`IdentityNotMappedException.UnmappedIdentities` also pulls in `IdentityReferenceCollection`;
+that support family is not justified solely by spelling parity.
 The prototype implements no translation, NTAccount or exception-family replacement.
 
 ## 5. Exact caller migration examples
@@ -446,7 +448,7 @@ boundaries needs an explicit reason and decision.
 | Priority | Decision / test | Why it matters |
 |---|---|---|
 | 1 | Approve exact public dependency/omission list after this investigation | Public bases and identity types change compatibility; review deferred protected preservation and any proposed pointer/member omissions explicitly before adoption |
-| 1 | SID-only default versus explicitly configured name resolver; precise failure contract | Hidden name translation changes network activity, credentials, ambiguity and security semantics |
+| 1 | Built-in entry-context resolver lifetime, assignment semantics and precise failure contract | Hidden name translation changes network activity, credentials, ambiguity and security semantics |
 | 1 | Public normalized output versus raw preservation; explicit binary replacement of opaque data | Affects whether callers can unknowingly lose ACE data or trigger permission changes |
 | 1 | Detached assignment and LDAP Add creation defaults | Section-scoped Modify cannot make creation safe; requires later authorized real AD comparisons |
 | 2 | Windows oracle matrix for all 46 overloads, inherited/protected methods, merging and SDDL | Microsoft DirectoryServices 9.0.0 on net8/net10 Windows; record loaded ACL/identity assembly versions, scripts and exceptions separately |

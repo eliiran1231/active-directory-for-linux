@@ -1,0 +1,11 @@
+Runtime: .NET 10.0.0; linux-x64
+EXPECTED ObjectDisposedException: disposed PrincipalContext rejects new option acquisition
+EXPECTED ObjectDisposedException: disposed entry rejects new option acquisition
+PASS actual repository: lazy configuration, credential reset, Close, derived-entry snapshots and PrincipalContext/entry disposal ownership.
+PASS existing codecs: exact binary SID filter and hostile text escaping. No LDAP request sent.
+EXPECTED InvalidOperationException: stale descriptor capability rejects credential rotation
+EXPECTED InvalidOperationException: rotation during lookup prevents mutation publication
+EXPECTED ObjectDisposedException: disposed owner capability
+EXPECTED InvalidOperationException: detached descriptor has no context
+PASS model only: borrowed epoch revocation, no-lookup SID reads, explicit reacquisition, mid-lookup invalidation, disposal and detached data.
+LDAP resolution, production invalidation hooks, Windows oracle and credential/network isolation: NOT exercised.
