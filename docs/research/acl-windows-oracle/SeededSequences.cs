@@ -113,22 +113,25 @@ internal static class SeededSequences
     private static void RecordInheritedGuidAndObjectInherit(List<Observation> observations)
     {
         var cases = new List<(string Name, byte Flags, uint Mask, Guid? ExistingIt,
-            uint RuleMask, Guid RuleIt, M.ActiveDirectorySecurityInheritance Scope, string Operation)>();
+            uint RuleMask, Guid RuleIt, M.ActiveDirectorySecurityInheritance Scope, string Operation, Guid? ExistingOt, Guid RuleOt)>();
         foreach (var flags in new byte[] { 2, 6, 10, 14 })
         foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
-            cases.Add(($"distinct-inherited-{flags}-{scope}", flags, 0x30, Sd.G1, 0x10, Sd.G2, scope, "Remove"));
+            cases.Add(($"distinct-inherited-{flags}-{scope}", flags, 0x30, Sd.G1, 0x10, Sd.G2, scope, "Remove", null, Guid.Empty));
         foreach (var flags in new byte[] { 1, 3, 5, 7, 9, 11, 13, 15 })
         {
             foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.None, M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
-                cases.Add(($"oi-{flags}-remove-{scope}", flags, 0x30, null, 0x10, Guid.Empty, scope, "Remove"));
-            cases.Add(($"oi-{flags}-add-same-mask", flags, 0x10, null, 0x10, Guid.Empty, M.ActiveDirectorySecurityInheritance.None, "Add"));
+                cases.Add(($"oi-{flags}-remove-{scope}", flags, 0x30, null, 0x10, Guid.Empty, scope, "Remove", null, Guid.Empty));
+            cases.Add(($"oi-{flags}-add-same-mask", flags, 0x10, null, 0x10, Guid.Empty, M.ActiveDirectorySecurityInheritance.None, "Add", null, Guid.Empty));
         }
+        foreach (var mask in new uint[] { 0x10, 0x14 })
+        foreach (var scope in new[] { M.ActiveDirectorySecurityInheritance.All, M.ActiveDirectorySecurityInheritance.Descendents })
+            cases.Add(($"distinct-both-guids-{mask}-{scope}", 2, mask, Sd.G1, mask, Sd.G2, scope, "Remove", Sd.G1, Sd.G2));
         foreach (var test in cases)
         foreach (var audit in new[] { false, true })
         {
             var flags = (byte)(test.Flags | (audit ? 0xC0 : 0));
             var source = test.ExistingIt.HasValue
-                ? Sd.ObjAce((byte)(audit ? 7 : 5), flags, test.Mask, 2, null, test.ExistingIt, Sd.U1)
+                ? Sd.ObjAce((byte)(audit ? 7 : 5), flags, test.Mask, test.ExistingOt.HasValue ? 3u : 2u, test.ExistingOt, test.ExistingIt, Sd.U1)
                 : Sd.Ace((byte)(audit ? 2 : 0), flags, test.Mask, Sd.U1);
             var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
                 : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
@@ -145,7 +148,7 @@ internal static class SeededSequences
                 if (audit)
                 {
                     var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)test.RuleMask,
-                        E.AuditFlags.Success, Guid.Empty, test.Scope, test.RuleIt);
+                        E.AuditFlags.Success, test.RuleOt, test.Scope, test.RuleIt);
                     ruleBytes = RuleBytes(rule);
                     returned = descriptor.ModifyAuditRule(operation, rule, out var changed);
                     modified = changed;
@@ -153,7 +156,7 @@ internal static class SeededSequences
                 else
                 {
                     var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)test.RuleMask,
-                        E.AccessControlType.Allow, Guid.Empty, test.Scope, test.RuleIt);
+                        E.AccessControlType.Allow, test.RuleOt, test.Scope, test.RuleIt);
                     ruleBytes = RuleBytes(rule);
                     returned = descriptor.ModifyAccessRule(operation, rule, out var changed);
                     modified = changed;
