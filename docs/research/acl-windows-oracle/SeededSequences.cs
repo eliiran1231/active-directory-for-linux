@@ -95,6 +95,7 @@ internal static class SeededSequences
         RecordInheritedGuidAndObjectInherit(observations);
         RecordObjectOiAndCombinedSequences(observations);
         RecordAsymmetricObjectMaskAdds(observations);
+        RecordLaterStageMergeLeads(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -110,6 +111,63 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordLaterStageMergeLeads(List<Observation> observations)
+    {
+        foreach (var audit in new[] { false, true })
+        foreach (var reverse in new[] { false, true })
+        {
+            var source = audit
+                ? Sd.ObjAce(7, (byte)(reverse ? 0x82 : 0x42), 0x10, reverse ? 2u : 3u,
+                    reverse ? null : Guid.Empty, Sd.G2, Sd.U1)
+                : Sd.ObjAce(5, (byte)(reverse ? 0x0A : 0), 0x10, reverse ? 3u : 1u,
+                    Sd.G1, reverse ? Sd.G2 : null, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var sid = new B.SecurityIdentifier(Sd.U1, 0);
+            for (var index = 0; index < 2; index++)
+            {
+                var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+                bool? returned = null, modified = null;
+                string? exception = null, message = null;
+                byte[] ruleBytes = Array.Empty<byte>();
+                var requestedRule = audit
+                    ? Sd.ObjAce(7, (byte)(reverse ? 0x42 : 0x82), 0x10, reverse ? 3u : 2u,
+                        reverse ? Guid.Empty : null, Sd.G2, Sd.U1)
+                    : Sd.ObjAce(5, (byte)(reverse ? 0 : 0x0A), 0x10, reverse ? 1u : 3u,
+                        Sd.G1, reverse ? null : Sd.G2, Sd.U1);
+                try
+                {
+                    if (audit)
+                    {
+                        var rule = new M.ActiveDirectoryAuditRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                            reverse ? E.AuditFlags.Success : E.AuditFlags.Failure,
+                            Guid.Empty, M.ActiveDirectorySecurityInheritance.All, Sd.G2);
+                        ruleBytes = RuleBytes(rule);
+                        returned = descriptor.ModifyAuditRule(E.AccessControlModification.Add, rule, out var changed);
+                        modified = changed;
+                    }
+                    else
+                    {
+                        var rule = new M.ActiveDirectoryAccessRule(sid, M.ActiveDirectoryRights.ReadProperty,
+                            E.AccessControlType.Allow, Sd.G1,
+                            reverse ? M.ActiveDirectorySecurityInheritance.None : M.ActiveDirectorySecurityInheritance.Descendents,
+                            reverse ? Guid.Empty : Sd.G2);
+                        ruleBytes = RuleBytes(rule);
+                        returned = descriptor.ModifyAccessRule(E.AccessControlModification.Add, rule, out var changed);
+                        modified = changed;
+                    }
+                }
+                catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+                observations.Add(new Observation($"later-merge-{(audit ? "audit-empty-ot" : "scope-iot")}-{reverse}",
+                    index, audit ? "Sacl" : "Dacl", "Add", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                    input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                    Convert.ToHexString(requestedRule), index == 0 ? Convert.ToHexString(requested) : null));
+            }
+        }
     }
 
     private static void RecordAsymmetricObjectMaskAdds(List<Observation> observations)
