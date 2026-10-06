@@ -13,7 +13,9 @@ issue comment 6025043919 supplies the trailing-payload and shared-storage requir
 memory, validates the complete descriptor and only then returns a new engine. No-op and
 failed calls retain the old value and create no new write intent. Microsoft return/modified
 flags are separate operation evidence; they are not interpreted as byte changes or LDAP
-write masks. All intent stays within retrieved sections.
+write masks. All intent stays within retrieved sections. Incoming ACEs represent effective constructed
+Microsoft rule shapes. Object rules with no GUID flags are refused rather than guessed;
+such ACEs remain valid existing raw data and do not match a common RemoveSpecific rule.
 
 `DescriptorRewriter` packs owner, group, SACL and DACL into independent storage, including
 for equal or overlapping original offsets. It copies unedited components exactly. ACL
@@ -40,12 +42,15 @@ retain the original NULL representation.
 - Object-specific subtraction qualifies only the measured DS rights; global rights still
   match across ObjectType GUIDs. Split ACEs drop inapplicable GUID fields while keeping
   their ACE family. Object Add/Set/Reset upgrades revision 2 to 4; common Add preserves it.
+- Recorded removal precedence skips disjoint self/descendant scopes before GUID narrowing;
+  inherited-object GUID narrowing applies only when both ACEs have CI. Audit outcome
+  disjointness remains after GUID checks.
 - Absent/NULL SACL removals return true with modified=false and no write intent.
 - Set/Reset/Purge/RemoveAll keep inherited entries and target explicit SID/qualifier across GUIDs.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 300 newly recorded scripted steps including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 312 newly recorded scripted steps including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -55,6 +60,12 @@ safe mask algebra. Existing codec/SID tests remain part of the explicit offline 
 ## Deferred and conservative boundaries
 
 This draft does not claim completion of all issue 226 acceptance criteria.
+
+Decision dependencies are SACL ordering and expanding the approved import-normalization
+or gap-relocation policy. Additional evidence/implementation work remains for distinct
+inherited-object GUID subtraction and arbitrary OI propagation; these are not assumed to
+require a new product decision. Unknown/trailing-data refusals implement the approved
+preservation boundary. Public API and directory write behavior remain outside this scope.
 
 - The I2 multi-entry SACL sorting policy is unresolved. Mutations with more than one existing
   explicit audit entry refuse before publication, except Set/Reset that replace every
@@ -98,8 +109,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 414 mutation replay cases (including 300 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 51 mutation safety cases, 139 codec
-cases and 21 SID cases: 703 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 426 mutation replay cases (including 312 recorded steps, sequence
+replay and cross-runtime equality), 78 projection cases, 54 mutation safety cases, 139 codec
+cases and 21 SID cases: 718 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

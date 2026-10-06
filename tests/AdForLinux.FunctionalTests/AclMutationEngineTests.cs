@@ -507,6 +507,31 @@ public class AclMutationEngineTests
         Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
     }
 
+    [Theory]
+    [InlineData((byte)5)]
+    [InlineData((byte)6)]
+    [InlineData((byte)7)]
+    public void Object_rule_without_guid_flags_refuses_without_reinterpreting_existing_object_ace(byte type)
+    {
+        var audit = type == 7;
+        var flags = (byte)(audit ? 0x40 : 0);
+        var existing = ObjAce(type, flags, 0x10, 0, null, null, U1);
+        var raw = audit ? Build(Admins, Admins, Acl(4), Acl(4, existing))
+            : Build(Admins, Admins, Acl(4, existing));
+        var engine = Engine(raw);
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        foreach (var operation in Enum.GetValues<AclModification>())
+            Assert.Throws<ArgumentException>(() => engine.Modify(section, operation, CoreAce.Read(existing)));
+        // Existing object-None ACEs remain valid raw data. A common effective rule does
+        // not match their binary shape for RemoveSpecific (pinned Microsoft ACL.cs).
+        var common = Rule(0x10, (byte)(audit ? 2 : type == 6 ? 1 : 0), flags);
+        var result = engine.Modify(section, AclModification.RemoveSpecific, common);
+        Assert.Same(engine, result.Engine);
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(raw, engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+    }
+
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
     {
         var bytes = descriptor.GetBinaryForm();

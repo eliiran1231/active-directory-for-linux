@@ -213,6 +213,8 @@ internal sealed class AclMutationEngine
         if (!MicrosoftObservableProjector.IsUnderstoodAce(rule, isDacl)
             || !Explicit(rule) || (rule.AceFlags & 0x0F) is not (0 or 2 or 3 or 6 or 10 or 14))
             throw new ArgumentException("The rule is not a supported explicit directory ACE.", nameof(rule));
+        if (rule.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit && rule.ObjectFlags == 0)
+            throw new ArgumentException("An object rule without GUID flags has no validated Microsoft rule mapping; use the effective common rule shape.", nameof(rule));
         if (rule.AccessMask == 0) throw new ArgumentException("A rule mask must not be zero.", nameof(rule));
         if (!isDacl && (rule.AceFlags & 0xC0) == 0)
             throw new ArgumentException("An audit rule requires success or failure.", nameof(rule));
@@ -260,6 +262,15 @@ internal sealed class AclMutationEngine
                 result.Add(ace);
                 continue;
             }
+            var oldScope = Scope(ace);
+            var removeScope = Scope(rule);
+            // Recorded self/descendants disjointness takes precedence over GUID
+            // narrowing. Audit outcome disjointness deliberately stays below it.
+            if ((oldScope & removeScope) == 0)
+            {
+                result.Add(ace);
+                continue;
+            }
             // ObjectType qualifies only DS object-specific bits. Global rights still
             // match across GUIDs (recorded mixed RP|ListChildren subtraction).
             var removeMask = rule.AccessMask;
@@ -267,19 +278,20 @@ internal sealed class AclMutationEngine
                 && (ace.AccessMask & removeMask & ObjectQualifiedRights) != 0) return false;
             if (rule.ObjectType.HasValue && rule.ObjectType != ace.ObjectType)
                 removeMask &= ~ObjectQualifiedRights;
-            if (rule.InheritedObjectType.HasValue && !ace.InheritedObjectType.HasValue) return false;
-            if (rule.InheritedObjectType.HasValue && rule.InheritedObjectType != ace.InheritedObjectType)
-                throw new InvalidOperationException("Removal across distinct inherited-object GUIDs is not validated.");
+            if ((ace.AceFlags & rule.AceFlags & 2) != 0 && rule.InheritedObjectType.HasValue)
+            {
+                if (!ace.InheritedObjectType.HasValue) return false;
+                if (rule.InheritedObjectType != ace.InheritedObjectType)
+                    throw new InvalidOperationException("Removal across distinct inherited-object GUIDs is not validated.");
+            }
             if ((ace.AccessMask & removeMask) == 0)
             {
                 result.Add(ace);
                 continue;
             }
-            var oldScope = Scope(ace);
-            var removeScope = Scope(rule);
             var oldAudit = ace.AceFlags & 0xC0;
             var removeAudit = rule.AceFlags & 0xC0;
-            if ((oldScope & removeScope) == 0 || (oldAudit != 0 && (oldAudit & removeAudit) == 0))
+            if (oldAudit != 0 && (oldAudit & removeAudit) == 0)
             {
                 result.Add(ace);
                 continue;

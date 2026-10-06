@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 300 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 312 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37533266532](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37533266532),
-head `61301841cdf1d352772e6156c96b20c16eb4fc55`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37535430548](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37535430548),
+head `966c9889c6f151b5a80575205eacfe306bfb43bd`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,6 +344,14 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 300 individual steps also replay end to end by sequence, retaining the original raw
+The 312 individual steps also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
+
+The last twelve observations isolate GUID-removal precedence in DACL/SACL. Disjoint
+self/descendant scopes skip GUID narrowing; inherited-object GUID conflicts apply only
+when both ACEs have CI. Audit outcome disjointness does not bypass GUID narrowing.
+The recording run intentionally failed its freshness comparison because it added these
+twelve probes to the existing 300; those first 300 observations are unchanged. Both
+portable test steps passed. The added evidence reproduced eight individual mismatches
+and one stateful replay failure before the engine fix.
