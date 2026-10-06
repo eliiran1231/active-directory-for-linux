@@ -1,0 +1,66 @@
+Runtime: .NET 10.0.0; linux-x64
+OS: Debian GNU/Linux 13 (trixie)
+Library: AdForLinux.DirectoryServices, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
+TYPE System.Security.Principal.IdentityReference, System.Security.Principal.Windows, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Object
+  CTOR Void .ctor(); visibility=Assembly; IL=02283A00000A2825000006732800000A7A
+TYPE System.Security.Principal.SecurityIdentifier, System.Security.Principal.Windows, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=True; base=System.Security.Principal.IdentityReference
+  CTOR Void .ctor(Byte[], Int32); visibility=Public; IL=02282C0000062825000006732800000A7A
+  CTOR Void .ctor(IntPtr); visibility=Public; IL=02282C0000062825000006732800000A7A
+  CTOR Void .ctor(System.Security.Principal.WellKnownSidType, System.Security.Principal.SecurityIdentifier); visibility=Public; IL=02282C0000062825000006732800000A7A
+  CTOR Void .ctor(System.String); visibility=Public; IL=02282C0000062825000006732800000A7A
+TYPE System.Security.AccessControl.DirectoryObjectSecurity, System.IO.FileSystem.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Security.AccessControl.ObjectSecurity
+  CTOR Void .ctor(); visibility=Family; IL=02282E00000A2815000006732F00000A7A
+  CTOR Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); visibility=Family; IL=02282E00000A2815000006732F00000A7A
+TYPE System.Security.AccessControl.ObjectSecurity, System.Security.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Object
+  CTOR Void .ctor(); visibility=Family; IL=02283600000A283B000006733700000A7A
+  CTOR Void .ctor(Boolean, Boolean); visibility=Family; IL=02283600000A283B000006733700000A7A
+  CTOR Void .ctor(System.Security.AccessControl.CommonSecurityDescriptor); visibility=Family; IL=02283600000A283B000006733700000A7A
+TYPE System.Security.AccessControl.AuthorizationRule, System.Security.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Object
+  CTOR Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags); visibility=FamORAssem; IL=02283600000A283B000006733700000A7A
+TYPE System.Security.AccessControl.ObjectAccessRule, System.Security.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Security.AccessControl.AccessRule
+  CTOR Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AccessControlType); visibility=Family; IL=021416161616162857000006283B000006733700000A7A
+TYPE System.Security.AccessControl.ObjectAuditRule, System.Security.AccessControl, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a; sealed=False; base=System.Security.AccessControl.AuditRule
+  CTOR Void .ctor(System.Security.Principal.IdentityReference, Int32, Boolean, System.Security.AccessControl.InheritanceFlags, System.Security.AccessControl.PropagationFlags, System.Guid, System.Guid, System.Security.AccessControl.AuditFlags); visibility=Family; IL=021416161616162863000006283B000006733700000A7A
+SURFACE System.Security.AccessControl.AuthorizationRuleCollection GetAccessRules(Boolean, Boolean, System.Type); declared=System.Security.AccessControl.DirectoryObjectSecurity; virtual=False; final=False
+SURFACE Boolean ModifyAccessRule(System.Security.AccessControl.AccessControlModification, System.Security.AccessControl.AccessRule, Boolean ByRef); declared=AdForLinux.DirectoryServices.ActiveDirectorySecurity; virtual=True; final=False
+SURFACE Void PurgeAccessRules(System.Security.Principal.IdentityReference); declared=AdForLinux.DirectoryServices.ActiveDirectorySecurity; virtual=True; final=False
+SURFACE Void SetAccessRuleProtection(Boolean, Boolean); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetGroup(System.Security.Principal.IdentityReference); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetOwner(System.Security.Principal.IdentityReference); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetSecurityDescriptorBinaryForm(Byte[]); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetSecurityDescriptorBinaryForm(Byte[], System.Security.AccessControl.AccessControlSections); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetSecurityDescriptorSddlForm(System.String); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+SURFACE Void SetSecurityDescriptorSddlForm(System.String, System.Security.AccessControl.AccessControlSections); declared=System.Security.AccessControl.ObjectSecurity; virtual=False; final=False
+EXPECTED PNSE: BCL SID(string): Windows Principal functionality is not supported on this platform.
+  at System.Security.Principal.IdentityReference..ctor()
+EXPECTED PNSE: BCL SID(bytes): Windows Principal functionality is not supported on this platform.
+  at System.Security.Principal.IdentityReference..ctor()
+EXPECTED PNSE: BCL NTAccount: Windows Principal functionality is not supported on this platform.
+  at System.Security.Principal.IdentityReference..ctor()
+EXPECTED PNSE: existing ActiveDirectorySecurity(): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.ObjectSecurity..ctor()
+EXPECTED PNSE: BCL RawAcl: Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.GenericAcl..ctor()
+EXPECTED PNSE: BCL RawSecurityDescriptor: Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.GenericSecurityDescriptor..ctor()
+EXPECTED PNSE: existing caller SID-to-rule expression: Windows Principal functionality is not supported on this platform.
+  at System.Security.Principal.IdentityReference..ctor()
+EXPECTED PNSE: existing ActiveDirectoryAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing ActiveDirectoryAuditRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing CreateChildAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing DeleteChildAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing DeleteTreeAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing ExtendedRightAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing ListChildrenAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing PropertyAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+EXPECTED PNSE: existing PropertySetAccessRule(null): Access Control List (ACL) APIs are part of resource management on Windows and are not supported on this platform.
+  at System.Security.AccessControl.AuthorizationRule..ctor(IdentityReference identity, Int32 accessMask, Boolean isInherited, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
+Unexpected outcomes: 0

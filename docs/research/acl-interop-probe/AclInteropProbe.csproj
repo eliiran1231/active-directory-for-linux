@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);EXTENSION_PROBE</DefineConstants>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ProbeSealedFactory)' == 'true'">
+    <DefineConstants>$(DefineConstants);SEALED_FACTORY</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0" />
+    <Compile Include="../same-name-acl-probe/Aliases.cs" Link="Aliases.cs" />
+    <Compile Include="../same-name-acl-probe/Scaffolding.cs" Link="RuleScaffolding.cs" />
+    <Compile Include="../../../src/AdForLinux.DirectoryServices/ActiveDirectorySecurity.cs" Link="ExistingWrappers.cs" />
+    <Compile Include="../../../src/AdForLinux.DirectoryServices.AccountManagement/SidCodec.cs" Link="ExistingSidCodec.cs" />
+  </ItemGroup>
+</Project>

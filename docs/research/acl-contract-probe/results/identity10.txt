@@ -1,0 +1,9 @@
+docs/research/acl-contract-probe/Program.cs(60,14): error CS1729: 'IdentityReference' does not contain a constructor that takes 0 arguments [docs/research/acl-contract-probe/AclContractProbe.csproj::TargetFramework=net10.0]
+
+Build FAILED.
+
+docs/research/acl-contract-probe/Program.cs(60,14): error CS1729: 'IdentityReference' does not contain a constructor that takes 0 arguments [docs/research/acl-contract-probe/AclContractProbe.csproj::TargetFramework=net10.0]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:00.91

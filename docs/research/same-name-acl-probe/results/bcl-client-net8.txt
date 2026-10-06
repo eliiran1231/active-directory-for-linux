@@ -1,0 +1,15 @@
+docs/research/same-name-acl-probe/Program.cs(93,35): error CS1503: Argument 1: cannot convert from 'System.Security.Principal.SecurityIdentifier' to 'AdForLinux.Security.Principal.IdentityReference' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(94,56): error CS0029: Cannot implicitly convert type 'AdForLinux.DirectoryServices.ActiveDirectorySecurity' to 'System.Security.AccessControl.ObjectSecurity' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(95,69): error CS1950: The best overloaded Add method 'List<AccessRule>.Add(AccessRule)' for the collection initializer has some invalid arguments [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(95,69): error CS1503: Argument 1: cannot convert from 'AdForLinux.Security.AccessControl.AccessRule' to 'System.Security.AccessControl.AccessRule' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+
+Build FAILED.
+
+docs/research/same-name-acl-probe/Program.cs(93,35): error CS1503: Argument 1: cannot convert from 'System.Security.Principal.SecurityIdentifier' to 'AdForLinux.Security.Principal.IdentityReference' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(94,56): error CS0029: Cannot implicitly convert type 'AdForLinux.DirectoryServices.ActiveDirectorySecurity' to 'System.Security.AccessControl.ObjectSecurity' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(95,69): error CS1950: The best overloaded Add method 'List<AccessRule>.Add(AccessRule)' for the collection initializer has some invalid arguments [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+docs/research/same-name-acl-probe/Program.cs(95,69): error CS1503: Argument 1: cannot convert from 'AdForLinux.Security.AccessControl.AccessRule' to 'System.Security.AccessControl.AccessRule' [docs/research/same-name-acl-probe/SameNameAclProbe.csproj::TargetFramework=net8.0]
+    0 Warning(s)
+    4 Error(s)
+
+Time Elapsed 00:00:00.36
