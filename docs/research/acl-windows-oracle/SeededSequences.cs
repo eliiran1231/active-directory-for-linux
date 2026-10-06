@@ -94,6 +94,7 @@ internal static class SeededSequences
         RecordRemovalScopePrecedence(observations);
         RecordInheritedGuidAndObjectInherit(observations);
         RecordObjectOiAndCombinedSequences(observations);
+        RecordAsymmetricObjectMaskAdds(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -109,6 +110,59 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordAsymmetricObjectMaskAdds(List<Observation> observations)
+    {
+        var masks = new (uint Existing, uint Incoming)[]
+        {
+            (0x10, 0x10), (0x10, 0x14), (0x14, 0x10), (0x10, 0x30),
+            (4, 0x14), (0x30, 0x14), (0x14, 0x24),
+        };
+        foreach (var pair in masks)
+        foreach (var reverse in new[] { false, true })
+        foreach (var mode in new[] { "Dacl", "AuditSuccess", "AuditFailure" })
+        {
+            var audit = mode != "Dacl";
+            var existingFlags = reverse ? 3u : 2u;
+            var source = Sd.ObjAce((byte)(audit ? 7 : 5), (byte)(audit ? 0x42 : 2),
+                pair.Existing, existingFlags, reverse ? Sd.G1 : null, Sd.G2, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                var sid = new B.SecurityIdentifier(Sd.U1, 0);
+                var ot = reverse ? Guid.Empty : Sd.G1;
+                if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)pair.Incoming,
+                        mode == "AuditSuccess" ? E.AuditFlags.Success : E.AuditFlags.Failure,
+                        ot, M.ActiveDirectorySecurityInheritance.All, Sd.G2);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(E.AccessControlModification.Add, rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)pair.Incoming,
+                        E.AccessControlType.Allow, ot, M.ActiveDirectorySecurityInheritance.All, Sd.G2);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(E.AccessControlModification.Add, rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation($"asymmetric-object-mask-{pair.Existing:X}-{pair.Incoming:X}-{reverse}-{mode}",
+                0, audit ? "Sacl" : "Dacl", "Add", "S-1-5-21-1-2-3-1001", Convert.ToHexString(ruleBytes),
+                input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()), returned, modified, exception, message,
+                RequestedDescriptorHex: Convert.ToHexString(requested)));
+        }
     }
 
     private static void RecordObjectOiAndCombinedSequences(List<Observation> observations)
