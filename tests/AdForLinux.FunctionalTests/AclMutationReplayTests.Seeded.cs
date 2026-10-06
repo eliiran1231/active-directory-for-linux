@@ -103,11 +103,14 @@ public partial class AclMutationReplayTests
             "Owner" => engine.SetOwner(sid),
             "Group" => engine.SetGroup(sid),
             "Purge" => engine.Purge(section, sid),
+            "RemoveAll" => section == SecurityMasks.Sacl ? engine.RemoveAudit(sid)
+                : engine.RemoveAccess(sid, Convert.FromHexString(step.GetProperty("RuleHex").GetString()!)[0] is 1 or 6),
             "Protect" => engine.SetProtection(section, true, true),
             "ProtectDrop" => engine.SetProtection(section, true, false),
             "Unprotect" => engine.SetProtection(section, false, true),
-            var operation => engine.Modify(section, Enum.Parse<AclModification>(operation!),
-                CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
+            var operation => section == SecurityMasks.Dacl
+                ? engine.ModifyAccessRule(Enum.Parse<AclModification>(operation!), CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!)))
+                : engine.ModifyAuditRule(Enum.Parse<AclModification>(operation!), CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
         };
     }
 

@@ -129,7 +129,9 @@ internal static class MicrosoftObservableProjector
     {
         var comparison = left.IdentifierAuthority.CompareTo(right.IdentifierAuthority);
         if (comparison != 0) return comparison;
-        for (var index = 0; index < Math.Min(left.SubAuthorityCount, right.SubAuthorityCount); index++)
+        comparison = left.SubAuthorityCount.CompareTo(right.SubAuthorityCount);
+        if (comparison != 0) return comparison;
+        for (var index = 0; index < left.SubAuthorityCount; index++)
         {
             comparison = left.GetSubAuthority(index).CompareTo(right.GetSubAuthority(index));
             if (comparison != 0) return comparison;

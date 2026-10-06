@@ -302,10 +302,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 266 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 300 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37532241340](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37532241340),
-head `d1f1fc36c00460469ca14a0d41f34bd709a50f2d`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37533266532](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37533266532),
+head `61301841cdf1d352772e6156c96b20c16eb4fc55`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -330,3 +330,20 @@ New measured findings:
 
 These findings do not resolve the I2 SACL sorting decision. Unsupported movement/loss is
 still refused by the portable implementation, and no directory-write behavior is claimed.
+
+Further review probes in the same committed recording establish:
+
+- Across distinct ObjectType GUIDs, mixed masks still remove global rights. Only
+  0x1/0x2/0x8/0x10/0x20/0x100 are object-qualified. Split object ACEs keep their ACE
+  family but drop ObjectType/InheritedObjectType fields when the residual mask or
+  propagation no longer uses them. Twelve DACL/SACL observations assert this.
+- Add/Set/Reset of an object rule upgrades a revision-2 empty/common DACL to revision 4.
+  A common-rule Add next to an existing revision-2 object ACE retains revision 2.
+- Remove/RemoveAll/RemoveSpecific on absent or NULL SACL return true with modified=false.
+- Split-then-restore retains two same-scope ACEs in the measured sequence; the engine
+  must not invent an additional compaction pass.
+- Admins/domain SID insertion compares subauthority count before subauthority values.
+
+The 300 individual steps also replay end to end by sequence, retaining the original raw
+origin and accumulating only real section changes. This is bounded script evidence, not
+an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.

@@ -14,6 +14,8 @@ internal sealed record AclMutationResult(AclMutationEngine Engine, bool ReturnVa
 /// </summary>
 internal sealed class AclMutationEngine
 {
+    private const uint ObjectQualifiedRights = 0x0000013B; // create/delete child, self, RP/WP, extended right
+
     public SecurityDescriptor Descriptor { get; }
     public SecurityDescriptor OriginalDescriptor { get; }
     public SecurityMasks WriteIntent { get; }
@@ -31,6 +33,9 @@ internal sealed class AclMutationEngine
         var isDacl = ValidateSection(section);
         ValidateRule(rule, isDacl);
         var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
+        if (!isDacl && baseline is null
+            && operation is AclModification.Remove or AclModification.RemoveSpecific or AclModification.RemoveAll)
+            return new(this, true, false); // recorded absent/NULL SACL ModifyAuditRule contract
         var aces = Prepare(section, isDacl, operation is AclModification.Set or AclModification.Reset ? rule.Sid : null);
         var returned = true;
         switch (operation)
@@ -54,8 +59,33 @@ internal sealed class AclMutationEngine
                 aces.RemoveAll(ace => Explicit(ace) && SameSid(ace, rule) && SameQualifier(ace, rule));
                 break;
         }
-        return PublishAcl(section, baseline, aces, Descriptor.Control, returned, true);
+        return PublishAcl(section, baseline, aces, Descriptor.Control, returned, true,
+            rule.ObjectFlags != 0 && operation is AclModification.Add or AclModification.Set or AclModification.Reset);
     }
+
+    public AclMutationResult ModifyAccessRule(AclModification operation, Ace rule)
+        => Modify(SecurityMasks.Dacl, operation, rule);
+
+    public AclMutationResult ModifyAuditRule(AclModification operation, Ace rule)
+        => Modify(SecurityMasks.Sacl, operation, rule);
+
+    public AclMutationResult RemoveAccess(Sid identity, bool deny)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        return ModifyAccessRule(AclModification.RemoveAll, Create((byte)(deny ? 1 : 0), 0, uint.MaxValue, identity));
+    }
+
+    public AclMutationResult RemoveAudit(Sid identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        return ModifyAuditRule(AclModification.RemoveAll, Create(2, 0xC0, uint.MaxValue, identity));
+    }
+
+    public AclMutationResult SetAccessRuleProtection(bool isProtected, bool preserveInheritance)
+        => SetProtection(SecurityMasks.Dacl, isProtected, preserveInheritance);
+
+    public AclMutationResult SetAuditRuleProtection(bool isProtected, bool preserveInheritance)
+        => SetProtection(SecurityMasks.Sacl, isProtected, preserveInheritance);
 
     public AclMutationResult Purge(SecurityMasks section, Sid identity)
     {
@@ -95,7 +125,7 @@ internal sealed class AclMutationEngine
     }
 
     private AclMutationResult PublishAcl(SecurityMasks section, Acl? baseline, List<Ace> aces,
-        ushort control, bool returned, bool modified)
+        ushort control, bool returned, bool modified, bool upgradeRevision = false)
     {
         // Removing from an absent SACL does not manufacture an empty section.
         if (section == SecurityMasks.Sacl && baseline is null && aces.Count == 0)
@@ -105,8 +135,9 @@ internal sealed class AclMutationEngine
                 new Dictionary<SecurityMasks, byte[]?>()), section, returned, modified);
         }
         var bytes = DescriptorRewriter.EncodeAcl(baseline, aces);
+        if (upgradeRevision) bytes[0] = Acl.RevisionDS;
         control |= section == SecurityMasks.Dacl ? SecurityDescriptor.DaclPresent : SecurityDescriptor.SaclPresent;
-        if (baseline is not null && control == Descriptor.Control)
+        if (baseline is not null && control == Descriptor.Control && bytes[0] == baseline.AclRevision)
         {
             var old = new byte[baseline.BinaryLength];
             baseline.WriteTo(old);
@@ -229,15 +260,17 @@ internal sealed class AclMutationEngine
                 result.Add(ace);
                 continue;
             }
-            // Narrowing an unqualified right into one object type is not representable.
-            if (rule.ObjectType.HasValue && !ace.ObjectType.HasValue) return false;
+            // ObjectType qualifies only DS object-specific bits. Global rights still
+            // match across GUIDs (recorded mixed RP|ListChildren subtraction).
+            var removeMask = rule.AccessMask;
+            if (rule.ObjectType.HasValue && !ace.ObjectType.HasValue
+                && (ace.AccessMask & removeMask & ObjectQualifiedRights) != 0) return false;
             if (rule.ObjectType.HasValue && rule.ObjectType != ace.ObjectType)
-            {
-                result.Add(ace);
-                continue;
-            }
+                removeMask &= ~ObjectQualifiedRights;
             if (rule.InheritedObjectType.HasValue && !ace.InheritedObjectType.HasValue) return false;
             if (rule.InheritedObjectType.HasValue && rule.InheritedObjectType != ace.InheritedObjectType)
+                throw new InvalidOperationException("Removal across distinct inherited-object GUIDs is not validated.");
+            if ((ace.AccessMask & removeMask) == 0)
             {
                 result.Add(ace);
                 continue;
@@ -253,17 +286,17 @@ internal sealed class AclMutationEngine
             }
             var remainingScope = oldScope & ~removeScope;
             if (!TryFlags(remainingScope, out var remainingFlags)) return false;
-            var overlapMask = ace.AccessMask & rule.AccessMask;
-            var remainingMask = ace.AccessMask & ~rule.AccessMask;
-            if (remainingMask != 0) result.Add(With(ace, remainingMask, ace.AceFlags));
+            var overlapMask = ace.AccessMask & removeMask;
+            var remainingMask = ace.AccessMask & ~removeMask;
+            if (remainingMask != 0) result.Add(Split(ace, remainingMask, ace.AceFlags));
             if (oldAudit != 0)
             {
                 var remainingAudit = oldAudit & ~removeAudit;
                 if (remainingAudit != 0)
-                    result.Add(With(ace, overlapMask, (byte)((ace.AceFlags & 0x0F) | remainingAudit)));
+                    result.Add(Split(ace, overlapMask, (byte)((ace.AceFlags & 0x0F) | remainingAudit)));
             }
             if (remainingScope != 0)
-                result.Add(With(ace, overlapMask, (byte)(remainingFlags | (oldAudit & removeAudit))));
+                result.Add(Split(ace, overlapMask, (byte)(remainingFlags | (oldAudit & removeAudit))));
         }
         aces.Clear();
         aces.AddRange(result);
@@ -282,7 +315,9 @@ internal sealed class AclMutationEngine
     {
         var result = a.IdentifierAuthority.CompareTo(b.IdentifierAuthority);
         if (result != 0) return result;
-        for (var i = 0; i < Math.Min(a.SubAuthorityCount, b.SubAuthorityCount); i++)
+        result = a.SubAuthorityCount.CompareTo(b.SubAuthorityCount);
+        if (result != 0) return result;
+        for (var i = 0; i < a.SubAuthorityCount; i++)
         {
             result = a.GetSubAuthority(i).CompareTo(b.GetSubAuthority(i));
             if (result != 0) return result;
@@ -302,6 +337,30 @@ internal sealed class AclMutationEngine
         flags = scope switch { 0 or 1 => 0, 2 => 14, 3 => 6, 6 => 10, 7 => 2, _ => 0 };
         return scope is 0 or 1 or 2 or 3 or 6 or 7;
     }
+    private static Ace Split(Ace source, uint mask, byte flags)
+    {
+        if (source.Kind is not (AceKind.ObjectAccess or AceKind.ObjectAudit))
+            return With(source, mask, flags);
+        // Microsoft keeps the object ACE family, but removes GUID fields no longer
+        // applicable to this split's mask/propagation. Never reuse stale GUID bytes.
+        var objectFlags = source.ObjectFlags;
+        if ((mask & ObjectQualifiedRights) == 0) objectFlags &= ~Ace.ObjectTypePresent;
+        if ((flags & 2) == 0) objectFlags &= ~Ace.InheritedObjectTypePresent;
+        var length = 12 + source.Sid!.BinaryLength
+            + ((objectFlags & 1) != 0 ? 16 : 0) + ((objectFlags & 2) != 0 ? 16 : 0);
+        var bytes = new byte[length];
+        bytes[0] = source.AceType;
+        bytes[1] = flags;
+        BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(2), (ushort)length);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), mask);
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), objectFlags);
+        var cursor = 12;
+        if ((objectFlags & 1) != 0) { source.ObjectType!.Value.TryWriteBytes(bytes.AsSpan(cursor)); cursor += 16; }
+        if ((objectFlags & 2) != 0) { source.InheritedObjectType!.Value.TryWriteBytes(bytes.AsSpan(cursor)); cursor += 16; }
+        source.Sid.WriteTo(bytes.AsSpan(cursor));
+        return Ace.Read(bytes);
+    }
+
     private static Ace With(Ace source, uint mask, byte flags)
     {
         if (source.TrailingLength != 0 || source.Kind == AceKind.Opaque)

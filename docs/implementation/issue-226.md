@@ -37,11 +37,15 @@ retain the original NULL representation.
   no merge across qualifier, object/non-object or distinct GUID shape.
 - Remove splits remaining mask, audit and container propagation dimensions; returns false
   atomically for unrepresentable narrowing and true for no-match access removes.
+- Object-specific subtraction qualifies only the measured DS rights; global rights still
+  match across ObjectType GUIDs. Split ACEs drop inapplicable GUID fields while keeping
+  their ACE family. Object Add/Set/Reset upgrades revision 2 to 4; common Add preserves it.
+- Absent/NULL SACL removals return true with modified=false and no write intent.
 - Set/Reset/Purge/RemoveAll keep inherited entries and target explicit SID/qualifier across GUIDs.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 266 newly recorded scripted steps including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 300 newly recorded scripted steps including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -61,7 +65,8 @@ This draft does not claim completion of all issue 226 acceptance criteria.
   refuses as a whole. Owner/group or another section may still change while those bytes stay
   exact. This is intentionally narrower than Microsoft's H2 unrelated-add behavior.
 - Full conditional ACE semantics, object-right-specific matching beyond the recorded shape
-  cases, arbitrary OI propagation, and generalized multi-step normalization are not established
+  cases (especially distinct InheritedObjectType subtraction), arbitrary OI propagation,
+  duplicate-ACE import compaction and generalized normalization are not established
   by the current recordings. Active propagation combinations outside 0/2/3/6/10/14 refuse.
   Additional detached Windows recordings are required before expanding parity claims. No effective-access evaluator is claimed.
 - Active zero-mask and audit-without-success/failure projection are refused; only the exact
@@ -81,7 +86,13 @@ The copied standalone oracle records detached Microsoft System.DirectoryServices
 behavior. Successful process exit records execution, not parity; replay assertions supply
 that evidence. Exact head validation and run URLs are reported in the draft PR.
 
-The exact seeded recording provenance is documented in the oracle README. Tests replay both
-Linux and Windows outputs, not generated expectations. The original J6 examples include
+The exact seeded recording provenance is documented in the oracle README. Tests replay actual Windows outputs on
+both Linux and Windows, not generated expectations. The original J6 examples include
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
+
+Current offline filter: 413 mutation replay cases (including 300 recorded steps, sequence
+replay and cross-runtime equality), 78 projection cases, 43 mutation safety cases, 139 codec
+cases and 21 SID cases: 694 total. The safety suite includes 100 deterministic disjoint-mask
+iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
+and both ACL kinds. These iteration counts are not separate xUnit case counts.
