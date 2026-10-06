@@ -93,6 +93,7 @@ internal static class SeededSequences
         RecordRestorationAndSidOrder(observations);
         RecordRemovalScopePrecedence(observations);
         RecordInheritedGuidAndObjectInherit(observations);
+        RecordObjectOiAndCombinedSequences(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
@@ -108,6 +109,120 @@ internal static class SeededSequences
         // A compact machine-readable fallback when artifact download is unavailable.
         Console.WriteLine("SEEDED_JSON=" + JsonSerializer.Serialize(recording));
         Console.WriteLine($"Recorded {observations.Count} seeded observations to {path}");
+    }
+
+    private static void RecordObjectOiAndCombinedSequences(List<Observation> observations)
+    {
+        foreach (var objectFlags in new uint[] { 1, 2, 3 })
+        foreach (var flags in new byte[] { 1, 3, 5, 7, 9, 11, 13, 15 })
+        foreach (var operation in new[] { "RemoveNone", "RemoveAllScope", "RemoveDescendents", "AddAllScope" })
+        foreach (var audit in new[] { false, true })
+        {
+            Guid? ot = (objectFlags & 1) != 0 ? Sd.G1 : null;
+            Guid? it = (objectFlags & 2) != 0 ? Sd.G2 : null;
+            var source = Sd.ObjAce((byte)(audit ? 7 : 5), (byte)(flags | (audit ? 0xC0 : 0)),
+                0x14, objectFlags, ot, it, Sd.U1);
+            var requested = audit ? Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4, source))
+                : Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4, source));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var scope = operation == "RemoveNone" ? M.ActiveDirectorySecurityInheritance.None
+                : operation == "RemoveDescendents" ? M.ActiveDirectorySecurityInheritance.Descendents
+                : M.ActiveDirectorySecurityInheritance.All;
+            Capture($"object-oi-{objectFlags}-{flags}-{operation}-{(audit ? "Sacl" : "Dacl")}", 0,
+                descriptor, audit, operation == "AddAllScope" ? "Add" : "Remove",
+                operation == "AddAllScope" ? 0x14u : 0x10u, ot ?? Guid.Empty, it ?? Guid.Empty, scope,
+                operation == "AddAllScope" ? E.AuditFlags.Success | E.AuditFlags.Failure : E.AuditFlags.Success, requested);
+        }
+        foreach (var noPropagate in new[] { false, true })
+        {
+            var flags = (byte)(noPropagate ? 7 : 3);
+            var requested = Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4,
+                Sd.ObjAce(5, flags, 0x14, 3, Sd.G1, Sd.G1, Sd.U1),
+                Sd.Ace(1, Sd.Inherited | Sd.Ci, 0x20, Sd.U2)));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var sequence = $"combined-object-oi-dacl-{flags}";
+            var steps = new (string Operation, uint Mask, Guid Ot, Guid It, M.ActiveDirectorySecurityInheritance Scope)[]
+            {
+                ("Remove", 0x14, Sd.G2, Sd.G2, M.ActiveDirectorySecurityInheritance.All),
+                ("Remove", 0x14, Sd.G2, Sd.G2, M.ActiveDirectorySecurityInheritance.Descendents),
+                ("Protect", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Remove", 0x10, Sd.G1, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Unprotect", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Remove", 4, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.All),
+                ("ProtectDrop", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("RemoveSpecific", 0x10, Sd.G1, Sd.G1, noPropagate ? M.ActiveDirectorySecurityInheritance.Children : M.ActiveDirectorySecurityInheritance.Descendents),
+            };
+            for (var index = 0; index < steps.Length; index++)
+            {
+                var step = steps[index];
+                Capture(sequence, index, descriptor, false, step.Operation, step.Mask, step.Ot, step.It,
+                    step.Scope, E.AuditFlags.Success, index == 0 ? requested : null);
+            }
+        }
+        {
+            var requested = Sd.Build(Sd.Admins, Sd.Admins, Sd.Acl(4), sacl: Sd.Acl(4,
+                Sd.ObjAce(7, 0xC3, 0x14, 3, Sd.G1, Sd.G1, Sd.U1),
+                Sd.Ace(2, 0x50, 0x20, Sd.U2)));
+            var descriptor = new M.ActiveDirectorySecurity();
+            descriptor.SetSecurityDescriptorBinaryForm(requested);
+            var steps = new (string Operation, uint Mask, Guid Ot, Guid It, M.ActiveDirectorySecurityInheritance Scope)[]
+            {
+                ("Remove", 0x20, Sd.G1, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Remove", 4, Sd.G2, Sd.G2, M.ActiveDirectorySecurityInheritance.All),
+                ("Owner", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Set", 0x10, Sd.G1, Sd.G1, M.ActiveDirectorySecurityInheritance.All),
+                ("Protect", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("Unprotect", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("ProtectDrop", 0, Guid.Empty, Guid.Empty, M.ActiveDirectorySecurityInheritance.None),
+                ("RemoveSpecific", 0x10, Sd.G1, Sd.G1, M.ActiveDirectorySecurityInheritance.All),
+            };
+            for (var index = 0; index < steps.Length; index++)
+            {
+                var step = steps[index];
+                Capture("combined-object-oi-sacl", index, descriptor, true, step.Operation, step.Mask,
+                    step.Ot, step.It, step.Scope, E.AuditFlags.Success, index == 0 ? requested : null);
+            }
+        }
+
+        void Capture(string sequence, int index, M.ActiveDirectorySecurity descriptor, bool audit,
+            string operation, uint mask, Guid ot, Guid it, M.ActiveDirectorySecurityInheritance scope,
+            E.AuditFlags auditFlags, byte[]? requested)
+        {
+            var input = Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm());
+            var sid = new B.SecurityIdentifier(operation == "Owner" ? Sd.U2 : Sd.U1, 0);
+            bool? returned = null, modified = null;
+            string? exception = null, message = null;
+            byte[] ruleBytes = Array.Empty<byte>();
+            try
+            {
+                if (operation == "Owner") descriptor.SetOwner(sid);
+                else if (operation is "Protect" or "ProtectDrop" or "Unprotect")
+                {
+                    if (audit) descriptor.SetAuditRuleProtection(operation != "Unprotect", operation != "ProtectDrop");
+                    else descriptor.SetAccessRuleProtection(operation != "Unprotect", operation != "ProtectDrop");
+                }
+                else if (audit)
+                {
+                    var rule = new M.ActiveDirectoryAuditRule(sid, (M.ActiveDirectoryRights)mask, auditFlags, ot, scope, it);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAuditRule(Enum.Parse<E.AccessControlModification>(operation), rule, out var changed);
+                    modified = changed;
+                }
+                else
+                {
+                    var rule = new M.ActiveDirectoryAccessRule(sid, (M.ActiveDirectoryRights)mask, E.AccessControlType.Allow, ot, scope, it);
+                    ruleBytes = RuleBytes(rule);
+                    returned = descriptor.ModifyAccessRule(Enum.Parse<E.AccessControlModification>(operation), rule, out var changed);
+                    modified = changed;
+                }
+            }
+            catch (Exception ex) { exception = ex.GetType().FullName; message = ex.Message; }
+            observations.Add(new Observation(sequence, index, audit ? "Sacl" : "Dacl", operation, sid.Value,
+                Convert.ToHexString(ruleBytes), input, Convert.ToHexString(descriptor.GetSecurityDescriptorBinaryForm()),
+                returned, modified, exception, message, RequestedDescriptorHex: requested is null ? null : Convert.ToHexString(requested)));
+        }
     }
 
     private static void RecordInheritedGuidAndObjectInherit(List<Observation> observations)
