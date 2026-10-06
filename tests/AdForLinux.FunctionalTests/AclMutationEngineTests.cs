@@ -589,6 +589,57 @@ public class AclMutationEngineTests
         Assert.Equal(rule.RawBytes.ToArray(), result.Engine.Descriptor.Dacl.Aces[1].RawBytes.ToArray());
     }
 
+    [Fact]
+    public void Mixed_success_false_exception_noop_and_recovery_preserve_every_snapshot()
+    {
+        var tail = new byte[] { 0xBA, 0xAD, 0xF0, 0x0D };
+        var dacl = AclWithTail(4, tail, Ace(0, 0, 4, U1), ObjAce(5, 5, 0x10, 3, G1, G2, U1));
+        dacl[1] = 0x71;
+        dacl[6] = 0x39;
+        var opaque = Acl(4, Ace(0x20, 0x20, 0x10, U2));
+        var original = Build(Admins, Admins, dacl, opaque);
+        var current = Engine(original);
+        var snapshots = new List<(AclMutationEngine Engine, byte[] Image, SecurityMasks Intent)>();
+        Remember(current);
+        Remember(current.SetOwner(Trustee(U2)).Engine);
+        var otherRule = CoreAce.Read(Ace(0, 0, 8, U2));
+        Remember(current.ModifyAccessRule(AclModification.Add, otherRule).Engine);
+
+        var beforeFailure = current;
+        var failed = current.ModifyAccessRule(AclModification.Remove, Rule(0x14));
+        Assert.False(failed.ReturnValue);
+        Assert.False(failed.Modified);
+        Assert.Same(beforeFailure, failed.Engine); // a staged earlier ACE removal cannot escape
+        Assert.Throws<InvalidOperationException>(() => current.ModifyAuditRule(AclModification.Add, Rule(0x10, 2, 0x40)));
+        Assert.Same(beforeFailure, current);
+
+        Remember(current.SetGroup(Trustee(U1)).Engine);
+        Remember(current.Purge(SecurityMasks.Dacl, Trustee(U1)).Engine);
+        Assert.Same(current, current.ModifyAccessRule(AclModification.Add, otherRule).Engine);
+        Remember(current.ModifyAccessRule(AclModification.Remove, otherRule).Engine);
+        Assert.Empty(current.Descriptor.Dacl!.Aces);
+        Assert.Same(current, current.SetOwner(Trustee(U2)).Engine);
+        Assert.Same(current, current.SetGroup(Trustee(U1)).Engine);
+        Assert.Equal(SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl, current.WriteIntent);
+
+        foreach (var snapshot in snapshots)
+        {
+            Assert.Equal(snapshot.Image, snapshot.Engine.Descriptor.GetBinaryForm());
+            Assert.Equal(snapshot.Intent, snapshot.Engine.WriteIntent);
+            Assert.Equal(original, snapshot.Engine.OriginalDescriptor.GetBinaryForm());
+            Assert.Equal(opaque, AclBytes(snapshot.Engine.Descriptor, 12));
+            Assert.Equal(tail, snapshot.Engine.Descriptor.Dacl!.Trailing.ToArray());
+            Assert.Equal((byte)0x71, snapshot.Engine.Descriptor.Dacl.Sbz1);
+            Assert.Equal((ushort)0x39, snapshot.Engine.Descriptor.Dacl.Sbz2);
+        }
+
+        void Remember(AclMutationEngine next)
+        {
+            current = next;
+            snapshots.Add((next, next.Descriptor.GetBinaryForm(), next.WriteIntent));
+        }
+    }
+
     private static byte[] AclBytes(SecurityDescriptor descriptor, int offsetField)
     {
         var bytes = descriptor.GetBinaryForm();

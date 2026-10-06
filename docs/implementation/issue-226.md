@@ -1,5 +1,7 @@
 # Internal ACL mutation engine — issue 226 draft
 
+See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and two concrete, unrecorded later-stage merge risks on accepted inputs.
+
 The implementation is internal only. It does not change public API, DirectoryEntry,
 LDAP, identity resolution, the Microsoft interop boundary or any live-directory workflow.
 Design evidence: PR #225 at ea0786fc3e75658732e7ac15a94134d54e24bf6c;
@@ -133,7 +135,7 @@ orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; c
 shared-storage examples successfully unshare and preserve all referenced components.
 
 Current offline filter: 780 mutation replay cases (including 666 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 61 mutation safety cases, 139 codec
-cases and 21 SID cases: 1079 total. The safety suite includes 100 deterministic disjoint-mask
+replay and cross-runtime equality), 78 projection cases, 62 mutation safety cases, 139 codec
+cases and 21 SID cases: 1080 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.
