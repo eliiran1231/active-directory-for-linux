@@ -1,0 +1,47 @@
+name: ACL offline Windows
+
+on:
+  push:
+    branches: [bro/issue-226-acl-mutation-engine]
+
+permissions:
+  contents: read
+
+jobs:
+  offline-acl:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      # These classes use only handcrafted bytes and detached in-memory descriptors.
+      # Do not broaden this filter: other functional classes require Samba/AD fixtures.
+      - name: Portable codec, projection, mutation and recorded replay
+        shell: pwsh
+        run: >-
+          dotnet test tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj
+          --configuration Release --framework ${{ matrix.framework }}
+          --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests"
+          --logger "trx;LogFileName=acl-offline-${{ matrix.framework }}.trx"
+          --results-directory artifacts/test-results
+      - name: Record pinned Microsoft detached-object oracle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/oracle | Out-Null
+          dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }} -- --sequence-json artifacts/oracle/seeded-${{ matrix.framework }}.json 2>&1 | Tee-Object -FilePath artifacts/oracle/windows-${{ matrix.framework }}.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload offline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acl-offline-windows-${{ matrix.framework }}-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
