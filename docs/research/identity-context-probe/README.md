@@ -5,7 +5,8 @@ No production resolver or lifecycle hook is implemented. The project is outside 
 and is non-packable. No directory connection, bind, search, permission write or workflow is run.
 
 Research date: 2026-10-06. Source inspected at PR225 head
-`930d0f55d4e0a297c70b7caa2441f16d0a68dbc0`. SDK **10.0.100**, Linux x64 execution
+`930d0f55d4e0a297c70b7caa2441f16d0a68dbc0`; ambient-auth correction inspected at
+`8fc21cedeef7d2709d901ee88546ee5d4acb4ad8`. SDK **10.0.100**, Linux x64 execution
 runtimes **8.0.0** and **10.0.0**. The real projects reference Protocols **9.0.0**;
 that package version is distinct from the runtime version. The Microsoft DirectoryServices
 9.0.0 Windows behavioral oracle remains outstanding.
@@ -18,6 +19,10 @@ Both [net8 output](results/linux-net8.txt) and [net10 output](results/linux-net1
   credential changes resetting Options in place, old option snapshots and independently
   created entries retaining their settings, Close reuse, disposal checks, and entries remaining
   independently configured after their creating PrincipalContext is disposed.
+- **Actual ambient configuration:** default entry maps Secure to Negotiate, is not anonymous,
+  and returns no explicit credential. A separate **model policy** refuses automatic lookup
+  without a proven pinned authority before any fake query. It does not change OS credentials,
+  bind, or prove effective identity continuity across connections.
 - **Existing helpers:** source-linked, unmodified SidCodec and LdapFilter produce the exact
   escaped binary SID assertion and escape text metacharacters for the fixtures.
 - **Model only:** explicit fake epoch rotation rejects stale lookup, invalidation after a fake
@@ -26,7 +31,8 @@ Both [net8 output](results/linux-net8.txt) and [net10 output](results/linux-net1
 
 The executable uses synthetic credentials and reserved `.invalid` hosts; it never prints
 passwords or connection options. Reflection invokes only configuration methods (`BuildOptions`,
-`CreateEntryForDn`, `CreateDirectoryEntry`) and reads the disposal flag. These methods were
+`CreateEntryForDn`, `CreateDirectoryEntry`) and reads the disposal flag. The ambient fixture also invokes
+the public internal-options ToCredential helper, which only constructs a credential or returns null. These methods were
 inspected for lazy behavior. No GetConnection, Bind, Search, ObjectSecurity or Save is called.
 Private reflection here inspects this repository, not a bypass of platform runtime constructors.
 

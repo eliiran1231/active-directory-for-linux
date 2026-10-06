@@ -11,12 +11,16 @@ API is implied by illustrative names from discussion. The approved supporting na
 would retain credentials beyond the entry's lifetime. Current credential changes retain the
 managed descriptor, while Close/path reset discard the entry's descriptor cache. Existing
 entries created from PrincipalContext own independent settings and can survive that context's
-disposal. Resolution must distinguish data lifetime from binding authority.
+disposal. Resolution must distinguish data lifetime, configured binding and effective authenticated
+identity. **An options epoch alone does not pin ambient/default authentication.**
 
 Recommended candidate: a library-owned AD resolver with a **borrowed, revocable owner binding**
-for entry-derived descriptors. Snapshot only non-secret provenance; obtain current operation
-resources from the owner while its captured binding epoch remains valid. No descriptor-owned
-password copy, global resolver, guessed server or silent cross-domain fallback. Expired default
+for entry-derived descriptors. Snapshot only non-secret provenance; obtain operation resources
+from the owner while its captured binding epoch remains valid **and the authentication authority is established**.
+Ambient/default authentication requires a proven owner-scoped identity-pinned lease; until
+that exists, refuse automatic directory resolution and require fresh explicit context with
+explicit credentials or a proven identity-pinned lease. Reacquiring the same ambient options
+is not sufficient. No descriptor-owned password copy, global resolver, guessed server or silent cross-domain fallback. Expired default
 resolution fails, but captured SID/descriptor data and pending SID-based edits remain usable.
 This lifecycle recommendation is a reviewable policy, not an already established compatibility
 promise. See [offline evidence](../research/identity-context-probe/README.md).
@@ -142,6 +146,39 @@ data or silently renewing its default authority. This policy needs usability/com
 review; automatic live rebinding is an alternative with different authority semantics, not
 the unannounced default.
 
+### Configured binding is not authenticated identity
+
+Source inspection confirms `new DirectoryEntry(path)` selects Secure with null credentials;
+BuildOptions maps that to Negotiate. `IsAnonymous` is false, `ToCredential()` returns null,
+and LdapConnectionFactory leaves Credential unset before binding a new connection. The
+BindDn XML summary saying null means anonymous is incomplete for this Negotiate path;
+use the executable branches as evidence. The offline probe verifies the option classification
+and null credential, without creating a connection or authenticating.
+
+An unchanged property/option epoch only means configured settings are unchanged. A fresh
+connection using ambient/default credentials may authenticate under a changed OS logon,
+impersonation or ticket identity without any DirectoryEntry setter running. This is an
+**unverified authority boundary, not an observed exploit or demonstrated identity switch**.
+Explicitly supplying an entry/context handle does not make its credentials explicit.
+
+The initial policy must refuse automatic directory-backed resolution for ambient/default
+authentication unless an owner-scoped lease demonstrably pins the effective authenticated
+identity across descriptor retrieval, lookup and any reconnect/rebind. Require a fresh
+explicit resolution context with explicit credentials or a proven pinned lease; merely
+renewing the epoch or allocating another connection from the same null-credential options
+cannot meet that requirement. Retained SID data and specified context-free mappings remain
+usable. Distinguish this refusal from missing context, anonymous lookup and unmapped identity.
+Do not fall back to anonymous or process-default credentials after refusal.
+
+A candidate pinned lease needs evidence for authentication establishment, impersonation/
+ticket changes, reconnect/rebind, disposal and publication races on each supported platform.
+Neither WeakReference, an options hash, a username label, nor an assumed stable connection
+proves that property. The independent lookup-session proposal is conditional on this check;
+blindly opening another ambient connection is not an identity-preserving lease. Explicit
+credentials avoid this particular null-credential ambiguity, but still need bind, scope and
+lifecycle validation; a populated username alone does not prove mechanism-specific authority.
+No principal continuity claim is established by the offline refusal-policy model.
+
 ## 4. Built-in AD resolution scope
 
 Initial proposed scope: the verified AD **domain naming context** on the explicitly configured
@@ -245,8 +282,9 @@ Current DirectoryEntry does not supply a general concurrent lease manager. A nar
 session/epoch mechanism is required; do not claim thread safety from WeakReference or
 immutable descriptors alone. An operation-scoped independent lookup connection avoids
 interference with active enumeration, but must use the owner's checked binding and be
-released promptly. No pool is needed for initial correctness, and a pool must not be invented
-as existing infrastructure.
+released promptly. For ambient/default authentication, the identity-pinned lease requirement
+above applies; the current options epoch is insufficient. No pool is needed for initial
+correctness, and a pool must not be invented as existing infrastructure.
 
 ## 7. Evidence and next tests
 
@@ -255,6 +293,8 @@ Executed Linux net8.0/runtime 8.0.0 and net10.0/runtime 10.0.0, SDK 10.0.100:
 - Real configuration ownership: changed bind identity resets options in place; old options
   and derived entries retain prior snapshots; Close remains reusable; disposed owners reject
   new options; previously created entry survives PrincipalContext disposal.
+- Actual default-entry Negotiate/non-anonymous/null-credential classification; a separate
+  model refuses unpinned ambient lookup before a fake query. No OS identity continuity test.
 - Existing codec/filter exact binary SID and metacharacter fixtures.
 - **Model only:** borrowed generation rejects old credentials, simulated invalidation after
   lookup prevents publication, explicit reacquisition works, detached SID data stays usable.
@@ -266,6 +306,7 @@ security-descriptor lifetime was tested. The model's fake lookup is not the buil
 |---|---|
 | Offline request capture | Binary/text escaping, required attributes, domain-scoped bases, referrals disabled, size/deadline limits, 0/1/2 results, hidden attributes, FSP, duplicate UPN and partial results |
 | Offline lifecycle integration | Every ResetConnection/Unbind/ResetBinding/Refresh/commit/move/assignment path, credential changes with dirty state, shared descriptor assignment, PrincipalContext vs entry ownership and save rollback |
+| Effective authentication authority | Ambient/default credential changes without setters; pinning across descriptor read, lookup, reconnect and disposal on each OS; no claim of continuity from configuration-only probes |
 | Concurrency model then integration | Invalidate before send, during lookup, before publication; dispose with active search; descriptor changes while names resolve; no stale cache or mutation publication |
 | Windows oracle | Microsoft DirectoryServices **9.0.0**, net8/net10 separately; record loaded identity/ACL versions. No-directory cases: validation, local well-known values, target types and mutation timing. Domain NTAccount translation needs a real authorized directory/context and may differ intentionally from LSA |
 | Controlled read-only AD tests later | Known user/group/computer/UPN, NetBIOS distinct from DNS, renamed/deleted principal, constrained visibility, denied metadata, ambiguous/foreign identities, timeout/referral and credential changes. Use supplied fixtures/accounts with least scope; no permission writes required for this phase |
@@ -285,13 +326,16 @@ as approval for all tests.
 
 ## 8. Decisions to carry forward
 
-1. Review borrowed-epoch expiry versus automatic rebinding, especially retained dirty objects;
+1. Establish ambient/default authentication policy: reject automatic lookup until a proven
+   owner-scoped identity-pinned lease exists; fresh explicit context must actually establish
+   authority, not merely wrap the same ambient settings.
+2. Review borrowed-epoch expiry versus automatic rebinding, especially retained dirty objects;
    this draft recommends explicit reacquisition after authority changes.
-2. Settle assignment/reference semantics before automatic propagation is implemented. A shared
+3. Settle assignment/reference semantics before automatic propagation is implemented. A shared
    descriptor cannot hold one mutable owner resolver without redirecting other callers.
-3. Define initial domain/name/well-known scope and error contract; multiforest lookup is not
+4. Define initial domain/name/well-known scope and error contract; multiforest lookup is not
    implied by a built-in resolver.
-4. Approve the final helper/overload and higher-layer adapter shapes. The resolver is shipped
+5. Approve the final helper/overload and higher-layer adapter shapes. The resolver is shipped
    by the library; callers can use existing DirectoryEntry/PrincipalContext without creating
    their own LDAP implementation.
 

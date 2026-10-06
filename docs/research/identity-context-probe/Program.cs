@@ -34,6 +34,22 @@ child.Dispose();
 Expect<ObjectDisposedException>(() => Options(child), "disposed entry rejects new option acquisition");
 Console.WriteLine("PASS actual repository: lazy configuration, credential reset, Close, derived-entry snapshots and PrincipalContext/entry disposal ownership.");
 
+// Actual configuration path, then proposed refusal policy. No connection or OS identity probe.
+using var ambientEntry = new DirectoryEntry("LDAP://dc.example.invalid/DC=example,DC=invalid");
+var ambientOptions = Options(ambientEntry);
+Check(Field(ambientOptions, "AuthenticationType")!.ToString() == "Negotiate", "default Secure maps to Negotiate");
+Check(Field(ambientOptions, "IsAnonymous") is false, "default Negotiate is not anonymous");
+Check(ambientOptions.GetType().GetMethod("ToCredential")!.Invoke(ambientOptions, null) is null, "no explicit credential");
+var ambientQueryCalls = 0;
+Expect<InvalidOperationException>(() =>
+{
+    // Model gate only: configuration has no proof of effective authenticated identity.
+    RequireAuthority(ambientOrDefault: true, provenPinnedLease: false);
+    ambientQueryCalls++;
+}, "ambient automatic lookup lacks proven pinned authority");
+Check(ambientQueryCalls == 0, "ambient refusal occurs before simulated query");
+Console.WriteLine("PASS actual default Negotiate/null-credential classification; MODEL refusal before lookup. OS identity continuity NOT tested.");
+
 var sid = SidCodec.Parse("S-1-1-0");
 var binaryFilter = "(objectSid=" + LdapFilter.EscapeBytes(sid) + ")";
 Check(binaryFilter == @"(objectSid=\01\01\00\00\00\00\00\01\00\00\00\00)", "all SID octets escaped");
@@ -66,6 +82,11 @@ Check(detached.GetSid() == "S-1-5-21-1-2-3-1001", "detached SID data remains usa
 Console.WriteLine("PASS model only: borrowed epoch revocation, no-lookup SID reads, explicit reacquisition, mid-lookup invalidation, disposal and detached data.");
 Console.WriteLine("LDAP resolution, production invalidation hooks, Windows oracle and credential/network isolation: NOT exercised.");
 
+static void RequireAuthority(bool ambientOrDefault, bool provenPinnedLease)
+{
+    if (ambientOrDefault && !provenPinnedLease)
+        throw new InvalidOperationException("Effective authenticated authority is not pinned.");
+}
 static object Invoke(object owner, string method, params object[] args)
 {
     var candidates = owner.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)

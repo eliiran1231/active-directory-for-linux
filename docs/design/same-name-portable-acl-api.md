@@ -264,7 +264,9 @@ library's built-in resolver. Standalone identities still have no descriptor cont
 not acquire ambient resolver state when used in a rule. The follow-up specifies a borrowed,
 revocable capability, lookup timing, domain scope and failure-before-mutation; final lifecycle
 and exception contracts remain unapproved. In particular, shared descriptor assignment cannot
-silently retarget existing callers' authority. Specify missing-context versus identity-not-mapped
+silently retarget existing callers' authority. An options epoch also cannot pin ambient/default
+authentication; automatic lookup requires a proven identity-pinned lease or explicit refusal
+until a fresh context establishes explicit authority. Specify missing-context versus identity-not-mapped
 exception types and payloads before publishing. Cloning BCL
 `IdentityNotMappedException.UnmappedIdentities` also pulls in `IdentityReferenceCollection`;
 that support family is not justified solely by spelling parity.

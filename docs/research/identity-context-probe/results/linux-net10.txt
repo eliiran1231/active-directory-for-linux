@@ -2,6 +2,8 @@ Runtime: .NET 10.0.0; linux-x64
 EXPECTED ObjectDisposedException: disposed PrincipalContext rejects new option acquisition
 EXPECTED ObjectDisposedException: disposed entry rejects new option acquisition
 PASS actual repository: lazy configuration, credential reset, Close, derived-entry snapshots and PrincipalContext/entry disposal ownership.
+EXPECTED InvalidOperationException: ambient automatic lookup lacks proven pinned authority
+PASS actual default Negotiate/null-credential classification; MODEL refusal before lookup. OS identity continuity NOT tested.
 PASS existing codecs: exact binary SID filter and hostile text escaping. No LDAP request sent.
 EXPECTED InvalidOperationException: stale descriptor capability rejects credential rotation
 EXPECTED InvalidOperationException: rotation during lookup prevents mutation publication
