@@ -534,6 +534,14 @@ if (sequenceArgument >= 0)
     if (sequenceArgument + 1 >= args.Length) throw new ArgumentException("--sequence-json requires an output path");
     SeededSequences.Record(args[sequenceArgument + 1]);
 }
+foreach (var option in new[] { "--foundation-json", "--surface-json" })
+{
+    var argument = Array.IndexOf(args, option);
+    if (argument < 0) continue;
+    if (argument + 1 >= args.Length) throw new ArgumentException(option + " requires an output path");
+    if (option == "--foundation-json") FoundationContracts.Write(args[argument + 1]);
+    else RequiredSurface.Write(args[argument + 1]);
+}
 return 0;
 
 // ---------------------------------------------------------------- helpers
