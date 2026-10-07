@@ -41,17 +41,17 @@ head `549a38c8c1a2b367559e5ab2b765bf2aaf56e1ed`, adds 130 SID parser/domain boun
 all preceding observations are unchanged for each runtime. Both probes preserve the previous
 1,493 mutation observations. The checked-in JSON files are the downloaded artifact bytes.
 
-There are **2,684 foundation observations per runtime**: 2,240 rule-constructor cases,
+There are **2,692 foundation observations per runtime**: 2,240 rule-constructor cases,
 156 SID comparisons, 55 SID strings, 50 SID binary imports, 30 SID binary exports,
 35 account construction/equality cases, 10 identity-target cases, 32 rule collection copies,
-and 76 ACE cases. Every row is replayed on Linux. Metadata-only reflection records the
+76 ACE cases and eight repeated-domain identity cases. Every row is replayed on Linux. Metadata-only reflection records the
 full surface separately; reflection does not prove behavior.
 
 The runtimes have one measured behavior difference across eight rows:
 `SecurityIdentifier.IsEqualDomainSid(null)` throws `ArgumentNullException("sid")` on .NET 8
 and returns false on .NET 10. The portable target builds preserve this distinction on both
 operating systems. Replay selects the corresponding runtime recording; a separate check
-requires precisely those eight differences and equality of the other 2,676 rows.
+requires precisely those eight differences and equality of the other 2,684 rows.
 
 Examples established by actual Windows execution:
 
@@ -96,3 +96,22 @@ must be wired before that cutover reaches it. Do not serialize projected observa
 as raw write bytes, silently disable existing behavior, or transfer resolver authority with
 shared/cross-entry descriptor data. Existing AD classes and transport behavior remain unchanged
 through this foundation stage. The standalone effective-access evaluator stays excluded.
+
+## Foundation review follow-up
+
+The [repeated-domain probe](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37688432355),
+head `d374b0112a33cb9ded30277f8ff4e0aa6ff11ff4`, adds eight observations on both runtimes.
+All preceding 2,684 cases are unchanged. It confirms repeated AccountDomainSid reads return
+one cached object, distinct from the input SID, for account/domain identities, with or without
+an earlier IsAccountSid call. The portable property now publishes one cached immutable domain
+SID; non-account identities continue returning null. The probe intentionally fails freshness
+against the preceding committed baseline; its artifacts supply the new evidence.
+
+Rule replay now reads each constructed probe's actual protected AccessMask, including audit
+and object-qualified rules and collection copies; it no longer echoes the requested mask.
+A temporary local corruption of stored AccessMask was detected by 780 recorded rule/collection
+rows, then reverted before the passing suite. The case-ID assertion removes the foundation's
+xUnit1026 warning. Seven existing xUnit2013 warnings in CollectionCompatibilityTests,
+DirectoryEntryReadTests and GroupPrincipalTests remain on a clean test-project build. The
+previous zero-warning solution result was an incremental local build, not a warning-free
+clean Windows build; no directory-dependent tests were run to change those fixtures.

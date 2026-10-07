@@ -186,16 +186,21 @@ public partial class PortableSecurityFoundationTests
         yield return (i, p) => new FoundationObjectAudit(RuleSid(), 1, false, i, p, Guid.Empty, Guid.Empty, AuditFlags.Success);
     }
 
+    private interface IFoundationRuleMask { int Mask { get; } }
+
     private sealed class FoundationAuthorization(P.IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation)
-        : A.AuthorizationRule(identity, mask, inherited, inheritance, propagation)
+        : A.AuthorizationRule(identity, mask, inherited, inheritance, propagation), IFoundationRuleMask
     { public int Mask => AccessMask; }
     private sealed class FoundationAccess(P.IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, AccessControlType type)
-        : A.AccessRule(identity, mask, inherited, inheritance, propagation, type)
+        : A.AccessRule(identity, mask, inherited, inheritance, propagation, type), IFoundationRuleMask
     { public int Mask => AccessMask; }
     private sealed class FoundationAudit(P.IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, AuditFlags flags)
-        : A.AuditRule(identity, mask, inherited, inheritance, propagation, flags);
+        : A.AuditRule(identity, mask, inherited, inheritance, propagation, flags), IFoundationRuleMask
+    { public int Mask => AccessMask; }
     private sealed class FoundationObjectAccess(P.IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, Guid objectType, Guid inheritedType, AccessControlType type)
-        : A.ObjectAccessRule(identity, mask, inherited, inheritance, propagation, objectType, inheritedType, type);
+        : A.ObjectAccessRule(identity, mask, inherited, inheritance, propagation, objectType, inheritedType, type), IFoundationRuleMask
+    { public int Mask => AccessMask; }
     private sealed class FoundationObjectAudit(P.IdentityReference identity, int mask, bool inherited, InheritanceFlags inheritance, PropagationFlags propagation, Guid objectType, Guid inheritedType, AuditFlags flags)
-        : A.ObjectAuditRule(identity, mask, inherited, inheritance, propagation, objectType, inheritedType, flags);
+        : A.ObjectAuditRule(identity, mask, inherited, inheritance, propagation, objectType, inheritedType, flags), IFoundationRuleMask
+    { public int Mask => AccessMask; }
 }

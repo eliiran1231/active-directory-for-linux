@@ -15,6 +15,7 @@ public partial class PortableSecurityFoundationTests
     public void Recorded_foundation_contract(int caseId, string operation, string json)
     {
         using var document=JsonDocument.Parse(json);var row=document.RootElement;
+        Assert.Equal(caseId, row.GetProperty("Case").GetInt32());
         object? outcome=null;
         var exception=Record.Exception(()=>outcome=ReplayFoundation(operation,row.GetProperty("Arguments")));
         Assert.Equal(row.GetProperty("ExceptionType").GetString(),exception?.GetType().FullName);
@@ -76,6 +77,13 @@ public partial class PortableSecurityFoundationTests
         switch(operation)
         {
             case "SidString": return ReplaySid(new B.SecurityIdentifier(S("Text")!));
+            case "SidDomainIdentity":
+                var domainSource = new B.SecurityIdentifier(S("Text")!);
+                if (a.GetProperty("Warm").GetBoolean()) _ = domainSource.IsAccountSid();
+                var firstDomain = domainSource.AccountDomainSid;
+                var secondDomain = domainSource.AccountDomainSid;
+                return new { Value=firstDomain?.Value, SameReference=ReferenceEquals(firstDomain,secondDomain),
+                    SameAsInput=ReferenceEquals(domainSource,firstDomain), IsAccountSid=domainSource.IsAccountSid() };
             case "SidBinary": return ReplaySid(new B.SecurityIdentifier(S("Hex") is { } hex?Convert.FromHexString(hex):null!,I("Offset")));
             case "SidCompare":
                 var sidA=new B.SecurityIdentifier(S("First")!);var sidB=S("Second") is { } second?new B.SecurityIdentifier(second):null;
@@ -102,14 +110,14 @@ public partial class PortableSecurityFoundationTests
                     "ObjectAccess"=>new FoundationObjectAccess(ruleIdentity!,m,inherited,f,p,ot,it,(E.AccessControlType)q),
                     _=>new FoundationObjectAudit(ruleIdentity!,m,inherited,f,p,ot,it,(E.AuditFlags)q),
                 };
-                return ReplayRuleSnapshot(rule,m);
+                return ReplayRuleSnapshot(rule);
             case "RuleCollectionCopy":
                 var collection=new A.AuthorizationRuleCollection();
                 collection.AddRule(a.GetProperty("Audit").GetBoolean()
                     ?new FoundationObjectAudit(new B.SecurityIdentifier("S-1-5-21-1-2-3-1001"),16,false,0,0,Guid.Empty,Guid.Empty,E.AuditFlags.Success)
                     :new FoundationObjectAccess(new B.SecurityIdentifier("S-1-5-21-1-2-3-1001"),16,false,0,0,Guid.Empty,Guid.Empty,E.AccessControlType.Allow));
                 var destination=new A.AuthorizationRule[I("Length")];collection.CopyTo(destination,I("Offset"));
-                return new {collection.Count,IsSynchronized=((System.Collections.ICollection)collection).IsSynchronized,Values=destination.Select(r=>r is null?null:ReplayRuleSnapshot(r,16)).ToArray()};
+                return new {collection.Count,IsSynchronized=((System.Collections.ICollection)collection).IsSynchronized,Values=destination.Select(r=>r is null?null:ReplayRuleSnapshot(r)).ToArray()};
             default: return ReplayAceFoundation(operation,a);
         }
     }
@@ -119,7 +127,7 @@ public partial class PortableSecurityFoundationTests
         var bytes=new byte[sid.BinaryLength];sid.GetBinaryForm(bytes,0);
         return new {sid.Value,sid.BinaryLength,Hex=Convert.ToHexString(bytes),AccountDomainSid=sid.AccountDomainSid?.Value,IsAccountSid=sid.IsAccountSid()};
     }
-    private static object ReplayRuleSnapshot(A.AuthorizationRule rule,int mask)=>new {Identity=rule.IdentityReference.Value,IdentityKind=rule.IdentityReference.GetType().Name,Mask=mask,rule.IsInherited,Inheritance=(int)rule.InheritanceFlags,Propagation=(int)rule.PropagationFlags,
+    private static object ReplayRuleSnapshot(A.AuthorizationRule rule)=>new {Identity=rule.IdentityReference.Value,IdentityKind=rule.IdentityReference.GetType().Name,Mask=((IFoundationRuleMask)rule).Mask,rule.IsInherited,Inheritance=(int)rule.InheritanceFlags,Propagation=(int)rule.PropagationFlags,
         Qualifier=rule is A.AccessRule access?(int)access.AccessControlType:rule is A.AuditRule audit?(int)audit.AuditFlags:(int?)null,
         ObjectFlags=rule is A.ObjectAccessRule oa?(int)oa.ObjectFlags:rule is A.ObjectAuditRule ou?(int)ou.ObjectFlags:(int?)null,
         ObjectType=rule is A.ObjectAccessRule ob?ob.ObjectType:rule is A.ObjectAuditRule ov?ov.ObjectType:(Guid?)null,

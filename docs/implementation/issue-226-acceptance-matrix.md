@@ -80,8 +80,8 @@ layout safety cases. See the [layout policy and next public dependencies](issue-
 
 The [foundation status](issue-226-foundation-status.md) records the complete required-surface target,
 16 implemented supporting types and exact remaining dependencies. The six-class offline suite now
-contains **5,031 cases**: the existing 2,301 core cases plus 2,730 foundation cases, including replay
-of all **2,684** actual foundation observations per runtime and four strict surface/completeness checks.
+contains **5,039 cases**: the existing 2,301 core cases plus 2,738 foundation cases, including replay
+of all **2,692** actual foundation observations per runtime and four strict surface/completeness checks.
 The original 1,493 mutation observations remain unchanged. This staging does not re-root the AD
 classes or imply completed public/LDAP integration. The draft PR records exact-head Linux and
 Windows evidence.

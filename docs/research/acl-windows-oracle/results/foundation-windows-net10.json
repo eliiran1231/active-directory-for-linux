@@ -55443,6 +55443,134 @@
       },
       "ExceptionType": null,
       "ParamName": null
+    },
+    {
+      "Case": 2684,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-21-1-2-3-1001",
+        "Warm": false
+      },
+      "Outcome": {
+        "Value": "S-1-5-21-1-2-3",
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": true
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2685,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-21-1-2-3-1001",
+        "Warm": true
+      },
+      "Outcome": {
+        "Value": "S-1-5-21-1-2-3",
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": true
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2686,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-21-1-2-3",
+        "Warm": false
+      },
+      "Outcome": {
+        "Value": "S-1-5-21-1-2-3",
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": true
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2687,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-21-1-2-3",
+        "Warm": true
+      },
+      "Outcome": {
+        "Value": "S-1-5-21-1-2-3",
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": true
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2688,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-32-544",
+        "Warm": false
+      },
+      "Outcome": {
+        "Value": null,
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": false
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2689,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-5-32-544",
+        "Warm": true
+      },
+      "Outcome": {
+        "Value": null,
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": false
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2690,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-1-0",
+        "Warm": false
+      },
+      "Outcome": {
+        "Value": null,
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": false
+      },
+      "ExceptionType": null,
+      "ParamName": null
+    },
+    {
+      "Case": 2691,
+      "Operation": "SidDomainIdentity",
+      "Arguments": {
+        "Text": "S-1-1-0",
+        "Warm": true
+      },
+      "Outcome": {
+        "Value": null,
+        "SameReference": true,
+        "SameAsInput": false,
+        "IsAccountSid": false
+      },
+      "ExceptionType": null,
+      "ParamName": null
     }
   ]
 }

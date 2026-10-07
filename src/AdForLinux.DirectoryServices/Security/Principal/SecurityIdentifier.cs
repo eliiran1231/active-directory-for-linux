@@ -10,6 +10,7 @@ namespace AdForLinux.Security.Principal;
 public sealed class SecurityIdentifier : IdentityReference, IComparable<SecurityIdentifier>
 {
     private readonly Sid _sid;
+    private SecurityIdentifier? _accountDomainSid;
     public static readonly int MinBinaryLength = Sid.MinBinaryLength;
     public static readonly int MaxBinaryLength = Sid.MaxBinaryLength;
 
@@ -83,10 +84,15 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         get
         {
+            var cached = Volatile.Read(ref _accountDomainSid);
+            if (cached is not null) return cached;
             if (!IsAccountSid()) return null;
             var bytes = _sid.AsSpan()[..24].ToArray();
             bytes[1] = 4;
-            return new SecurityIdentifier(bytes, 0);
+            var domain = new SecurityIdentifier(bytes, 0);
+            // Native repeated reads retain reference identity. Keep one immutable value even
+            // when first reads race; the source SID and its binary storage remain unchanged.
+            return Interlocked.CompareExchange(ref _accountDomainSid, domain, null) ?? domain;
         }
     }
     public bool IsAccountSid() => _sid.IdentifierAuthority == 5 && _sid.SubAuthorityCount >= 4
