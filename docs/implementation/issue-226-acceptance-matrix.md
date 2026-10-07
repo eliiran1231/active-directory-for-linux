@@ -46,22 +46,22 @@ GUID-value comparisons are local to the shared merge predicate. Presence bits st
 
 The original self/no-IOT plus same-OT descendants/IOT lead now works for Allow, Deny and each audit outcome; reverse direction retains two ACEs. The present-empty OT audit lead combines audit flags and, with identical flags, disjoint masks while preserving its existing layout. Raw-input, independent-step, stateful sequence, return/modified and accumulated-intent assertions cover the observations. Six additional safety cases check metadata, opaque neighbors, snapshots, prior intent, repeated Add and unchanged specific-removal identity.
 
-Source basis: [Microsoft .NET 9 ACL.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ACL.cs), GUID matching helpers and `MergeAces`. No confirmed mismatch remains in the 1,492 recorded observations (1,437 operation/getter steps and 55 import projections). This is not proof that all accepted inputs match Microsoft: unrecorded accepted combinations may still differ. Refusals document known preservation/policy boundaries, not a guarantee that every unsupported parity case fails closed.
+Source basis: [Microsoft .NET 9 ACL.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.AccessControl/src/System/Security/AccessControl/ACL.cs), GUID matching helpers and `MergeAces`. No confirmed mismatch remains in the 1,493 recorded observations (1,437 operation/getter steps and 56 import projections). This is not proof that all accepted inputs match Microsoft: unrecorded accepted combinations may still differ. Refusals document known preservation/policy boundaries, not a guarantee that every unsupported parity case fails closed.
 
 ## Validation inventory
 
 | Offline xUnit group | Cases |
 | --- | ---: |
-| Mutation replay (including 1,492 recorded observations and 258 projected reconciliation cases, sequence and cross-runtime checks) | 1950 |
+| Mutation replay (including 1,493 recorded observations and 258 projected reconciliation cases, sequence and cross-runtime checks) | 1951 |
 | Read projection | 78 |
 | Mutation safety and preservation | 112 |
 | Lossless codec | 139 |
 | SID | 21 |
-| Total per OS/runtime | 2300 |
+| Total per OS/runtime | 2301 |
 
 The safety group also executes 100 deterministic disjoint-mask iterations with seed 2262026. Exhaustive projector flag loops and sequence steps are not additional xUnit cases. Newly recorded steps include 256 seeded operations, operation/state boundaries, removal precedence, 32 IOT cases, 64 common OI cases, 192 object OI cases, 24 combined sequence steps, 42 asymmetric object-mask Add cases and eight initial later-stage merge/repeat observations plus 101 qualifier/value-presence observations and 144 ordering/import observations; exact case definitions and provenance are in the recorder/README. Recordings use Microsoft System.DirectoryServices 9.0.0 on Windows runtimes 8.0.31 and 10.0.12; local replay uses runtimes 8.0.0 and 10.0.12.
 
-The final revision must pass 2300 cases on Linux .NET 8/10 and Windows .NET 8/10, with all 1,492 fresh Windows observations matching. Consult PR 228 for its exact head and run evidence rather than treating the inventory as a CI status assertion.
+The final revision must pass 2301 cases on Linux .NET 8/10 and Windows .NET 8/10, with all 1,493 fresh Windows observations matching. Consult PR 228 for its exact head and run evidence rather than treating the inventory as a CI status assertion.
 
 ## Acceptance decision
 

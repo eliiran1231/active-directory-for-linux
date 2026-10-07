@@ -84,7 +84,7 @@ retain the original NULL representation.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 1,492 recorded observations (1,437 operation/getter steps and 55 import projections) including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 1,493 recorded observations (1,437 operation/getter steps and 56 import projections) including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -152,9 +152,9 @@ orphaned bytes after aliasing offsets. Observable repacking omits unreferenced s
 from the read view; bounded raw writes retain those bytes at their original positions. The
 layout policy documents safe unsharing and concrete remaining refusals.
 
-Current offline filter: 1950 replay cases (including 1,492 recorded observations, 258 projected reconciliation
+Current offline filter: 1951 replay cases (including 1,493 recorded observations, 258 projected reconciliation
 cases, retained sequences and cross-runtime equality), 78 projection cases, 112 mutation safety
-cases, 139 codec cases and 21 SID cases: 2300 total. The safety suite includes 100 deterministic disjoint-mask
+cases, 139 codec cases and 21 SID cases: 2301 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.
 

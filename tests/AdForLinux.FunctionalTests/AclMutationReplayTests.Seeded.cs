@@ -294,7 +294,7 @@ public partial class AclMutationReplayTests
         using var recording = ReadSeededRecording("net8");
         var observations = recording.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var candidates = observations.Where(step => step.GetProperty("Sequence").GetString()!.StartsWith("layout-candidate-", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(11, candidates.Length);
+        Assert.Equal(12, candidates.Length);
         foreach (var candidate in candidates)
         {
             var name = candidate.GetProperty("Sequence").GetString()!["layout-candidate-".Length..];
@@ -302,7 +302,8 @@ public partial class AclMutationReplayTests
                 : name.EndsWith("-grow", StringComparison.Ordinal) ? "Add"
                 : name.EndsWith("-shrink", StringComparison.Ordinal) ? "RemoveAll"
                 : name.Contains("group", StringComparison.Ordinal) ? "Group" : "Owner";
-            var fixture = name.StartsWith("shared-", StringComparison.Ordinal) ? "shared-owner-group-with-orphan"
+            var fixture = name == "embedded-sids-terminal-shrink" ? "owner-group-inside-ace-with-orphans"
+                : name.StartsWith("shared-", StringComparison.Ordinal) ? "shared-owner-group-with-orphan"
                 : name == "same-size-owner-offset-patch" ? "leading-A5"
                 : name[..name.LastIndexOf('-')];
             var source = observations.Single(step => step.GetProperty("Sequence").GetString() == $"layout-{fixture}-{operation}");

@@ -508,3 +508,10 @@ alias-unsharing candidates. Portable tests compare those raw candidates byte-for
 separately from Microsoft observable outputs. The [layout policy](../../implementation/issue-226-layout-policy.md)
 explains preservation guarantees and the precise remaining trailer/interior-resize boundaries.
 Microsoft repacking is observable evidence, not permission to persist omitted raw bytes.
+
+The embedded-SID/shrinking-ACL follow-up is recorded in probe commit
+`6a5c1710c01fd4de16953c28fd755738ff0fc8ac`, [run 37682045103](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37682045103).
+Microsoft directly imports the independently constructed candidate after the DACL shrinks
+and its two embedded SIDs are copied into independent storage. Both runtimes accept it;
+all earlier 1,492 observations remain unchanged. Replay compares the exact portable raw
+output with that candidate. Total: 1,493 observations and 12 candidate-layout imports.

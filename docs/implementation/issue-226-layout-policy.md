@@ -86,3 +86,15 @@ intent, retained live state, opaque ACL tails, crossing spans and new allocation
    separately authorized directory integration coverage for resolver/write behavior. Public
    packaging/migration and full API parity follow those contracts. Live AD, privilege setup
    and effective-access evaluation are not part of this completed core slice.
+
+## Embedded-SID shrink candidate follow-up
+
+Probe commit `6a5c1710c01fd4de16953c28fd755738ff0fc8ac`, [run 37682045103](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37682045103),
+adds a direct import of the terminal-ACL shrink with both identity SIDs formerly inside its
+ACE. The candidate keeps standalone orphan bytes fixed, writes an empty ACL at offset 84,
+and allocates independent SID copies at 92 and 120. Both Windows runtimes accept it and agree;
+the preceding 1,492 observations are unchanged. Portable rewriting matches this candidate
+byte-for-byte. There are now 12 candidate imports and 1,493 total observations.
+
+The [next detached-public proposal](issue-226-detached-public-next.md) enumerates the 45 rule
+constructors, mandatory protected hooks, compiling transition and actual facade decision.
