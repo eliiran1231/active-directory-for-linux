@@ -515,3 +515,15 @@ Microsoft directly imports the independently constructed candidate after the DAC
 and its two embedded SIDs are copied into independent storage. Both runtimes accept it;
 all earlier 1,492 observations remain unchanged. Replay compares the exact portable raw
 output with that candidate. Total: 1,493 observations and 12 candidate-layout imports.
+
+## Detached public foundation and complete surface inventory
+
+The [foundation status](../../implementation/issue-226-foundation-status.md) records source heads,
+probe run URLs, scope, runtime differences and explicit remaining dependencies. `--foundation-json`
+records 2,684 actual detached identity/rule/ACE cases per runtime; `--surface-json` records 39 roots,
+55 types and 702 declaration records. The checked-in foundation/surface JSON files are downloaded
+Windows artifacts. The final workflow requires both baselines and compares observations and
+structured surface separately from runtime provenance. Eight null-domain-comparison rows differ
+between runtimes; target-specific replay retains that distinction and asserts all other rows agree.
+The original mutation recording remains separate and unchanged. No name lookup or live directory
+operation is involved.

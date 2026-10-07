@@ -2,8 +2,9 @@
 
 See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured three-stage Add algorithm and remaining parity boundaries. The [ordering/projection policy](issue-226-ordering-policy.md) records the newly approved slice.
 
-The implementation is internal only. It does not change public API, DirectoryEntry,
-LDAP, identity resolution, the Microsoft interop boundary or any live-directory workflow.
+The mutation engine remains internal. The subsequent authorized [public foundation stage](issue-226-foundation-status.md)
+adds portable supporting identity/rule/ACE types while retaining the existing AD class hierarchy.
+It does not wire DirectoryEntry, LDAP, identity resolution, Microsoft interop or live-directory workflows.
 Design evidence: PR #225 at ea0786fc3e75658732e7ac15a94134d54e24bf6c;
 codec baseline: dev 339954545cea4d41f1b1b0c1d0c22961e35129f8;
 issue comment 6025043919 supplies the trailing-payload and shared-storage requirements.

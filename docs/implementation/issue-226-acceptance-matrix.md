@@ -23,7 +23,7 @@ This is a partial implementation for [issue 226](https://github.com/eliiran1231/
 | I2 SACL ordering | Approved for fully understood entries. Multi-entry mutations match the new operation matrix; equal-key tie movement matches recorded sorting. | [Canonicalizer](../../src/AdForLinux.DirectoryServices/Security/Core/AclCanonicalizer.cs), engine; [I2 replay](../../tests/AdForLinux.FunctionalTests/AclMutationReplayTests.I2.cs): 16 DACL and nine SACL outputs; six excluded DACL refusals |
 | Import compaction and raw reconciliation | Single-pass known-ACE import compaction is projection-only. Unrelated raw entries survive writes. Retained live state and occurrence provenance reproduce all 258 fresh bridge outcomes plus eight 26-step sequences. All projected rule operations, purge and protection preserve unrelated originals; explicit raw/re-import boundaries prevent stale provenance. | Projector; engine `ModifyProjected`; [ordering safety](../../tests/AdForLinux.FunctionalTests/AclMutationEngineTests.Ordering.cs); seeded raw-import boundary assertions |
 | Gaps/tails and excluded loss | Bounded fixed-offset edits, terminal resizing and contained-alias unsharing preserve unreferenced bytes. Interior resizing, unknown-trailer allocation and crossing overlap refuse. Observable repacking is separate from raw writes; unknown ACE and ACL-tail policies remain protected. | Rewriter and existing negative tests |
-| Offline recorded replay on Linux/Windows, .NET 8/10 | Implemented with five explicit fixture-free classes. Fresh detached Microsoft 9 observations compared to committed observations on Windows; portable tests replay actual recorded bytes and outcomes on both OSes. | [Workflow](../../.github/workflows/acl-offline-windows.yml), [oracle provenance](../research/acl-windows-oracle/README.md), [recorder](../research/acl-windows-oracle/SeededSequences.cs) |
+| Offline recorded replay on Linux/Windows, .NET 8/10 | Implemented with six explicit fixture-free classes (including the subsequent portable foundation). Fresh detached Microsoft 9 observations compared to committed observations on Windows; portable tests replay actual recorded bytes and outcomes on both OSes. | [Workflow](../../.github/workflows/acl-offline-windows.yml), [oracle provenance](../research/acl-windows-oracle/README.md), [recorder](../research/acl-windows-oracle/SeededSequences.cs) |
 | J probe scope and public behavior | Selected J4/J6 import/storage evidence covered. Public modified flags/instrumentation, constructor/exception parity, public ten-type API, DirectoryEntry/LDAP, resolver, Microsoft interop and effective access are not covered by this internal task. Internal section intent is not a public write-mask promise. | Internal engine/projector tests only; existing directory workflows untouched |
 
 ## Concrete merge leads and coherent Add predicates
@@ -72,6 +72,16 @@ The final revision must pass 2301 cases on Linux .NET 8/10 and Windows .NET 8/10
 
 Keep issue 226 open and PR 228 draft. No merge or automatic issue closure is requested.
 
-Layout evidence adds 107 actual Microsoft observations, 84 separate raw-preservation replay
-cases, byte-exact comparison of 11 independently imported candidates, and ten directed
+Layout evidence adds 108 actual Microsoft observations, 84 separate raw-preservation replay
+cases, byte-exact comparison of 12 independently imported candidates, and ten directed
 layout safety cases. See the [layout policy and next public dependencies](issue-226-layout-policy.md).
+
+## Subsequent authorized public foundation
+
+The [foundation status](issue-226-foundation-status.md) records the complete required-surface target,
+16 implemented supporting types and exact remaining dependencies. The six-class offline suite now
+contains **5,031 cases**: the existing 2,301 core cases plus 2,730 foundation cases, including replay
+of all **2,684** actual foundation observations per runtime and four strict surface/completeness checks.
+The original 1,493 mutation observations remain unchanged. This staging does not re-root the AD
+classes or imply completed public/LDAP integration. The draft PR records exact-head Linux and
+Windows evidence.

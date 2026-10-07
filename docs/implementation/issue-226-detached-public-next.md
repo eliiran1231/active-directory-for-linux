@@ -1,4 +1,4 @@
-# Next bounded detached-public slice — proposal, not an API switch
+# Detached-public transition — full required closure, staged implementation
 
 The approved architecture remains one portable surface: supporting types in
 `AdForLinux.Security.Principal` and `AdForLinux.Security.AccessControl`, inside the existing
@@ -10,8 +10,9 @@ or new namespace/interop decision is proposed here.
 Design baseline: PR225 `ea0786fc3e75658732e7ac15a94134d54e24bf6c`, especially
 [protected hooks and facade discussion](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-microsoft-interop-and-overrides.md#5-protected-hooks-preserve-extension-points-separate-native-defaults).
 That decision preserves the hooks and explicitly states: “A constructor signature plus a
-byte-only placeholder does not settle this.” The descriptor-facade public closure still
-needs an approved manifest; its omission is not an approved shortcut.
+byte-only placeholder does not settle this.” The user subsequently confirmed the complete required public/protected dependency closure.
+The [required-surface manifest](issue-226-required-surface.md) records that target; a bounded
+subset is staging only, never the final compatibility contract.
 
 ## Recommended buildable sequence
 
@@ -19,7 +20,7 @@ needs an approved manifest; its omission is not an approved shortcut.
    their approved supporting namespaces. Keep the existing AD classes unchanged during
    this foundation commit; there is no second set of AD rule classes. Constructor tests
    operate on the new foundations without Windows platform constructors or network work.
-2. Approve the bounded facade/member/ownership manifest below, then implement its actual
+2. Implement the full required facade/member closure and its actual
    descriptor state and every mandatory protected hook. Probe native sharing, locking,
    dispatch and dirty-flag behavior before claiming compatibility.
 3. Rebind all nine rule classes and `ActiveDirectorySecurity` together with dependent
@@ -110,16 +111,15 @@ class seals all four overrides. Factory arguments put access/audit kind **before
 GUIDs, unlike object-rule constructors. Preserve public virtual modify/purge dispatch and
 AccessRightType/AccessRuleType/AuditRuleType as well.
 
-## Proposed minimum usable facade and ownership manifest
+## Facade implementation requirements
 
-Recommend approving this bounded facade before the AD cutover:
+Implement this foundation and the remaining full manifest before the AD cutover:
 
 - CommonSecurityDescriptor binary/offset construction `(bool isContainer, bool isDS,
   byte[] binaryForm, int offset)`; stable container/DS identity, revision/control flags,
   owner/group, binary length/export and canonicality/protection inspection.
 - Usable portable DACL/SACL facades with assignment, direct rule mutation, purge and
-  inherited-entry handling. Their member signatures must be enumerated explicitly before
-  implementation. A descriptor that exposes only bytes is insufficient.
+  inherited-entry handling. Their complete member signatures are enumerated by the required-surface recorder. A descriptor that exposes only bytes is insufficient.
 - Every direct edit routes through the atomic core and its retained live/provenance model.
   Observable bytes and raw write bytes remain separate; new import is explicit. Failed
   edits preserve all state, no-op edits create no write intent, and layout restrictions
@@ -139,21 +139,21 @@ external owner/group/ACL changes, dirty flags, recursive/cross-wrapper locking, 
 typed-helper dispatch, ACL assignment aliasing and indexer snapshot behavior. Microsoft
 behavior is to be measured, not selected by user preference.
 
-**Actual remaining design choice:** approve an explicit bounded descriptor/ACL/ACE member
-manifest and the ownership/notification contract above, or require the larger BCL-shaped
-closure before the public cutover. In particular, ACL/ACE indexers, RawAcl/RawSecurityDescriptor
-constructor families, SDDL construction and additional facade constructors are not silently
-omitted or implicitly approved. Recommended path: the bounded, fully functional facade,
-with a named deferred-member list and no universal CommonSecurityDescriptor compatibility
-claim. Namespace, packaging, protected-hook preservation and single-surface architecture
-are already settled and should not be reopened.
+**Resolved scope:** implement the complete required dependency closure, including indexers,
+SDDL and required raw descriptor/ACL constructors. The member manifest is an implementation
+and validation checklist, not another user scope choice. Shared mutation gates and notification
+ledgers are internal engineering choices to validate against measured sharing, locks and dirty
+flags, with resolver authority isolation. No full-compatibility claim is made for this foundation
+stage; explicit pending members are recorded in the foundation status. Namespace, packaging,
+protected-hook preservation and the single-surface architecture remain settled.
 
 ## Existing build dependencies
 
 DirectoryEntry needs its internal `(byte[], SecurityMasks)` loader, RetrievedMasks,
-IsModified and binary export to keep compiling. Its Windows gate and current observable-byte
-commit path need a separate reviewed transport change; do not accidentally enable live
-writes while rebinding types. Principal.Sid must move to the approved portable SID value;
+IsModified and binary export to keep compiling. Its existing Windows gate already enables a commit path. Before the cutover reaches that
+path, wire reviewed raw write preparation; serializing observable bytes can violate preservation.
+Keep the foundation unwired until that dependency is satisfied, without silently disabling
+existing functionality. Principal.Sid must move to the approved portable SID value;
 keep SidValue and update platform-specific documentation. Differential tests with BCL SID/
 rule-base variables need explicit portable substitutions, not broad name-normalizing
 reflection. Keep native-oracle argument types separate from portable replay types.

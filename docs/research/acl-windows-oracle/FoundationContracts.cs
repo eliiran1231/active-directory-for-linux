@@ -27,7 +27,7 @@ internal static class FoundationContracts
         foreach (var second in new string?[] { null, "S-1-1-0", "S-1-5-32-544", "S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3-1002", "S-1-5-4294967295", "S-1-5-2147483648" })
             Record("SidCompare", new { First = first, Second = second }, () => {
                 var a = new B.SecurityIdentifier(first); var b = second is null ? null : new B.SecurityIdentifier(second);
-                return new { Compare = Math.Sign(a.CompareTo(b)), Equal = a.Equals(b), DomainEqual = a.IsEqualDomainSid(b!) };
+                return new { Compare = Math.Sign(a.CompareTo(b)), Equal = a.Equals(b!), DomainEqual = a.IsEqualDomainSid(b!) };
             });
         foreach (var text in new string?[] { null, "", "user", "DOMAIN\\user", "domain\\USER", " user ", new string('a', 257) })
             Record("AccountString", new { Text = text }, () => new B.NTAccount(text!).Value);

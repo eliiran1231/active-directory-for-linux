@@ -22,6 +22,10 @@
     <!-- Literal Windows observations; replay remains fully offline on every target. -->
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net8.json" LogicalName="AclOracle.Seeded.net8.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net10.json" LogicalName="AclOracle.Seeded.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net8.json" LogicalName="AclOracle.Foundation.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net8.json" LogicalName="AclOracle.Surface.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net10.json" LogicalName="AclOracle.Foundation.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net10.json" LogicalName="AclOracle.Surface.net10.json" />
   </ItemGroup>
 
 </Project>

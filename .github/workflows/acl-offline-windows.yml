@@ -46,16 +46,23 @@ jobs:
           if ($actualObservations -cne $expectedObservations) { throw 'Fresh Microsoft observations differ from the committed replay evidence.' }
           Write-Output "Verified $($actual.Observations.Count) fresh Microsoft observations against committed replay evidence."
           $foundationPath = "docs/research/acl-windows-oracle/results/foundation-windows-$recordingFramework.json"
-          if (Test-Path $foundationPath) {
-            $freshFoundation = Get-Content artifacts/oracle/foundation-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
-            $recordedFoundation = Get-Content $foundationPath -Raw | ConvertFrom-Json
-            $freshRows = ConvertTo-Json -InputObject $freshFoundation.Observations -Depth 20 -Compress
-            $recordedRows = ConvertTo-Json -InputObject $recordedFoundation.Observations -Depth 20 -Compress
-            if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft foundation observations differ from committed evidence.' }
-            Write-Output "Verified $($freshFoundation.Observations.Count) fresh foundation observations."
-          } else {
-            Write-Output 'Foundation bootstrap recording: no committed baseline yet; artifact requires review.'
+          if (!(Test-Path $foundationPath)) { throw 'Missing committed Microsoft foundation baseline.' }
+          $freshFoundation = Get-Content artifacts/oracle/foundation-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordedFoundation = Get-Content $foundationPath -Raw | ConvertFrom-Json
+          $freshRows = ConvertTo-Json -InputObject $freshFoundation.Observations -Depth 30 -Compress
+          $recordedRows = ConvertTo-Json -InputObject $recordedFoundation.Observations -Depth 30 -Compress
+          if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft foundation observations differ from committed evidence.' }
+          Write-Output "Verified $($freshFoundation.Observations.Count) fresh foundation observations."
+          $surfacePath = "docs/research/acl-windows-oracle/results/required-surface-windows-$recordingFramework.json"
+          if (!(Test-Path $surfacePath)) { throw 'Missing committed Microsoft required-surface baseline.' }
+          $freshSurface = Get-Content artifacts/oracle/surface-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordedSurface = Get-Content $surfacePath -Raw | ConvertFrom-Json
+          foreach ($field in @('Roots', 'Types', 'FrameworkBoundary')) {
+            $freshValue = ConvertTo-Json -InputObject $freshSurface.$field -Depth 50 -Compress
+            $recordedValue = ConvertTo-Json -InputObject $recordedSurface.$field -Depth 50 -Compress
+            if ($freshValue -cne $recordedValue) { throw "Fresh Microsoft required surface differs in $field." }
           }
+          Write-Output "Verified required surface: $($freshSurface.Roots.Count) roots and $($freshSurface.Types.Count) types."
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4
