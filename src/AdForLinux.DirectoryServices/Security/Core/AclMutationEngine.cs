@@ -64,25 +64,97 @@ internal sealed class AclMutationEngine
     }
 
     /// <summary>
-    /// Reconciles a rule selected from the detached import projection with raw write data.
-    /// Unrelated raw entries are never compacted. Narrow edits against a merged identity
-    /// require a mapping that is not yet established and refuse before publication.
+    /// Reconciles an operation on the current detached import view with its contributors.
+    /// Only changed groups may be reconstructed; untouched groups retain their entries.
     /// </summary>
     public AclMutationResult ModifyProjected(SecurityMasks section, AclModification operation, Ace rule)
     {
         ArgumentNullException.ThrowIfNull(rule);
+        if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
         var isDacl = ValidateSection(section);
         ValidateRule(rule, isDacl);
-        var acl = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
-        if (acl is not null && operation is AclModification.Add or AclModification.Remove or AclModification.RemoveSpecific)
+        var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
+        if (baseline is null || operation is not (AclModification.Add or AclModification.Remove or AclModification.RemoveSpecific))
+            return Modify(section, operation, rule);
+
+        var normalized = Prepare(section, isDacl);
+        var groups = normalized.Select(ace => new ProjectedGroup(ace, new List<Ace> { ace })).ToList();
+        // Match the single adjacent import pass, retaining each contributor, including
+        // byte-identical duplicates. SID or byte lookup alone cannot identify provenance.
+        for (var i = 0; i < groups.Count - 1; i++)
         {
-            var normalized = MicrosoftObservableProjector.NormalizeForEdit(acl, isDacl).Aces.ToList();
-            var compacted = AclCanonicalizer.Compact(normalized);
-            if (compacted.Any(sid => sid.Equals(rule.Sid)))
-                throw new InvalidOperationException("Cannot reconcile this projected rule with compacted original entries for the same SID; no raw edit was published.");
+            if (!TryMerge(groups[i].View, groups[i + 1].View, out var merged)) continue;
+            groups[i].Originals.AddRange(groups[i + 1].Originals);
+            groups[i] = new(merged, groups[i].Originals);
+            groups.RemoveAt(i + 1);
         }
-        return Modify(section, operation, rule);
+        var before = groups.Select(group => group.View).ToList();
+        var expected = before.ToList();
+        if (operation == AclModification.Add) Add(expected, rule, isDacl);
+        else if (operation == AclModification.Remove && !Remove(expected, rule)) return new(this, false, false);
+        else if (operation == AclModification.RemoveSpecific)
+            expected.RemoveAll(ace => Explicit(ace) && ace.RawBytes.SequenceEqual(rule.RawBytes));
+        if (SameEntries(before, expected))
+        {
+            if (rule.ObjectFlags != 0 && operation == AclModification.Add && baseline.AclRevision != Acl.RevisionDS)
+                return PublishAcl(section, baseline, baseline.Aces.ToList(), Descriptor.Control, true, true, true);
+            return new(this, true, true);
+        }
+
+        var candidates = new List<Ace>();
+        var added = false;
+        foreach (var group in groups)
+        {
+            var changed = new List<Ace> { group.View };
+            if (operation == AclModification.Add)
+            {
+                if (!added && TryMerge(group.View, rule, out var merged))
+                {
+                    changed[0] = merged;
+                    added = true;
+                }
+            }
+            else if (operation == AclModification.Remove)
+            {
+                // The complete projected removal was validated above before any edit.
+                if (!Remove(changed, rule)) return new(this, false, false);
+            }
+            else if (Explicit(group.View) && group.View.RawBytes.SequenceEqual(rule.RawBytes)) changed.Clear();
+
+            if (SameEntries(new[] { group.View }, changed)) candidates.AddRange(group.Originals);
+            else
+            {
+                // Prefer distributing the edit over original contributors. If its fresh
+                // projection differs, reconstruct only this explicitly changed group.
+                var distributed = group.Originals.ToList();
+                var valid = true;
+                if (operation == AclModification.Add) Add(distributed, rule, isDacl);
+                else if (operation == AclModification.Remove) valid = Remove(distributed, rule);
+                else distributed.Clear();
+                var projected = distributed.ToList();
+                AclCanonicalizer.Sort(projected, isDacl);
+                AclCanonicalizer.Compact(projected);
+                candidates.AddRange(valid && SameEntries(projected, changed) ? distributed : changed);
+            }
+        }
+        if (operation == AclModification.Add && !added)
+        {
+            candidates.Add(rule);
+            AclCanonicalizer.Sort(candidates, isDacl);
+        }
+        var check = candidates.ToList();
+        AclCanonicalizer.Sort(check, isDacl);
+        AclCanonicalizer.Compact(check);
+        if (!SameEntries(check, expected))
+            throw new InvalidOperationException("Cannot preserve unrelated original ACEs while reproducing this projected edit: adjacent compaction or equal-key ordering changes across contributor groups; no raw edit was published.");
+        return PublishAcl(section, baseline, candidates, Descriptor.Control, true, true,
+            rule.ObjectFlags != 0 && operation == AclModification.Add);
     }
+
+    private sealed record ProjectedGroup(Ace View, List<Ace> Originals);
+
+    private static bool SameEntries(IReadOnlyList<Ace> left, IReadOnlyList<Ace> right)
+        => left.Count == right.Count && left.Select((ace, index) => ace.RawBytes.SequenceEqual(right[index].RawBytes)).All(equal => equal);
 
     public AclMutationResult ModifyAccessRule(AclModification operation, Ace rule)
         => Modify(SecurityMasks.Dacl, operation, rule);

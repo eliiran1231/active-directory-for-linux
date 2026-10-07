@@ -127,6 +127,58 @@ public partial class AclMutationReplayTests
         Assert.True(changedImports > 1);
     }
 
+    [Theory]
+    [MemberData(nameof(RecordedProjectedSteps))]
+    public void Projected_rule_reconciles_recorded_raw_import(string sequence, string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var step = document.RootElement;
+        var original = Convert.FromHexString(step.GetProperty("RequestedDescriptorHex").GetString()!);
+        var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+        var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
+        var operation = Enum.Parse<AclModification>(step.GetProperty("Operation").GetString()!);
+        var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
+        var rule = CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!));
+        // Eight recorded deletions shift the one-pass pairing boundary into an
+        // unchanged group. Matching Microsoft would require altering that group or
+        // inventing a redundant contributor. Neither is authorized by this policy.
+        if ((sequence.StartsWith("projected-reconcile-triple-", StringComparison.Ordinal)
+                || sequence.StartsWith("projected-reconcile-four-", StringComparison.Ordinal))
+            && sequence.EndsWith("-Remove-subset", StringComparison.Ordinal))
+        {
+            var staged = engine.SetGroup(Sid.Parse("S-1-5-21-1-2-3-1002")).Engine;
+            var before = staged.Descriptor.GetBinaryForm();
+            var failure = Assert.Throws<InvalidOperationException>(() => staged.ModifyProjected(section, operation, rule));
+            Assert.Contains("across contributor groups", failure.Message);
+            Assert.Equal(before, staged.Descriptor.GetBinaryForm());
+            Assert.Equal(original, staged.OriginalDescriptor.GetBinaryForm());
+            Assert.Equal(SecurityMasks.Group, staged.WriteIntent);
+            return;
+        }
+        var result = engine.ModifyProjected(section, operation, rule);
+        Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
+        Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
+        Assert.Equal(expected, MicrosoftObservableProjector.Project(result.Engine.Descriptor).GetBinaryForm());
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+        var originalAcl = section == SecurityMasks.Dacl ? engine.Descriptor.Dacl! : engine.Descriptor.Sacl!;
+        var resultAcl = section == SecurityMasks.Dacl ? result.Engine.Descriptor.Dacl! : result.Engine.Descriptor.Sacl!;
+        var sid = CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!)).Sid!;
+        Assert.Equal(originalAcl.Aces.Where(ace => !ace.Sid!.Equals(sid)).Select(ace => Convert.ToHexString(ace.RawBytes)).Order().ToArray(),
+            resultAcl.Aces.Where(ace => !ace.Sid!.Equals(sid)).Select(ace => Convert.ToHexString(ace.RawBytes)).Order().ToArray());
+    }
+
+    public static IEnumerable<object[]> RecordedProjectedSteps()
+    {
+        using var recording = ReadSeededRecording("net8");
+        foreach (var step in recording.RootElement.GetProperty("Observations").EnumerateArray())
+        {
+            var sequence = step.GetProperty("Sequence").GetString()!;
+            if (sequence.StartsWith("projected-reconcile-", StringComparison.Ordinal))
+                yield return new object[] { sequence, step.GetRawText() };
+        }
+    }
+
     private static AclMutationResult ApplyRecordedStep(AclMutationEngine engine, JsonElement step)
     {
         var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);

@@ -82,7 +82,7 @@ retain the original NULL representation.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 919 newly recorded observations (887 operation steps and 32 import projections) including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 1,177 recorded observations (1,145 operation steps and 32 import projections) including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -98,12 +98,16 @@ policy. `AclCanonicalizer` preserves native pivot/tie behavior and inherited ord
 SACL mutations are supported for understood entries; imports perform a single adjacent
 compaction pass. No live edit performs blanket compaction.
 
-The explicit internal `ModifyProjected` reconciliation entrypoint refuses Add/Remove/
-RemoveSpecific when the target SID's raw entries compact, preserving state and prior intent.
-Whole-identity operations and unrelated SID edits operate on the raw originals. Future public
-callers must maintain this raw-versus-projection distinction; no public/LDAP integration exists
-yet. Unrecorded accepted inputs may still differ; refusal gates are not universal fail-closed
-parity. Gap/orphan relocation and broader unknown-data policies remain unresolved.
+The internal `ModifyProjected` bridge tracks each compacted entry's original contributors.
+Add/Remove/RemoveSpecific reconcile changed groups while preserving unrelated originals;
+250 of 258 fresh Windows cases succeed. Eight triple/four-entry subset removals shift the
+single-pass compaction boundary and refuse atomically. The [policy document](issue-226-ordering-policy.md)
+records exact bytes and the unavoidable tradeoff: reproducing the Microsoft view would require
+inventing a contributor, compacting unrelated originals, or changing representation/order
+requirements. None is silently adopted. Whole-identity operations retain raw targeting.
+Future public callers must distinguish fresh-import projected operations from raw/live edits.
+Unrecorded accepted inputs may still differ; refusal gates are not universal fail-closed parity.
+Gap/orphan relocation and broader unknown-data policies remain unresolved.
 
 - A changed ACL containing opaque/callback/unknown flags or recognized ACE trailing payload
   refuses as a whole. Owner/group or another section may still change while those bytes stay
@@ -142,8 +146,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 1033 replay cases (including 919 recorded observations, sequence
-replay and cross-runtime equality), 78 projection cases, 90 mutation safety cases, 139 codec
-cases and 21 SID cases: 1361 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 1549 replay cases (including 1,177 recorded observations, 258 projected reconciliation
+cases, sequence replay and cross-runtime equality), 78 projection cases, 94 mutation safety
+cases, 139 codec cases and 21 SID cases: 1881 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

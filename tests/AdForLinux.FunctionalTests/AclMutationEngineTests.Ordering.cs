@@ -40,7 +40,7 @@ public partial class AclMutationEngineTests
     [InlineData(true, "Add")]
     [InlineData(true, "Remove")]
     [InlineData(true, "RemoveSpecific")]
-    public void Projected_compacted_identity_refuses_ambiguous_narrow_edit_atomically(bool audit, string operationName)
+    public void Projected_compacted_identity_reconciles_narrow_edit_and_preserves_prior_intent(bool audit, string operationName)
     {
         var operation = Enum.Parse<AclModification>(operationName);
         var type = (byte)(audit ? 2 : 0);
@@ -49,12 +49,13 @@ public partial class AclMutationEngineTests
         var original = audit ? Build(Admins, Admins, Acl(4), acl) : Build(Admins, Admins, acl);
         var engine = Engine(original).SetOwner(Trustee(U2)).Engine;
         var before = engine.Descriptor.GetBinaryForm();
-        var exception = Assert.Throws<InvalidOperationException>(() => engine.ModifyProjected(
-            audit ? SecurityMasks.Sacl : SecurityMasks.Dacl, operation, CoreAce.Read(Ace(type, flags, 0x30, U1))));
-        Assert.Contains("compacted original entries", exception.Message);
+        var section = audit ? SecurityMasks.Sacl : SecurityMasks.Dacl;
+        var result = engine.ModifyProjected(section, operation, CoreAce.Read(Ace(type, flags, 0x30, U1)));
+        if (operation == AclModification.Add) Assert.Same(engine, result.Engine);
+        else Assert.Empty((audit ? result.Engine.Descriptor.Sacl : result.Engine.Descriptor.Dacl)!.Aces);
         Assert.Equal(before, engine.Descriptor.GetBinaryForm());
-        Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
-        Assert.Equal(SecurityMasks.Owner, engine.WriteIntent);
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+        Assert.Equal(SecurityMasks.Owner | (operation == AclModification.Add ? SecurityMasks.None : section), result.Engine.WriteIntent);
     }
 
     [Theory]
@@ -78,6 +79,28 @@ public partial class AclMutationEngineTests
         Assert.Equal(operation == AclModification.RemoveAll ? 1 : 2, aces.Count);
         Assert.Equal(Ace(type, flags, 4, U2), aces.Last().RawBytes.ToArray());
         Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+    }
+
+    [Theory]
+    [InlineData(false, "Add")]
+    [InlineData(true, "Add")]
+    [InlineData(false, "RemoveSpecific")]
+    [InlineData(true, "RemoveSpecific")]
+    public void Projected_edit_preserves_unrelated_compacted_group_for_same_sid(bool audit, string operationName)
+    {
+        var type = (byte)(audit ? 7 : 5);
+        var flags = (byte)(audit ? 0x40 : 0);
+        var unrelated = new[] { ObjAce(type, flags, 0x10, 1, G2, null, U1), ObjAce(type, flags, 0x20, 1, G2, null, U1) };
+        var acl = Acl(4, ObjAce(type, flags, 0x10, 1, G1, null, U1), ObjAce(type, flags, 0x20, 1, G1, null, U1), unrelated[0], unrelated[1]);
+        var raw = audit ? Build(Admins, Admins, Acl(4), acl) : Build(Admins, Admins, acl);
+        var engine = Engine(raw);
+        var operation = Enum.Parse<AclModification>(operationName);
+        var rule = CoreAce.Read(ObjAce(type, flags, operation == AclModification.Add ? 0x10000u : 0x30u, 1, G1, null, U1));
+        var result = engine.ModifyProjected(audit ? SecurityMasks.Sacl : SecurityMasks.Dacl, operation, rule);
+        var changed = (audit ? result.Engine.Descriptor.Sacl : result.Engine.Descriptor.Dacl)!;
+        Assert.Equal(unrelated, changed.Aces.Where(ace => ace.ObjectType == G2).Select(ace => ace.RawBytes.ToArray()).ToArray());
+        Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(raw, result.Engine.OriginalDescriptor.GetBinaryForm());
     }
 
     [Fact]

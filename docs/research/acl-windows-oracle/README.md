@@ -464,3 +464,16 @@ The approved policy is in `docs/implementation/issue-226-ordering-policy.md`. Ra
 sort but never blanket-compact. Observable imports compact only known entries. Narrow edits
 selected from compacted identities refuse at the explicit reconciliation boundary; unrelated
 original entries are preserved. Existing payload, gap and unknown-data protections remain.
+
+## Projected-to-raw reconciliation extension
+
+`ReconciliationSequences.cs` adds 258 actual Windows observations from probe commit
+`91df3c9ea36d2fe500b6571ad485c5a2d2c06206`, [run 37670943012](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37670943012).
+Both .NET runtimes produced identical observations; the earlier 919 are unchanged, bringing
+the total to 1,177. This probe intentionally fails freshness against the previous baseline.
+Each case imports detached original bytes, selects an actual Microsoft projected rule, and
+records its effective binary form plus actual return/modified/output. No AD or Persist call
+is used. Tests separately replay native live outcomes and reconcile the raw originals;
+250 reconciliation cases succeed and eight assert the documented cross-group boundary
+refusal. See the [preservation policy](../../implementation/issue-226-ordering-policy.md) for
+the exact witness and outstanding policy tradeoff.
