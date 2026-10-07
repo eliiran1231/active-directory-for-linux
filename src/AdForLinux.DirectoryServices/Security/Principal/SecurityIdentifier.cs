@@ -7,7 +7,7 @@ using System.Buffers.Binary;
 namespace AdForLinux.Security.Principal;
 
 /// <summary>A portable immutable numeric SID. No operating-system or directory lookup is performed.</summary>
-public sealed class SecurityIdentifier : IdentityReference, IComparable<SecurityIdentifier>
+public sealed partial class SecurityIdentifier : IdentityReference, IComparable<SecurityIdentifier>
 {
     private readonly Sid _sid;
     private SecurityIdentifier? _accountDomainSid;
@@ -18,9 +18,8 @@ public sealed class SecurityIdentifier : IdentityReference, IComparable<Security
     {
         ArgumentNullException.ThrowIfNull(sddlForm);
         // Keep the strict lossless core parser separate from the measured public SDDL contract.
-        // These two aliases are covered by detached recordings; the remaining alias family
-        // is an explicit pending dependency of the complete SDDL implementation.
-        var text = sddlForm switch { "BA" => "S-1-5-32-544", "WD" => "S-1-1-0", _ => sddlForm };
+        // Static aliases never depend on a machine/domain identity or a resolver.
+        var text = SddlAliases.TryGetValue(sddlForm, out var aliasValue) ? aliasValue : sddlForm;
         var parts = text.Split('-');
         if (parts.Length < 4 || !parts[0].Equals("S", StringComparison.OrdinalIgnoreCase)
             || !TryUnsigned(parts[1], byte.MaxValue, out var revision)

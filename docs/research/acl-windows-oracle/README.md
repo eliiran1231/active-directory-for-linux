@@ -527,3 +527,27 @@ structured surface separately from runtime provenance. Eight null-domain-compari
 between runtimes; target-specific replay retains that distinction and asserts all other rows agree.
 The original mutation recording remains separate and unchanged. No name lookup or live directory
 operation is involved.
+
+
+## Detached ACL, descriptor, SDDL and well-known SID closure
+
+`--closure-json PATH` records a separate 2,224-row corpus through `ClosureContracts`,
+`AclClosureContracts`, `DescriptorClosureContracts`, `SddlContracts` and `SidClosureContracts`.
+The first probe is `c9ba866`; calibration is `bbb7249`. The downloaded
+[net8](results/closure-windows-net8.json) and [net10](results/closure-windows-net10.json)
+artifacts have identical observation rows. Historical foundation (2,692) and mutation (1,493)
+corpora remain separate and unchanged.
+
+Portable replay distinguishes 1,740 exact successful outcomes, 446 exact native exceptions,
+and 38 reviewed portable refusals. See the [closure status](../../implementation/issue-226-closure-status.md)
+for operation counts and limitations. Four host-relative LA/LG parse rows record measured
+RID/classification/domain-presence/round-trip properties instead of a machine-specific SID;
+portable code refuses these aliases without an explicit authority context. Other native data
+is not generalized or normalized by this exception.
+
+The current public surface comparison maps 25 supporting types, retaining the explicit
+IntPtr constructor gap and the full remaining manifest. Strict workflow comparison requires
+all four corpus/manifest families and fails when a baseline is absent. The final replay also
+pins all 38 deferred SDDL case IDs, arguments and native row hashes and verifies refusal rather
+than pretending those cases match native success. No directory, translation, persistence or
+privilege operation is involved in producing these records.

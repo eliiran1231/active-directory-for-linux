@@ -13,7 +13,9 @@ below are staging dependencies, not approved permanent omissions.
   immutable numeric SID/binary values, defensive copies, value comparison/hash, domain
   inspection/comparison, unresolved account names, target-type checks and same-type
   translation. Numeric public parsing follows measured Windows conversion behavior while
-  the internal lossless SID parser remains strict and unchanged. BA and WD aliases are covered.
+  the internal lossless SID parser remains strict and unchanged. The closure follow-up adds
+  measured well-known/domain SID construction, classification and 50 static aliases; see
+  [closure status](issue-226-closure-status.md).
 - `AdForLinux.Security.AccessControl.AuthorizationRule`, `AccessRule`, `AuditRule`,
   `ObjectAccessRule`, `ObjectAuditRule`, `AuthorizationRuleCollection`: complete declared
   public/protected surface, validation precedence, propagation normalization, object GUID
@@ -24,10 +26,11 @@ below are staging dependencies, not approved permanent omissions.
   and license are attributed. These detached API values retain native alias/copy behavior;
   they do not replace the immutable raw descriptor codec or edit shared descriptor storage.
 
-The strict surface test compares all declared members of these 16 types, including exact
+The original foundation contained 16 types. The ACL/descriptor follow-up adds nine, so the
+strict surface test now compares all declared members of 25 types, including exact
 mapped dependency types, parameter names/order, protected accessibility, dispatch/sealing,
 base/interface graph, properties/accessors and constants. It rejects unexpected additions
-and missing members except the explicit three-entry SID staging list below. The recorded
+and missing members except the explicit `SecurityIdentifier(IntPtr)` staging gap below. The recorded
 full target has 39 roots, 55 types, 702 declaration records and 28 framework boundaries.
 The shared framework enums remain framework types.
 
@@ -67,11 +70,11 @@ Examples established by actual Windows execution:
 
 ## Exact remaining dependencies
 
-The public `SecurityIdentifier(IntPtr)` constructor, `SecurityIdentifier(WellKnownSidType,
-SecurityIdentifier)` constructor and `IsWellKnown(WellKnownSidType)` are not implemented.
-The surface test names those exact gaps. Remaining SDDL SID aliases and unrecorded parser
-combinations require implementation/evidence; matching the current cases is not complete
-SID-string parity.
+The public `SecurityIdentifier(IntPtr)` constructor remains unimplemented and is the exact
+SID surface gap. The `WellKnownSidType`/domain-SID constructor and `IsWellKnown` are now
+implemented with detached Windows replay. Measured static aliases are implemented; host-relative
+LA/LG aliases are explicitly refused rather than deriving ambient authority. Unrecorded parser
+combinations and deferred SDDL forms remain compatibility work, not implied full parity.
 
 Cross-kind `IdentityReference.Translate(Type)` currently explicitly throws `NotSupportedException`
 with a pending-resolver message. This is a foundation staging guard, **not the final resolver
@@ -80,13 +83,12 @@ no authority from the value. The already approved context-bound resolver/ambient
 policy still needs implementation. IdentityReferenceCollection and IdentityNotMappedException
 also remain required dependencies; they have not been erased from the manifest.
 
-The next implementation dependency is the portable ACL/descriptor closure: GenericAcl,
-RawAcl, CommonAcl, DiscretionaryAcl, SystemAcl, AceEnumerator, GenericSecurityDescriptor,
-RawSecurityDescriptor and CommonSecurityDescriptor, including all required constructors,
-indexers, SDDL and mutation members. Continue with detached Windows contracts and immutable
-raw/live/provenance reconciliation. Shared transaction gates and wrapper-local compatibility
-locks/dirty flags are engineering details to implement and measure, not additional scope
-choices for the user.
+The portable ACL/descriptor supporting closure is now implemented and compared against the
+full declared shape for GenericAcl, RawAcl, CommonAcl, DiscretionaryAcl, SystemAcl, AceEnumerator,
+GenericSecurityDescriptor, RawSecurityDescriptor and CommonSecurityDescriptor. Its separate
+2,224-row recording and 38 explicit SDDL refusals are described in
+[closure status](issue-226-closure-status.md). Those detached mutable facade contracts do not
+replace immutable raw/live/provenance reconciliation or authorize projected bytes for persistence.
 
 ObjectSecurity and DirectoryObjectSecurity then require the complete protected/public hooks,
 sharing/lock/dirty-flag and dispatch behavior. The coherent AD cutover includes all nine rule

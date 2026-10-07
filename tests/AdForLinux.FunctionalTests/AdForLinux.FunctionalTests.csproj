@@ -26,6 +26,8 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net8.json" LogicalName="AclOracle.Surface.net8.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net10.json" LogicalName="AclOracle.Foundation.net10.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net10.json" LogicalName="AclOracle.Surface.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/closure-windows-net8.json" LogicalName="AclOracle.Closure.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/closure-windows-net10.json" LogicalName="AclOracle.Closure.net10.json" />
   </ItemGroup>
 
 </Project>

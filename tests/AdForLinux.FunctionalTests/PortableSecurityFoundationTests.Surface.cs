@@ -30,15 +30,22 @@ public partial class PortableSecurityFoundationTests
         [typeof(A.CommonAce)] = "System.Security.AccessControl.CommonAce",
         [typeof(A.ObjectAce)] = "System.Security.AccessControl.ObjectAce",
         [typeof(A.CompoundAce)] = "System.Security.AccessControl.CompoundAce",
-        [typeof(A.CustomAce)] = "System.Security.AccessControl.CustomAce"
+        [typeof(A.CustomAce)] = "System.Security.AccessControl.CustomAce",
+        [typeof(A.GenericAcl)] = "System.Security.AccessControl.GenericAcl",
+        [typeof(A.RawAcl)] = "System.Security.AccessControl.RawAcl",
+        [typeof(A.CommonAcl)] = "System.Security.AccessControl.CommonAcl",
+        [typeof(A.DiscretionaryAcl)] = "System.Security.AccessControl.DiscretionaryAcl",
+        [typeof(A.SystemAcl)] = "System.Security.AccessControl.SystemAcl",
+        [typeof(A.AceEnumerator)] = "System.Security.AccessControl.AceEnumerator",
+        [typeof(A.GenericSecurityDescriptor)] = "System.Security.AccessControl.GenericSecurityDescriptor",
+        [typeof(A.RawSecurityDescriptor)] = "System.Security.AccessControl.RawSecurityDescriptor",
+        [typeof(A.CommonSecurityDescriptor)] = "System.Security.AccessControl.CommonSecurityDescriptor"
     };
 
     // Explicit staging gaps, not a claim of completed SID surface. Delete each entry when implemented.
     private static readonly string[] SurfaceExpectedGaps =
     [
-        "Constructor:System.Security.Principal.SecurityIdentifier:.ctor`0(System.IntPtr)",
-        "Constructor:System.Security.Principal.SecurityIdentifier:.ctor`0(System.Security.Principal.WellKnownSidType,System.Security.Principal.SecurityIdentifier)",
-        "Method:System.Security.Principal.SecurityIdentifier:IsWellKnown`0(System.Security.Principal.WellKnownSidType)"
+        "Constructor:System.Security.Principal.SecurityIdentifier:.ctor`0(System.IntPtr)"
     ];
 
     [Theory]
@@ -52,6 +59,7 @@ public partial class PortableSecurityFoundationTests
         var root = document.RootElement;
         Assert.Equal("issue-226-required-surface-v1", root.GetProperty("Schema").GetString());
         var recorded = root.GetProperty("Types").EnumerateArray().ToDictionary(t => t.GetProperty("Type").GetString()!);
+        Assert.Equal(25, SurfaceTypes.Count);
         var foundGaps = new List<string>();
         foreach (var (portable, referenceName) in SurfaceTypes)
         {
