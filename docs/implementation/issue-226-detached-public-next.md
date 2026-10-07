@@ -22,12 +22,14 @@ needs an approved manifest; its omission is not an approved shortcut.
 2. Approve the bounded facade/member/ownership manifest below, then implement its actual
    descriptor state and every mandatory protected hook. Probe native sharing, locking,
    dispatch and dirty-flag behavior before claiming compatibility.
-3. Rebind all nine rule classes and `ActiveDirectorySecurity` together, in one compiling
-   cutover. Switching the rules alone fails: the current BCL DirectoryObjectSecurity helpers
+3. Rebind all nine rule classes and `ActiveDirectorySecurity` together with dependent
+   consumers and compile/reflection fixtures, in one compiling cutover. Switching the rules
+   alone fails: the current BCL DirectoryObjectSecurity helpers
    and factory return types cannot accept portable rule bases. No BCL-rooted adapter or
    hidden replacement overload family should mask this dependency.
-4. Update dependent consumers and compile/reflection fixtures explicitly. Keep the Microsoft
-   oracle on pinned Microsoft types. Public binary/SDDL setters, enumeration and identity
+4. Validate that same cutover across the solution; consumer and fixture migration is part
+   of step 3, not a later build-breaking commit. Keep the Microsoft oracle on pinned Microsoft
+   types. Public binary/SDDL setters, enumeration and identity
    access are obligations of the eventual switch; unsupported implementation cannot be
    hidden behind matching signatures. Directory transport changes remain a separate phase.
 
