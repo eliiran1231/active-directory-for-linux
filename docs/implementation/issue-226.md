@@ -21,8 +21,10 @@ such ACEs remain valid existing raw data and do not match a common RemoveSpecifi
 
 `DescriptorRewriter` packs owner, group, SACL and DACL into independent storage, including
 for equal or overlapping original offsets. It copies unedited components exactly. ACL
-reserved fields and ACL trailing bytes survive edits. Unreferenced descriptor gaps or tails
-are refused because no relocation policy has been established. Nothing edits shared bytes.
+reserved fields and ACL trailing bytes survive edits. Gapped layouts now use bounded offset-preserving edits, terminal resizing and contained-alias
+unsharing; unexplained bytes keep their absolute positions. Interior resizing, trailer
+reclassification and crossing overlap remain refused. See the [layout policy](issue-226-layout-policy.md).
+Nothing edits shared source bytes in place.
 
 `MicrosoftObservableProjector` is a read-only projection. It implements reviewed D13
 normalizations plus the separately approved known-entry ordering/import-compaction policy: six recognized ACE families in the correct ACL kind, exact SID/GUID size,
@@ -82,7 +84,7 @@ retain the original NULL representation.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 1,385 recorded observations (1,353 operation/getter steps and 32 import projections) including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 1,492 recorded observations (1,437 operation/getter steps and 55 import projections) including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -109,7 +111,7 @@ same retained ACL explicitly refuse; use projected counterparts rather than sile
 state. A new engine constructed from raw storage is an explicit new import and may regroup
 entries. Section-local observable reads leave opaque opposite ACLs uninterpreted; the full
 observable getter explicitly requests both sections. See the [policy document](issue-226-ordering-policy.md).
-Unrecorded accepted inputs may still differ; gap/orphan relocation and unknown semantics
+Unrecorded accepted inputs may still differ; unproved layout relocation and unknown semantics
 remain unresolved. Public/LDAP integration is not included.
 
 - A changed ACL containing opaque/callback/unknown flags or recognized ACE trailing payload
@@ -122,7 +124,7 @@ remain unresolved. Public/LDAP integration is not included.
   Additional detached Windows recordings are required before expanding parity claims. No effective-access evaluator is claimed.
 - Active zero-mask and audit-without-success/failure projection are refused; only the exact
   inactive D13 exception may drop them. Meaningful labels/audit entries never disappear.
-- Descriptor gap/tail relocation, public exception/constructor parity and write-mask policy
+- Unproved descriptor relocation, public exception/constructor parity and write-mask policy
   are outside the implemented evidence. This engine makes no DirectoryEntry rollback promise.
 
 Known complementary-scope and other measured common/object import compaction is supported
@@ -146,11 +148,16 @@ exit alone is not treated as parity. Exact head validation and run URLs are repo
 
 The exact seeded recording provenance is documented in the oracle README. Tests replay actual Windows outputs on
 both Linux and Windows, not generated expectations. The original J6 examples include
-orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
-shared-storage examples successfully unshare and preserve all referenced components.
+orphaned bytes after aliasing offsets. Observable repacking omits unreferenced storage only
+from the read view; bounded raw writes retain those bytes at their original positions. The
+layout policy documents safe unsharing and concrete remaining refusals.
 
-Current offline filter: 1758 replay cases (including 1,385 recorded observations, 258 projected reconciliation
-cases, retained sequences and cross-runtime equality), 78 projection cases, 102 mutation safety
-cases, 139 codec cases and 21 SID cases: 2098 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 1950 replay cases (including 1,492 recorded observations, 258 projected reconciliation
+cases, retained sequences and cross-runtime equality), 78 projection cases, 112 mutation safety
+cases, 139 codec cases and 21 SID cases: 2300 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.
+
+The [layout policy and public-surface dependency plan](issue-226-layout-policy.md) describes
+fixed-offset edits, terminal resizing, alias allocation, actual candidate imports and the
+remaining public wrapper/resolver/interop/DirectoryEntry sequence. No public switch is made.

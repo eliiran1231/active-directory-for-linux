@@ -110,5 +110,8 @@ explicit re-import, raw-mode rejection, prior-intent failure and opaque opposite
 
 Exact-head Linux/Windows results are recorded in the draft PR. No preservation-policy
 relaxation is needed for the former eight cases. Unknown/trailing payload semantics,
-descriptor gaps, broader unrecorded parity and later public integration remain outside the
+unproved descriptor relocation, broader unrecorded parity and later public integration remain outside the
 claim; passing recordings does not establish universal parity.
+
+The subsequent [layout slice](issue-226-layout-policy.md) permits bounded offset-preserving
+raw edits and separate observable repacking. It does not alter retained contributor rules.

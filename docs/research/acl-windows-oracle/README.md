@@ -493,3 +493,18 @@ Both raw/native replay and retained projected sequences assert actual outputs. R
 replay begins from RequestedDescriptorHex and never re-imports raw storage between steps.
 Getter checkpoints use Operation=Get and preserve live bytes; separate safety tests exercise
 explicit new-engine import and prove that it may regroup raw contributors.
+
+## Descriptor layout extension
+
+`LayoutSequences.cs` adds 107 observations from probe commit
+`6840525d3bd92fa9316524dd183344dc89bf6029`, [run 37678217815](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37678217815).
+Both runtimes agree on all 1,492 observations; the preceding 1,385 are unchanged. All 107
+layout observations completed without exceptions. The probe intentionally failed freshness
+against the preceding baseline while both portable test steps passed.
+
+Twelve layouts each record Import/Owner/Group/Set/Add/RemoveSpecific/RemoveAll/Protect.
+Eleven additional imports use independently constructed fixed-offset, terminal-resize and
+alias-unsharing candidates. Portable tests compare those raw candidates byte-for-byte,
+separately from Microsoft observable outputs. The [layout policy](../../implementation/issue-226-layout-policy.md)
+explains preservation guarantees and the precise remaining trailer/interior-resize boundaries.
+Microsoft repacking is observable evidence, not permission to persist omitted raw bytes.

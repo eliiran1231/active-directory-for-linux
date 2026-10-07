@@ -170,13 +170,15 @@ public partial class AclMutationEngineTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Unexplained_descriptor_storage_causes_atomic_refusal(bool gap)
+    public void Unexplained_storage_keeps_fixed_offsets_and_refuses_interior_resize(bool gap)
     {
         var bytes = Build(Admins, Admins, Acl(4, Ace(0, 0, 0x10, U1)),
             gapBefore: gap ? 4 : 0, tail: gap ? null : new byte[] { 9, 8, 7 });
         var engine = Engine(bytes);
         Assert.Throws<InvalidOperationException>(() => engine.SetOwner(Trustee(U2)));
-        Assert.Throws<InvalidOperationException>(() => engine.Modify(SecurityMasks.Dacl, AclModification.Add, Rule(0x20)));
+        var changed = engine.Modify(SecurityMasks.Dacl, AclModification.Add, Rule(0x20)).Engine;
+        Assert.Equal(0x30u, Assert.Single(changed.Descriptor.Dacl!.Aces).AccessMask);
+        Assert.Equal(bytes.AsSpan(4, 16).ToArray(), changed.Descriptor.GetBinaryForm().AsSpan(4, 16).ToArray());
         Assert.Equal(bytes, engine.Descriptor.GetBinaryForm());
         Assert.Equal((SecurityMasks)0, engine.WriteIntent);
     }

@@ -82,7 +82,7 @@ internal sealed class AclMutationEngine
         }
         var control = Descriptor.DaclState == AclState.Null
             ? (ushort)(Descriptor.Control & ~SecurityDescriptor.DaclPresent) : Descriptor.Control;
-        return DescriptorRewriter.Rewrite(Descriptor, control, replacements);
+        return DescriptorRewriter.RepackObservable(Descriptor, control, replacements);
     }
 
     // Section-local reads do not interpret an unrelated opaque ACL. The full descriptor

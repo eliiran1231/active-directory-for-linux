@@ -232,6 +232,89 @@ public partial class AclMutationReplayTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(RecordedLayoutEdits))]
+    public void Recorded_layout_edits_preserve_original_unreferenced_bytes_or_refuse(string sequence, string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var step = document.RootElement;
+        var original = Convert.FromHexString(step.GetProperty("RequestedDescriptorHex").GetString()!);
+        var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+        var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
+        var operation = step.GetProperty("Operation").GetString()!;
+        var refused = (sequence.StartsWith("layout-trailing-", StringComparison.Ordinal)
+                && operation is "Add" or "RemoveSpecific" or "RemoveAll")
+            || (sequence.StartsWith("layout-null-sections-", StringComparison.Ordinal)
+                && operation is not ("Owner" or "Group"));
+        if (refused)
+        {
+            Assert.Throws<InvalidOperationException>(() => ApplyRecordedStep(engine, step));
+            Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+            Assert.Equal(SecurityMasks.None, engine.WriteIntent);
+            return;
+        }
+        var result = ApplyRecordedStep(engine, step);
+        Assert.Equal(expected, result.Engine.GetObservableDescriptor().GetBinaryForm());
+        Assert.Equal(original, engine.Descriptor.GetBinaryForm());
+        Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
+        Assert.False(result.Engine.Descriptor.HasOverlappingComponents);
+        if (step.GetProperty("ReturnValue").ValueKind != JsonValueKind.Null)
+            Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
+        if (step.GetProperty("Modified").ValueKind != JsonValueKind.Null)
+            Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
+        var covered = new bool[original.Length];
+        Array.Fill(covered, true, 0, 20);
+        foreach (var field in new[] { 4, 8, 12, 16 })
+        {
+            var offset = (int)System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(original.AsSpan(field));
+            if (offset == 0) continue;
+            var length = field < 12 ? 8 + original[offset + 1] * 4
+                : System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(original.AsSpan(offset + 2));
+            Array.Fill(covered, true, offset, length);
+        }
+        var actual = result.Engine.Descriptor.GetBinaryForm();
+        for (var i = 20; i < original.Length; i++)
+            if (!covered[i]) { Assert.True(i < actual.Length); Assert.Equal(original[i], actual[i]); }
+    }
+
+    public static IEnumerable<object[]> RecordedLayoutEdits()
+    {
+        using var recording = ReadSeededRecording("net8");
+        foreach (var step in recording.RootElement.GetProperty("Observations").EnumerateArray())
+        {
+            var sequence = step.GetProperty("Sequence").GetString()!;
+            if (sequence.StartsWith("layout-", StringComparison.Ordinal) && step.GetProperty("Operation").GetString() != "Import")
+                yield return new object[] { sequence, step.GetRawText() };
+        }
+    }
+
+    [Fact]
+    public void Portable_layout_candidates_equal_bytes_independently_imported_on_windows()
+    {
+        using var recording = ReadSeededRecording("net8");
+        var observations = recording.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
+        var candidates = observations.Where(step => step.GetProperty("Sequence").GetString()!.StartsWith("layout-candidate-", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(11, candidates.Length);
+        foreach (var candidate in candidates)
+        {
+            var name = candidate.GetProperty("Sequence").GetString()!["layout-candidate-".Length..];
+            var operation = name.EndsWith("-setmask", StringComparison.Ordinal) ? "Set"
+                : name.EndsWith("-grow", StringComparison.Ordinal) ? "Add"
+                : name.EndsWith("-shrink", StringComparison.Ordinal) ? "RemoveAll"
+                : name.Contains("group", StringComparison.Ordinal) ? "Group" : "Owner";
+            var fixture = name.StartsWith("shared-", StringComparison.Ordinal) ? "shared-owner-group-with-orphan"
+                : name == "same-size-owner-offset-patch" ? "leading-A5"
+                : name[..name.LastIndexOf('-')];
+            var source = observations.Single(step => step.GetProperty("Sequence").GetString() == $"layout-{fixture}-{operation}");
+            var raw = Convert.FromHexString(source.GetProperty("RequestedDescriptorHex").GetString()!);
+            var engine = new AclMutationEngine(SecurityDescriptor.Parse(raw, All));
+            var result = ApplyRecordedStep(engine, source);
+            Assert.Equal(Convert.FromHexString(candidate.GetProperty("InputHex").GetString()!), result.Engine.Descriptor.GetBinaryForm());
+            Assert.Equal(Convert.FromHexString(candidate.GetProperty("OutputHex").GetString()!), result.Engine.GetObservableDescriptor().GetBinaryForm());
+            Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+        }
+    }
+
     private static AclMutationResult ApplyRecordedStep(AclMutationEngine engine, JsonElement step)
     {
         var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);

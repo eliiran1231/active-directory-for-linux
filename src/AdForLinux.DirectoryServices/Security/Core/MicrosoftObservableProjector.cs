@@ -28,7 +28,7 @@ internal static class MicrosoftObservableProjector
         // never replaces the raw NULL state or creates mutation intent (D14/B6).
         var control = source.DaclState == AclState.Null
             ? (ushort)(source.Control & ~SecurityDescriptor.DaclPresent) : source.Control;
-        return DescriptorRewriter.Rewrite(source, control, replacements);
+        return DescriptorRewriter.RepackObservable(source, control, replacements);
     }
 
     internal static bool IsUnderstoodAce(Ace ace, bool isDacl)
