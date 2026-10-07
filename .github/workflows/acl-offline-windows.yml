@@ -36,7 +36,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts/oracle | Out-Null
-          dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }} -- --sequence-json artifacts/oracle/seeded-${{ matrix.framework }}.json --foundation-json artifacts/oracle/foundation-${{ matrix.framework }}.json --surface-json artifacts/oracle/surface-${{ matrix.framework }}.json 2>&1 | Tee-Object -FilePath artifacts/oracle/windows-${{ matrix.framework }}.txt
+          dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }} -- --sequence-json artifacts/oracle/seeded-${{ matrix.framework }}.json --foundation-json artifacts/oracle/foundation-${{ matrix.framework }}.json --surface-json artifacts/oracle/surface-${{ matrix.framework }}.json --closure-json artifacts/oracle/closure-${{ matrix.framework }}.json 2>&1 | Tee-Object -FilePath artifacts/oracle/windows-${{ matrix.framework }}.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $actual = Get-Content artifacts/oracle/seeded-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
           $recordingFramework = '${{ matrix.framework }}'.Replace('.0', '')
@@ -63,6 +63,17 @@ jobs:
             if ($freshValue -cne $recordedValue) { throw "Fresh Microsoft required surface differs in $field." }
           }
           Write-Output "Verified required surface: $($freshSurface.Roots.Count) roots and $($freshSurface.Types.Count) types."
+          $closurePath = "docs/research/acl-windows-oracle/results/closure-windows-$recordingFramework.json"
+          if (Test-Path $closurePath) {
+            $freshClosure = Get-Content artifacts/oracle/closure-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+            $recordedClosure = Get-Content $closurePath -Raw | ConvertFrom-Json
+            $freshRows = ConvertTo-Json -InputObject $freshClosure.Observations -Depth 50 -Compress
+            $recordedRows = ConvertTo-Json -InputObject $recordedClosure.Observations -Depth 50 -Compress
+            if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft closure observations differ from committed evidence.' }
+            Write-Output "Verified $($freshClosure.Observations.Count) fresh closure observations."
+          } else {
+            Write-Output 'Closure bootstrap recording: no committed baseline yet; artifact requires review.'
+          }
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4
