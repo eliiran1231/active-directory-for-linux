@@ -100,6 +100,17 @@ internal static partial class SeededSequences
             Candidate(field == 4 ? "shared-owner-append-unshare" : "shared-group-append-unshare", unshared);
         }
 
+        // Both identity SIDs originally live inside the terminal DACL's ACE. Shrink
+        // that ACL to empty while preserving standalone orphan bytes, then allocate
+        // independent copies of the referenced identities after the shortened ACL.
+        var embeddedAcl = Offset(embedded, 16);
+        var emptyAcl = Sd.Acl(4);
+        var embeddedShrink = embedded.AsSpan(0, embeddedAcl).ToArray()
+            .Concat(emptyAcl).Concat(Sd.U1).Concat(Sd.U1).ToArray();
+        WriteOffset(embeddedShrink, 4, embeddedAcl + emptyAcl.Length);
+        WriteOffset(embeddedShrink, 8, embeddedAcl + emptyAcl.Length + Sd.U1.Length);
+        Candidate("embedded-sids-terminal-shrink", embeddedShrink);
+
         void Candidate(string name, byte[] raw)
         {
             var descriptor = new M.ActiveDirectorySecurity();
