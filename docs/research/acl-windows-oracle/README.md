@@ -474,6 +474,22 @@ the total to 1,177. This probe intentionally fails freshness against the previou
 Each case imports detached original bytes, selects an actual Microsoft projected rule, and
 records its effective binary form plus actual return/modified/output. No AD or Persist call
 is used. Tests separately replay native live outcomes and reconcile the raw originals;
-250 reconciliation cases succeed and eight assert the documented cross-group boundary
-refusal. See the [preservation policy](../../implementation/issue-226-ordering-policy.md) for
-the exact witness and outstanding policy tradeoff.
+all 258 outcomes now match through retained projected state: 140 changes, 114 true no-ops
+and four unchanged false/modified=false removals. See the [preservation policy](../../implementation/issue-226-ordering-policy.md)
+for contributor provenance and explicit raw/re-import boundaries.
+
+## Retained live projected sequences
+
+`ProjectedLiveSequences.cs` records 208 steps from eight detached objects that are retained
+across successive operations, including repeated getters. Probe commit
+`45c95cc9b2524e5606bda94fc67e9c86c93d6640`, [run 37674000374](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37674000374),
+produced identical .NET 8/10 observations; all earlier 1,177 remain unchanged, total 1,385.
+The 208 steps comprise 96 true/modified=true rule returns, eight false/modified=false
+conflicting-GUID removals, and 104 getter/identity/protection/purge steps with no boolean
+return contract recorded. No exceptions occurred. Probe freshness deliberately failed
+against the preceding recording baseline while portable tests passed.
+
+Both raw/native replay and retained projected sequences assert actual outputs. Retained
+replay begins from RequestedDescriptorHex and never re-imports raw storage between steps.
+Getter checkpoints use Operation=Get and preserve live bytes; separate safety tests exercise
+explicit new-engine import and prove that it may regroup raw contributors.

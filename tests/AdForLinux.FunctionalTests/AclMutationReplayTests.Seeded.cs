@@ -131,6 +131,7 @@ public partial class AclMutationReplayTests
     [MemberData(nameof(RecordedProjectedSteps))]
     public void Projected_rule_reconciles_recorded_raw_import(string sequence, string json)
     {
+        Assert.StartsWith("projected-reconcile-", sequence);
         using var document = JsonDocument.Parse(json);
         var step = document.RootElement;
         var original = Convert.FromHexString(step.GetProperty("RequestedDescriptorHex").GetString()!);
@@ -139,26 +140,16 @@ public partial class AclMutationReplayTests
         var operation = Enum.Parse<AclModification>(step.GetProperty("Operation").GetString()!);
         var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
         var rule = CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!));
-        // Eight recorded deletions shift the one-pass pairing boundary into an
-        // unchanged group. Matching Microsoft would require altering that group or
-        // inventing a redundant contributor. Neither is authorized by this policy.
-        if ((sequence.StartsWith("projected-reconcile-triple-", StringComparison.Ordinal)
-                || sequence.StartsWith("projected-reconcile-four-", StringComparison.Ordinal))
-            && sequence.EndsWith("-Remove-subset", StringComparison.Ordinal))
-        {
-            var staged = engine.SetGroup(Sid.Parse("S-1-5-21-1-2-3-1002")).Engine;
-            var before = staged.Descriptor.GetBinaryForm();
-            var failure = Assert.Throws<InvalidOperationException>(() => staged.ModifyProjected(section, operation, rule));
-            Assert.Contains("across contributor groups", failure.Message);
-            Assert.Equal(before, staged.Descriptor.GetBinaryForm());
-            Assert.Equal(original, staged.OriginalDescriptor.GetBinaryForm());
-            Assert.Equal(SecurityMasks.Group, staged.WriteIntent);
-            return;
-        }
         var result = engine.ModifyProjected(section, operation, rule);
         Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
         Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
-        Assert.Equal(expected, MicrosoftObservableProjector.Project(result.Engine.Descriptor).GetBinaryForm());
+        Assert.Equal(expected, result.Engine.GetObservableDescriptor().GetBinaryForm());
+        if (step.GetProperty("InputHex").GetString() == step.GetProperty("OutputHex").GetString())
+        {
+            Assert.Same(engine, result.Engine);
+            Assert.Equal(original, result.Engine.Descriptor.GetBinaryForm());
+            Assert.Equal(SecurityMasks.None, result.Engine.WriteIntent);
+        }
         Assert.Equal(original, engine.Descriptor.GetBinaryForm());
         Assert.Equal(original, result.Engine.OriginalDescriptor.GetBinaryForm());
         var originalAcl = section == SecurityMasks.Dacl ? engine.Descriptor.Dacl! : engine.Descriptor.Sacl!;
@@ -179,12 +170,75 @@ public partial class AclMutationReplayTests
         }
     }
 
+    [Fact]
+    public void Projected_live_sequences_retain_raw_view_provenance_and_prior_snapshots()
+    {
+        using var recording = ReadSeededRecording("net8");
+        var sequences = recording.RootElement.GetProperty("Observations").EnumerateArray()
+            .Where(step => step.GetProperty("Sequence").GetString()!.StartsWith("projected-live-", StringComparison.Ordinal))
+            .GroupBy(step => step.GetProperty("Sequence").GetString()).ToArray();
+        Assert.Equal(8, sequences.Length);
+        foreach (var sequence in sequences)
+        {
+            var original = Convert.FromHexString(sequence.First().GetProperty("RequestedDescriptorHex").GetString()!);
+            var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
+            var snapshots = new List<(AclMutationEngine Engine, byte[] Raw, byte[] Live, SecurityMasks Intent)>();
+            foreach (var step in sequence.OrderBy(step => step.GetProperty("Index").GetInt32()))
+            {
+                var input = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
+                var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+                var before = engine;
+                var raw = before.Descriptor.GetBinaryForm();
+                Assert.Equal(input, before.GetObservableDescriptor().GetBinaryForm());
+                snapshots.Add((before, raw, input, before.WriteIntent));
+                var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
+                var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
+                var operation = step.GetProperty("Operation").GetString()!;
+                AclMutationResult result = operation switch
+                {
+                    "Get" => new(before, true, false),
+                    "Owner" => before.SetOwner(sid),
+                    "Group" => before.SetGroup(sid),
+                    "Purge" => before.PurgeProjected(section, sid),
+                    "Protect" => before.SetProtectionProjected(section, true, true),
+                    "ProtectDrop" => before.SetProtectionProjected(section, true, false),
+                    "Unprotect" => before.SetProtectionProjected(section, false, true),
+                    _ => before.ModifyProjected(section, Enum.Parse<AclModification>(operation),
+                        CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
+                };
+                Assert.Null(step.GetProperty("ExceptionType").GetString());
+                engine = result.Engine;
+                if (step.GetProperty("ReturnValue").ValueKind != JsonValueKind.Null)
+                    Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
+                if (step.GetProperty("Modified").ValueKind != JsonValueKind.Null)
+                    Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
+                Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
+                Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
+                if (input.SequenceEqual(expected))
+                {
+                    Assert.Same(before, engine);
+                    Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+                    Assert.Equal(before.WriteIntent, engine.WriteIntent);
+                }
+                else Assert.Equal(before.WriteIntent | section, engine.WriteIntent);
+                Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+                foreach (var snapshot in snapshots)
+                {
+                    Assert.Equal(snapshot.Raw, snapshot.Engine.Descriptor.GetBinaryForm());
+                    Assert.Equal(snapshot.Live, snapshot.Engine.GetObservableDescriptor().GetBinaryForm());
+                    Assert.Equal(snapshot.Intent, snapshot.Engine.WriteIntent);
+                }
+            }
+        }
+    }
+
     private static AclMutationResult ApplyRecordedStep(AclMutationEngine engine, JsonElement step)
     {
         var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
         var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
         return step.GetProperty("Operation").GetString() switch
         {
+            "Get" => new AclMutationResult(engine, true, false),
             "Owner" => engine.SetOwner(sid),
             "Group" => engine.SetGroup(sid),
             "Purge" => engine.Purge(section, sid),

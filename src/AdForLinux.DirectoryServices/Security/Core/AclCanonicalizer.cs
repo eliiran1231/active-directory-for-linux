@@ -4,8 +4,11 @@ namespace AdForLinux.DirectoryServices.Security.Core;
 internal static class AclCanonicalizer
 {
     internal static void Sort(List<Ace> aces, bool isDacl)
+        => Sort(aces, ace => ace, isDacl);
+
+    internal static void Sort<T>(List<T> values, Func<T, Ace> getAce, bool isDacl)
     {
-        var entries = aces.Select((ace, index) => (Ace: ace, OriginalIndex: index)).ToArray();
+        var entries = values.Select((value, index) => (Value: value, Ace: getAce(value), OriginalIndex: index)).ToArray();
         var pending = new Stack<(int Left, int Right)>();
         pending.Push((0, entries.Length - 1));
         // Preserve Microsoft's pivot/tie behavior without recursive stack growth.
@@ -25,13 +28,13 @@ internal static class AclCanonicalizer
             pending.Push((left + 1, range.Right));
             pending.Push((range.Left, left - 1));
         }
-        for (var i = 0; i < entries.Length; i++) aces[i] = entries[i].Ace;
+        for (var i = 0; i < entries.Length; i++) values[i] = entries[i].Value;
 
-        int Priority((Ace Ace, int OriginalIndex) entry) => (entry.Ace.AceFlags & 0x10) != 0
+        int Priority((T Value, Ace Ace, int OriginalIndex) entry) => (entry.Ace.AceFlags & 0x10) != 0
             ? 2 * ushort.MaxValue + entry.OriginalIndex
             : (isDacl && entry.Ace.AceType is not (1 or 6) ? 2 : 0)
                 + (entry.Ace.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit ? 1 : 0);
-        int Compare((Ace Ace, int OriginalIndex) a, (Ace Ace, int OriginalIndex) b)
+        int Compare((T Value, Ace Ace, int OriginalIndex) a, (T Value, Ace Ace, int OriginalIndex) b)
         {
             var priority = Priority(a).CompareTo(Priority(b));
             if (priority != 0) return priority;

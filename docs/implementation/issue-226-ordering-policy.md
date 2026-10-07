@@ -44,65 +44,71 @@ one adjacent compaction pass, not fixed-point minimization: three compatible ent
 become two. Always project from the retained raw import baseline; re-importing an already
 projected value is a distinct operation and must not be confused with repeated reads.
 
-The existing `Modify` entrypoint edits raw/live ACEs. `ModifyProjected` is the explicit internal
-reconciliation entrypoint for rules selected from the current import projection. It records
-original contributors during the exact single adjacent compaction pass; duplicate occurrences
-remain distinct. It first validates the complete projected operation. Unchanged groups keep
-all original entries. Changed groups preferentially distribute the edit over their originals;
-when that cannot reproduce the changed projected group, only that explicitly targeted group
-is reconstructed. RemoveSpecific deletes the contributors of exact projected matches, never
-all entries for a SID. Final whole-ACL reprojection must match the requested projected outcome
-before publication. No-op calls preserve raw entries and prior intent, while a required
-revision-2 to revision-4 object-Add upgrade still publishes the header change.
+## Retained live state and contributor provenance
 
-This is a reconciliation rule for explicitly changed groups, not permission to compact
-unrelated originals. Known-entry ordering remains subject to the approved ordering policy.
-Unknown/trailing payloads, noncanonical mutations and descriptor gaps retain their existing
-refusals. Whole-identity operations retain their raw targeting behavior. Public integration
-must distinguish raw/live operations from fresh-import projected operations.
+`Modify` edits raw/live ACEs on a raw-mode engine. `ModifyProjected` establishes a retained
+Microsoft-style live ACL together with the raw contributors of each projected entry.
+These are separate immutable values: raw `Descriptor`, lossless `OriginalDescriptor`,
+section intent, and lazy per-section live/provenance state. Duplicate occurrences are
+tracked by their positions in contributor arrays, never rediscovered by SID/byte lookup.
 
-## Fresh reconciliation evidence and remaining policy boundary
+All six projected rule operations, `PurgeProjected`, and `SetProtectionProjected` operate
+on retained live groups. A complete expected operation is validated before any result is
+published. Unchanged groups preserve every contributor; changed groups preferentially
+distribute the edit over originals, reconstructing only an explicitly changed group when
+necessary. A split receives distinct new groups. View sorting moves the associated groups
+together. Publication validates both binary representations and requires the flattened
+contributors to match the exact raw ACL. A retained raw-ACL fingerprint guards against
+stale provenance. No published state is mutated in place.
 
-Probe commit `91df3c9ea36d2fe500b6571ad485c5a2d2c06206`, Windows
+`GetObservableAcl(section)` reads only the requested section. Editing/reading known SACL
+state beside an opaque DACL never projects that DACL. `GetObservableDescriptor()` explicitly
+requests both ACL projections and therefore keeps their strict validation. Owner/group and
+other-ACL changes carry retained state forward unchanged. No-op/failed operations return
+the same engine with exact raw bytes and intent; an object Add that upgrades revision two
+to four is a header change, not a no-op.
+
+### Explicit mode and re-import boundaries
+
+Raw `Modify`, `Purge`, and `SetProtection` refuse for an ACL with retained projected state;
+their projected counterparts preserve that state. They do not silently reset provenance.
+Raw operations on the other ACL and owner/group edits remain available. Constructing a new
+engine from the current raw `Descriptor` explicitly starts a new import/provenance baseline,
+with no write intent. There is no directory save/reload operation in this internal slice.
+
+A retained live view need not equal a fresh import of raw storage. For example, four allow
+ACEs for `S-1-5-21-1-2-3-1001`, flags zero, masks `[0x10,0x20,0x40,0x80]` import as
+`[0x30,0xC0]`. Projected Remove of `0x10` retains raw `[0x20,0x40,0x80]` and live
+`[0x20,0xC0]`, with `0xC0` mapped to the untouched `0x40,0x80` contributors. Subsequent
+RemoveSpecific(`0xC0`) removes exactly those two occurrences. Repeated getters do not import
+again. An explicitly new engine imports the raw value as `[0x60,0x80]`; that is a separate
+operation. No redundant ACE is invented and no unrelated pair is compacted during editing.
+The earlier global re-import equality check was unnecessarily restrictive and is removed.
+
+## Actual Windows evidence
+
+`ReconciliationSequences.cs`, probe commit `91df3c9ea36d2fe500b6571ad485c5a2d2c06206`,
 [run 37670943012](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37670943012),
-adds 258 actual Microsoft observations from `ReconciliationSequences.cs`. Both runtimes agree
-on all 1,177 observations; the earlier 919 are unchanged. The probe intentionally fails
-freshness against the previous recording baseline. All 258 Microsoft calls succeed.
+recorded 258 fresh-import rule calls. All outcomes now replay through the projected bridge:
+140 byte changes, 114 true no-ops, and four false/modified=false unchanged removals. None
+throws. The eight previously refused triple/four-entry edits now retain live state successfully.
 
-The portable raw/live engine replays all 258 calls. The separate projected-to-raw bridge
-successfully reconciles 250 and explicitly refuses eight triple/four-entry subset removals
-in both ACL kinds, with/without neighbors. No expected Microsoft output was invented or
-replaced with a refusal. The negative bridge cases assert original bytes and prior intent.
-Coverage includes duplicate/mask/scope/audit/object/present-empty GUID groups, exact/subset/
-new-bit additions, exact/subset/absent-bit removal, exact/subset specific removal, unrelated
-same-SID GUID groups and different-SID originals, and revision-two object no-ops.
+`ProjectedLiveSequences.cs`, probe commit `45c95cc9b2524e5606bda94fc67e9c86c93d6640`,
+[run 37674000374](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37674000374),
+adds 208 steps in eight retained-object sequences. They include the first subset removal,
+repeated collection/serialization getters, a failed conflicting-GUID removal, owner/group
+and opposite-ACL edits, exact removal of the remaining compacted group, further Add/Remove/
+RemoveSpecific, Set/Reset/RemoveAll, protection and purge. Both runtimes agree on all 1,385
+observations; all earlier 1,177 remain unchanged. Probe freshness checks deliberately fail
+against the preceding baseline while portable tests pass.
 
-### Exact unresolved witness
+Replay separately checks raw/live native operations and end-to-end projected operations.
+Every unchanged fresh bridge row asserts same-engine identity, exact raw bytes and intent.
+Every retained sequence checks all older raw/live snapshots and accumulated intent after
+every step. Dedicated safety cases cover equal-byte occurrences, split residual mappings,
+explicit re-import, raw-mode rejection, prior-intent failure and opaque opposite ACLs.
 
-Recorded sequence `projected-reconcile-four-False-False-Remove-subset` has four allow ACEs
-for `S-1-5-21-1-2-3-1001`, flags zero, masks `[0x10,0x20,0x40,0x80]`. Their single-pass
-projection is `[0x30,0xC0]`. Microsoft Remove of mask `0x10` returns true/modified=true and
-produces `[0x20,0xC0]`. The effective rule bytes are:
-
-```text
-0000240010000000010500000000000515000000010000000200000003000000E9030000
-```
-
-The recorded output DACL bytes are:
-
-```text
-04005000020000000000240020000000010500000000000515000000010000000200000003000000E903000000002400C0000000010500000000000515000000010000000200000003000000E9030000
-```
-
-Preserving the untouched `0x40,0x80` originals leaves raw `[0x20,0x40,0x80]`, which imports
-as `[0x60,0x80]`. Every permutation merges two of those masks first, so none can start with
-`0x20`. Achieving the exact Microsoft view requires inventing a redundant `0x20` contributor,
-compacting the unrelated pair, or relaxing representation/order equivalence. Those policy
-changes are not implemented. The current exception identifies the cross-group compaction/
-ordering boundary and publishes nothing. This is a precise remaining blocker, not a blanket
-refusal of compacted SIDs. The analogous three-entry cases cannot retain two separate
-projected entries after deletion without an extra contributor either.
-
-Exact-head Linux/Windows results are recorded in the PR. These cases establish bounded
-parity and preservation; unrecorded accepted inputs, unknown semantics and broader public
-constructor/exception parity remain outside the claim.
+Exact-head Linux/Windows results are recorded in the draft PR. No preservation-policy
+relaxation is needed for the former eight cases. Unknown/trailing payload semantics,
+descriptor gaps, broader unrecorded parity and later public integration remain outside the
+claim; passing recordings does not establish universal parity.

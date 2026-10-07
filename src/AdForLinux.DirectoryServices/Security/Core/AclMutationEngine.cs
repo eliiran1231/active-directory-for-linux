@@ -19,15 +19,20 @@ internal sealed class AclMutationEngine
     public SecurityDescriptor Descriptor { get; }
     public SecurityDescriptor OriginalDescriptor { get; }
     public SecurityMasks WriteIntent { get; }
+    private readonly ProjectedState? _projectedDacl;
+    private readonly ProjectedState? _projectedSacl;
 
     public AclMutationEngine(SecurityDescriptor descriptor)
         : this(descriptor ?? throw new ArgumentNullException(nameof(descriptor)), descriptor, 0) { }
 
-    private AclMutationEngine(SecurityDescriptor descriptor, SecurityDescriptor original, SecurityMasks intent)
-        => (Descriptor, OriginalDescriptor, WriteIntent) = (descriptor, original, intent);
+    private AclMutationEngine(SecurityDescriptor descriptor, SecurityDescriptor original, SecurityMasks intent,
+        ProjectedState? projectedDacl = null, ProjectedState? projectedSacl = null)
+        => (Descriptor, OriginalDescriptor, WriteIntent, _projectedDacl, _projectedSacl)
+            = (descriptor, original, intent, projectedDacl, projectedSacl);
 
     public AclMutationResult Modify(SecurityMasks section, AclModification operation, Ace rule)
     {
+        RequireRawAcl(section);
         ArgumentNullException.ThrowIfNull(rule);
         if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
         var isDacl = ValidateSection(section);
@@ -64,8 +69,43 @@ internal sealed class AclMutationEngine
     }
 
     /// <summary>
-    /// Reconciles an operation on the current detached import view with its contributors.
-    /// Only changed groups may be reconstructed; untouched groups retain their entries.
+    /// Returns the retained Microsoft-style live view, without re-importing its raw
+    /// contributors. A new engine constructed from Descriptor explicitly starts a new import.
+    /// </summary>
+    public SecurityDescriptor GetObservableDescriptor()
+    {
+        var replacements = new Dictionary<SecurityMasks, byte[]?>();
+        foreach (var section in new[] { SecurityMasks.Dacl, SecurityMasks.Sacl })
+        {
+            var acl = GetObservableAcl(section);
+            if (acl is not null) replacements.Add(section, DescriptorRewriter.EncodeAcl(acl, acl.Aces));
+        }
+        var control = Descriptor.DaclState == AclState.Null
+            ? (ushort)(Descriptor.Control & ~SecurityDescriptor.DaclPresent) : Descriptor.Control;
+        return DescriptorRewriter.Rewrite(Descriptor, control, replacements);
+    }
+
+    // Section-local reads do not interpret an unrelated opaque ACL. The full descriptor
+    // getter explicitly requests both projections and retains their strict validation.
+    public Acl? GetObservableAcl(SecurityMasks section)
+    {
+        var isDacl = ValidateSection(section);
+        var acl = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
+        if (acl is null) return null;
+        if (acl.AclRevision is not (Acl.Revision or Acl.RevisionDS)
+            || acl.Sbz1 != 0 || acl.Sbz2 != 0 || !acl.Trailing.IsEmpty)
+            throw new InvalidOperationException("Microsoft projection of ACL revision, reserved or trailing data is not validated.");
+        var state = RetainedState(section);
+        if (state is null) return MicrosoftObservableProjector.ProjectAcl(acl, isDacl);
+        ValidateProvenance(acl, state);
+        var bytes = DescriptorRewriter.EncodeAcl(null, state.Groups.Select(group => group.View).ToArray());
+        bytes[0] = acl.AclRevision;
+        return Acl.Read(bytes);
+    }
+
+    /// <summary>
+    /// Edits retained live entries and reconciles their original contributor occurrences.
+    /// Unrelated groups remain intact even when a fresh import would regroup raw bytes.
     /// </summary>
     public AclMutationResult ModifyProjected(SecurityMasks section, AclModification operation, Ace rule)
     {
@@ -74,39 +114,34 @@ internal sealed class AclMutationEngine
         var isDacl = ValidateSection(section);
         ValidateRule(rule, isDacl);
         var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
-        if (baseline is null || operation is not (AclModification.Add or AclModification.Remove or AclModification.RemoveSpecific))
-            return Modify(section, operation, rule);
-
-        var normalized = Prepare(section, isDacl);
-        var groups = normalized.Select(ace => new ProjectedGroup(ace, new List<Ace> { ace })).ToList();
-        // Match the single adjacent import pass, retaining each contributor, including
-        // byte-identical duplicates. SID or byte lookup alone cannot identify provenance.
-        for (var i = 0; i < groups.Count - 1; i++)
-        {
-            if (!TryMerge(groups[i].View, groups[i + 1].View, out var merged)) continue;
-            groups[i].Originals.AddRange(groups[i + 1].Originals);
-            groups[i] = new(merged, groups[i].Originals);
-            groups.RemoveAt(i + 1);
-        }
+        if (baseline is null) return Modify(section, operation, rule);
+        var groups = ProjectedGroups(section, isDacl);
         var before = groups.Select(group => group.View).ToList();
         var expected = before.ToList();
-        if (operation == AclModification.Add) Add(expected, rule, isDacl);
+        if (operation is AclModification.Set or AclModification.Reset or AclModification.RemoveAll)
+            expected.RemoveAll(ace => Explicit(ace) && SameSid(ace, rule)
+                && (operation == AclModification.Reset || SameQualifier(ace, rule)));
+        if (operation is AclModification.Add or AclModification.Set or AclModification.Reset) Add(expected, rule, isDacl);
         else if (operation == AclModification.Remove && !Remove(expected, rule)) return new(this, false, false);
         else if (operation == AclModification.RemoveSpecific)
             expected.RemoveAll(ace => Explicit(ace) && ace.RawBytes.SequenceEqual(rule.RawBytes));
+        var upgrade = rule.ObjectFlags != 0 && operation is AclModification.Add or AclModification.Set or AclModification.Reset;
         if (SameEntries(before, expected))
         {
-            if (rule.ObjectFlags != 0 && operation == AclModification.Add && baseline.AclRevision != Acl.RevisionDS)
-                return PublishAcl(section, baseline, baseline.Aces.ToList(), Descriptor.Control, true, true, true);
+            if (upgrade && baseline.AclRevision != Acl.RevisionDS)
+                return PublishProjected(section, groups, Descriptor.Control, true);
             return new(this, true, true);
         }
 
-        var candidates = new List<Ace>();
+        var updated = new List<ProjectedGroup>();
         var added = false;
         foreach (var group in groups)
         {
+            if (operation is AclModification.Set or AclModification.Reset or AclModification.RemoveAll
+                && Explicit(group.View) && SameSid(group.View, rule)
+                && (operation == AclModification.Reset || SameQualifier(group.View, rule))) continue;
             var changed = new List<Ace> { group.View };
-            if (operation == AclModification.Add)
+            if (operation is AclModification.Add or AclModification.Set or AclModification.Reset)
             {
                 if (!added && TryMerge(group.View, rule, out var merged))
                 {
@@ -116,42 +151,115 @@ internal sealed class AclMutationEngine
             }
             else if (operation == AclModification.Remove)
             {
-                // The complete projected removal was validated above before any edit.
                 if (!Remove(changed, rule)) return new(this, false, false);
             }
-            else if (Explicit(group.View) && group.View.RawBytes.SequenceEqual(rule.RawBytes)) changed.Clear();
+            else if (operation == AclModification.RemoveSpecific
+                && Explicit(group.View) && group.View.RawBytes.SequenceEqual(rule.RawBytes)) changed.Clear();
 
-            if (SameEntries(new[] { group.View }, changed)) candidates.AddRange(group.Originals);
+            if (SameEntries(new[] { group.View }, changed)) updated.Add(group);
             else
             {
-                // Prefer distributing the edit over original contributors. If its fresh
-                // projection differs, reconstruct only this explicitly changed group.
-                var distributed = group.Originals.ToList();
+                var distributed = group.Contributors.ToList();
                 var valid = true;
-                if (operation == AclModification.Add) Add(distributed, rule, isDacl);
+                if (operation is AclModification.Add or AclModification.Set or AclModification.Reset) Add(distributed, rule, isDacl);
                 else if (operation == AclModification.Remove) valid = Remove(distributed, rule);
                 else distributed.Clear();
-                var projected = distributed.ToList();
-                AclCanonicalizer.Sort(projected, isDacl);
-                AclCanonicalizer.Compact(projected);
-                candidates.AddRange(valid && SameEntries(projected, changed) ? distributed : changed);
+                AclCanonicalizer.Sort(distributed, isDacl);
+                var reconciled = ImportGroups(distributed);
+                updated.AddRange(valid && SameEntries(reconciled.Select(value => value.View).ToArray(), changed)
+                    ? reconciled : changed.Select(ace => new ProjectedGroup(ace, new[] { ace })));
             }
         }
-        if (operation == AclModification.Add && !added)
+        if (operation is AclModification.Add or AclModification.Set or AclModification.Reset && !added)
         {
-            candidates.Add(rule);
-            AclCanonicalizer.Sort(candidates, isDacl);
+            updated.Add(new(rule, new[] { rule }));
+            AclCanonicalizer.Sort(updated, group => group.View, isDacl);
         }
-        var check = candidates.ToList();
-        AclCanonicalizer.Sort(check, isDacl);
-        AclCanonicalizer.Compact(check);
-        if (!SameEntries(check, expected))
-            throw new InvalidOperationException("Cannot preserve unrelated original ACEs while reproducing this projected edit: adjacent compaction or equal-key ordering changes across contributor groups; no raw edit was published.");
-        return PublishAcl(section, baseline, candidates, Descriptor.Control, true, true,
-            rule.ObjectFlags != 0 && operation == AclModification.Add);
+        if (!SameEntries(updated.Select(group => group.View).ToArray(), expected))
+            throw new InvalidOperationException("The live operation could not be reconciled with contributor occurrences; no state was published.");
+        return PublishProjected(section, updated, Descriptor.Control, upgrade);
     }
 
-    private sealed record ProjectedGroup(Ace View, List<Ace> Originals);
+    public AclMutationResult PurgeProjected(SecurityMasks section, Sid identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        var isDacl = ValidateSection(section);
+        if ((isDacl ? Descriptor.Dacl : Descriptor.Sacl) is null) return Purge(section, identity);
+        var groups = ProjectedGroups(section, isDacl);
+        if (groups.RemoveAll(group => Explicit(group.View) && identity.Equals(group.View.Sid)) == 0)
+            return new(this, true, true);
+        return PublishProjected(section, groups, Descriptor.Control);
+    }
+
+    public AclMutationResult SetProtectionProjected(SecurityMasks section, bool isProtected, bool preserveInheritance)
+    {
+        var isDacl = ValidateSection(section);
+        if ((isDacl ? Descriptor.Dacl : Descriptor.Sacl) is null) return SetProtection(section, isProtected, preserveInheritance);
+        var groups = ProjectedGroups(section, isDacl);
+        var bit = isDacl ? 0x1000 : 0x2000;
+        var control = (ushort)(isProtected ? Descriptor.Control | bit : Descriptor.Control & ~bit);
+        var removed = isProtected && !preserveInheritance ? groups.RemoveAll(group => !Explicit(group.View)) : 0;
+        if (removed == 0 && control == Descriptor.Control) return new(this, true, true);
+        return PublishProjected(section, groups, control);
+    }
+
+    private sealed record ProjectedGroup(Ace View, Ace[] Contributors);
+    private sealed record ProjectedState(ProjectedGroup[] Groups, byte[] RawAcl);
+
+    private ProjectedState? RetainedState(SecurityMasks section)
+        => section == SecurityMasks.Dacl ? _projectedDacl : _projectedSacl;
+
+    private List<ProjectedGroup> ProjectedGroups(SecurityMasks section, bool isDacl)
+    {
+        var retained = RetainedState(section);
+        if (retained is null) return ImportGroups(Prepare(section, isDacl));
+        ValidateProvenance((isDacl ? Descriptor.Dacl : Descriptor.Sacl)!, retained);
+        return retained.Groups.ToList();
+    }
+
+    private static List<ProjectedGroup> ImportGroups(IReadOnlyList<Ace> aces)
+    {
+        var groups = aces.Select(ace => new ProjectedGroup(ace, new[] { ace })).ToList();
+        for (var i = 0; i < groups.Count - 1; i++)
+        {
+            if (!TryMerge(groups[i].View, groups[i + 1].View, out var merged)) continue;
+            groups[i] = new(merged, groups[i].Contributors.Concat(groups[i + 1].Contributors).ToArray());
+            groups.RemoveAt(i + 1);
+        }
+        return groups;
+    }
+
+    private static void ValidateProvenance(Acl acl, ProjectedState state)
+    {
+        var bytes = DescriptorRewriter.EncodeAcl(acl, acl.Aces);
+        if (!bytes.AsSpan().SequenceEqual(state.RawAcl)
+            || !SameEntries(state.Groups.SelectMany(group => group.Contributors).ToArray(), acl.Aces))
+            throw new InvalidOperationException("The retained contributor provenance does not match the raw ACL; no state was published.");
+    }
+
+    private AclMutationResult PublishProjected(SecurityMasks section, List<ProjectedGroup> groups,
+        ushort control, bool upgradeRevision = false)
+    {
+        var baseline = section == SecurityMasks.Dacl ? Descriptor.Dacl : Descriptor.Sacl;
+        var raw = groups.SelectMany(group => group.Contributors).ToList();
+        // Validate both representations before publishing either. Global re-import of
+        // raw is deliberately absent: regrouping is an explicit new-import boundary.
+        _ = DescriptorRewriter.EncodeAcl(null, groups.Select(group => group.View).ToArray());
+        var result = PublishAcl(section, baseline, raw, control, true, true, upgradeRevision);
+        var acl = (section == SecurityMasks.Dacl ? result.Engine.Descriptor.Dacl : result.Engine.Descriptor.Sacl)!;
+        var state = new ProjectedState(groups.ToArray(), DescriptorRewriter.EncodeAcl(acl, acl.Aces));
+        ValidateProvenance(acl, state);
+        var engine = result.Engine;
+        return new(new AclMutationEngine(engine.Descriptor, engine.OriginalDescriptor, engine.WriteIntent,
+            section == SecurityMasks.Dacl ? state : engine._projectedDacl,
+            section == SecurityMasks.Sacl ? state : engine._projectedSacl), true, true);
+    }
+
+    private void RequireRawAcl(SecurityMasks section)
+    {
+        if (RetainedState(section) is not null)
+            throw new InvalidOperationException("This ACL has retained projected state. Use projected operations or explicitly construct a new engine to re-import; raw mutation cannot discard contributor provenance.");
+    }
 
     private static bool SameEntries(IReadOnlyList<Ace> left, IReadOnlyList<Ace> right)
         => left.Count == right.Count && left.Select((ace, index) => ace.RawBytes.SequenceEqual(right[index].RawBytes)).All(equal => equal);
@@ -182,6 +290,7 @@ internal sealed class AclMutationEngine
 
     public AclMutationResult Purge(SecurityMasks section, Sid identity)
     {
+        RequireRawAcl(section);
         ArgumentNullException.ThrowIfNull(identity);
         var isDacl = ValidateSection(section);
         var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
@@ -192,6 +301,7 @@ internal sealed class AclMutationEngine
 
     public AclMutationResult SetProtection(SecurityMasks section, bool isProtected, bool preserveInheritance)
     {
+        RequireRawAcl(section);
         var isDacl = ValidateSection(section);
         var baseline = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
         var aces = Prepare(section, isDacl);
@@ -252,7 +362,7 @@ internal sealed class AclMutationEngine
     {
         if (descriptor.GetBinaryForm().AsSpan().SequenceEqual(Descriptor.GetBinaryForm()))
             return new(this, returned, modified);
-        return new(new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section), returned, modified);
+        return new(new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section, _projectedDacl, _projectedSacl), returned, modified);
     }
 
     private bool ValidateSection(SecurityMasks section)
