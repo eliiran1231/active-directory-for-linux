@@ -44,7 +44,26 @@ internal static class SddlContracts
         }
         foreach (var text in texts)
         {
-            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text!)));
+            if (text is "O:LA" or "G:LA" or "O:LG" or "G:LG")
+                record("SddlHostRelative", new { Text = text }, () =>
+                {
+                    var descriptor = new RawSecurityDescriptor(text);
+                    var identity = text[0] == 'O' ? descriptor.Owner! : descriptor.Group!;
+                    var binary = new byte[identity.BinaryLength]; identity.GetBinaryForm(binary, 0);
+                    var kind = text.EndsWith("LA", StringComparison.Ordinal)
+                        ? WellKnownSidType.AccountAdministratorSid : WellKnownSidType.AccountGuestSid;
+                    // The host-specific SID is intentionally not a portable expected value.
+                    // Record only measured invariants, without guessing a local machine/domain.
+                    return new
+                    {
+                        IsWellKnown = identity.IsWellKnown(kind),
+                        Rid = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(binary.AsSpan(binary.Length - 4)),
+                        DomainPresent = identity.AccountDomainSid is not null,
+                        CanonicalRoundTrip = descriptor.GetSddlForm(AccessControlSections.All),
+                    };
+                });
+            else
+                record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text!)));
             record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text!).GetSddlForm(AccessControlSections.All));
         }
         var sid = new SecurityIdentifier("S-1-1-0");
@@ -82,6 +101,24 @@ internal static class SddlContracts
             acl.InsertAce(0, new CommonAce((AceFlags)flags, AceQualifier.AccessAllowed, 16, sid, false, Convert.FromHexString(opaque)));
             RecordFormat(record, new RawSecurityDescriptor(ControlFlags.DiscretionaryAclPresent, null, null, null, acl), 15);
         }
+        // Calibrate the valid audit families separately from the deliberately invalid no-audit-flag rows.
+        foreach (var type in new[] { "AU", "AL", "OU", "OL" })
+        foreach (var section in new[] { "D", "S" })
+        foreach (var flags in new[] { "SA", "FA", "SAFA" })
+        foreach (var objectGuid in new[] { "", g })
+        {
+            var text = $"{section}:({type};{flags};RP;{objectGuid};;WD)";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+        // Error details are operation outcomes, preserving the shared recorder schema.
+        foreach (var text in new[] { "O:", "D:(XX;;RP;;;WD)", "D:(A;ZZ;RP;;;WD)", "D:(A;;RP;;;)",
+            $"D:(OA;;RP;{{{g}}};;WD)", "D:(OU;;RP;;;WD)", "D:(AU;;RP;;;WD)", "D:(A;TP;RP;;;WD)" })
+            record("SddlErrorDetails", new { Text = text }, () => {
+                try { _ = new RawSecurityDescriptor(text); return null; }
+                catch (Exception exception) { return new { Type = exception.GetType().FullName, ParamName = (exception as ArgumentException)?.ParamName,
+                    NativeErrorCode = (exception as System.ComponentModel.Win32Exception)?.NativeErrorCode }; }
+            });
     }
 
     private static object Snapshot(RawSecurityDescriptor descriptor)
