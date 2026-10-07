@@ -5,7 +5,7 @@ using E = System.Security.AccessControl;
 using M = System.DirectoryServices;
 using B = System.Security.Principal;
 
-internal static class SeededSequences
+internal static partial class SeededSequences
 {
     internal static void Record(string path)
     {
@@ -99,6 +99,7 @@ internal static class SeededSequences
         RecordScopeMergeQualifiers(observations);
         RecordEmptyObjectMaskMerge(observations);
         RecordMergeValuePresenceMatrix(observations);
+        RecordOrderingAndCompaction(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
