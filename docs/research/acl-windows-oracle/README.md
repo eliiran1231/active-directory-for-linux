@@ -274,7 +274,8 @@ Observations (not allowlist decisions):
 re-emitted the SACL as `[new Everyone audit; U2 Failure 0x04; U2 Success 0x20]`. The two existing
 U2 audits swapped relative order, and the IO|CI control behaved the same way. This is
 independent of the InheritOnly drop, but it means an unrelated audit edit can reorder existing
-explicit audit ACEs. It is not yet analyzed and has no allowlist status. In the DACL, the added
+explicit audit ACEs. This was initially unapproved; the later 2026-10-07 ordering/projection
+slice below records and implements the subsequently approved known-ACE policy. In the DACL, the added
 Everyone allow was inserted between the deny and the existing allow; existing order was kept.
 
 ## What this does not establish
@@ -302,10 +303,10 @@ On any other OS the executable prints a notice and exits 2 without running a cas
 
 ## Issue 226 seeded recording and replay
 
-`SeededSequences.cs` supplements the original report with 775 bounded observations (seed 226).
+`SeededSequences.cs` supplements the original report with 919 bounded observations (seed 226).
 The committed `results/seeded-windows-net8.json` and `seeded-windows-net10.json` were downloaded
-unchanged from [GitHub-hosted Windows run 37543448512](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37543448512),
-head `f0305cda0cd62a0fd3cd46293608012448bdde0d`. Microsoft DirectoryServices remains pinned at
+unchanged from [GitHub-hosted Windows run 37658872363](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37658872363),
+head `7ba9afbcdea4f58c57deacad1a9b943c7606588f`. Microsoft DirectoryServices remains pinned at
 9.0.0; the hosted runtimes were .NET 8.0.31 and 10.0.12. Observation bodies are identical.
 The functional replay embeds both exact files and asserts output bytes, returns, modified
 flags, exceptions, original immutability and section intent on Linux and Windows.
@@ -344,7 +345,7 @@ Further review probes in the same committed recording establish:
   must not invent an additional compaction pass.
 - Admins/domain SID insertion compares subauthority count before subauthority values.
 
-The 775 individual steps also replay end to end by sequence, retaining the original raw
+The operation observations also replay end to end by sequence, retaining the original raw
 origin and accumulating only real section changes. This is bounded script evidence, not
 an assertion of arbitrary conditional/object-inheritance/SACL sorting coverage.
 
@@ -444,3 +445,22 @@ only during Add. Presence bits remain essential to asymmetric absorption. Six ad
 safety cases cover metadata, opaque sections, prior intent, repeats and specific-removal
 identity. No SACL sorting/import/gap policy was expanded; this is bounded evidence, not
 proof of parity for every accepted descriptor/rule combination.
+
+
+The ordering/projection slice adds 144 observations from `OrderingSequences.cs`: 88 isolated
+mutation calls, 24 stateful calls and 32 import projections. Windows run 37658872363 at
+7ba9afbcdea4f58c57deacad1a9b943c7606588f reproduced identical observations on both runtimes;
+the previous 775 are unchanged. Its freshness failure was expected against the older
+committed baseline, while both portable test steps passed.
+
+The cases cover I2 forward/reverse ties, three equal-key audits, common/object families,
+SID order, inherited suffixes, DACL controls and all operation families. Import cases cover
+duplicates, masks, scopes, audit flags, three/four-entry chains, object masks and present-empty
+GUIDs in both directions and ACL kinds. Compaction is a single adjacent pass: three entries
+can become two. All new calls/imports succeeded; recorded Microsoft output is not itself
+permission to discard original write data.
+
+The approved policy is in `docs/implementation/issue-226-ordering-policy.md`. Raw/live edits
+sort but never blanket-compact. Observable imports compact only known entries. Narrow edits
+selected from compacted identities refuse at the explicit reconciliation boundary; unrelated
+original entries are preserved. Existing payload, gap and unknown-data protections remain.

@@ -36,7 +36,7 @@ internal sealed class AclMutationEngine
         if (!isDacl && baseline is null
             && operation is AclModification.Remove or AclModification.RemoveSpecific or AclModification.RemoveAll)
             return new(this, true, false); // recorded absent/NULL SACL ModifyAuditRule contract
-        var aces = Prepare(section, isDacl, operation is AclModification.Set or AclModification.Reset ? rule.Sid : null);
+        var aces = Prepare(section, isDacl);
         var returned = true;
         switch (operation)
         {
@@ -61,6 +61,27 @@ internal sealed class AclMutationEngine
         }
         return PublishAcl(section, baseline, aces, Descriptor.Control, returned, true,
             rule.ObjectFlags != 0 && operation is AclModification.Add or AclModification.Set or AclModification.Reset);
+    }
+
+    /// <summary>
+    /// Reconciles a rule selected from the detached import projection with raw write data.
+    /// Unrelated raw entries are never compacted. Narrow edits against a merged identity
+    /// require a mapping that is not yet established and refuse before publication.
+    /// </summary>
+    public AclMutationResult ModifyProjected(SecurityMasks section, AclModification operation, Ace rule)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        var isDacl = ValidateSection(section);
+        ValidateRule(rule, isDacl);
+        var acl = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
+        if (acl is not null && operation is AclModification.Add or AclModification.Remove or AclModification.RemoveSpecific)
+        {
+            var normalized = MicrosoftObservableProjector.NormalizeForEdit(acl, isDacl).Aces.ToList();
+            var compacted = AclCanonicalizer.Compact(normalized);
+            if (compacted.Any(sid => sid.Equals(rule.Sid)))
+                throw new InvalidOperationException("Cannot reconcile this projected rule with compacted original entries for the same SID; no raw edit was published.");
+        }
+        return Modify(section, operation, rule);
     }
 
     public AclMutationResult ModifyAccessRule(AclModification operation, Ace rule)
@@ -177,7 +198,7 @@ internal sealed class AclMutationEngine
         if (!Descriptor.IsRetrieved(section)) throw new InvalidOperationException("The section was not retrieved.");
     }
 
-    private List<Ace> Prepare(SecurityMasks section, bool isDacl, Sid? auditReplacementSid = null)
+    private List<Ace> Prepare(SecurityMasks section, bool isDacl)
     {
         var acl = isDacl ? Descriptor.Dacl : Descriptor.Sacl;
         if (acl is null)
@@ -203,9 +224,6 @@ internal sealed class AclMutationEngine
         // Recognized common/object OI flags use the recorded DS scope rules. Scope()
         // retains invalid propagation as a failed operation rather than discarding data;
         // only the reviewed D13 normalization above may remove an inactive ACE.
-        if (!isDacl && projected.Count(Explicit) > 1
-            && (auditReplacementSid is null || projected.Any(ace => Explicit(ace) && !auditReplacementSid.Equals(ace.Sid))))
-            throw new InvalidOperationException("Mutation of multiple explicit SACL entries awaits the I2 ordering decision.");
         return projected;
     }
 
@@ -225,47 +243,54 @@ internal sealed class AclMutationEngine
     {
         for (var i = 0; i < aces.Count; i++)
         {
-            var ace = aces[i];
-            if (!Explicit(ace) || ace.AceType != rule.AceType || !SameSid(ace, rule)) continue;
-            // Microsoft compares GUID values locally during Add merging, while
-            // asymmetric absorption checks actual presence bits. Never rewrite the
-            // existing GUID layout or apply this equivalence to other operations.
-            var objectTypesMatch = ace.ObjectType.GetValueOrDefault() == rule.ObjectType.GetValueOrDefault();
-            var inheritedTypesMatch = ace.InheritedObjectType.GetValueOrDefault() == rule.InheritedObjectType.GetValueOrDefault();
-            var masksMergeable = objectTypesMatch
-                || ((ace.ObjectFlags & Ace.ObjectTypePresent) == 0
-                    && (ace.AccessMask & rule.AccessMask & ObjectQualifiedRights)
-                        == (rule.AccessMask & ObjectQualifiedRights));
-            // Stage 1: identical flags and inherited GUID values; OR the masks.
-            if (ace.AceFlags == rule.AceFlags && inheritedTypesMatch && masksMergeable)
-            {
-                aces[i] = With(ace, ace.AccessMask | rule.AccessMask, ace.AceFlags);
-                return;
-            }
-            if (ace.AccessMask != rule.AccessMask) continue;
-            // Stage 2: identical inheritance and GUID values; combine audit flags.
-            if (objectTypesMatch && inheritedTypesMatch
-                && (ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
-            {
-                aces[i] = With(ace, ace.AccessMask, (byte)(ace.AceFlags | rule.AceFlags));
-                return;
-            }
-            // Stage 3: equal rights/audit; absent existing IOT permits asymmetric
-            // scope absorption. Only this stage recalculates DS propagation flags.
-            if (objectTypesMatch && (inheritedTypesMatch || (ace.ObjectFlags & Ace.InheritedObjectTypePresent) == 0)
-                && (ace.AceFlags & 0xC0) == (rule.AceFlags & 0xC0)
-                && Scope(ace) >= 0 && Scope(rule) >= 0
-                && TryFlags(Scope(ace) | Scope(rule), out var flags))
-            {
-                aces[i] = With(ace, ace.AccessMask, (byte)((ace.AceFlags & 0xC0) | flags));
-                return;
-            }
+            if (!TryMerge(aces[i], rule, out var merged)) continue;
+            aces[i] = merged;
+            return;
         }
-        // Insert without disturbing the relative order of any existing ACEs.
-        var rank = Rank(rule, isDacl);
-        var at = aces.FindIndex(ace => Rank(ace, isDacl) > rank
-            || (Rank(ace, isDacl) == rank && CompareSid(ace.Sid!, rule.Sid!) > 0));
-        aces.Insert(at < 0 ? aces.Count : at, rule);
+        // Microsoft appends, then sorts. Inserting directly at the sorted position
+        // loses its measured equal-key tie movement among existing known entries.
+        aces.Add(rule);
+        AclCanonicalizer.Sort(aces, isDacl);
+    }
+
+    internal static bool TryMerge(Ace ace, Ace rule, out Ace merged)
+    {
+        merged = ace;
+        if (!Explicit(ace) || !Explicit(rule) || ace.AceType != rule.AceType || !SameSid(ace, rule)) return false;
+        // Microsoft compares GUID values locally during merging, while
+        // asymmetric absorption checks actual presence bits. Never rewrite the
+        // existing GUID layout or apply this equivalence to raw identity.
+        var objectTypesMatch = ace.ObjectType.GetValueOrDefault() == rule.ObjectType.GetValueOrDefault();
+        var inheritedTypesMatch = ace.InheritedObjectType.GetValueOrDefault() == rule.InheritedObjectType.GetValueOrDefault();
+        var masksMergeable = objectTypesMatch
+            || ((ace.ObjectFlags & Ace.ObjectTypePresent) == 0
+                && (ace.AccessMask & rule.AccessMask & ObjectQualifiedRights)
+                == (rule.AccessMask & ObjectQualifiedRights));
+        // Stage 1: identical flags and inherited GUID values; OR the masks.
+        if (ace.AceFlags == rule.AceFlags && inheritedTypesMatch && masksMergeable)
+        {
+            merged = With(ace, ace.AccessMask | rule.AccessMask, ace.AceFlags);
+            return true;
+        }
+        if (ace.AccessMask != rule.AccessMask) return false;
+        // Stage 2: identical inheritance and GUID values; combine audit flags.
+        if (objectTypesMatch && inheritedTypesMatch
+            && (ace.AceFlags & 0x0F) == (rule.AceFlags & 0x0F))
+        {
+            merged = With(ace, ace.AccessMask, (byte)(ace.AceFlags | rule.AceFlags));
+            return true;
+        }
+        // Stage 3: equal rights/audit; absent existing IOT permits asymmetric
+        // scope absorption. Only this stage recalculates DS propagation flags.
+        if (objectTypesMatch && (inheritedTypesMatch || (ace.ObjectFlags & Ace.InheritedObjectTypePresent) == 0)
+            && (ace.AceFlags & 0xC0) == (rule.AceFlags & 0xC0)
+            && Scope(ace) >= 0 && Scope(rule) >= 0
+            && TryFlags(Scope(ace) | Scope(rule), out var flags))
+        {
+            merged = With(ace, ace.AccessMask, (byte)((ace.AceFlags & 0xC0) | flags));
+            return true;
+        }
+        return false;
     }
 
     private static bool Remove(List<Ace> aces, Ace rule)
@@ -352,22 +377,6 @@ internal sealed class AclMutationEngine
     private static bool IsDeny(Ace ace) => ace.AceType is 1 or 6;
     private static bool SameSid(Ace a, Ace b) => a.Sid!.Equals(b.Sid);
     private static bool SameQualifier(Ace a, Ace b) => IsDeny(a) == IsDeny(b);
-    private static int Rank(Ace ace, bool isDacl) => !Explicit(ace) ? 4
-        : (isDacl && !IsDeny(ace) ? 2 : 0) + (ace.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit ? 1 : 0);
-    private static int CompareSid(Sid a, Sid b)
-    {
-        var result = a.IdentifierAuthority.CompareTo(b.IdentifierAuthority);
-        if (result != 0) return result;
-        result = a.SubAuthorityCount.CompareTo(b.SubAuthorityCount);
-        if (result != 0) return result;
-        for (var i = 0; i < a.SubAuthorityCount; i++)
-        {
-            result = a.GetSubAuthority(i).CompareTo(b.GetSubAuthority(i));
-            if (result != 0) return result;
-        }
-        return a.SubAuthorityCount.CompareTo(b.SubAuthorityCount);
-    }
-
     // Directory-service propagation: self, immediate containers, deeper containers.
     private static int Scope(Ace ace) => Scope(ace.AceFlags);
     private static int Scope(byte flags)

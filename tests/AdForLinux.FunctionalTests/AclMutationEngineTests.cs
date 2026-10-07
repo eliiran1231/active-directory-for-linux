@@ -8,7 +8,7 @@ using static AdForLinux.FunctionalTests.SecurityDescriptorFixtures;
 namespace AdForLinux.FunctionalTests;
 
 /// <summary>In-memory safety and algebraic tests. No directory fixture or identity translation.</summary>
-public class AclMutationEngineTests
+public partial class AclMutationEngineTests
 {
     private const SecurityMasks All = SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
     private static AclMutationEngine Engine(byte[] bytes, SecurityMasks retrieved = All) => new(SecurityDescriptor.Parse(bytes, retrieved));
@@ -321,16 +321,20 @@ public class AclMutationEngineTests
     }
 
     [Fact]
-    public void Multiple_explicit_sacl_entries_refuse_every_mutation_until_ordering_is_reviewed()
+    public void Multiple_explicit_sacl_entries_support_operations_without_mutating_prior_snapshot()
     {
         var bytes = Build(Admins, Admins, Acl(4), Acl(4, Ace(2, 0x40, 0x10, U1), Ace(2, 0x80, 0x20, U2)));
         var engine = Engine(bytes);
         foreach (var operation in Enum.GetValues<AclModification>())
-            Assert.Throws<InvalidOperationException>(() => engine.Modify(SecurityMasks.Sacl, operation, Rule(0x10, 2, 0x40)));
-        Assert.Throws<InvalidOperationException>(() => engine.Purge(SecurityMasks.Sacl, Trustee(U1)));
-        Assert.Throws<InvalidOperationException>(() => engine.SetProtection(SecurityMasks.Sacl, true, true));
+        {
+            var result = engine.Modify(SecurityMasks.Sacl, operation, Rule(0x10, 2, 0x40));
+            Assert.True(result.ReturnValue);
+            Assert.Equal(bytes, result.Engine.OriginalDescriptor.GetBinaryForm());
+        }
+        Assert.Single(engine.Purge(SecurityMasks.Sacl, Trustee(U1)).Engine.Descriptor.Sacl!.Aces);
+        Assert.Equal(2, engine.SetProtection(SecurityMasks.Sacl, true, true).Engine.Descriptor.Sacl!.Aces.Count);
         Assert.Equal(bytes, engine.Descriptor.GetBinaryForm());
-        Assert.Equal((SecurityMasks)0, engine.WriteIntent);
+        Assert.Equal(SecurityMasks.None, engine.WriteIntent);
     }
 
     [Fact]

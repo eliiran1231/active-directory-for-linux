@@ -1,6 +1,6 @@
 # Internal ACL mutation engine — issue 226 draft
 
-See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured three-stage Add algorithm and remaining parity boundaries.
+See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured three-stage Add algorithm and remaining parity boundaries. The [ordering/projection policy](issue-226-ordering-policy.md) records the newly approved slice.
 
 The implementation is internal only. It does not change public API, DirectoryEntry,
 LDAP, identity resolution, the Microsoft interop boundary or any live-directory workflow.
@@ -24,8 +24,8 @@ for equal or overlapping original offsets. It copies unedited components exactly
 reserved fields and ACL trailing bytes survive edits. Unreferenced descriptor gaps or tails
 are refused because no relocation policy has been established. Nothing edits shared bytes.
 
-`MicrosoftObservableProjector` is a read-only projection. It implements only reviewed D13
-normalizations: six recognized ACE families in the correct ACL kind, exact SID/GUID size,
+`MicrosoftObservableProjector` is a read-only projection. It implements reviewed D13
+normalizations plus the separately approved known-entry ordering/import-compaction policy: six recognized ACE families in the correct ACL kind, exact SID/GUID size,
 known flags, inactive IO drop, NP clearing and explicit DACL object placement within the
 same qualifier group. Inherited order is preserved. Original bytes and write intent remain
 unchanged. NULL DACL getter projection is absent; owner/group/SACL changes in the raw engine
@@ -75,14 +75,14 @@ retain the original NULL representation.
   inapplicable GUIDs. This does not authorize global OI normalization.
 - Three eight-step sequences combine object OI, distinct IOT/global-right subtraction,
   no-ops, protection/unprotection, inherited-entry removal and RemoveSpecific. The SACL
-  sequence replaces all same-SID explicit splits with Set, using the existing exception
-  to the multi-entry refusal. Original bytes and accumulated section intent are asserted.
+  sequence replaces all same-SID explicit splits with Set; it was originally recorded
+  under the earlier conservative multi-entry policy. Original bytes and accumulated section intent are asserted.
 - Absent/NULL SACL removals return true with modified=false and no write intent.
 - Set/Reset/Purge/RemoveAll keep inherited entries and target explicit SID/qualifier across GUIDs.
 - Absent/NULL DACL materialization is DACL-operation-specific, preserving original raw state.
 
 `AclMutationReplayTests` uses literal pinned Microsoft Windows outputs for B4/B6, C1–C3,
-D1/D2, E1/E2, F1 and G1–G3, plus 775 newly recorded scripted steps including all audit
+D1/D2, E1/E2, F1 and G1–G3, plus 919 newly recorded observations (887 operation steps and 32 import projections) including all audit
 operation families and three-piece splits. I2 and J4/J6 projection tests assert exact
 allowed results or explicit refusal of unapproved movement/loss. `MicrosoftObservableProjectorTests` exercises exact D13
 predicates and raw/projection separation. `AclMutationEngineTests` checks atomic refusal,
@@ -93,22 +93,23 @@ safe mask algebra. Existing codec/SID tests remain part of the explicit offline 
 
 This draft does not claim completion of all issue 226 acceptance criteria.
 
-Decision dependencies are SACL ordering and expanding the approved import-normalization
-or gap-relocation policy. Distinct inherited-object GUID subtraction and common/object
-ACE OI propagation and the recorded asymmetric object-mask Add now have bounded support.
-Combinations beyond the matrix remain outside the parity claim. Accepted unrecorded inputs may still differ; the documented refusal gates do not guarantee that every unsupported parity case fails closed. Unknown/trailing-data refusals implement the approved
-preservation boundary. Public API and directory write behavior remain outside this scope.
+Known-entry ordering and projection-only import compaction now follow the separately approved
+policy. `AclCanonicalizer` preserves native pivot/tie behavior and inherited order. Multi-entry
+SACL mutations are supported for understood entries; imports perform a single adjacent
+compaction pass. No live edit performs blanket compaction.
 
-- The I2 multi-entry SACL sorting policy is unresolved. Mutations with more than one existing
-  explicit audit entry refuse before publication, except Set/Reset that replace every
-  explicit audit for the same SID; simple single-entry merges/splits and replacements remain
-  supported. No existing audit entries are silently sorted. Decreasing explicit SID order
-  within an otherwise canonical subgroup also refuses instead of adopting unreviewed sorting.
+The explicit internal `ModifyProjected` reconciliation entrypoint refuses Add/Remove/
+RemoveSpecific when the target SID's raw entries compact, preserving state and prior intent.
+Whole-identity operations and unrelated SID edits operate on the raw originals. Future public
+callers must maintain this raw-versus-projection distinction; no public/LDAP integration exists
+yet. Unrecorded accepted inputs may still differ; refusal gates are not universal fail-closed
+parity. Gap/orphan relocation and broader unknown-data policies remain unresolved.
+
 - A changed ACL containing opaque/callback/unknown flags or recognized ACE trailing payload
   refuses as a whole. Owner/group or another section may still change while those bytes stay
   exact. This is intentionally narrower than Microsoft's H2 unrelated-add behavior.
 - Full conditional ACE semantics, object-right-specific matching beyond the recorded shape
-  cases, duplicate-ACE import compaction and generalized normalization are not established
+  cases, generalized normalization beyond the measured import pass are not established
   by the current recordings. Recognized common/object OI combinations use DS propagation
   rules; invalid overlapping propagation returns false without publication.
   Additional detached Windows recordings are required before expanding parity claims. No effective-access evaluator is claimed.
@@ -117,11 +118,11 @@ preservation boundary. Public API and directory write behavior remain outside th
 - Descriptor gap/tail relocation, public exception/constructor parity and write-mask policy
   are outside the implemented evidence. This engine makes no DirectoryEntry rollback promise.
 
-Raw complementary-scope common ACE import compaction is explicitly refused by the strict
-read projector. Mutation uses reviewed D13 normalization separately: recorded live
-split-then-restore states can retain compatible ACE pairs without a fresh import. Raw
-bytes and section intent are never replaced by an imported recording. The recorded
-`RequestedDescriptorHex` boundary is tested independently of live `InputHex` replay.
+Known complementary-scope and other measured common/object import compaction is supported
+only in the observable import projection. Mutation normalization stays separate, preserving
+recorded live split-restore states and unrelated raw duplicates. Original bytes and section
+intent are never replaced by an imported recording. `RequestedDescriptorHex` is checked
+independently from live `InputHex` and explicit Import observations.
 
 ## Validation and Windows isolation
 
@@ -141,8 +142,8 @@ both Linux and Windows, not generated expectations. The original J6 examples inc
 orphaned bytes after aliasing offsets, so those exact inputs refuse repacking; compact
 shared-storage examples successfully unshare and preserve all referenced components.
 
-Current offline filter: 889 mutation replay cases (including 775 recorded steps, sequence
-replay and cross-runtime equality), 78 projection cases, 74 mutation safety cases, 139 codec
-cases and 21 SID cases: 1201 total. The safety suite includes 100 deterministic disjoint-mask
+Current offline filter: 1033 replay cases (including 919 recorded observations, sequence
+replay and cross-runtime equality), 78 projection cases, 90 mutation safety cases, 139 codec
+cases and 21 SID cases: 1361 total. The safety suite includes 100 deterministic disjoint-mask
 iterations (seed 2262026); projector predicates exhaust all 256 flag bytes across six types
 and both ACL kinds. These iteration counts are not separate xUnit case counts.

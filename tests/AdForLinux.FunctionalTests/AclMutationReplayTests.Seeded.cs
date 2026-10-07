@@ -20,6 +20,15 @@ public partial class AclMutationReplayTests
         var step = document.RootElement;
         var original = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
         var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+        if (step.GetProperty("Operation").GetString() == "Import")
+        {
+            var raw = SecurityDescriptor.Parse(original, All);
+            Assert.Equal(expected, MicrosoftObservableProjector.Project(raw).GetBinaryForm());
+            Assert.Equal(original, raw.GetBinaryForm());
+            var detached = new AclMutationEngine(raw);
+            Assert.Equal(SecurityMasks.None, detached.WriteIntent);
+            return;
+        }
         var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
         var operation = step.GetProperty("Operation").GetString()!;
         var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
@@ -59,6 +68,7 @@ public partial class AclMutationReplayTests
     {
         using var recording = ReadSeededRecording("net8");
         foreach (var sequence in recording.RootElement.GetProperty("Observations").EnumerateArray()
+            .Where(step => step.GetProperty("Operation").GetString() != "Import")
             .GroupBy(step => step.GetProperty("Sequence").GetString()))
         {
             var first = Convert.FromHexString(sequence.First().GetProperty("InputHex").GetString()!);
@@ -95,7 +105,7 @@ public partial class AclMutationReplayTests
     }
 
     [Fact]
-    public void Requested_raw_import_compaction_is_refused_without_changing_live_replay()
+    public void Requested_raw_import_projection_preserves_origin_without_changing_live_replay()
     {
         using var recording = ReadSeededRecording("net8");
         var changedImports = 0;
@@ -104,23 +114,17 @@ public partial class AclMutationReplayTests
             if (!step.TryGetProperty("RequestedDescriptorHex", out var requested)
                 || requested.ValueKind != JsonValueKind.String) continue;
             var raw = Convert.FromHexString(requested.GetString()!);
-            var imported = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
+            var imported = Convert.FromHexString(step.GetProperty(step.GetProperty("Operation").GetString() == "Import" ? "OutputHex" : "InputHex").GetString()!);
             if (raw.SequenceEqual(imported)) continue;
             changedImports++;
-            Assert.Equal("import-complementary-scopes", step.GetProperty("Sequence").GetString());
             var descriptor = SecurityDescriptor.Parse(raw, All);
-            Assert.Equal(2, descriptor.Dacl!.Aces.Count);
-            var exception = Assert.Throws<InvalidOperationException>(() => MicrosoftObservableProjector.Project(descriptor));
-            Assert.Contains("compaction", exception.Message);
+            Assert.Equal(imported, MicrosoftObservableProjector.Project(descriptor).GetBinaryForm());
             Assert.Equal(raw, descriptor.GetBinaryForm());
             var engine = new AclMutationEngine(descriptor);
             Assert.Equal(SecurityMasks.None, engine.WriteIntent);
             Assert.Equal(raw, engine.OriginalDescriptor.GetBinaryForm());
-            // The actual imported one-ACE state is independently replayed above. We do
-            // not substitute its bytes for the raw two-ACE state or invent write intent.
-            Assert.Single(SecurityDescriptor.Parse(imported, All).Dacl!.Aces);
         }
-        Assert.Equal(1, changedImports);
+        Assert.True(changedImports > 1);
     }
 
     private static AclMutationResult ApplyRecordedStep(AclMutationEngine engine, JsonElement step)

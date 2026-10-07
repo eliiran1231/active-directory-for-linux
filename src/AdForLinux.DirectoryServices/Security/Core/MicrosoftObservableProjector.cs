@@ -52,28 +52,10 @@ internal static class MicrosoftObservableProjector
     internal static Acl ProjectAcl(Acl acl, bool isDacl)
     {
         var normalized = NormalizeForEdit(acl, isDacl);
-        // Import can compact explicit ACEs even though a live Microsoft ACL can retain
-        // the same pair after split-then-restore. This boundary belongs only to detached
-        // read/import projection; applying it during edits would reject recorded live states.
-        if (!isDacl || HasCanonicalQualifierOrder(normalized.Aces))
-        {
-            for (var i = 0; i < normalized.Aces.Count; i++)
-            for (var j = i + 1; j < normalized.Aces.Count; j++)
-            {
-                var a = normalized.Aces[i];
-                var b = normalized.Aces[j];
-                if (a.Kind is not (AceKind.Access or AceKind.Audit)
-                    || a.AceType != b.AceType || !a.Sid!.Equals(b.Sid)
-                    || ((a.AceFlags | b.AceFlags) & Inherited) != 0
-                    || (a.AceFlags & 0xc0) != (b.AceFlags & 0xc0)) continue;
-                var aScope = a.AceFlags & 0x0f;
-                var bScope = b.AceFlags & 0x0f;
-                if (aScope == bScope || (a.AccessMask == b.AccessMask
-                    && ((aScope == 0 && bScope == 10) || (aScope == 10 && bScope == 0))))
-                    throw new InvalidOperationException("Microsoft import compaction of compatible explicit ACEs is not approved.");
-            }
-        }
-        return normalized;
+        if (!HasCanonicalQualifierOrder(normalized.Aces, isDacl)) return normalized;
+        var compacted = normalized.Aces.ToList();
+        AclCanonicalizer.Compact(compacted);
+        return Acl.Read(DescriptorRewriter.EncodeAcl(normalized, compacted));
     }
 
     // Reviewed D13 normalization used by the live mutation engine, independently of
@@ -102,7 +84,7 @@ internal static class MicrosoftObservableProjector
             else result.Add(ace);
         }
 
-        if (isDacl && !HasCanonicalQualifierOrder(result))
+        if (!HasCanonicalQualifierOrder(result, isDacl))
         {
             // G: Microsoft leaves a known noncanonical ACL in its original order. Do not
             // apply the canonical object partition to such a list. Mixed normalization of
@@ -113,67 +95,17 @@ internal static class MicrosoftObservableProjector
             return acl;
         }
 
-        // Only partition inside existing explicit qualifier groups. Never move an inherited
-        // ACE, cross deny/allow boundaries, or adopt the unresolved SACL sorting behavior.
-        if (isDacl)
-        {
-            for (var start = 0; start < result.Count;)
-            {
-                if ((result[start].AceFlags & Inherited) != 0) { start++; continue; }
-                var deny = IsDeny(result[start]);
-                var end = start + 1;
-                while (end < result.Count && (result[end].AceFlags & Inherited) == 0
-                    && IsDeny(result[end]) == deny) end++;
-                var ordered = result.GetRange(start, end - start)
-                    .OrderBy(ace => ace.Kind == AceKind.ObjectAccess ? 1 : 0).ToArray();
-                for (var i = 0; i < ordered.Length; i++) result[start + i] = ordered[i];
-                start = end;
-            }
-        }
-
-        RefuseUnreviewedExplicitOrdering(result, isDacl);
+        // Approved known-ACE order only; inherited entries retain their original order.
+        AclCanonicalizer.Sort(result, isDacl);
         return Acl.Read(DescriptorRewriter.EncodeAcl(acl, result));
     }
 
-    private static void RefuseUnreviewedExplicitOrdering(IReadOnlyList<Ace> aces, bool isDacl)
-    {
-        Ace? previous = null;
-        var previousGroup = -1;
-        foreach (var ace in aces)
-        {
-            // Inherited order belongs to the parent and is never sorted by this projector.
-            if ((ace.AceFlags & Inherited) != 0) { previous = null; previousGroup = -1; continue; }
-            var objectAce = ace.Kind is AceKind.ObjectAccess or AceKind.ObjectAudit;
-            var group = (isDacl && !IsDeny(ace) ? 2 : 0) + (objectAce ? 1 : 0);
-            if (!isDacl && group < previousGroup)
-                throw new InvalidOperationException("Microsoft SACL object-family reordering is not approved.");
-            if (previous is not null && group == previousGroup && CompareSid(previous.Sid!, ace.Sid!) > 0)
-                throw new InvalidOperationException("Microsoft explicit-subgroup SID reordering is not approved.");
-            previous = ace;
-            previousGroup = group;
-        }
-    }
-
-    private static int CompareSid(Sid left, Sid right)
-    {
-        var comparison = left.IdentifierAuthority.CompareTo(right.IdentifierAuthority);
-        if (comparison != 0) return comparison;
-        comparison = left.SubAuthorityCount.CompareTo(right.SubAuthorityCount);
-        if (comparison != 0) return comparison;
-        for (var index = 0; index < left.SubAuthorityCount; index++)
-        {
-            comparison = left.GetSubAuthority(index).CompareTo(right.GetSubAuthority(index));
-            if (comparison != 0) return comparison;
-        }
-        return left.SubAuthorityCount.CompareTo(right.SubAuthorityCount);
-    }
-
-    private static bool HasCanonicalQualifierOrder(IReadOnlyList<Ace> aces)
+    private static bool HasCanonicalQualifierOrder(IReadOnlyList<Ace> aces, bool isDacl)
     {
         var previous = -1;
         foreach (var ace in aces)
         {
-            var group = (ace.AceFlags & Inherited) != 0 ? 2 : IsDeny(ace) ? 0 : 1;
+            var group = (ace.AceFlags & Inherited) != 0 ? 2 : isDacl && IsDeny(ace) ? 0 : 1;
             if (group < previous) return false;
             previous = group;
         }
