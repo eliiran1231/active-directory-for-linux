@@ -100,6 +100,7 @@ internal static partial class SeededSequences
         RecordEmptyObjectMaskMerge(observations);
         RecordMergeValuePresenceMatrix(observations);
         RecordOrderingAndCompaction(observations);
+        RecordProjectedReconciliation(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
