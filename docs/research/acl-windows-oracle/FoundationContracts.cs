@@ -118,6 +118,15 @@ internal static class FoundationContracts
                 return new {Compare=Math.Sign(a.CompareTo(b)),Equal=a.Equals(b),DomainEqual=a.IsEqualDomainSid(b)};
             });
 
+        foreach (var text in new[] { "S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3", "S-1-5-32-544", "S-1-1-0" })
+        foreach (var warm in new[] { false, true })
+            Record("SidDomainIdentity", new { Text=text, Warm=warm }, () => {
+                var sid=new B.SecurityIdentifier(text);
+                if (warm) _=sid.IsAccountSid();
+                var first=sid.AccountDomainSid;var second=sid.AccountDomainSid;
+                return new { Value=first?.Value, SameReference=ReferenceEquals(first,second), SameAsInput=ReferenceEquals(sid,first), IsAccountSid=sid.IsAccountSid() };
+            });
+
         var recording = new { SchemaVersion=1, Runtime=RuntimeInformation.FrameworkDescription, OS=RuntimeInformation.OSDescription,
             MicrosoftAssembly=typeof(M.ActiveDirectorySecurity).Assembly.FullName, Scope="Detached constructors, numeric identities, local account comparisons and rule collections only. No translation or directory I/O.", Observations=rows };
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
