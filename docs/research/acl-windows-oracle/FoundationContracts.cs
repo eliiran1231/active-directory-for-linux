@@ -100,6 +100,24 @@ internal static class FoundationContracts
                 return new { collection.Count,IsSynchronized=((System.Collections.ICollection)collection).IsSynchronized, Values=destination.Select(r => r is null ? null : Snapshot(r,16)).ToArray() };
             });
         AceFoundationContracts.Record(Record);
+        // Domain-prefix and numeric parser boundaries, still entirely detached.
+        foreach (var text in new[] {
+            "S-1-5-21", "S-1-5-21-1", "S-1-5-21-1-2", "S-1-5-21-1-2-3", "S-1-5-21-1-2-3-4", "S-1-5-21-1-2-3-4-5",
+            "S-1-5-32", "S-1-5-32-544", "S-1-5-32-544-1", "S-1-4-21-1-2-3-4", "S-1-5-80-1", "S-1-5-18", "S-1-5", "S-1-0",
+            "S-1-5-", "S-1--5-1", "S-1-5-1--2", "S-0-5-1", "S-256-5-1", "S-4294967296-5-1", "S-01-005-0001",
+            "S-1-5-0x10", "S-0x1-0x5-0x10", "S-1-5-18446744073709551615", "S-1-5-18446744073709551616",
+            "S-1-281474976710656-1", "S-1-18446744073709551615-1", "S-1-18446744073709551616-1", "S-1-0x1000000000000-1" })
+            Record("SidString", new {Text=text},()=>Sid(new B.SecurityIdentifier(text)));
+        Record("SidBinary",new {Hex="0100000000000005",Offset=0},()=>Sid(new B.SecurityIdentifier(Convert.FromHexString("0100000000000005"),0)));
+        var domainCases=new[] {"S-1-5-21-1-2","S-1-5-21-1-2-3","S-1-5-21-1-2-3-4","S-1-5-21-1-2-3-4-5",
+            "S-1-5-32","S-1-5-32-544","S-1-5-32-544-1","S-1-4-21-1-2-3-4","S-1-5-80-1","S-1-5-18"};
+        foreach(var first in domainCases)
+        foreach(var second in domainCases)
+            Record("SidCompare",new {First=first,Second=second},()=>{
+                var a=new B.SecurityIdentifier(first);var b=new B.SecurityIdentifier(second);
+                return new {Compare=Math.Sign(a.CompareTo(b)),Equal=a.Equals(b),DomainEqual=a.IsEqualDomainSid(b)};
+            });
+
         var recording = new { SchemaVersion=1, Runtime=RuntimeInformation.FrameworkDescription, OS=RuntimeInformation.OSDescription,
             MicrosoftAssembly=typeof(M.ActiveDirectorySecurity).Assembly.FullName, Scope="Detached constructors, numeric identities, local account comparisons and rule collections only. No translation or directory I/O.", Observations=rows };
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
