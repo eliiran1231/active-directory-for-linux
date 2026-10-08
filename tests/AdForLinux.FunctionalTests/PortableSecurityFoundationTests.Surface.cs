@@ -44,16 +44,12 @@ public partial class PortableSecurityFoundationTests
         [typeof(A.CommonSecurityDescriptor)] = "System.Security.AccessControl.CommonSecurityDescriptor"
     };
 
-    // Explicit staging gaps, not a claim of completed SID surface. Delete each entry when implemented.
-    private static readonly string[] SurfaceExpectedGaps =
-    [
-        "Constructor:System.Security.Principal.SecurityIdentifier:.ctor`0(System.IntPtr)"
-    ];
+    private static readonly string[] SurfaceExpectedGaps = [];
 
     [Theory]
     [InlineData("net8")]
     [InlineData("net10")]
-    public void Portable_foundation_surface_matches_complete_recorded_declarations_with_explicit_sid_gaps(string runtime)
+    public void Portable_foundation_surface_matches_complete_recorded_declarations_for_implemented_types(string runtime)
     {
         using var stream = typeof(PortableSecurityFoundationTests).Assembly.GetManifestResourceStream($"AclOracle.Surface.{runtime}.json");
         Assert.NotNull(stream);

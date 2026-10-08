@@ -22,6 +22,8 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
+      - name: Full solution build
+        run: dotnet build AdForLinux.sln --configuration Release
       # These classes use only handcrafted bytes and detached in-memory descriptors.
       # Do not broaden this filter: other functional classes require Samba/AD fixtures.
       - name: Portable codec, projection, mutation and recorded replay

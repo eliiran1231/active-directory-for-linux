@@ -33,7 +33,7 @@ public partial class PortableSecurityFoundationTests
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
         var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
-        Assert.Equal(2321,firstRows.Length);
+        Assert.Equal(2564,firstRows.Length);
         var differences=new List<int>();
         Assert.Equal(firstRows.Length,secondRows.Length);
         for(var i=0;i<firstRows.Length;i++)
@@ -102,6 +102,7 @@ public partial class PortableSecurityFoundationTests
 
     private static object? ReplayClosure(string operation,JsonElement arguments)
     {
+        if(operation=="SidPointer") return ReplaySidPointer(arguments);
         if(operation.StartsWith("Identity",StringComparison.Ordinal)) return PortableIdentityCollectionContracts.Execute(operation,arguments.GetProperty("Scenario").GetInt32());
         if(operation.StartsWith("Acl",StringComparison.Ordinal)) return ReplayAclClosure(operation,arguments);
         if(operation.StartsWith("Descriptor",StringComparison.Ordinal)) return ReplayDescriptorClosure(operation,arguments);

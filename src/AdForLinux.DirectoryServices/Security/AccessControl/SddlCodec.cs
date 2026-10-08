@@ -33,7 +33,7 @@ internal static class SddlCodec
         ["A"] = 0, ["D"] = 1, ["AU"] = 2, ["AL"] = 3,
         ["OA"] = 5, ["OD"] = 6, ["OU"] = 7, ["OL"] = 8,
         ["XA"] = 9, ["XD"] = 10, ["ZA"] = 11, ["XU"] = 13,
-        ["ML"] = 17, ["SP"] = 19, ["TL"] = 20
+        ["ML"] = 17, ["RA"] = 18, ["SP"] = 19, ["TL"] = 20
     };
 
     internal static byte[] Parse(string sddlForm)
@@ -124,10 +124,7 @@ internal static class SddlCodec
         while (start < text.Length)
         {
             if (text[start] != '(') throw Invalid();
-            var end = text.IndexOf(')', start + 1);
-            if (end < 0) throw Invalid();
-            if (text.AsSpan(start + 1, end - start - 1).IndexOf('(') >= 0)
-                throw new NotSupportedException("Conditional and resource-attribute SDDL require their dedicated binary codec.");
+            var end = AceEnd(text, start);
             var ace = ParseAce(text[(start + 1)..end], system);
             aces.Add(ace);
             if (ace is ObjectAce || text.AsSpan(start + 1).StartsWith("OA", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OD", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OU", StringComparison.Ordinal)) revision = 4;
@@ -138,14 +135,24 @@ internal static class SddlCodec
         return acl;
     }
 
+    private static int AceEnd(string text, int start)
+    {
+        var depth = 0; var quoted = false;
+        for (var i = start; i < text.Length; i++)
+        {
+            if (text[i] == '"') quoted = !quoted;
+            if (quoted) continue;
+            if (text[i] == '(') depth++;
+            else if (text[i] == ')' && --depth == 0) return i;
+        }
+        throw Invalid();
+    }
+
     private static GenericAce ParseAce(string text, bool system)
     {
-        var fields = text.Split(';').Select(field => field.Trim()).ToArray();
-        if (fields.Length != 6)
-        {
-            if (fields.Length > 6 && fields[0] is "XA" or "XD" or "XU" or "ZA" or "RA" or "FL") throw new NotSupportedException("Conditional and resource-attribute ACE payloads are not implemented.");
-            throw Invalid();
-        }
+        var fields = text.Split(';', 7).Select(field => field.Trim()).ToArray();
+        if (fields.Length is not (6 or 7)) throw Invalid();
+        if (fields.Length == 7 && fields[0] is not ("XA" or "XD" or "XU" or "ZA" or "RA")) throw Invalid();
         if (!AceTypes.TryGetValue(fields[0], out var type))
         {
             if (fields[0] is "RA" or "FL") throw new NotSupportedException("Resource and access-filter ACE payloads are not implemented.");
@@ -153,11 +160,12 @@ internal static class SddlCodec
         }
         if (!system && type is 7 or 8) throw NativeInvalid(1804);
         if (type is 3 or 8 || (!system && type == 2)) throw Invalid();
+        if ((system && type is 9 or 10 or 11) || (!system && type is 13 or 18)) throw NativeInvalid(1804);
         var flags = ParseFlags(fields[1]);
-        if (type is 9 or 10 or 11 or 13) throw Invalid(); // native text conversion requires a condition
+        if (type is 9 or 10 or 11 or 13 or 18 && fields.Length != 7) throw Invalid();
         if (type is 2 or 3 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0) throw Invalid();
         if (type is 7 or 8 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0) throw NativeInvalid(1804);
-        if (type is 0 or 1 or 5 or 6 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0) throw NativeInvalid(1004);
+        if (type is 0 or 1 or 5 or 6 or 9 or 10 or 11 or 18 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0) throw NativeInvalid(1004);
         var mask = ParseRights(fields[2], type);
         var objectFlags = ObjectAceFlags.None;
         var objectType = Guid.Empty; var inheritedType = Guid.Empty;
@@ -172,13 +180,16 @@ internal static class SddlCodec
             objectFlags |= ObjectAceFlags.InheritedObjectAceTypePresent;
         }
         var sid = ParseSid(fields[5]);
+        if (type == 18 && (mask != 0 || sid.Value != "S-1-1-0")) throw Invalid();
         var isObject = type is >= 5 and <= 8 or 11;
         if (!isObject && objectFlags != 0)
             throw Invalid();
         if (isObject && objectFlags == 0) { type = type == 11 ? (byte)9 : (byte)(type - 5); isObject = false; }
         if (type >= 17)
         {
-            var payload = new byte[4 + sid.BinaryLength]; BinaryPrimitives.WriteInt32LittleEndian(payload, mask); sid.GetBinaryForm(payload, 4);
+            var claim = type == 18 ? SddlResourceCodec.Parse(fields[6]) : Array.Empty<byte>();
+            var payload = new byte[4 + sid.BinaryLength + claim.Length]; BinaryPrimitives.WriteInt32LittleEndian(payload, mask); sid.GetBinaryForm(payload, 4);
+            claim.CopyTo(payload, 4 + sid.BinaryLength);
             return new CustomAce((AceType)type, flags, payload);
         }
         var qualifier = type switch
@@ -190,8 +201,9 @@ internal static class SddlCodec
             _ => throw Invalid()
         };
         var callback = type is 9 or 10 or 11 or 13;
-        return isObject ? new ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedType, callback, null)
-            : new CommonAce(flags, qualifier, mask, sid, callback, null);
+        var opaque = callback ? SddlConditionCodec.Parse(fields[6]) : null;
+        return isObject ? new ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedType, callback, opaque)
+            : new CommonAce(flags, qualifier, mask, sid, callback, opaque);
     }
 
     private static AceFlags ParseFlags(string text)
@@ -271,6 +283,8 @@ internal static class SddlCodec
     private static void AppendAce(StringBuilder result, GenericAce ace, bool system)
     {
         var type = (byte)ace.AceType;
+        if (type == 18 && !system) throw new InvalidOperationException("Resource attributes cannot be formatted in a DACL.");
+        if (type == 18) throw new NotSupportedException("Native SDDL export omits resource attributes; portable export refuses that information loss.");
         var token = AceTypes.FirstOrDefault(pair => pair.Value == type).Key;
         if (token is null) throw new InvalidOperationException($"ACE type {type} has no valid SDDL representation.");
         if (type is 2 or 3 or 7 or 8 or 13 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0)
@@ -282,10 +296,15 @@ internal static class SddlCodec
         }
         if (type is 0 or 1 or 5 or 6 or 9 or 10 or 11 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0)
             throw new NotSupportedException("Native SDDL output omits non-audit ACE audit flags; portable export refuses that information loss.");
+        string? condition = null;
         int mask; SecurityIdentifier sid; var objectType = ""; var inheritedType = "";
         if (ace is QualifiedAce qualified)
         {
-            if (qualified.OpaqueLength != 0) throw new NotSupportedException("ACE opaque bytes cannot be omitted from SDDL.");
+            if (qualified.OpaqueLength != 0)
+            {
+                if (type is not (9 or 10 or 11 or 13)) throw new NotSupportedException("ACE opaque bytes cannot be omitted from SDDL.");
+                condition = SddlConditionCodec.Format(qualified.GetOpaque()!);
+            }
             mask = qualified.AccessMask; sid = qualified.SecurityIdentifier;
             if (ace is ObjectAce obj)
             {
@@ -306,7 +325,9 @@ internal static class SddlCodec
         else throw new NotSupportedException("This ACE layout is not supported by SDDL.");
         result.Append('(').Append(token).Append(';');
         foreach (var flag in AceFlagTokens) if (((byte)ace.AceFlags & flag.Bits) != 0) result.Append(flag.Token);
-        result.Append(';').Append(FormatRights(unchecked((uint)mask), type)).Append(';').Append(objectType).Append(';').Append(inheritedType).Append(';').Append(FormatSid(sid)).Append(')');
+        result.Append(';').Append(FormatRights(unchecked((uint)mask), type)).Append(';').Append(objectType).Append(';').Append(inheritedType).Append(';').Append(FormatSid(sid));
+        if (condition is not null) result.Append(';').Append(condition);
+        result.Append(')');
     }
 
     private static string FormatRights(uint mask, byte type)

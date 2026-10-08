@@ -46,8 +46,7 @@ public partial class PortableSecurityFoundationTests
         {
             var text = arguments.GetProperty("Text").GetString();
             if (text is "O:LA" or "G:LA" or "O:LG" or "G:LG") return "host-relative authority";
-            if (text == "D:(XA;;RP;;;WD;(@User.Title == \"Engineer\"))") return "conditional codec";
-            if (text == "S:(RA;;;;;WD;(\"Department\",TS,0,\"Engineering\"))") return "resource codec";
+            if (operation == "SddlRoundTrip" && text == "S:(RA;;;;;WD;(\"Department\",TS,0,\"Engineering\"))") return "native resource omission";
             if (operation == "SddlRoundTrip" && text is "S:(ML;;NW;;;LW)" or "S:(SP;;0;;;S-1-17-1)" or "S:(TL;;0;;;S-1-19-512-4096)")
                 return "native label/policy omission";
         }
@@ -90,9 +89,6 @@ public partial class PortableSecurityFoundationTests
     // outcome. A fixture update cannot silently redefine what a reviewed refusal stands for.
     private static readonly Dictionary<int, string> SddlDeferredNativeHashes = new()
     {
-        [331] = "563410A0A470D078CEE665B71028FDBE3610A6CA478240C41B5F659FBB334BFE",
-        [332] = "CE9508D2FDDA5ACCD7F8BB075A72689B4A1FA02E8EBC9A4692F9C42FB556812E",
-        [333] = "F17CE6E5A21675E9C41E1AB4F86B672EC86C88766ED4D399C82D8B998962B3FA",
         [334] = "F8D5E24F8C0BAB1A63A502A56D4448A16EACAEF80933E9F9D1022098F0729389",
         [336] = "E88713056C66540FB1319764AACCF2354FB00A940C8C44D7AEBC7AC59362796A",
         [338] = "556BE310D624AA6BBF180DDADCCDA80CA0340C1161B64055EBBE1802E09BA3F6",
@@ -153,12 +149,11 @@ public partial class PortableSecurityFoundationTests
             var reason = SddlDeferredReason(document.RootElement);
             if (reason is not null) { reasons.Add(reason); caseIds.Add(document.RootElement.GetProperty("Case").GetInt32()); }
         }
-        Assert.Equal(new[] { 331, 332, 333, 334, 336, 338, 340, 655, 656, 657, 658, 659, 660, 661, 662,
+        Assert.Equal(new[] { 334, 336, 338, 340, 655, 656, 657, 658, 659, 660, 661, 662,
             872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900 }, caseIds.Order());
-        Assert.Equal(38, reasons.Count);
+        Assert.Equal(35, reasons.Count);
         Assert.Equal(8, reasons.Count(r => r == "host-relative authority"));
-        Assert.Equal(2, reasons.Count(r => r == "conditional codec"));
-        Assert.Equal(2, reasons.Count(r => r == "resource codec"));
+        Assert.Equal(1, reasons.Count(r => r == "native resource omission"));
         Assert.Equal(3, reasons.Count(r => r == "native label/policy omission"));
         Assert.Equal(23, reasons.Count(r => r == "native opaque/flag omission"));
     }
@@ -178,9 +173,14 @@ public partial class PortableSecurityFoundationTests
     }
 
     [Fact]
-    public void Sddl_conditional_payload_has_explicit_deferred_contract()
+    public void Sddl_conditional_payload_and_resource_input_preserve_binary_data()
     {
-        Assert.Throws<NotSupportedException>(() => new A.RawSecurityDescriptor("D:(XA;;RP;;;WD;(@User.Title == \"Engineer\"))"));
-        Assert.Throws<NotSupportedException>(() => new A.RawSecurityDescriptor("S:(RA;;;;;WD;(\"Department\",TS,0,\"Engineering\"))"));
+        var condition = new A.RawSecurityDescriptor("D:(XA;;RP;;;WD;(@User.Title == \"Engineer\"))");
+        Assert.Equal("D:(XA;;RP;;;WD;(@USER.Title == \"Engineer\"))", condition.GetSddlForm(AccessControlSections.All));
+        var resource = new A.RawSecurityDescriptor("S:(RA;;;;;WD;(\"Department\",TS,0,\"Engineering\"))");
+        var before = new byte[resource.BinaryLength]; resource.GetBinaryForm(before, 0);
+        Assert.Throws<NotSupportedException>(() => resource.GetSddlForm(AccessControlSections.All));
+        var after = new byte[resource.BinaryLength]; resource.GetBinaryForm(after, 0);
+        Assert.Equal(before, after);
     }
 }

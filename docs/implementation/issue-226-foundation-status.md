@@ -31,7 +31,7 @@ identity collection/exception follow-up adds two, so the
 strict surface test now compares all declared members of 27 types, including exact
 mapped dependency types, parameter names/order, protected accessibility, dispatch/sealing,
 base/interface graph, properties/accessors and constants. It rejects unexpected additions
-and missing members except the explicit `SecurityIdentifier(IntPtr)` staging gap below. The recorded
+and missing members within those 27 mapped types, including `SecurityIdentifier(IntPtr)`. The recorded
 full target has 39 roots, 55 types, 702 declaration records and 28 framework boundaries.
 The shared framework enums remain framework types.
 
@@ -71,8 +71,9 @@ Examples established by actual Windows execution:
 
 ## Exact remaining dependencies
 
-The public `SecurityIdentifier(IntPtr)` constructor remains unimplemented and is the exact
-SID surface gap. The `WellKnownSidType`/domain-SID constructor and `IsWellKnown` are now
+The public `SecurityIdentifier(IntPtr)` constructor now copies caller-owned SID storage
+after native-order revision/count validation; 40 actual Windows rows cover invalid headers,
+zero/one/fifteen subauthorities, unaligned addresses and detached ownership. The `WellKnownSidType`/domain-SID constructor and `IsWellKnown` are now
 implemented with detached Windows replay. Measured static aliases are implemented; host-relative
 LA/LG aliases are explicitly refused rather than deriving ambient authority. Unrecorded parser
 combinations and deferred SDDL forms remain compatibility work, not implied full parity.
@@ -149,7 +150,7 @@ Implementation sources are the pinned MIT runtime
 [net8 exception](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs),
 and [later exception contract](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs).
 Attribution and the MIT license are retained. Surface comparison covers 27 mapped types;
-the full 55-type target and explicit SID IntPtr staging gap remain unchanged.
+the full 55-type target remains unchanged; the pointer follow-up closes the last SID member gap.
 
 Actual Windows evidence from run 37737445450, source head d1845a412d505e359e7ca8c4b4bcf5c8f87dac67,
 was imported in b168f636beb39fa4a49ad8f9f5547b5f6e0f5b46. These are retained **log-derived JSON
@@ -174,7 +175,17 @@ in the draft PR description; a passing replay alone is not fresh-native verifica
 The first evidence-only Windows run 37828649371 exposed the stale count assertions and
 incorrect raw re-import replay path; its recorder step was skipped. It is not a green result.
 
-Next required dependencies: SID IntPtr, context-bound cross-kind translation, the 38 explicit
+Next required dependencies: context-bound cross-kind translation, the 35 remaining explicit
 SDDL limitations, ObjectSecurity/DirectoryObjectSecurity hooks/locks/dirty flags, and coherent
 raw-safe retained-state/AD integration. Descriptor data carries no credentials, connections
 or resolver authority. Existing AD classes, transport and preservation policy are unchanged.
+
+## Conditional/resource and pointer checkpoint
+
+The new [SDDL slice](issue-226-sddl-progress.md#conditionalresource-and-pointer-follow-up)
+reduces the recorded refusal count from 38 to 35 and brings closure evidence to **2,564 rows
+per runtime**. It adds 203 SDDL rows and 40 pointer rows. Native conditional/resource input,
+canonical conditional output and pointer ownership now replay on both targets. The strict
+surface test has no missing member among its 27 mapped types. This does not fill the rest
+of the 55-type public/protected dependency closure. ObjectSecurity/DirectoryObjectSecurity,
+context-bound resolution and coherent raw/live/provenance integration remain required.

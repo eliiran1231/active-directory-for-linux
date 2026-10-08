@@ -7,7 +7,7 @@ This slice adds the nine supporting ACL/descriptor types to the existing
 The public SID adds its `WellKnownSidType`/domain constructor and `IsWellKnown`, together
 with the measured static aliases. The identity follow-up brings the strict manifest comparison to **27 types**; see
 [foundation status](issue-226-foundation-status.md#native-identity-and-signed-sid-follow-up--integrated-evidence).
-Its only missing member within those mapped types is `SecurityIdentifier(IntPtr)`.
+All declared members within those mapped types, including `SecurityIdentifier(IntPtr)`, are implemented.
 This is an implemented supporting slice, not completion of the full 55-type target.
 
 The detached mutable types follow the recorded constructor, ownership, indexer, enumeration,
@@ -19,10 +19,10 @@ are unchanged. This slice neither evaluates effective access nor performs direct
 ## Recorded evidence and replay
 
 The first closure probe is commit `c9ba866`; calibration is commit `bbb7249`.
-`ClosureContracts.Write` writes a separate `--closure-json` artifact. The downloaded
+`ClosureContracts.Write` writes a separate `--closure-json` artifact. The checked-in
 [net8 recording](../research/acl-windows-oracle/results/closure-windows-net8.json)
 and [net10 recording](../research/acl-windows-oracle/results/closure-windows-net10.json)
-contain **2,321 observation rows** on .NET 8.0.31 and 10.0.12,
+contain **2,564 observation rows** on .NET 8.0.31 and 10.0.12,
 using Microsoft System.DirectoryServices 9.0.0. Runtime metadata is retained separately.
 The previous 2,224 closure rows are unchanged. The only cross-runtime differences are
 null-message IdentityNotMappedException cases 2314/2317; exact runtime-aware assertions check
@@ -34,18 +34,19 @@ pins their origin and hashes, rather than claiming original artifact ZIP bytes.
 |---|---:|---:|---:|---:|
 | Raw/common ACL constructors and behavior | 112 | 63 | 49 | 0 |
 | Raw/common descriptor constructors and behavior | 119 | 102 | 17 | 0 |
-| SDDL parse | 324 | 190 | 132 | 2 |
-| SDDL round-trip | 328 | 187 | 132 | 9 |
+| SDDL parse | 437 | 273 | 164 | 0 |
+| SDDL round-trip | 409 | 253 | 148 | 8 |
 | Host-relative SDDL semantics | 4 | 0 | 0 | 4 |
 | SDDL binary formatting | 110 | 72 | 15 | 23 |
-| SDDL exception-detail snapshots | 8 | 8 | 0 | 0 |
+| SDDL exception-detail snapshots | 17 | 17 | 0 | 0 |
 | Direct SID aliases | 130 | 100 | 30 | 0 |
 | Binary SID `IsWellKnown` | 202 | 202 | 0 | 0 |
 | Well-known SID construction | 396 | 325 | 71 | 0 |
 | SID `IsWellKnown` | 503 | 503 | 0 | 0 |
 | Identity collections | 77 | 32 | 45 | 0 |
 | Mapping exception/serialization metadata | 8 | 7 | 1 | 0 |
-| **Total** | **2,321** | **1,791** | **492** | **38** |
+| SID pointer import | 40 | 6 | 34 | 0 |
+| **Total** | **2,564** | **1,955** | **574** | **35** |
 
 An exception-detail snapshot is a successful recorder operation whose payload describes the
 exception actually thrown by a native SDDL operation, including its native error code.
@@ -60,15 +61,14 @@ those require host authority and are recorded separately, without an ambient por
 
 ## Explicit SDDL limitations
 
-**38 recorded native successes deliberately require portable `NotSupportedException`.**
+**35 recorded native successes deliberately require portable `NotSupportedException`.**
 They are not counted as parity. Their registry pins exact case IDs, arguments, complete native
 row hashes and reason counts; an unreviewed new shape cannot pass through a blanket exception
 allowlist. Formatting refusals also verify that descriptor bytes remain unchanged.
 
 | Reason | Rows |
 |---|---:|
-| Conditional-expression codec | 2 |
-| Resource-attribute codec | 2 |
+| Native omission of resource attributes on formatting | 1 |
 | Native omission of label/policy entries on formatting | 3 |
 | Host-relative LA/LG aliases | 8 |
 | Native omission of opaque bytes or flag information on formatting | 23 |
@@ -101,8 +101,15 @@ These are measured local slice results, not claims about the final published hea
 Windows workflow. The Windows workflow requires committed closure, foundation, mutation
 and surface baselines and compares fresh observations. Missing baselines fail the workflow.
 
-Still staged: `SecurityIdentifier(IntPtr)`, context-bound cross-kind identity translation, `ObjectSecurity`,
+Still staged: context-bound cross-kind identity translation, `ObjectSecurity`,
 `DirectoryObjectSecurity`, complete protected dispatch/lock/dirty-flag behavior, coherent
 migration of ActiveDirectorySecurity and all nine AD rule classes, dependent consumers, and
 reviewed raw write preparation. The required manifest retains every dependency. Unknown data,
 raw provenance and no-write-on-read guarantees remain requirements for subsequent integration.
+
+The conditional/resource follow-up adds 243 actual observations (203 SDDL and 40 pointer)
+without changing the previous 2,321. [Current provenance](../research/acl-windows-oracle/results/log-derived-37832226853-provenance.json)
+pins runs 37831311746 and 37832226853. The only runtime differences remain cases 2314/2317.
+The [SDDL inventory](issue-226-sddl-progress.md) now fixes 35 refusals: 27 native lossy exports
+and eight host-authority aliases. Three earlier codec refusals are resolved; none were
+converted into skipped assertions. All new rows require native parity.

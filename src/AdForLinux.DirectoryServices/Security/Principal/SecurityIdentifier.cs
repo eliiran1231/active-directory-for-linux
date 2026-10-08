@@ -3,6 +3,7 @@
 // Native text conversion and domain behavior are implemented from the detached recordings.
 using AdForLinux.DirectoryServices.Security.Core;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 
 namespace AdForLinux.Security.Principal;
 
@@ -65,6 +66,23 @@ public sealed partial class SecurityIdentifier : IdentityReference, IComparable<
             else value = value * radix + (uint)digit;
         }
         return true;
+    }
+
+    public SecurityIdentifier(IntPtr binaryForm) : this(CopyPointer(binaryForm), 0) { }
+
+    private static byte[] CopyPointer(IntPtr binaryForm)
+    {
+        // Same caller-owned valid-pointer contract as the native constructor. Copy before
+        // returning so the identity never retains the caller's allocation or authority.
+        // Header validation order follows dotnet/runtime Win32.ConvertIntPtrSidToByteArraySid.
+        if (Marshal.ReadByte(binaryForm, 0) != 1)
+            throw new ArgumentException("The binary SID revision is invalid.", nameof(binaryForm));
+        var count = Marshal.ReadByte(binaryForm, 1);
+        if (count > Sid.MaxSubAuthorities)
+            throw new ArgumentException("The binary SID sub-authority count is invalid.", nameof(binaryForm));
+        var bytes = new byte[MinBinaryLength + 4 * count];
+        Marshal.Copy(binaryForm, bytes, 0, bytes.Length);
+        return bytes;
     }
 
     public SecurityIdentifier(byte[] binaryForm, int offset)
