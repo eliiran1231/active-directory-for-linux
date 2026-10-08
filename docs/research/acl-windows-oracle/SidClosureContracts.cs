@@ -28,5 +28,17 @@ internal static class SidClosureContracts
         foreach (var value in new[] { "S-1-5-5-1-2", "S-1-5-21-1-2-3-500", "S-1-5-21-1-2-3-501", "S-1-5-32-544", "S-1-1-0" })
         foreach (var type in types)
             record("SidClosureIsWellKnown",new {Value=value,Type=type},()=>new B.SecurityIdentifier(value).IsWellKnown((B.WellKnownSidType)type));
+
+        // Classification may support enum values beyond the constructor's accepted range.
+        // Observe both matching and cross-paired classifications; do not widen construction.
+        // Existing Everyone/Admins rows already supply unrelated negative controls for 95/96.
+        foreach (var value in new[] { "S-1-5-32-575", "S-1-5-32-576", "RA", "ES" })
+        foreach (var type in new[] { 95, 96 })
+            record("SidClosureIsWellKnown", new { Value = value, Type = type }, () =>
+                new B.SecurityIdentifier(value).IsWellKnown((B.WellKnownSidType)type));
+        foreach (var hex in new[] { "0102000000000005200000003F020000", "01020000000000052000000040020000" })
+        foreach (var type in new[] { 95, 96 })
+            record("SidClosureIsWellKnownBinary", new { Hex = hex, Type = type }, () =>
+                new B.SecurityIdentifier(Convert.FromHexString(hex), 0).IsWellKnown((B.WellKnownSidType)type));
     }
 }

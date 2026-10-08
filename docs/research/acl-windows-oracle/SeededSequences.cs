@@ -103,6 +103,7 @@ internal static partial class SeededSequences
         RecordProjectedReconciliation(observations);
         RecordProjectedLiveSequences(observations);
         RecordLayoutSequences(observations);
+        RecordSignedSidOrdering(observations);
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         var recording = new
