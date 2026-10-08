@@ -57,6 +57,44 @@ internal static class SddlPayloadContracts
             var r = revision; var c = count; var o = offset;
             record("SidPointer", new { Revision = r, Count = c, Offset = o }, () => Pointer(r, c, o));
         }
+        foreach (var condition in new[]
+        {
+            "@User.A == #0102FF", "@User.A == #ABC", "@User.A == #", "@User.A == {1,2}",
+            "@User.A == {1,\"x\"}", "@User.A == {}", "@User.A == {{1}}", "@User.A == SID(WD)",
+            "@User.A == Title", "@User.A != -0", "@User.A == -0x10", "@User.A == +077",
+            "@User.A == 18446744073709551615", "@User.A == 18446744073709551616", "@User.A == 08",
+            "@User.A == +9223372036854775808", "@User.A == 1 == 1",
+            "Exists @User.A", "Exists @Resource.A", "Not_Exists @Device.A",
+            "Member_of SID(WD)", "Member_of {1}", "Member_of @User.A",
+            "Device_Member_of SID(WD)", "Member_of_Any SID(WD)", "Device_Member_of_Any SID(WD)",
+            "Not_Member_of SID(WD)", "Not_Device_Member_of SID(WD)",
+            "Not_Member_of_Any SID(WD)", "Not_Device_Member_of_Any SID(WD)",
+            "@User.A Not_Contains 1", "@User.A Not_Any_of 1", "@User.A contains 1",
+            "!@User.A", "(@User.A)", "@User.A && @User.B", "Title", "@User.A%0022B == 1",
+            "@User.A%0025B == 1", "@User.A%0000B == 1", "@User.A%FFFF == 1", "@User.A == \" x \""
+        })
+        {
+            var text = $"D:(XA;;RP;;;WD;({condition}))";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+        foreach (var text in new[]
+        {
+            "S:(XA;;RP;;;WD;(@User.A == 1))", "D:(XU;SA;RP;;;WD;(@User.A == 1))",
+            "S:(XU;;RP;;;WD;(@User.A == 1))", "D:(XA;SA;RP;;;WD;(@User.A == 1))",
+            "D:(RA;;;;;WD;(\"Name\",TS,0,\"x\"))", "S:(RA;;RP;;;WD;(\"Name\",TS,0,\"x\"))",
+            "S:(RA;;;;;BA;(\"Name\",TS,0,\"x\"))", "S:(RA;SA;;;;WD;(\"Name\",TS,0,\"x\"))",
+            "S:(RA;;;;;WD;(\"Age\",TI,0,9223372036854775808))"
+        })
+        {
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlErrorDetails", new { Text = text }, () =>
+            {
+                try { _ = new RawSecurityDescriptor(text); return null; }
+                catch (Exception exception) { return new { Type = exception.GetType().FullName, ParamName = (exception as ArgumentException)?.ParamName, NativeErrorCode = (exception as System.ComponentModel.Win32Exception)?.NativeErrorCode }; }
+            });
+        }
+
     }
     private static object Snapshot(RawSecurityDescriptor descriptor)
     {
