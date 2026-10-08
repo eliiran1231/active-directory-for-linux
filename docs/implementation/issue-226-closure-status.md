@@ -6,7 +6,7 @@ This slice adds the nine supporting ACL/descriptor types to the existing
 `GenericSecurityDescriptor`, `RawSecurityDescriptor` and `CommonSecurityDescriptor`.
 The public SID adds its `WellKnownSidType`/domain constructor and `IsWellKnown`, together
 with the measured static aliases. The identity follow-up brings the strict manifest comparison to **27 types**; see
-[foundation status](issue-226-foundation-status.md#identity-collectionexception-follow-up--local-native-replay-import-blocked).
+[foundation status](issue-226-foundation-status.md#native-identity-and-signed-sid-follow-up--integrated-evidence).
 Its only missing member within those mapped types is `SecurityIdentifier(IntPtr)`.
 This is an implemented supporting slice, not completion of the full 55-type target.
 
@@ -22,9 +22,13 @@ The first closure probe is commit `c9ba866`; calibration is commit `bbb7249`.
 `ClosureContracts.Write` writes a separate `--closure-json` artifact. The downloaded
 [net8 recording](../research/acl-windows-oracle/results/closure-windows-net8.json)
 and [net10 recording](../research/acl-windows-oracle/results/closure-windows-net10.json)
-contain **2,224 byte-for-byte equivalent observation rows** on .NET 8.0.31 and 10.0.12,
+contain **2,321 observation rows** on .NET 8.0.31 and 10.0.12,
 using Microsoft System.DirectoryServices 9.0.0. Runtime metadata is retained separately.
-The previous 2,692 foundation observations and 1,493 mutation observations remain unchanged.
+The previous 2,224 closure rows are unchanged. The only cross-runtime differences are
+null-message IdentityNotMappedException cases 2314/2317; exact runtime-aware assertions check
+both messages and every remaining field. Current mutation evidence has 1,845 rows; the 2,692
+foundation rows remain unchanged. Updated files are log-derived; [provenance](../research/acl-windows-oracle/results/log-derived-37737445450-provenance.json)
+pins their origin and hashes, rather than claiming original artifact ZIP bytes.
 
 | Recorded operation family | Rows | Exact successful outcomes | Exact native exceptions | Explicit portable refusals |
 |---|---:|---:|---:|---:|
@@ -36,10 +40,12 @@ The previous 2,692 foundation observations and 1,493 mutation observations remai
 | SDDL binary formatting | 110 | 72 | 15 | 23 |
 | SDDL exception-detail snapshots | 8 | 8 | 0 | 0 |
 | Direct SID aliases | 130 | 100 | 30 | 0 |
-| Binary SID `IsWellKnown` | 198 | 198 | 0 | 0 |
+| Binary SID `IsWellKnown` | 202 | 202 | 0 | 0 |
 | Well-known SID construction | 396 | 325 | 71 | 0 |
-| SID `IsWellKnown` | 495 | 495 | 0 | 0 |
-| **Total** | **2,224** | **1,740** | **446** | **38** |
+| SID `IsWellKnown` | 503 | 503 | 0 | 0 |
+| Identity collections | 77 | 32 | 45 | 0 |
+| Mapping exception/serialization metadata | 8 | 7 | 1 | 0 |
+| **Total** | **2,321** | **1,791** | **492** | **38** |
 
 An exception-detail snapshot is a successful recorder operation whose payload describes the
 exception actually thrown by a native SDDL operation, including its native error code.
@@ -80,7 +86,7 @@ conditional/resource SDDL support or permission to discard opaque binary data.
 
 ## Verification and remaining work
 
-The focused closure/surface/cross-runtime/deferral suite passed **2,228 tests on each Linux
+The original ACL/descriptor slice's focused closure/surface/cross-runtime/deferral suite passed **2,228 tests on each Linux
 target**. The subsequent complete offline suite passed **7,282/7,282 on net8 and net10**,
 with no skips, including the final native-row hash pins on both targets. The whole solution
 build succeeded; its final incremental run reported zero warnings and zero errors after
@@ -88,12 +94,14 @@ local suppression of platform annotations on portable enum values. A clean test-
 build still has seven pre-existing xUnit warnings per target, so the incremental result is
 not a claim of a warning-free clean build.
 
+The integrated identity/signed-SID suite now contains **7,761 offline tests per runtime**;
+the draft PR records the latest exact-head execution results.
+
 These are measured local slice results, not claims about the final published head or its
 Windows workflow. The Windows workflow requires committed closure, foundation, mutation
 and surface baselines and compares fresh observations. Missing baselines fail the workflow.
 
-Still staged: `SecurityIdentifier(IntPtr)`, native replay evidence for the newly implemented
-identity collection/exception types, context-bound cross-kind identity translation, `ObjectSecurity`,
+Still staged: `SecurityIdentifier(IntPtr)`, context-bound cross-kind identity translation, `ObjectSecurity`,
 `DirectoryObjectSecurity`, complete protected dispatch/lock/dirty-flag behavior, coherent
 migration of ActiveDirectorySecurity and all nine AD rule classes, dependent consumers, and
 reviewed raw write preparation. The required manifest retains every dependency. Unknown data,

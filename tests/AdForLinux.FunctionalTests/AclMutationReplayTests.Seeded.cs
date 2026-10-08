@@ -8,14 +8,26 @@ namespace AdForLinux.FunctionalTests;
 
 public partial class AclMutationReplayTests
 {
-    // Each case begins with the actual serialized Microsoft input of that step, so a
-    // failure identifies one operation independently of earlier portable mutations.
+    // Isolated raw cases start from serialized input. Retained-live cases replay their
+    // original import and preceding operations: signed SID ordering is not idempotent,
+    // so reconstructing a live object from its current bytes is a different operation.
     [Theory]
     [MemberData(nameof(RecordedSeededSteps))]
     public void Seeded_Microsoft_step_matches_recorded_outcome(string sequence, int index, string json)
     {
         Assert.False(string.IsNullOrEmpty(sequence));
         Assert.True(index >= 0);
+        if (sequence.StartsWith("projected-live-", StringComparison.Ordinal))
+        {
+            using var recording = ReadSeededRecording("net8");
+            var steps = recording.RootElement.GetProperty("Observations").EnumerateArray()
+                .Where(step => step.GetProperty("Sequence").GetString() == sequence
+                    && step.GetProperty("Index").GetInt32() <= index).ToArray();
+            Assert.Equal(index + 1, steps.Length);
+            Assert.Equal(json, steps.Single(step => step.GetProperty("Index").GetInt32() == index).GetRawText());
+            ReplayProjectedLiveSequence(steps);
+            return;
+        }
         using var document = JsonDocument.Parse(json);
         var step = document.RootElement;
         var original = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
@@ -68,7 +80,10 @@ public partial class AclMutationReplayTests
     {
         using var recording = ReadSeededRecording("net8");
         foreach (var sequence in recording.RootElement.GetProperty("Observations").EnumerateArray()
-            .Where(step => step.GetProperty("Operation").GetString() != "Import")
+            // Retained-live sequences have their own original-import replay below and
+            // are also exercised up through each individual theory row above.
+            .Where(step => step.GetProperty("Operation").GetString() != "Import"
+                && !step.GetProperty("Sequence").GetString()!.StartsWith("projected-live-", StringComparison.Ordinal))
             .GroupBy(step => step.GetProperty("Sequence").GetString()))
         {
             var first = Convert.FromHexString(sequence.First().GetProperty("InputHex").GetString()!);
@@ -177,57 +192,60 @@ public partial class AclMutationReplayTests
         var sequences = recording.RootElement.GetProperty("Observations").EnumerateArray()
             .Where(step => step.GetProperty("Sequence").GetString()!.StartsWith("projected-live-", StringComparison.Ordinal))
             .GroupBy(step => step.GetProperty("Sequence").GetString()).ToArray();
-        Assert.Equal(8, sequences.Length);
-        foreach (var sequence in sequences)
+        Assert.Equal(52, sequences.Length);
+        Assert.Equal(516, sequences.Sum(sequence => sequence.Count()));
+        foreach (var sequence in sequences) ReplayProjectedLiveSequence(sequence);
+    }
+
+    private static void ReplayProjectedLiveSequence(IEnumerable<JsonElement> sequence)
+    {
+        var original = Convert.FromHexString(sequence.First().GetProperty("RequestedDescriptorHex").GetString()!);
+        var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
+        var snapshots = new List<(AclMutationEngine Engine, byte[] Raw, byte[] Live, SecurityMasks Intent)>();
+        foreach (var step in sequence.OrderBy(step => step.GetProperty("Index").GetInt32()))
         {
-            var original = Convert.FromHexString(sequence.First().GetProperty("RequestedDescriptorHex").GetString()!);
-            var engine = new AclMutationEngine(SecurityDescriptor.Parse(original, All));
-            var snapshots = new List<(AclMutationEngine Engine, byte[] Raw, byte[] Live, SecurityMasks Intent)>();
-            foreach (var step in sequence.OrderBy(step => step.GetProperty("Index").GetInt32()))
+            var input = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
+            var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
+            var before = engine;
+            var raw = before.Descriptor.GetBinaryForm();
+            Assert.Equal(input, before.GetObservableDescriptor().GetBinaryForm());
+            snapshots.Add((before, raw, input, before.WriteIntent));
+            var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
+            var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
+            var operation = step.GetProperty("Operation").GetString()!;
+            AclMutationResult result = operation switch
             {
-                var input = Convert.FromHexString(step.GetProperty("InputHex").GetString()!);
-                var expected = Convert.FromHexString(step.GetProperty("OutputHex").GetString()!);
-                var before = engine;
-                var raw = before.Descriptor.GetBinaryForm();
-                Assert.Equal(input, before.GetObservableDescriptor().GetBinaryForm());
-                snapshots.Add((before, raw, input, before.WriteIntent));
-                var section = Enum.Parse<SecurityMasks>(step.GetProperty("Section").GetString()!);
-                var sid = Sid.Parse(step.GetProperty("Sid").GetString()!);
-                var operation = step.GetProperty("Operation").GetString()!;
-                AclMutationResult result = operation switch
-                {
-                    "Get" => new(before, true, false),
-                    "Owner" => before.SetOwner(sid),
-                    "Group" => before.SetGroup(sid),
-                    "Purge" => before.PurgeProjected(section, sid),
-                    "Protect" => before.SetProtectionProjected(section, true, true),
-                    "ProtectDrop" => before.SetProtectionProjected(section, true, false),
-                    "Unprotect" => before.SetProtectionProjected(section, false, true),
-                    _ => before.ModifyProjected(section, Enum.Parse<AclModification>(operation),
-                        CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
-                };
-                Assert.Null(step.GetProperty("ExceptionType").GetString());
-                engine = result.Engine;
-                if (step.GetProperty("ReturnValue").ValueKind != JsonValueKind.Null)
-                    Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
-                if (step.GetProperty("Modified").ValueKind != JsonValueKind.Null)
-                    Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
-                Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
-                Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
-                if (input.SequenceEqual(expected))
-                {
-                    Assert.Same(before, engine);
-                    Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
-                    Assert.Equal(before.WriteIntent, engine.WriteIntent);
-                }
-                else Assert.Equal(before.WriteIntent | section, engine.WriteIntent);
-                Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
-                foreach (var snapshot in snapshots)
-                {
-                    Assert.Equal(snapshot.Raw, snapshot.Engine.Descriptor.GetBinaryForm());
-                    Assert.Equal(snapshot.Live, snapshot.Engine.GetObservableDescriptor().GetBinaryForm());
-                    Assert.Equal(snapshot.Intent, snapshot.Engine.WriteIntent);
-                }
+                "Get" => new(before, true, false),
+                "Owner" => before.SetOwner(sid),
+                "Group" => before.SetGroup(sid),
+                "Purge" => before.PurgeProjected(section, sid),
+                "Protect" => before.SetProtectionProjected(section, true, true),
+                "ProtectDrop" => before.SetProtectionProjected(section, true, false),
+                "Unprotect" => before.SetProtectionProjected(section, false, true),
+                _ => before.ModifyProjected(section, Enum.Parse<AclModification>(operation),
+                    CoreAce.Read(Convert.FromHexString(step.GetProperty("RuleHex").GetString()!))),
+            };
+            Assert.Null(step.GetProperty("ExceptionType").GetString());
+            engine = result.Engine;
+            if (step.GetProperty("ReturnValue").ValueKind != JsonValueKind.Null)
+                Assert.Equal(step.GetProperty("ReturnValue").GetBoolean(), result.ReturnValue);
+            if (step.GetProperty("Modified").ValueKind != JsonValueKind.Null)
+                Assert.Equal(step.GetProperty("Modified").GetBoolean(), result.Modified);
+            Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
+            Assert.Equal(expected, engine.GetObservableDescriptor().GetBinaryForm());
+            if (input.SequenceEqual(expected))
+            {
+                Assert.Same(before, engine);
+                Assert.Equal(raw, engine.Descriptor.GetBinaryForm());
+                Assert.Equal(before.WriteIntent, engine.WriteIntent);
+            }
+            else Assert.Equal(before.WriteIntent | section, engine.WriteIntent);
+            Assert.Equal(original, engine.OriginalDescriptor.GetBinaryForm());
+            foreach (var snapshot in snapshots)
+            {
+                Assert.Equal(snapshot.Raw, snapshot.Engine.Descriptor.GetBinaryForm());
+                Assert.Equal(snapshot.Live, snapshot.Engine.GetObservableDescriptor().GetBinaryForm());
+                Assert.Equal(snapshot.Intent, snapshot.Engine.WriteIntent);
             }
         }
     }
@@ -342,6 +360,7 @@ public partial class AclMutationReplayTests
     {
         using var net8 = ReadSeededRecording("net8");
         using var net10 = ReadSeededRecording("net10");
+        Assert.Equal(1845, net8.RootElement.GetProperty("Observations").GetArrayLength());
         Assert.Equal(net8.RootElement.GetProperty("Seed").GetInt32(), net10.RootElement.GetProperty("Seed").GetInt32());
         Assert.Equal(net8.RootElement.GetProperty("MicrosoftAssembly").GetString(), net10.RootElement.GetProperty("MicrosoftAssembly").GetString());
         Assert.Equal(net8.RootElement.GetProperty("Observations").GetRawText(), net10.RootElement.GetProperty("Observations").GetRawText());

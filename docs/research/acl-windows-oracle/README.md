@@ -551,3 +551,29 @@ all four corpus/manifest families and fails when a baseline is absent. The final
 pins all 38 deferred SDDL case IDs, arguments and native row hashes and verifies refusal rather
 than pretending those cases match native success. No directory, translation, persistence or
 privilege operation is involved in producing these records.
+
+
+## Integrated signed-SID and identity recordings
+
+Run [37737445450](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450),
+source head `d1845a412d505e359e7ca8c4b4bcf5c8f87dac67`, supplies 1,845 mutation observations
+and 2,321 closure observations per runtime. The additions are 352 mutation/import/live steps,
+12 SID classifier cases and 85 identity collection/exception cases. All previous mutation and
+closure rows are unchanged; all 2,692 foundation rows and required-surface files are unchanged.
+
+The updated mutation/closure files are exact retained log-emitted JSON with a final LF, **not
+original artifact ZIP downloads**. See [provenance](results/log-derived-37737445450-provenance.json)
+and [SHA256 checksums](results/log-derived-37737445450.sha256). No failed download endpoint was
+retried to obtain these repository imports.
+
+The two mutation arrays agree completely. Closure differs only at cases 2314 and 2317:
+net8's null-message IdentityNotMappedException uses its CLR type-name message, while net10
+uses the specific translation message. Replay asserts those exact messages, with only the
+approved portable namespace substitution in the net8 type name, and compares all other
+fields and rows unchanged. The 38 explicitly deferred native SDDL successes remain deferred.
+
+Signed SID comparison is unchecked subtraction, not unsigned numerical order. Its boundary
+behavior can be nontransitive, so importing already-live serialized ACL bytes again is not a
+valid substitute for a retained-object operation. The replay suite covers all 52 retained-live
+sequences (516 steps) from their original raw import, including each individual step's full
+prefix, immutable snapshots, return/modified flags, raw/live values and accumulated intent.

@@ -33,7 +33,8 @@ public partial class PortableSecurityFoundationTests
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
         var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
-        Assert.Equal(2224,firstRows.Length); // Advance only when original native artifacts are imported.
+        Assert.Equal(2321,firstRows.Length);
+        var differences=new List<int>();
         Assert.Equal(firstRows.Length,secondRows.Length);
         for(var i=0;i<firstRows.Length;i++)
         {
@@ -42,6 +43,7 @@ public partial class PortableSecurityFoundationTests
             Assert.Equal(caseId,b.GetProperty("Case").GetInt32());
             if(caseId is 2314 or 2317)
             {
+                differences.Add(caseId);
                 Assert.Equal("IdentityMappingException",a.GetProperty("Operation").GetString());
                 Assert.Equal(caseId==2314?1:4,a.GetProperty("Arguments").GetProperty("Scenario").GetInt32());
                 Assert.Equal(NativeGenericMappingMessage,a.GetProperty("Outcome").GetProperty("Message").GetString());
@@ -52,6 +54,7 @@ public partial class PortableSecurityFoundationTests
             }
             else Assert.Equal(JsonSerializer.Serialize(a),JsonSerializer.Serialize(b));
         }
+        Assert.Equal(new[] {2314,2317},differences);
     }
 
     private const string NativeGenericMappingMessage = "Exception of type 'System.Security.Principal.IdentityNotMappedException' was thrown.";

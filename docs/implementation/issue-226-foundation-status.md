@@ -82,8 +82,7 @@ with a pending-resolver message. This is a foundation staging guard, **not the f
 exception contract or a new ambient-authentication policy**. It performs no lookup and derives
 no authority from the value. The already approved context-bound resolver/ambient SID-to-name
 policy still needs implementation. IdentityReferenceCollection and IdentityNotMappedException
-now have detached implementations and complete public/protected surface checks. Their new
-85-row native replay remains pending import of the original recorded evidence; see the
+now have detached implementations and complete public/protected surface checks. Their 85 native identity observations are now imported and replayed; see the
 identity follow-up below.
 
 The portable ACL/descriptor supporting closure is now implemented and compared against the
@@ -121,83 +120,61 @@ DirectoryEntryReadTests and GroupPrincipalTests remain on a clean test-project b
 previous zero-warning solution result was an incremental local build, not a warning-free
 clean Windows build; no directory-dependent tests were run to change those fixtures.
 
-## Recovery follow-up — 2026-10-08
+## Native identity and signed-SID follow-up — integrated evidence
 
-Starting from verified published head `d1845a412d505e359e7ca8c4b4bcf5c8f87dac67`,
-the internal canonicalizer now compares subauthorities using unchecked signed subtraction,
-matching the existing portable SID comparison. In particular, `S-1-5-4294967295` sorts before
-`S-1-5-1`. Focused DACL/SACL tests verify both input orders, unchanged ACE contents and
-unchanged raw ACL bytes. `IsWellKnown` now classifies native values 95 and 96 as builtin RIDs
-575 (RA) and 576 (ES), respectively; cross-pairs remain false. These classification-only
-values do not extend the managed constructor's upper bound of 94.
+The canonicalizer now uses unchecked signed subauthority subtraction, matching Microsoft's
+SID comparison, including `S-1-5-4294967295` before `S-1-5-1`. IsWellKnown classifies native
+values 95/96 as builtin RIDs 575/576 (RA/ES), with cross-pairs false. Classification remains
+separate from the managed constructor's bound of 94.
 
-Linux Release offline validation passes **7,294 tests per target** on .NET 8 and 10, with
-zero failures/skips. A full solution rebuild succeeds with the existing seven xUnit2013
-warnings per target. Twelve added regressions supplement the existing committed recordings;
-they do not replace fresh native evidence or claim full dependency closure.
+`IdentityReferenceCollection` and `IdentityNotMappedException` implement the complete mapped
+public/protected surface. Collection capacity/index/null/copy behavior follows the native
+managed list contracts. Duplicates and object identities are retained; removal selects the
+first equal value. The enumerator observes the live list by index, advances even on false
+MoveNext, resets to -1 and has no-op Dispose. Empty/same-kind translation produces a new
+collection retaining identity instances. Cross-kind translation retains the explicit pending
+context-bound resolver refusal; forceSuccess does not convert missing resolver authority
+into a native mapping-failure claim.
 
-The recovery environment could list Windows run `37737445450` artifacts 11532172439 (net8)
-and 11532720752 (net10) through the authorized GitHub connector, but downloading the
-connector-provided file URLs returned HTTP 403, including a reviewed retry. Thus this change
-does **not** import or reconstruct those recordings. The committed baselines still contain
-1,493 mutation, 2,692 foundation and 2,224 closure rows. The push workflow's strict freshness
-comparison is expected to remain blocked by the unimported new observations.
-
-The next required identity work remains `IdentityReferenceCollection` and
-`IdentityNotMappedException`, replay of the 85 newly reported identity rows, and exact
-runtime-aware assertions for closure cases 2314/2317 (null-message constructors). Their
-reported net8 generic type-name message versus net10 translation message must be verified
-from the original recordings; blanket cross-runtime equality must not replace that contract.
-The 352 new mutation/live rows and 12 classifier rows also await artifact import. SDDL's
-38 explicit refusals, SID IntPtr, context-bound translation, ObjectSecurity and
-DirectoryObjectSecurity, retained-state facade integration and coherent AD/raw-safe cutover
-remain incomplete. No AD class, transport, resolver authority or preservation policy changed.
-
-
-## Identity collection/exception follow-up — local, native replay import blocked
-
-`IdentityReferenceCollection` and `IdentityNotMappedException` are implemented as detached
-supporting types. Collection capacity/index/null/copy behavior delegates to the same managed
-list contracts as Microsoft. Duplicate values and object identity remain intact; removal
-selects the first equal value. The enumerator observes the live list by index, advances even
-on a false MoveNext, resets to -1, and has no-op Dispose. Same-kind and empty translation
-return new collections retaining existing identity instances. Cross-kind translation retains
-the existing explicit pending-resolver NotSupportedException, independently of forceSuccess;
-this is a documented staging refusal, not the final native mapping exception contract.
-
-The mapping exception retains inner exceptions, SystemException's HResult, one lazy mutable
-UnmappedIdentities collection per instance, and base-only metadata serialization. A null
-message follows the target runtime: net8 delegates to the CLR's generic message naming the
-portable exception type; net10 supplies the translation message. An explicit empty message
-stays empty. No formatter or deserialization was executed.
+The mapping exception retains its inner exception, SystemException HResult, lazy mutable
+UnmappedIdentities collection and base-only serialization metadata. No formatter or
+deserialization is invoked. Cases 2314/2317 establish the runtime distinction: net8 uses the
+CLR generic message naming the exception type; net10 uses the translation message. Replay
+pins both exact messages, substitutes only the approved portable namespace in net8, and
+compares every other field. Cross-runtime comparison requires precisely those two cases to
+differ; all other 2,319 closure rows match exactly.
 
 Implementation sources are the pinned MIT runtime
 [IRCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IRCollection.cs),
 [net8 exception](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs),
 and [later exception contract](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs).
-Attribution and MIT license are retained. The strict manifest now covers 27 mapped types,
-with only the previously explicit SID IntPtr gap within those types. The full 55-type target
-is unchanged.
+Attribution and the MIT license are retained. Surface comparison covers 27 mapped types;
+the full 55-type target and explicit SID IntPtr staging gap remain unchanged.
 
-Eighteen focused source-contract tests were added. The complete Linux offline suite passes
-**7,312 tests per runtime**, no failures/skips, and the full solution builds. These tests are
-separate from the pending 85 actual native rows. The replay dispatch supports all ten native
-identity operation families. Runtime-aware comparisons for cases 2314/2317 pin each exact
-native/portable message and compare every other field, rather than discarding all messages or
-requiring blanket runtime equality. Those two recording branches are not yet exercised by
-the committed 2,224-row closure baseline; its count is deliberately unchanged until import.
+Actual Windows evidence from run 37737445450, source head d1845a412d505e359e7ca8c4b4bcf5c8f87dac67,
+was imported in b168f636beb39fa4a49ad8f9f5547b5f6e0f5b46. These are retained **log-derived JSON
+recordings**, not downloaded artifact ZIP bytes. The [provenance and checksums](../research/acl-windows-oracle/results/log-derived-37737445450-provenance.json)
+record source jobs, timestamps, byte lengths, Git blob identities and SHA256 hashes. Local
+verification confirms all four file hashes and that the previous 1,493 mutation/2,224 closure
+rows are unchanged. The 2,692 foundation rows and required-surface recordings are unchanged.
+Current totals per runtime: **1,845 mutation, 2,692 foundation and 2,321 closure observations**.
 
-The reviewer supplied retained log-derived evidence for run 37737445450 through Library,
-archive SHA256 `90fa44e839b776946bb31fb70ff9252a5acb6c548d3078a3793bedce3d1907ca`.
-The supported resolved-reference materialization route resolved the file, but both the first
-consumer-local transfer and the one permitted retry returned `download failed`, without an
-HTTP status or response body. No local archive was produced; archive/per-file hashes could
-not be checked. No denied artifact endpoint or authentication route was retried. No baseline
-was reconstructed. A successful future import must label these bytes as log-derived JSON,
-not original downloaded ZIP contents, and validate provenance and all supplied hashes.
+The additions are 352 mutation/live rows, 12 classifier rows and 85 identity rows. All are
+replayed, not reconstructed. The retained-live harness covers **52 sequences / 516 steps**,
+including every individual live row through its original import and preceding operations.
+Unchecked signed SID comparison can be nontransitive: re-importing current live bytes can
+reorder them again. The old isolated raw harness accidentally did that; it is no longer used
+for retained-live rows. Tests preserve return/modified checks, raw/live bytes, intent,
+contributor provenance and prior immutable snapshots. No production engine behavior was
+changed to accommodate this test-harness correction.
 
-Next: import and replay the retained native evidence, then verify an exact-head Windows
-checkpoint. The 38 explicit SDDL limitations, SID IntPtr, context-bound translation,
-ObjectSecurity/DirectoryObjectSecurity hooks and the raw-safe retained-state/AD cutover remain
-required, incomplete work. These collection/exception values carry no resolver credentials,
-connections, or authority. Existing AD classes, transport and preservation policy are unchanged.
+The complete Linux offline suite contains **7,761 tests per target**, including the 18 focused
+identity tests and 12 SID regressions. Build/CI details for the published checkpoint are kept
+in the draft PR description; a passing replay alone is not fresh-native verification.
+The first evidence-only Windows run 37828649371 exposed the stale count assertions and
+incorrect raw re-import replay path; its recorder step was skipped. It is not a green result.
+
+Next required dependencies: SID IntPtr, context-bound cross-kind translation, the 38 explicit
+SDDL limitations, ObjectSecurity/DirectoryObjectSecurity hooks/locks/dirty flags, and coherent
+raw-safe retained-state/AD integration. Descriptor data carries no credentials, connections
+or resolver authority. Existing AD classes, transport and preservation policy are unchanged.
