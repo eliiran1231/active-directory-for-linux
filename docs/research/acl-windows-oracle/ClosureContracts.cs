@@ -25,9 +25,10 @@ internal static class ClosureContracts
         DescriptorClosureContracts.Record(Record);
         SddlContracts.Record(Record);
         SidClosureContracts.Record(Record);
+        IdentityCollectionContracts.Record(Record);
         var recording = new { SchemaVersion = 1, Runtime = RuntimeInformation.FrameworkDescription,
             OS = RuntimeInformation.OSDescription, MicrosoftAssembly = typeof(M.ActiveDirectorySecurity).Assembly.FullName,
-            Scope = "Detached ACL, descriptor and SDDL contracts only. No directory I/O, identity translation, persistence or privilege changes.",
+            Scope = "Detached ACL, descriptor, SDDL and identity collection contracts only. No directory I/O, identity lookup, persistence or privilege changes.",
             Observations = rows };
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         File.WriteAllText(path, JsonSerializer.Serialize(recording, new JsonSerializerOptions { WriteIndented = true }));
