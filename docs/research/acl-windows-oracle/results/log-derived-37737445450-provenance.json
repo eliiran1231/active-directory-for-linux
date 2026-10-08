@@ -1,0 +1,72 @@
+{
+  "schema": "issue-226-log-derived-evidence-v1",
+  "source": "JSON emitted in previously retrieved GitHub Actions job logs; not downloaded artifact ZIP bytes.",
+  "repository": "eliiran1231/active-directory-for-linux",
+  "source_run_id": 37737445450,
+  "source_run_url": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450",
+  "source_head_sha": "d1845a412d505e359e7ca8c4b4bcf5c8f87dac67",
+  "evidence_commit_parent_sha": "e2e6820414a2d2031c3006d9344ddadff815fed3",
+  "extraction": "Exact JSON text after the SEEDED_JSON or CLOSURE_JSON marker, excluding the timestamp and marker, with a final LF added. No observation was fabricated or changed.",
+  "source_run_status": "Probe checkpoint: existing portable tests passed; the subsequent freshness comparison failed against the prior committed baselines.",
+  "validation": "Every prior observation is unchanged: the first 1493 mutation rows and first 2224 closure rows match the parent commit's recordings. Foundation recordings are not replaced.",
+  "runtime_difference": "Closure cases 2314 and 2317 record different native IdentityNotMappedException null-message results on net8 and net10. Preserve this measured difference.",
+  "files": [
+    {
+      "path": "docs/research/acl-windows-oracle/results/seeded-windows-net8.json",
+      "runtime": "net8",
+      "kind": "seeded",
+      "source_job_id": 113180116966,
+      "source_job_url": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450/job/113180116966",
+      "source_log_timestamp": "2026-10-08T06:25:54.0836321Z",
+      "prior_observations": 1493,
+      "observations": 1845,
+      "prior_git_blob_sha": "b219ff363931375e655c0794456b1a7e0b4affe8",
+      "size_bytes": 2061461,
+      "sha256": "f048456949426e65efb71d4e9ad75e63fdd6431e71ebfd4ebde6d172d83bc76d",
+      "git_blob_sha": "2a13ab4ad658e3223ad2a282ebe6b86f8331429b"
+    },
+    {
+      "path": "docs/research/acl-windows-oracle/results/closure-windows-net8.json",
+      "runtime": "net8",
+      "kind": "closure",
+      "source_job_id": 113180116966,
+      "source_job_url": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450/job/113180116966",
+      "source_log_timestamp": "2026-10-08T06:25:56.1584784Z",
+      "prior_observations": 2224,
+      "observations": 2321,
+      "prior_git_blob_sha": "84efd4fbe0dcd3332afc8ffd073b8899a25936bb",
+      "size_bytes": 528636,
+      "sha256": "bcd7ff7e73d1789318738572b1c3a3295dcb351e3bd788bd36dcb6bf3261b111",
+      "git_blob_sha": "7ba2d10562761999496fafc1dac149f2fae0be73"
+    },
+    {
+      "path": "docs/research/acl-windows-oracle/results/seeded-windows-net10.json",
+      "runtime": "net10",
+      "kind": "seeded",
+      "source_job_id": 113180117269,
+      "source_job_url": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450/job/113180117269",
+      "source_log_timestamp": "2026-10-08T06:25:27.6525396Z",
+      "prior_observations": 1493,
+      "observations": 1845,
+      "prior_git_blob_sha": "1bc16c8794e797ad2dc7fe89a96486c129071ed1",
+      "size_bytes": 2061462,
+      "sha256": "858e3db37c7fc2240454575723fae8a875e531344769db7444f9977025e772d6",
+      "git_blob_sha": "28427369c027dfeb19373dec8cd1d08326ee2dc9"
+    },
+    {
+      "path": "docs/research/acl-windows-oracle/results/closure-windows-net10.json",
+      "runtime": "net10",
+      "kind": "closure",
+      "source_job_id": 113180117269,
+      "source_job_url": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37737445450/job/113180117269",
+      "source_log_timestamp": "2026-10-08T06:25:28.3818763Z",
+      "prior_observations": 2224,
+      "observations": 2321,
+      "prior_git_blob_sha": "655ceaf51ad502cb699004977ca1fac256d679e9",
+      "size_bytes": 528561,
+      "sha256": "14b6931b28e706983b70e759a43d85afdfea34044fca5e5b7e48c5fcf24e0b91",
+      "git_blob_sha": "1f4bc9cfaa2feaffe10489c6c9636d73dfd33145"
+    }
+  ]
+}
+
