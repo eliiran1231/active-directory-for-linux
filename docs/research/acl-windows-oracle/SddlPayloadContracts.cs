@@ -135,6 +135,21 @@ internal static class SddlPayloadContracts
             record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
         }
 
+        // Calibrate the native simple-name character class and percent decoding rather
+        // than broadening names to all Unicode letters from one accepted Latin example.
+        foreach (var code in Enumerable.Range(128, 128).Concat(new[] { 0x100, 0x160, 0x178, 0x391, 0x410, 0x7814 }))
+        {
+            var text = $"D:(XA;;RP;;;WD;(A{(char)code}B == 1))";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+        foreach (var code in Enumerable.Range(0, 128))
+        {
+            var text = "D:(XA;;RP;;;WD;(@User.A%" + code.ToString("x4", System.Globalization.CultureInfo.InvariantCulture) + "Z == 1))";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+
     }
     private static object Snapshot(RawSecurityDescriptor descriptor)
     {
