@@ -188,6 +188,10 @@ public sealed partial class SecurityIdentifier
 
     public bool IsWellKnown(WellKnownSidType type)
     {
+        // Native classification extends past the managed constructor's bound (94).
+        // Keep these classification-only values separate from constructible constants.
+        if ((int)type == 95) return Value == "S-1-5-32-575";
+        if ((int)type == 96) return Value == "S-1-5-32-576";
         if (WellKnownValues.TryGetValue((int)type, out var value)) return Value == value;
         if ((int)type == 21)
             return _sid.IdentifierAuthority == 5 && _sid.SubAuthorityCount == 3 && _sid.GetSubAuthority(0) == 5;

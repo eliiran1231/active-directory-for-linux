@@ -46,7 +46,9 @@ internal static class AclCanonicalizer
             if (value != 0) return value;
             for (var i = 0; i < x.SubAuthorityCount; i++)
             {
-                value = x.GetSubAuthority(i).CompareTo(y.GetSubAuthority(i));
+                // Native SecurityIdentifier.CompareTo subtracts signed subauthorities
+                // unchecked; unsigned comparison changes high-bit SID ordering.
+                value = unchecked((int)x.GetSubAuthority(i) - (int)y.GetSubAuthority(i));
                 if (value != 0) return value;
             }
             return 0;

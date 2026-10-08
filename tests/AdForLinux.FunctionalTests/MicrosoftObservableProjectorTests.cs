@@ -10,6 +10,27 @@ namespace AdForLinux.FunctionalTests;
 /// <summary>In-memory only; no collection fixture, DirectoryEntry, AD or Samba dependency.</summary>
 public class MicrosoftObservableProjectorTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void High_subauthority_order_preserves_each_ace_and_raw_source(bool audit, bool reverse)
+    {
+        var low = Sid.Parse("S-1-5-1");
+        var high = Sid.Parse("S-1-5-4294967295");
+        var lowAce = Ace((byte)(audit ? 2 : 0), (byte)(audit ? 0x40 : 0), 0x10, low.AsSpan().ToArray());
+        var highAce = Ace((byte)(audit ? 2 : 0), (byte)(audit ? 0x40 : 0), 0x20, high.AsSpan().ToArray());
+        var bytes = reverse ? Acl(4, highAce, lowAce) : Acl(4, lowAce, highAce);
+        var raw = CoreAcl.Read(bytes);
+        var projected = MicrosoftObservableProjector.ProjectAcl(raw, !audit);
+        Assert.Equal(highAce, projected.Aces[0].RawBytes.ToArray());
+        Assert.Equal(lowAce, projected.Aces[1].RawBytes.ToArray());
+        var preserved = new byte[raw.BinaryLength];
+        raw.WriteTo(preserved);
+        Assert.Equal(bytes, preserved);
+    }
+
     public static TheoryData<byte> Families => new() { 0, 1, 2, 5, 6, 7 };
 
     [Theory]

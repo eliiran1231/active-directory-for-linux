@@ -117,3 +117,35 @@ xUnit1026 warning. Seven existing xUnit2013 warnings in CollectionCompatibilityT
 DirectoryEntryReadTests and GroupPrincipalTests remain on a clean test-project build. The
 previous zero-warning solution result was an incremental local build, not a warning-free
 clean Windows build; no directory-dependent tests were run to change those fixtures.
+
+## Recovery follow-up — 2026-10-08
+
+Starting from verified published head `d1845a412d505e359e7ca8c4b4bcf5c8f87dac67`,
+the internal canonicalizer now compares subauthorities using unchecked signed subtraction,
+matching the existing portable SID comparison. In particular, `S-1-5-4294967295` sorts before
+`S-1-5-1`. Focused DACL/SACL tests verify both input orders, unchanged ACE contents and
+unchanged raw ACL bytes. `IsWellKnown` now classifies native values 95 and 96 as builtin RIDs
+575 (RA) and 576 (ES), respectively; cross-pairs remain false. These classification-only
+values do not extend the managed constructor's upper bound of 94.
+
+Linux Release offline validation passes **7,294 tests per target** on .NET 8 and 10, with
+zero failures/skips. A full solution rebuild succeeds with the existing seven xUnit2013
+warnings per target. Twelve added regressions supplement the existing committed recordings;
+they do not replace fresh native evidence or claim full dependency closure.
+
+The recovery environment could list Windows run `37737445450` artifacts 11532172439 (net8)
+and 11532720752 (net10) through the authorized GitHub connector, but downloading the
+connector-provided file URLs returned HTTP 403, including a reviewed retry. Thus this change
+does **not** import or reconstruct those recordings. The committed baselines still contain
+1,493 mutation, 2,692 foundation and 2,224 closure rows. The push workflow's strict freshness
+comparison is expected to remain blocked by the unimported new observations.
+
+The next required identity work remains `IdentityReferenceCollection` and
+`IdentityNotMappedException`, replay of the 85 newly reported identity rows, and exact
+runtime-aware assertions for closure cases 2314/2317 (null-message constructors). Their
+reported net8 generic type-name message versus net10 translation message must be verified
+from the original recordings; blanket cross-runtime equality must not replace that contract.
+The 352 new mutation/live rows and 12 classifier rows also await artifact import. SDDL's
+38 explicit refusals, SID IntPtr, context-bound translation, ObjectSecurity and
+DirectoryObjectSecurity, retained-state facade integration and coherent AD/raw-safe cutover
+remain incomplete. No AD class, transport, resolver authority or preservation policy changed.
