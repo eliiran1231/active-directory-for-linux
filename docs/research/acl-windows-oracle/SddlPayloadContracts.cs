@@ -95,6 +95,46 @@ internal static class SddlPayloadContracts
             });
         }
 
+        // Unparenthesized negation must be calibrated independently of parenthesized controls.
+        foreach (var condition in new[]
+        {
+            "!@User.Age == 1", "!@User.Title Contains \"Eng\"",
+            "!@User.Age == 1 && @User.Level == 2", "!@User.Age == 1 || @User.Level == 2",
+            "!@User.A && @User.B || @User.C", "!(@User.Age == 1)",
+            "!(@User.Title Contains \"Eng\")", "!!@User.Age == 1",
+            "!@User.Age != 1", "@User.Age == 1 && !@User.Level >= 2",
+            "OctetStringType==#1#2#3##", "@User.A == #1#", "@User.A == ##", "@User.A == #g",
+            "A-B == 1", "A_B == 1", "A.B == 1", "A/B == 1", "A:B == 1",
+            "@User.A;B == 1", "@User.A-B == 1", "@User.A/B == 1", "@User.A:B == 1",
+            "@User.A%003bB == 1", "@User.A%002dB == 1", "A%002dB == 1",
+            "@User.A#B == 1", "A#B == 1", "@User.A?B == 1", "A?B == 1",
+            "@User.A\\B == 1", "A\\B == 1", "@User.A$B == 1", "A$B == 1"
+        })
+        {
+            var text = $"D:(XA;;RP;;;WD;({condition}))";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+        foreach (var text in new[]
+        {
+            "D:AI(XA;OICI;FA;;;WD;(OctetStringType==#1#2#3##))",
+            "D:(ZA;;RP;;;WD;(@User.Age == 1))",
+            "D:(ZA;;RP;00000000-0000-0000-0000-000000000000;;WD;(@User.Age == 1))",
+            "D:(XA;;RP;;;WD;(@User.Age == 1))"
+        })
+        {
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+
+        foreach (var character in "#$'*+-;?@[]\\^`{}~%:,./_é研发")
+        foreach (var prefix in new[] { "", "@User." })
+        {
+            var text = $"D:(XA;;RP;;;WD;({prefix}A{character}B == 1))";
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+        }
+
     }
     private static object Snapshot(RawSecurityDescriptor descriptor)
     {
