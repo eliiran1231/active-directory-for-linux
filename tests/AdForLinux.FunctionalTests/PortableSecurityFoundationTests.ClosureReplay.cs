@@ -1,6 +1,7 @@
 // Shared framework enums are values; replay executes portable managed security classes.
 #pragma warning disable CA1416
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using P = AdForLinux.Security.Principal;
 using Xunit;
 
@@ -19,19 +20,67 @@ public partial class PortableSecurityFoundationTests
         if(operation.StartsWith("Sddl",StringComparison.Ordinal) && AssertSddlDeferred(row,exception)) return;
         Assert.Equal(row.GetProperty("ExceptionType").GetString(),exception?.GetType().FullName);
         Assert.Equal(row.GetProperty("ParamName").GetString(),(exception as ArgumentException)?.ParamName);
-        if(exception is null) Assert.Equal(JsonSerializer.Serialize(row.GetProperty("Outcome")),JsonSerializer.Serialize(outcome));
+        if(exception is null) AssertClosureOutcome(row,outcome);
     }
 
     [Fact]
-    public void Recorded_closure_observations_are_identical_across_runtimes()
+    public void Recorded_closure_runtime_differences_are_limited_to_null_mapping_exception_messages()
     {
         using var firstStream=typeof(PortableSecurityFoundationTests).Assembly.GetManifestResourceStream("AclOracle.Closure.net8.json")
             ?? throw new InvalidOperationException("Missing net8 closure recording.");
         using var secondStream=typeof(PortableSecurityFoundationTests).Assembly.GetManifestResourceStream("AclOracle.Closure.net10.json")
             ?? throw new InvalidOperationException("Missing net10 closure recording.");
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
-        Assert.Equal(2224,first.RootElement.GetProperty("Observations").GetArrayLength());
-        Assert.Equal(JsonSerializer.Serialize(first.RootElement.GetProperty("Observations")),JsonSerializer.Serialize(second.RootElement.GetProperty("Observations")));
+        var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
+        var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
+        Assert.Equal(2224,firstRows.Length); // Advance only when original native artifacts are imported.
+        Assert.Equal(firstRows.Length,secondRows.Length);
+        for(var i=0;i<firstRows.Length;i++)
+        {
+            var a=firstRows[i];var b=secondRows[i];
+            var caseId=a.GetProperty("Case").GetInt32();
+            Assert.Equal(caseId,b.GetProperty("Case").GetInt32());
+            if(caseId is 2314 or 2317)
+            {
+                Assert.Equal("IdentityMappingException",a.GetProperty("Operation").GetString());
+                Assert.Equal(caseId==2314?1:4,a.GetProperty("Arguments").GetProperty("Scenario").GetInt32());
+                Assert.Equal(NativeGenericMappingMessage,a.GetProperty("Outcome").GetProperty("Message").GetString());
+                Assert.Equal(TranslationMappingMessage,b.GetProperty("Outcome").GetProperty("Message").GetString());
+                var left=JsonNode.Parse(a.GetRawText())!;var right=JsonNode.Parse(b.GetRawText())!;
+                left["Outcome"]!.AsObject().Remove("Message");right["Outcome"]!.AsObject().Remove("Message");
+                Assert.Equal(left.ToJsonString(),right.ToJsonString());
+            }
+            else Assert.Equal(JsonSerializer.Serialize(a),JsonSerializer.Serialize(b));
+        }
+    }
+
+    private const string NativeGenericMappingMessage = "Exception of type 'System.Security.Principal.IdentityNotMappedException' was thrown.";
+    private const string TranslationMappingMessage = "Some or all identity references could not be translated.";
+
+    private static void AssertClosureOutcome(JsonElement row,object? outcome)
+    {
+        var actual=JsonSerializer.SerializeToElement(outcome);
+        var expected=row.GetProperty("Outcome");
+        var caseId=row.GetProperty("Case").GetInt32();
+        if(caseId is 2314 or 2317)
+        {
+            Assert.Equal("IdentityMappingException",row.GetProperty("Operation").GetString());
+            Assert.Equal(caseId==2314?1:4,row.GetProperty("Arguments").GetProperty("Scenario").GetInt32());
+#if NET10_0_OR_GREATER
+            Assert.Equal(TranslationMappingMessage,expected.GetProperty("Message").GetString());
+            Assert.Equal(TranslationMappingMessage,actual.GetProperty("Message").GetString());
+#else
+            Assert.Equal(NativeGenericMappingMessage,expected.GetProperty("Message").GetString());
+            Assert.Equal("Exception of type 'AdForLinux.Security.Principal.IdentityNotMappedException' was thrown.",actual.GetProperty("Message").GetString());
+#endif
+            // Only the approved portable namespace differs in the CLR-generated net8
+            // message. Assert each message before comparing every other outcome field.
+            var left=JsonNode.Parse(expected.GetRawText())!.AsObject();
+            var right=JsonNode.Parse(actual.GetRawText())!.AsObject();
+            left.Remove("Message");right.Remove("Message");
+            Assert.Equal(left.ToJsonString(),right.ToJsonString());
+        }
+        else Assert.Equal(JsonSerializer.Serialize(expected),JsonSerializer.Serialize(actual));
     }
 
     public static IEnumerable<object[]> ClosureRecordings()
@@ -50,6 +99,7 @@ public partial class PortableSecurityFoundationTests
 
     private static object? ReplayClosure(string operation,JsonElement arguments)
     {
+        if(operation.StartsWith("Identity",StringComparison.Ordinal)) return PortableIdentityCollectionContracts.Execute(operation,arguments.GetProperty("Scenario").GetInt32());
         if(operation.StartsWith("Acl",StringComparison.Ordinal)) return ReplayAclClosure(operation,arguments);
         if(operation.StartsWith("Descriptor",StringComparison.Ordinal)) return ReplayDescriptorClosure(operation,arguments);
         if(operation.StartsWith("Sddl",StringComparison.Ordinal)) return ReplaySddlClosure(operation,arguments);

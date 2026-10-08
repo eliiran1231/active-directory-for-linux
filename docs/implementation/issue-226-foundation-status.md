@@ -26,8 +26,9 @@ below are staging dependencies, not approved permanent omissions.
   and license are attributed. These detached API values retain native alias/copy behavior;
   they do not replace the immutable raw descriptor codec or edit shared descriptor storage.
 
-The original foundation contained 16 types. The ACL/descriptor follow-up adds nine, so the
-strict surface test now compares all declared members of 25 types, including exact
+The original foundation contained 16 types. The ACL/descriptor follow-up adds nine and the
+identity collection/exception follow-up adds two, so the
+strict surface test now compares all declared members of 27 types, including exact
 mapped dependency types, parameter names/order, protected accessibility, dispatch/sealing,
 base/interface graph, properties/accessors and constants. It rejects unexpected additions
 and missing members except the explicit `SecurityIdentifier(IntPtr)` staging gap below. The recorded
@@ -81,7 +82,9 @@ with a pending-resolver message. This is a foundation staging guard, **not the f
 exception contract or a new ambient-authentication policy**. It performs no lookup and derives
 no authority from the value. The already approved context-bound resolver/ambient SID-to-name
 policy still needs implementation. IdentityReferenceCollection and IdentityNotMappedException
-also remain required dependencies; they have not been erased from the manifest.
+now have detached implementations and complete public/protected surface checks. Their new
+85-row native replay remains pending import of the original recorded evidence; see the
+identity follow-up below.
 
 The portable ACL/descriptor supporting closure is now implemented and compared against the
 full declared shape for GenericAcl, RawAcl, CommonAcl, DiscretionaryAcl, SystemAcl, AceEnumerator,
@@ -149,3 +152,52 @@ The 352 new mutation/live rows and 12 classifier rows also await artifact import
 38 explicit refusals, SID IntPtr, context-bound translation, ObjectSecurity and
 DirectoryObjectSecurity, retained-state facade integration and coherent AD/raw-safe cutover
 remain incomplete. No AD class, transport, resolver authority or preservation policy changed.
+
+
+## Identity collection/exception follow-up — local, native replay import blocked
+
+`IdentityReferenceCollection` and `IdentityNotMappedException` are implemented as detached
+supporting types. Collection capacity/index/null/copy behavior delegates to the same managed
+list contracts as Microsoft. Duplicate values and object identity remain intact; removal
+selects the first equal value. The enumerator observes the live list by index, advances even
+on a false MoveNext, resets to -1, and has no-op Dispose. Same-kind and empty translation
+return new collections retaining existing identity instances. Cross-kind translation retains
+the existing explicit pending-resolver NotSupportedException, independently of forceSuccess;
+this is a documented staging refusal, not the final native mapping exception contract.
+
+The mapping exception retains inner exceptions, SystemException's HResult, one lazy mutable
+UnmappedIdentities collection per instance, and base-only metadata serialization. A null
+message follows the target runtime: net8 delegates to the CLR's generic message naming the
+portable exception type; net10 supplies the translation message. An explicit empty message
+stays empty. No formatter or deserialization was executed.
+
+Implementation sources are the pinned MIT runtime
+[IRCollection.cs](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IRCollection.cs),
+[net8 exception](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs),
+and [later exception contract](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.Security.Principal.Windows/src/System/Security/Principal/IdentityNotMappedException.cs).
+Attribution and MIT license are retained. The strict manifest now covers 27 mapped types,
+with only the previously explicit SID IntPtr gap within those types. The full 55-type target
+is unchanged.
+
+Eighteen focused source-contract tests were added. The complete Linux offline suite passes
+**7,312 tests per runtime**, no failures/skips, and the full solution builds. These tests are
+separate from the pending 85 actual native rows. The replay dispatch supports all ten native
+identity operation families. Runtime-aware comparisons for cases 2314/2317 pin each exact
+native/portable message and compare every other field, rather than discarding all messages or
+requiring blanket runtime equality. Those two recording branches are not yet exercised by
+the committed 2,224-row closure baseline; its count is deliberately unchanged until import.
+
+The reviewer supplied retained log-derived evidence for run 37737445450 through Library,
+archive SHA256 `90fa44e839b776946bb31fb70ff9252a5acb6c548d3078a3793bedce3d1907ca`.
+The supported resolved-reference materialization route resolved the file, but both the first
+consumer-local transfer and the one permitted retry returned `download failed`, without an
+HTTP status or response body. No local archive was produced; archive/per-file hashes could
+not be checked. No denied artifact endpoint or authentication route was retried. No baseline
+was reconstructed. A successful future import must label these bytes as log-derived JSON,
+not original downloaded ZIP contents, and validate provenance and all supplied hashes.
+
+Next: import and replay the retained native evidence, then verify an exact-head Windows
+checkpoint. The 38 explicit SDDL limitations, SID IntPtr, context-bound translation,
+ObjectSecurity/DirectoryObjectSecurity hooks and the raw-safe retained-state/AD cutover remain
+required, incomplete work. These collection/exception values carry no resolver credentials,
+connections, or authority. Existing AD classes, transport and preservation policy are unchanged.

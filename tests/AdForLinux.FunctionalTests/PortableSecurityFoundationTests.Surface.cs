@@ -16,6 +16,8 @@ public partial class PortableSecurityFoundationTests
     private static readonly Dictionary<Type, string> SurfaceTypes = new()
     {
         [typeof(P.IdentityReference)] = "System.Security.Principal.IdentityReference",
+        [typeof(P.IdentityReferenceCollection)] = "System.Security.Principal.IdentityReferenceCollection",
+        [typeof(P.IdentityNotMappedException)] = "System.Security.Principal.IdentityNotMappedException",
         [typeof(P.SecurityIdentifier)] = "System.Security.Principal.SecurityIdentifier",
         [typeof(P.NTAccount)] = "System.Security.Principal.NTAccount",
         [typeof(A.AuthorizationRule)] = "System.Security.AccessControl.AuthorizationRule",
@@ -59,7 +61,7 @@ public partial class PortableSecurityFoundationTests
         var root = document.RootElement;
         Assert.Equal("issue-226-required-surface-v1", root.GetProperty("Schema").GetString());
         var recorded = root.GetProperty("Types").EnumerateArray().ToDictionary(t => t.GetProperty("Type").GetString()!);
-        Assert.Equal(25, SurfaceTypes.Count);
+        Assert.Equal(27, SurfaceTypes.Count);
         var foundGaps = new List<string>();
         foreach (var (portable, referenceName) in SurfaceTypes)
         {

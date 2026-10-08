@@ -5,7 +5,8 @@ This slice adds the nine supporting ACL/descriptor types to the existing
 `GenericAcl`, `RawAcl`, `CommonAcl`, `DiscretionaryAcl`, `SystemAcl`, `AceEnumerator`,
 `GenericSecurityDescriptor`, `RawSecurityDescriptor` and `CommonSecurityDescriptor`.
 The public SID adds its `WellKnownSidType`/domain constructor and `IsWellKnown`, together
-with the measured static aliases. The strict manifest comparison now covers **25 types**.
+with the measured static aliases. The identity follow-up brings the strict manifest comparison to **27 types**; see
+[foundation status](issue-226-foundation-status.md#identity-collectionexception-follow-up--local-native-replay-import-blocked).
 Its only missing member within those mapped types is `SecurityIdentifier(IntPtr)`.
 This is an implemented supporting slice, not completion of the full 55-type target.
 
@@ -91,8 +92,8 @@ These are measured local slice results, not claims about the final published hea
 Windows workflow. The Windows workflow requires committed closure, foundation, mutation
 and surface baselines and compares fresh observations. Missing baselines fail the workflow.
 
-Still staged: `SecurityIdentifier(IntPtr)`, `IdentityReferenceCollection`,
-`IdentityNotMappedException`, context-bound cross-kind identity translation, `ObjectSecurity`,
+Still staged: `SecurityIdentifier(IntPtr)`, native replay evidence for the newly implemented
+identity collection/exception types, context-bound cross-kind identity translation, `ObjectSecurity`,
 `DirectoryObjectSecurity`, complete protected dispatch/lock/dirty-flag behavior, coherent
 migration of ActiveDirectorySecurity and all nine AD rule classes, dependent consumers, and
 reviewed raw write preparation. The required manifest retains every dependency. Unknown data,
