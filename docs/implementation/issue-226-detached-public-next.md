@@ -15,8 +15,9 @@ The [required-surface manifest](issue-226-required-surface.md) records that targ
 subset is staging only, never the final compatibility contract.
 
 The [internal Microsoft interop boundary](issue-226-interop-status.md) now stages data-only
-snapshot provenance, strict detached round-trip validation and owner/group edit-back. Changed
-ACL reconciliation and final public companion naming remain explicit dependencies.
+snapshot provenance, strict detached round-trip validation, identity/rule/collection field
+conversion, owner/group edit-back and unique-contributor ACL mask edits. Structural/ambiguous
+ACL reconciliation, AD-specific mappings and final public companion naming remain dependencies.
 
 ## Recommended buildable sequence
 

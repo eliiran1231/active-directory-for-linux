@@ -88,8 +88,8 @@ public abstract partial class ObjectSecurity
     }
 
     // A detached buffer is never sufficient provenance. Only this source wrapper at
-    // the captured generation may reconcile. Changed ACLs currently require an
-    // operation/contributor mapping that a final-buffer diff cannot establish.
+    // the captured generation may reconcile. ACL edits require the independently
+    // verified unique-contributor mask mapping; replacement is not a fallback.
     internal SecurityMasks ReconcileInterop(InteropBaseline provenance, byte[] edited)
     {
         ArgumentNullException.ThrowIfNull(provenance);
@@ -108,12 +108,20 @@ public abstract partial class ObjectSecurity
                 if (snapshot.Retrieved != InteropAll)
                     throw new NotSupportedException("Unread sections cannot be inferred from a Microsoft descriptor.");
                 if (candidate.AsSpan().SequenceEqual(baseline)) return SecurityMasks.None;
-                if (!candidate.AsSpan(0, 4).SequenceEqual(baseline.AsSpan(0, 4))
-                    || !InteropComponent(candidate, 2).SequenceEqual(InteropComponent(baseline, 2))
-                    || !InteropComponent(candidate, 3).SequenceEqual(InteropComponent(baseline, 3)))
-                    throw new NotSupportedException("ACL or control-field edit-back requires a verified contributor reconciliation.");
+                if (!candidate.AsSpan(0, 4).SequenceEqual(baseline.AsSpan(0, 4)))
+                    throw new NotSupportedException("Control-field edit-back requires explicit operation provenance.");
                 var changed = SecurityMasks.None;
                 CaptureDirtyFlags();
+                for (var i = 2; i < 4; i++)
+                {
+                    if (InteropComponent(candidate, i).SequenceEqual(InteropComponent(baseline, i))) continue;
+                    var acl = i == 2 ? (CommonAcl?)_securityDescriptor.SystemAcl : _securityDescriptor.DiscretionaryAcl;
+                    if (acl is null || InteropComponent(candidate, i).IsEmpty || InteropComponent(baseline, i).IsEmpty)
+                        throw new NotSupportedException("ACL state transitions require explicit operation provenance.");
+                    acl.ReconcileInteropMasks(InteropComponent(baseline, i).ToArray(), InteropComponent(candidate, i).ToArray());
+                    if (i == 2) { _saclModified = true; changed |= SecurityMasks.Sacl; }
+                    else { _daclModified = true; changed |= SecurityMasks.Dacl; }
+                }
                 for (var i = 0; i < 2; i++)
                 {
                     if (InteropComponent(candidate, i).SequenceEqual(InteropComponent(baseline, i))) continue;

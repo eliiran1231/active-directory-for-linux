@@ -206,6 +206,88 @@ internal sealed class AclMutationEngine
     private sealed record ProjectedGroup(Ace View, Ace[] Contributors);
     private sealed record ProjectedState(ProjectedGroup[] Groups, byte[] RawAcl);
 
+    // Detached edit-back is a value diff, not an operation journal. Only unique,
+    // single-contributor, explicit mask edits have a proven interpretation here.
+    internal AclMutationEngine ReconcileInteropMasks(SecurityMasks section, byte[] baseline, byte[] edited)
+    {
+        var isDacl = ValidateSection(section);
+        var raw = (isDacl ? Descriptor.Dacl : Descriptor.Sacl)
+            ?? throw new NotSupportedException("ACL state transitions require explicit operation provenance.");
+        var current = GetObservableAcl(section)!;
+        if (!DescriptorRewriter.EncodeAcl(current, current.Aces).AsSpan().SequenceEqual(baseline))
+            throw new NotSupportedException("Fresh-import regrouping cannot be mapped back to retained live occurrences.");
+        var before = Acl.Read(baseline); var after = Acl.Read(edited);
+        if (!baseline.AsSpan(0, 8).SequenceEqual(edited.AsSpan(0, 8)) || before.Aces.Count != after.Aces.Count
+            || !after.Trailing.IsEmpty)
+            throw new NotSupportedException("ACL shape/revision changes are not mask edits.");
+
+        var groups = new List<(Ace View, int[] RawIndices)>();
+        var retained = RetainedState(section);
+        if (retained is not null)
+        {
+            ValidateProvenance(raw, retained);
+            var cursor = 0;
+            foreach (var group in retained.Groups)
+            {
+                groups.Add((group.View, Enumerable.Range(cursor, group.Contributors.Length).ToArray()));
+                cursor += group.Contributors.Length;
+            }
+        }
+        else
+        {
+            // Validate the whole ACL first. Individual normalization below retains
+            // original occurrence indices, including originals omitted from the view.
+            _ = MicrosoftObservableProjector.NormalizeForEdit(raw, isDacl);
+            for (var i = 0; i < raw.Aces.Count; i++)
+            {
+                var singleton = Acl.Read(DescriptorRewriter.EncodeAcl(raw, new[] { raw.Aces[i] }));
+                var normalized = MicrosoftObservableProjector.NormalizeForEdit(singleton, isDacl);
+                if (normalized.Aces.Count != 0) groups.Add((normalized.Aces[0], new[] { i }));
+            }
+            AclCanonicalizer.Sort(groups, group => group.View, isDacl);
+            for (var i = 0; i < groups.Count - 1; i++)
+            {
+                if (!TryMerge(groups[i].View, groups[i + 1].View, out var merged)) continue;
+                groups[i] = (merged, groups[i].RawIndices.Concat(groups[i + 1].RawIndices).ToArray());
+                groups.RemoveAt(i + 1);
+            }
+        }
+        if (!SameEntries(groups.Select(g => g.View).ToArray(), before.Aces))
+            throw new NotSupportedException("The exported occurrences do not have a proven contributor mapping.");
+        var replacements = raw.Aces.ToArray();
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var old = before.Aces[i]; var changed = after.Aces[i];
+            if (old.RawBytes.SequenceEqual(changed.RawBytes)) continue;
+            if (!Explicit(old) || groups[i].RawIndices.Length != 1
+                || groups.Count(g => SameExceptMask(g.View, old)) != 1
+                || !MicrosoftObservableProjector.IsUnderstoodAce(changed, isDacl)
+                || changed.AccessMask == 0 || !SameExceptMask(old, changed))
+                throw new NotSupportedException("Ambiguous, inherited or structural ACE edits cannot be reconciled.");
+            var index = groups[i].RawIndices[0];
+            var bytes = replacements[index].RawBytes.ToArray();
+            BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), changed.AccessMask);
+            replacements[index] = Ace.Read(bytes);
+        }
+        var encoded = DescriptorRewriter.EncodeAcl(raw, replacements);
+        var descriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
+            new Dictionary<SecurityMasks, byte[]?> { [section] = encoded });
+        ProjectedState? nextState = null;
+        if (retained is not null)
+            nextState = new(after.Aces.Select((ace, i) => new ProjectedGroup(ace,
+                groups[i].RawIndices.Select(index => replacements[index]).ToArray())).ToArray(), encoded);
+        var next = new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section,
+            isDacl ? nextState : _projectedDacl, isDacl ? _projectedSacl : nextState);
+        var result = next.GetObservableAcl(section)!;
+        if (!DescriptorRewriter.EncodeAcl(result, result.Aces).AsSpan().SequenceEqual(edited))
+            throw new NotSupportedException("The mask edit changes projection grouping or order.");
+        return next;
+
+        static bool SameExceptMask(Ace left, Ace right) => left.Size == right.Size
+            && left.RawBytes[..4].SequenceEqual(right.RawBytes[..4])
+            && left.RawBytes[8..].SequenceEqual(right.RawBytes[8..]);
+    }
+
     private ProjectedState? RetainedState(SecurityMasks section)
         => section == SecurityMasks.Dacl ? _projectedDacl : _projectedSacl;
 
