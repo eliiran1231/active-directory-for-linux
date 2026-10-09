@@ -1980,10 +1980,12 @@ namespace AdForLinux.Security.AccessControl
 
         internal void AddQualifiedAce(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
         {
+            // DACL materialization must occur after Edit captures the marker and
+            // before its before/after comparison. The same applies to set/remove.
             Edit((engine, section) => engine.ModifyProjected(section,
                 AdForLinux.DirectoryServices.Security.Core.AclModification.Add,
                 Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
-                () => AddQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+                () => { OnAclModificationTried(); AddQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType); });
         }
 
         internal void AddQualifiedAceCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
@@ -2071,7 +2073,7 @@ namespace AdForLinux.Security.AccessControl
             Edit((engine, section) => engine.ModifyProjected(section,
                 AdForLinux.DirectoryServices.Security.Core.AclModification.Set,
                 Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
-                () => SetQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+                () => { OnAclModificationTried(); SetQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType); });
         }
 
         internal void SetQualifiedAceCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
@@ -2187,7 +2189,7 @@ namespace AdForLinux.Security.AccessControl
             return Edit((engine, section) => engine.ModifyProjected(section,
                 AdForLinux.DirectoryServices.Security.Core.AclModification.Remove,
                 Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
-                () => RemoveQualifiedAcesCore(sid, qualifier, accessMask, flags, saclSemantics, objectFlags, objectType, inheritedObjectType));
+                () => { OnAclModificationTried(); return RemoveQualifiedAcesCore(sid, qualifier, accessMask, flags, saclSemantics, objectFlags, objectType, inheritedObjectType); });
         }
 
         internal bool RemoveQualifiedAcesCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, bool saclSemantics, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
@@ -2635,7 +2637,7 @@ namespace AdForLinux.Security.AccessControl
             Edit((engine, section) => engine.ModifyProjected(section,
                 AdForLinux.DirectoryServices.Security.Core.AclModification.RemoveSpecific,
                 Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
-                () => RemoveQualifiedAcesSpecificCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+                () => { OnAclModificationTried(); RemoveQualifiedAcesSpecificCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType); });
         }
 
         internal void RemoveQualifiedAcesSpecificCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
@@ -3123,7 +3125,6 @@ namespace AdForLinux.Security.AccessControl
         {
             CheckAccessType(accessType);
             CheckFlags(inheritanceFlags, propagationFlags);
-            everyOneFullAccessForNullDacl = false;
             AddQualifiedAce(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), ObjectAceFlags.None, Guid.Empty, Guid.Empty);
         }
 
@@ -3131,21 +3132,18 @@ namespace AdForLinux.Security.AccessControl
         {
             CheckAccessType(accessType);
             CheckFlags(inheritanceFlags, propagationFlags);
-            everyOneFullAccessForNullDacl = false;
             SetQualifiedAce(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), ObjectAceFlags.None, Guid.Empty, Guid.Empty);
         }
 
         public bool RemoveAccess(AccessControlType accessType, SecurityIdentifier sid, int accessMask, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
         {
             CheckAccessType(accessType);
-            everyOneFullAccessForNullDacl = false;
             return RemoveQualifiedAces(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), false, ObjectAceFlags.None, Guid.Empty, Guid.Empty);
         }
 
         public void RemoveAccessSpecific(AccessControlType accessType, SecurityIdentifier sid, int accessMask, InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags)
         {
             CheckAccessType(accessType);
-            everyOneFullAccessForNullDacl = false;
             RemoveQualifiedAcesSpecific(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), ObjectAceFlags.None, Guid.Empty, Guid.Empty);
         }
 
@@ -3167,7 +3165,6 @@ namespace AdForLinux.Security.AccessControl
 
             CheckAccessType(accessType);
             CheckFlags(inheritanceFlags, propagationFlags);
-            everyOneFullAccessForNullDacl = false;
             AddQualifiedAce(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), objectFlags, objectType, inheritedObjectType);
         }
 
@@ -3189,7 +3186,6 @@ namespace AdForLinux.Security.AccessControl
 
             CheckAccessType(accessType);
             CheckFlags(inheritanceFlags, propagationFlags);
-            everyOneFullAccessForNullDacl = false;
             SetQualifiedAce(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), objectFlags, objectType, inheritedObjectType);
         }
 
@@ -3210,7 +3206,6 @@ namespace AdForLinux.Security.AccessControl
             }
 
             CheckAccessType(accessType);
-            everyOneFullAccessForNullDacl = false;
             return RemoveQualifiedAces(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), false, objectFlags, objectType, inheritedObjectType);
         }
 
@@ -3231,7 +3226,6 @@ namespace AdForLinux.Security.AccessControl
             }
 
             CheckAccessType(accessType);
-            everyOneFullAccessForNullDacl = false;
             RemoveQualifiedAcesSpecific(sid, accessType == AccessControlType.Allow ? AceQualifier.AccessAllowed : AceQualifier.AccessDenied, accessMask, GenericAce.AceFlagsFromInheritanceFlags(inheritanceFlags, propagationFlags), objectFlags, objectType, inheritedObjectType);
         }
 

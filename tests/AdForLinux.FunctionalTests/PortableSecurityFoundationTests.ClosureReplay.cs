@@ -34,7 +34,7 @@ public partial class PortableSecurityFoundationTests
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
         var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
-        Assert.Equal(3517,firstRows.Length);
+        Assert.Equal(3589,firstRows.Length);
         var differences=new List<int>();
         Assert.Equal(firstRows.Length,secondRows.Length);
         for(var i=0;i<firstRows.Length;i++)
@@ -67,6 +67,7 @@ public partial class PortableSecurityFoundationTests
         var expected=row.GetProperty("Outcome");
         var caseId=row.GetProperty("Case").GetInt32();
         if(caseId == 3398) { AssertFacadeAtomicFailure(row,outcome); return; }
+        if(caseId is >= 3517 and <= 3556) { AssertNullDaclAtomicFailure(row,outcome); return; }
         if(caseId is 2314 or 2317)
         {
             Assert.Equal("IdentityMappingException",row.GetProperty("Operation").GetString());

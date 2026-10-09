@@ -12,7 +12,7 @@ The offline Windows probe at `d7395389ba3760e1b0900aa713fc3a37672c0718`, run
 [37953506781](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37953506781),
 adds 227 facade observations. The follow-up at `5b1a5b3dab6031a9eab22d0b9b45c94faab939b3`,
 run [37956444278](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37956444278),
-adds 22 more and leaves all preceding 3,495 rows unchanged. Both runtimes now have
+adds 22 more and leaves all preceding 3,495 rows unchanged. Those probes established
 **3,517 closure observations**, including **249 facade rows**. Recordings are exact
 `CLOSURE_JSON` lines from authorized decoded Windows job logs; provenance files record
 source heads/jobs and hashes. Both probe-only workflows passed their full builds and
@@ -86,9 +86,41 @@ regression checks unchanged raw bytes, facade identity, ledger and flags. These 
 refusals are distinct from the SDDL inventory. The other 240 facade observations require exact
 native outcomes/exceptions.
 
-The existing **36 SDDL refusals remain unchanged**. Current closure accounting is 2,510 exact
-successful outcomes, 962 exact native exceptions, 36 pinned SDDL refusals, eight pinned facade
-preservation refusals and this one pinned atomic-failure difference. Runtime differences remain only mapping-exception cases 2314/2317.
+## NULL/absent DACL transaction correction
+
+The independent review reproduction was confirmed against `ff79e519`: all 40 null-SID and
+zero-mask validation cases changed observable descriptor bytes while raw state, mutation
+versions and write intent stayed unchanged. The eight direct Add/Set/Remove/RemoveSpecific
+entry points cleared the synthetic Everyone-DACL marker before transaction capture; the
+four rule overloads reached the same paths. Of 32 rejected-layout-growth cases, 30 failed
+the rollback regression, including no-op removals that skipped reconciliation entirely.
+
+The marker transition now occurs inside `Edit`, after capture and before change detection.
+Protection uses the same ACL transaction to capture the marker and reconcile every shared
+descriptor owner, preserving each owner's protection flags. Marker-only transitions therefore
+materialize raw state on success and roll back atomically on validation, preservation or
+enclosing-operation failure. Unexplained descriptor trailers still prevent layout growth.
+
+Actual [Windows probe 37961748099](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37961748099)
+at `e1275e8885281c9a16b8857e9439f5955294df0a` adds **72 rows**: 40 validation failures,
+24 successful edits and eight protection combinations, with absent and NULL DACLs and shared
+descriptor aliases. Both runtimes passed full builds and all 8,978 prior tests; only the
+expected closure freshness check failed. The original 3,517 rows are unchanged.
+[Provenance](../research/acl-windows-oracle/results/log-derived-37961748099-provenance.json)
+records exact authorized job-log JSON hashes.
+
+Windows materializes the synthetic ACL before all 40 validation exceptions. Cases **3517–3556**
+pin the exact native before/after images and exception type/parameter, then require portable
+rollback to the recorded pre-call image for both aliases. They are deliberate atomic-failure
+differences, not native parity or changed recordings. All 32 successful/protection rows require
+exact native outcomes. Local regressions additionally cover raw/live state, retained provenance,
+version/section ledgers, wrapper flags, refused trailer growth and enclosing rollback: 137 tests.
+
+The existing **36 SDDL refusals remain unchanged**. Current closure accounting is **3,589 rows**:
+2,542 exact successful outcomes, 962 exact native exceptions, 36 pinned SDDL refusals, eight pinned
+facade preservation refusals and 41 pinned atomic-failure differences. The 321 facade rows comprise
+272 exact outcomes/exceptions, eight preservation refusals and 41 atomic differences.
+Runtime differences remain only mapping-exception cases 2314/2317.
 
 ## Validation and remaining cutover dependencies
 

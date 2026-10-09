@@ -1,5 +1,12 @@
 # Detached ACL, descriptor and SID closure status
 
+Latest measured checkpoint: **3,589 closure rows**, including 321 ObjectSecurity/facade rows,
+and **29 mapped supporting types**. The NULL-DACL rollback correction adds 72 native rows
+without changing the preceding 3,517; 40 failures deliberately preserve atomic rollback,
+while all 32 new successful edits/protection calls require exact parity. See
+[facade evidence and accounting](issue-226-object-security-status.md#nullabsent-dacl-transaction-correction).
+The earlier slice inventories below retain their historical counts.
+
 This slice adds the nine supporting ACL/descriptor types to the existing
 `AdForLinux.DirectoryServices` assembly under `AdForLinux.Security.AccessControl`:
 `GenericAcl`, `RawAcl`, `CommonAcl`, `DiscretionaryAcl`, `SystemAcl`, `AceEnumerator`,

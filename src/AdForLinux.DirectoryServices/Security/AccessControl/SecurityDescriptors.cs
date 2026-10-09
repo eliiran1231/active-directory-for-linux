@@ -1103,7 +1103,7 @@ namespace AdForLinux.Security.AccessControl
             }
             if (DiscretionaryAcl != null && DiscretionaryAcl.EveryOneFullAccessForNullDacl)
             {
-                DiscretionaryAcl.EveryOneFullAccessForNullDacl = false;
+                DiscretionaryAcl.MaterializeNullDacl();
             }
                     Publish(baseline.SetProtectionProjected(AdForLinux.DirectoryServices.SecurityMasks.Dacl, isProtected, preserveInheritance).Engine);
             });

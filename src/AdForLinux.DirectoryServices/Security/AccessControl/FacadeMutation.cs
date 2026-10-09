@@ -113,6 +113,12 @@ public abstract partial class CommonAcl
         });
     private void Edit(Func<C.AclMutationEngine, SecurityMasks, C.AclMutationEngine> plan, Action action)
         => Edit(plan, () => { action(); return true; });
+    // Protection also exposes the synthetic Everyone ACL. Treat that marker-only
+    // transition as an ACL edit so all owners reconcile or roll back together.
+    internal void MaterializeNullDacl()
+        => Edit((engine, section) => engine.SetProtectionProjected(section,
+            (engine.Descriptor.Control & 0x1000) != 0, true).Engine,
+            () => { if (this is DiscretionaryAcl dacl) dacl.EveryOneFullAccessForNullDacl = false; });
     private C.Ace Rule(SecurityIdentifier sid, AceQualifier qualifier, int mask, AceFlags flags,
         ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
     {
