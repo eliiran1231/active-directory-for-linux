@@ -1,5 +1,10 @@
 # Issue 226 — morning review acceptance matrix
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 This is a partial implementation for [issue 226](https://github.com/eliiran1231/active-directory-for-linux/issues/226), submitted in [draft PR 228](https://github.com/eliiran1231/active-directory-for-linux/pull/228). It does not complete or close the issue. The concrete merge leads and their reported analogues have been recorded, and Add now uses the evidenced three-stage algorithm. The PR records the final tested head and actual Windows run URL.
 
 “Validated” below means the specified recorded or invariant cases, not universal Microsoft parity. “Refused” means no candidate is published. “Deferred” identifies an unresolved policy or parity requirement. The separately approved [ordering/projection policy](issue-226-ordering-policy.md) now permits known-ACE ordering and projection-only import compaction; raw-write reconciliation remains bounded.

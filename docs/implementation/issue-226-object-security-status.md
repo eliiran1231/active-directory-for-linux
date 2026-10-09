@@ -1,5 +1,10 @@
 # Detached ObjectSecurity facade — measured implementation
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 `ObjectSecurity` and `DirectoryObjectSecurity` now live in the approved
 `AdForLinux.Security.AccessControl` namespace in the existing DirectoryServices DLL.
 The exact declared public/protected surface comparison covers **29 supporting types**.

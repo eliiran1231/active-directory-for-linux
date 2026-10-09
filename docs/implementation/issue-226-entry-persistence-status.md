@@ -88,9 +88,10 @@ offline suites run on .NET 8 and .NET 10; exact published-head Windows results a
 in the PR verification checkpoint after the push-triggered workflow completes.
 
 The existing 36 SDDL refusals, eight facade refusals and 41 atomic-failure differences remain
-explicit. Public interop companion names/exposure, broader structural or ambiguous ACL
-edit-back, unrecorded SDDL boundaries, explicit creation variants and ambient identity
-pinning remain dependencies. Detached Persist hooks still require an explicit platform
+explicit. The approved public MicrosoftInterop companion is implemented. Broader structural or ambiguous
+ACL edit-back, unrecorded SDDL boundaries, explicit creation variants and ambient identity
+pinning remain dependencies; the [current readiness inventory](issue-226-remaining-compatibility.md)
+distinguishes implementation gaps, preservation differences and unrun server validation. Detached Persist hooks still require an explicit platform
 override; entry persistence now has its own raw-safe path. No live AD validation, merge or
 issue closure is part of this slice.
 

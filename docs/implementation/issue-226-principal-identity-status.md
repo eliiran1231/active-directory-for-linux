@@ -1,5 +1,10 @@
 # PrincipalContext identity adapter — internal dependency
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 This implements the ownership/layering dependency described by the approved
 [context resolver research](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/context-bound-identity-resolution.md#2-existing-api-experience-and-layering)
 and [D11](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-decisions.md#d11-identity-resolution-and-ambient-kerberos).

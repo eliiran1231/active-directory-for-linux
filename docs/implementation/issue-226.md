@@ -1,5 +1,10 @@
 # Internal ACL mutation engine — issue 226 draft
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 See the [morning review acceptance matrix](issue-226-acceptance-matrix.md) for requirement-by-requirement status and the measured three-stage Add algorithm and remaining parity boundaries. The [ordering/projection policy](issue-226-ordering-policy.md) records the newly approved slice.
 
 The mutation engine remains internal. The subsequent authorized [public foundation stage](issue-226-foundation-status.md)

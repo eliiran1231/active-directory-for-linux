@@ -1,5 +1,10 @@
 # Entry-bound identity resolution and raw write preparation — staged dependency
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
 supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
 unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,

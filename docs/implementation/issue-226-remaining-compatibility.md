@@ -1,59 +1,97 @@
-# Remaining compatibility inventory
+# PR 228 readiness and remaining compatibility
 
-Inventory updated for the approved optional MicrosoftInterop source implementation.
-This separates missing behavior from undecided exposure and validation that cannot be
-established by detached Windows objects or controlled LDAP request capture.
+This inventory assesses implementation head `2e4f6a2ca3aa54dc988f3c2468cfe5f79f318b03`
+(tree `7d01e15c6fec4fb384f238082b36e531964e3a22`). It supersedes historical staging
+statements in the linked slice documents, not their original measurements. It is an inventory
+of known boundaries and untested families, not proof that no undiscovered mismatch exists.
+No class is classified as mastered from declaration coverage or test counts.
 
-| Area | Concrete remaining boundary | Classification / next evidence |
+The coordinated portable AD/rule/AccountManagement/DirectoryEntry cutover and optional
+`AdForLinux.DirectoryServices.MicrosoftInterop` source package are implemented. Neither
+remains an exposure decision. The latest production correction preserves every accepted
+pending section in snapshots independently of retrieval coverage, and validates current
+binding lifetime/read origin through atomic edit publication, including no-ops. Independent
+review cleared those corrections, including lock order and revocation races. Detached setters
+retain their behavior; partial export and out-of-coverage assignment still refuse.
+
+## Known compatibility inventory
+
+“Full goal blocker” means the user's complete portable compatibility objective remains open.
+A preservation difference cannot be fixed by silently discarding data. “Staged boundary” means
+it can be disclosed in a deliberately limited release; it is not a claim of full compatibility.
+
+| Family | Concrete boundary at this head | Classification and readiness effect |
 | --- | --- | --- |
-| Public/protected declarations | No missing declarations in the recorded 39-root, 55-type, 702-declaration target: 42 implemented types and 13 unchanged framework enums. | Complete recorded shape, not complete behavioral compatibility. Unrecorded inputs still need directed probes. |
-| ObjectSecurity hooks | Base name/handle Persist and GUID rule factories throw by the measured native default contract. Concrete AD factories and entry persistence are implemented. Privilege-enabled detached Persist needs a platform override. | Defaults are not missing implementations. Platform persistence/privilege behavior needs an explicit platform implementation, not invented ambient authority. |
-| Identity translation | Standalone cross-kind Translate has no attached resolver. Entry-bound resolution exists; numeric values and copies transfer no authority. Host-relative LA/LG need an explicit machine authority. | Public context-helper exposure is undecided; ambient identity pinning requires authenticated provider/OS evidence. |
-| Recorded SDDL loss | 28 native-success exports omit resource/label/policy data, opaque bytes, audit flags or the no-GUID ZA tail. Portable export refuses. | Preserve binary data. A lossy diagnostic export or alternate loss-bearing representation is a separate contract; do not change ordinary export silently. |
-| Recorded SDDL authority | Eight LA/LG rows depend on the Windows machine SID. | Requires an explicit authority mechanism; do not infer host/directory authority from a string. |
-| Unrecorded SDDL | Additional conditional encodings, access-filter forms and resource boundaries are not established by the existing 1,681 SDDL observations. | Offline native probe work; successful binary import does not authorize a lossy text export. |
-| Interop edit-back | Owner/group, proven unique mask edits/deletions and non-merging insertions can compose against original provenance. | Ambiguous replacements/splits/merges, opaque edits and unproven placement still refuse atomically; these need separate evidence, not fallback replacement. |
-| Interop exposure | Approved optional MicrosoftInterop wrappers are implemented with strict conversion, defensive snapshots and checked one-success edit sessions. | Source/build/package tests only; no package release. Public identity-context helpers remain a separate decision. |
-| LDAP Add request planning | Omission uses AD defaults. Explicit input currently requires all sections known, owner/group present, both ACLs non-NULL and protected. Raw bytes are sent without Modify SD-flags. | Broader explicit inputs are an implementation/validation gap, not a permanent exclusion. Request capture can prove bytes and atomicity, but cannot prove server creation semantics. |
-| LDAP Add server behavior | Request-byte retention is covered for the existing complete protected subset; server acceptance/readback, defaulting, inheritance, owner constraints and SACL retrieval remain unvalidated. | [Source findings and 15-cell opt-in plan](issue-226-add-validation-plan.md). Requires a disposable OU, fixed parent fixtures, explicit accounts and separate observer/cleanup authority; no live run authorized. An uncertain Add remains quarantined; same-DN readback is not proof of creation identity. |
-| Modify / concurrency | Raw section planning and successful binary recovery are implemented offline. Other directory writers, server normalization and authenticated identity continuity are not covered by that proof. | Live AD/provider validation only; no claim of server-side compare-and-swap. |
+| Public/protected security surface | The exact recorded closure has 39 roots, 55 types and 702 declarations: 42 mapped implementations and 13 retained framework enums. No known missing declaration in that target. Compiler/nullable attributes and private implementation details are not binary-signature parity assertions. This is not a whole-library or future-runtime surface audit. | No known shape blocker within the pinned Microsoft 9 target. All behavioral rows below still apply. Consumers must rebuild for portable identity/base-type substitution. |
+| Base persistence and factories | Base ObjectSecurity name/handle Persist and DirectoryObjectSecurity GUID factories throw by measured native default behavior. Privilege-enabled detached persistence needs an explicit platform override. Concrete AD factories and raw entry persistence exist. | Native defaults are not missing implementations. Portable platform persistence/privilege behavior is not supplied; no implicit privilege adjustment is authorized. |
+| Identity values and collections | Numeric SID, well-known classification, pointer, collection and exception contracts are recorded. Standalone cross-kind Translate cannot acquire a resolver; same-type translation is available. | Explicit-context policy is intentional, not universal LSA parity. A public authority mechanism/helper for standalone cross-kind translation is still unresolved; it blocks claiming every required method supports every native use. Copies never transfer authority. |
+| Resolver topology and authority | Entry and PrincipalContext bindings are implemented internally. Resolution is bounded to verified AD domain scope; GC, trust/cross-domain routing, foreign-security-principal display-name inference and ambient identity-pinned mutation are not implemented. LA/LG need explicit machine authority (also inside condition/resource SID values). | Full identity compatibility blocker. Scope refusals are deliberate safety boundaries. Provider/OS evidence is needed for ambient identity continuity; username labels are not proof. No public helper naming decision may be inferred from the companion approval. |
+| SDDL intentional export differences | 28 recorded native-success exports lose stored information: resource attributes, mandatory/scoped/trust labels, opaque bytes/non-audit SA/FA flags, or the no-GUID ZA tail. Portable export refuses without changing binary data. | Intentional preservation difference; blocks exact native text behavior under the ordinary API. A separately designed loss-bearing representation/diagnostic contract would be needed, not a preservation relaxation. Exact IDs remain in [SDDL status](issue-226-sddl-progress.md). |
+| SDDL authority differences | Eight recorded LA/LG rows refuse instead of borrowing Windows machine identity. | Missing explicit authority support, distinct from the 28 loss refusals. Together they are 36 pinned SDDL refusals, not successful parity. |
+| Unfinished SDDL codec | Access-filter `FL` is absent from the accepted ACE token map and explicitly unsupported. Conditional binary encodings outside the implemented token/layout subset and nonrepresentable payloads refuse. Resource parsing is implemented; its ordinary export loss boundary remains above. | Offline implementation/probe work remains a full-goal blocker. Establish native accepted contexts, payload bytes and errors before expanding support. No effective-access evaluator is required or authorized. |
+| Untested SDDL inputs | The 1,681 observations cover selected syntax, errors and encodings, not all nested expressions, resource value/count/string boundaries, rights/flag/context combinations, malformed payloads, maximum lengths or runtime-specific exception details. | Evidence gap; directed native probes remain necessary. Linear rendering/allocation tests do not establish semantic completeness or bounds for every parser path. |
+| ACE/ACL projection and mutation | Known common/object access/audit ACEs have tested canonicalization, compaction and retained contributors. Unknown/wrong-kind ACEs, callback/opaque payloads, reserved fields and ACL tails do not gain general projection/mutation semantics from binary import support. Eight facade callback-clear cases refuse native data loss. | Intentional preservation boundary plus unimplemented semantics outside the understood subset. Raw copies preserve data; unrelated supported section edits may succeed. Do not label all ACE or ACL classes complete. |
+| Failed mutation behavior | 41 recorded facade outcomes roll back atomically where Microsoft leaves a partial failed mutation. | Intentional, pinned safety difference; no exact-native-parity claim and no reason to weaken atomicity. |
+| Raw descriptor layout | Fixed-offset edits, terminal resizing and contained aliases are supported under proof. Interior resizing across unexplained storage, trailer growth/allocation, deleting referenced components in gapped images, resizing ACLs with tails and crossing overlaps refuse. | Intentional preservation constraints; broader safe algorithms require new layout proofs. Microsoft observable repacking is never persistence data. See [layout policy](issue-226-layout-policy.md). |
+| Shared facades and operation combinations | Unbound ACL normalization may not reconcile when later attached. Unrecorded alias/sharing, nested callbacks, lock/reentrancy, mixed failure/success, inherited/GUID/mask and large-sequence combinations are not exhaustively characterized. | Offline evidence/implementation gap, not a known universally failing operation. Recorded invariants and races do not prove every accepted combination. |
+| Strict Microsoft copy conversion | Complete verified directory-container descriptors only; partial retrieval, unexplained storage, unsupported control/reserved bits, hidden ACL data and unverified payloads refuse. Rule conversion refuses unknown subclasses, subtype/field loss, constructor normalization and unrecreatable GUID-presence/inherited states. | Deliberately strict staged companion boundary. Full conversion coverage is unfinished; native Windows execution is required. No native dependency is added to the core/AccountManagement packages. |
+| Microsoft edit-back | Owner/group and proven unique-contributor mask edits/deletions plus independent non-merging explicit insertion compose atomically. Merged/duplicate/ambiguous replacements, splits, inherited edits, merging additions, reordering, control/revision/ACL-state changes and opaque edits refuse. | Concrete unfinished reconciliation, blocking a general native edit-back claim. Failed Apply retains the session but stale authority cannot be revived; successful Apply is one-use. No replacement fallback or authority transfer. |
+| Entry assignment and Modify | Retrieved-section/raw-origin checks, net section flags, ordinary-property batching, lifecycle checks and uncertain-write readback are implemented through controlled transport tests. Direct property-cache descriptor writes refuse without section intent. | Raw-safe staged implementation, not proof of ADSI/server parity. Local generation checks do not provide server compare-and-swap or detect all other writers/same-DN replacement. |
+| Explicit Add implementation | Omission leaves AD defaults. Explicit descriptors currently require all sections known, owner/group present, non-NULL DACL/SACL and both ACLs protected. Partial/omitted/NULL/inheriting explicit inputs are rejected. | Concrete full-goal blocker, not a permanent exclusion. Broader request planning and server evidence are distinct tasks. Uncertain Add stays quarantined: same-DN readback cannot prove which request created an object. |
+| Real AD validation | Default descriptors, inherited access AND audit ACEs, protected/empty/NULL creation, privilege/owner constraints, server normalization, section readback, referrals/topology, move/rename, authenticated identity continuity, concurrent writers and accepted-then-timeout behavior lack current-PR end-to-end proof. | Live-only validation blocker for a production server-parity claim. The [15-cell Add plan](issue-226-add-validation-plan.md) remains unexecuted. Protected-empty DACL requires proven observer/GUID access and independent individual-delete authority before execution; ownership or admin membership alone is not proof. |
+| Whole-solution consumers | Current compilation includes all six solution projects. The full functional and differential suites include directory-mutating fixtures and were not executed unfiltered in this no-live-AD task. Other library families are not certified by the security manifest. | Broader integration evidence remains a release-readiness gap. No unrun suite is called passing. |
 
-## Approved exposure contract
+## Exact validation scope
 
-The [exact Microsoft companion contract](issue-226-microsoft-companion-proposal.md) is approved
-and implemented under `AdForLinux.DirectoryServices.MicrosoftInterop`. The `.Microsoft`
-alternative was not selected. Copy conversion is the simple path; checked edit-back remains
-optional and CommitChanges remains separate. Approval covers source implementation and tests,
-not live AD, package release or changes to preservation/authentication policy.
+The implementation head above passed [Windows run 37998412270](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270):
 
-## Unchanged limits
+- .NET 8 and .NET 10 each: 11,119 core offline tests and 321 **unfiltered companion** tests;
+  zero failures/skips. Full solution builds and local package dependency/isolation checks passed.
+- Fresh native comparisons each: 1,845 mutation, 2,692 foundation and 3,589 closure observations;
+  exact surface comparison of 39 roots/55 types. Closure outcomes: 2,542 exact successes,
+  962 exact exceptions, 36 SDDL refusals, eight facade refusals and 41 atomic differences.
+- Artifacts: [net8 / 11648137304](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270/artifacts/11648137304)
+  and [net10 / 11648506227](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270/artifacts/11648506227).
+  Actual job logs were inspected; artifact ZIPs were not downloaded.
+- Existing Linux .NET 8/10 evidence: 11,119 core tests per runtime; companion four passed and
+  14 Windows-only groups skipped. Those skips are not native test executions.
 
-All 36 SDDL refusals, eight callback-clear facade refusals and 41 atomic-failure differences
-remain explicit. They are not counted as exact native behavior. No native recording is
-fabricated or changed by a local regression. The coherent AD hierarchy/entry cutover is
-already implemented; older documents that describe it as future work are historical slices.
-See [current persistence status](issue-226-entry-persistence-status.md) and the
-[approved contracts](issue-226-persistence-decisions.md). No live AD, merge, issue closure,
-authentication/security-setting changes or effective-access evaluation is authorized here.
+This readiness pass additionally rebuilt **AdForLinux.sln**, Release, without incremental
+compilation: zero errors, 14 existing xUnit2013 warnings; all six projects/both TFMs built,
+including DifferentialTests. Dependency restoration succeeded. The shell initially lacked
+`dotnet` on PATH; using the already installed `/workspace/dotnet/dotnet` resolved it. A transient
+executor disconnection recovered without resetting the checkout.
 
+Additional Linux .NET 8/10 runs each passed 55 complete-class offline consumer cases
+(`AccountManagementPublicTypesTests`, `CollectionCompatibilityTests`,
+`PrincipalValueCollectionTests`, `DirectoryEntryLocalStateTests`) and 34
+`FixtureRegistrationTests` cases. The companion project was rerun **without any filter**:
+four passed, 14 Windows-only groups skipped per runtime. The consumer and fixture-registration
+runs are explicitly filtered; they are not a full unfiltered functional/differential pass.
+Local build/log/TRX evidence is in `/workspace/pr228-evidence/readiness-*`.
 
-## Implemented in this focused pass
+Unfiltered functional/differential execution is blocked by task scope: `TestSettings` defaults
+to a Samba endpoint, and `TestDataFixture` creates users/computers/groups and cleans them up.
+No authorized live fixture is available for this task. Network namespace isolation was also
+unavailable (`unshare`: read-only uid_map); no test was redirected to real AD or run on an
+assumption that missing configuration would skip it. Fixture registration is metadata-only,
+not server validation. The existing Windows workflow intentionally filters the six offline
+core classes; its green result cannot be promoted to unfiltered solution-test evidence.
 
-Internal edit-back now supports deletion of an explicit, uniquely identifiable live ACE
-with exactly one proven raw contributor, including simultaneous supported mask edits.
-Survivor order/content, hidden raw originals and unrelated merged contributors remain intact;
-retained contributor state, shared identity and existing write intent remain coherent. The
-final observable target must match exactly, or the whole operation rolls back. Thirty-one
-new cases exercise this boundary, including actual Microsoft detached edits on Windows.
-See [the precise edit-back contract](issue-226-interop-status.md#unique-contributor-deletion-follow-up).
+## Readiness decision and next work
 
-The next pass implements unambiguous non-merging explicit insertion using stable raw
-survivor anchors, as described in the [insertion follow-up](issue-226-interop-status.md#non-merging-explicit-insertion-follow-up).
-The compound follow-up now combines unique original-contributor mask changes/deletions and
-independent non-merging insertions atomically. Overlapping touched identities, ambiguous
-replacement/split intent, revision changes, merged edits and reorderings still refuse. Explicit Add guards remain unchanged: Microsoft's
-[SD Flags Control specification](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/932a7a8d-8c93-4448-8093-c79b7d9ba499)
-confirms that Add ignores that control, but does not prove this client's omitted/NULL/default
-or inheritance behavior. Broader request-plan tests and separately authorized server evidence
-must be kept distinct. No public naming decision or live AD approval is needed for the
-completed deletion slice.
+The complete implementation goal remains **open**: explicit identity authority/topology,
+SDDL codec coverage and loss-bearing export design, broader safe interop reconciliation,
+explicit Add variants, and the untested/server families above are concrete unfinished work.
+Preservation-driven differences and measured native base-method exceptions must remain
+separate from missing code. There is no remaining known declaration gap in the recorded
+security closure, but that fact closes none of these behavioral gaps.
+
+A clearly labeled staged PR could carry the current bounded implementation and intentional
+refusals, after normal review and explicit maintainer acceptance of the base-type/API migration.
+A staged release would also need an explicit supported-scope statement and release acceptance
+of the unrun live suites; this inventory does **not** certify production directory parity or
+approve publication. Neither a full compatibility release nor issue closure is justified.
+No merge, release, package publication, live AD, credentials/security change or new feature
+slice was performed in this readiness pass. The next slice should be chosen from this
+inventory, with its native evidence and acceptance boundary specified first.

@@ -1,5 +1,10 @@
 # Descriptor layout preservation
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 Raw write representation and Microsoft observable repacking are separate operations.
 `DescriptorRewriter.Rewrite` never uses omitted observable bytes as a persistence result.
 `RepackObservable` is a detached read projection; raw/original descriptors and intent remain

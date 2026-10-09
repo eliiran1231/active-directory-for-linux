@@ -1,5 +1,10 @@
 # Server-verified single-NC identity scope
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 This replaces the temporary alphanumeric-only DN guard from `c8f75486`. It implements the
 already-approved single-domain resolver boundary; it does not introduce multi-domain routing,
 a public DN normalizer, new authentication policy or public persistence cutover.

@@ -1,5 +1,10 @@
 # Required portable security surface manifest
 
+Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
+AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
+of them as future work are historical slice boundaries, not current missing dependencies.
+Historical counts are not the latest whole-PR validation or a claim of complete behavior.
+
 The target is the **full required public/protected dependency closure**, not a byte-only descriptor facade or a selected subset of convenient members. The approved destination remains `AdForLinux.Security.Principal` and `AdForLinux.Security.AccessControl` in the existing `AdForLinux.DirectoryServices` DLL. The ten AD classes retain their existing names and namespace. This manifest defines the inventory to implement and review; it does not itself switch the public AD hierarchy or claim that all recorded members already work portably.
 
 ## Authoritative recording
