@@ -1,3 +1,4 @@
+#pragma warning disable CA1416 // Framework enum values; portable replay uses no Windows APIs.
 // Detached wrapper probes. Numeric identities only; no directory I/O or privilege changes.
 // Persist(false) only dispatches to a recording override; base unsupported paths never write.
 using System.Security.AccessControl;
@@ -17,7 +18,7 @@ internal static class FacadeContracts
         foreach (var (op, count) in new[] { ("FacadeConstruction", 6), ("FacadeLocks", 32),
             ("FacadeSharing", 9), ("FacadeDirty", 12), ("FacadeDispatch", 16),
             ("FacadeModify", 84), ("FacadeEnumeration", 16), ("FacadeReplace", 36),
-            ("FacadeValidation", 12), ("FacadePersist", 4) })
+            ("FacadeValidation", 12), ("FacadePersist", 4), ("FacadeIndependentLocks", 2), ("FacadeFactoryDefaults", 4), ("FacadeEnumerationObjects", 16) })
             for (var i = 0; i < count; i++)
             { var scenario = i; record(op, new { Scenario = i }, () => Execute(op, scenario)); }
     }
@@ -99,12 +100,31 @@ internal static class FacadeContracts
                 var outcome = Error(() => isAudit ? wrapper.ModifyAuditRule(modification, Audit(guid), out modified)
                     : wrapper.ModifyAccessRule(modification, Access(guid), out modified));
                 return new { Result = outcome, Modified = modified, State = Snapshot(wrapper) };
+            case "FacadeEnumerationObjects":
+                scenario += 16; goto case "FacadeEnumeration";
             case "FacadeEnumeration":
+                if (scenario >= 16)
+                {
+                    var accessAcl = new A.RawAcl(4, 4); var auditAcl = new A.RawAcl(4, 4);
+                    for (var i = 0; i < 3; i++)
+                    {
+                        var flags = i == 2 ? AceFlags.Inherited | AceFlags.ContainerInherit : AceFlags.None;
+                        accessAcl.InsertAce(i, i == 1
+                            ? new A.ObjectAce(flags, AceQualifier.AccessAllowed, 16, Sid(1), ObjectAceFlags.ObjectAceTypePresent, Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"), Guid.Empty, false, null)
+                            : new A.CommonAce(flags, AceQualifier.AccessAllowed, 32, Sid(1), i == 0, null));
+                        auditAcl.InsertAce(i, i == 1
+                            ? new A.ObjectAce(flags | AceFlags.SuccessfulAccess, AceQualifier.SystemAudit, 16, Sid(1), ObjectAceFlags.ObjectAceTypePresent, Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"), Guid.Empty, false, null)
+                            : new A.CommonAce(flags | AceFlags.SuccessfulAccess, AceQualifier.SystemAudit, 32, Sid(1), i == 0, null));
+                    }
+                    descriptor = new A.CommonSecurityDescriptor(true, true, new A.RawSecurityDescriptor((ControlFlags)20, Sid(1), Sid(1), auditAcl, accessAcl));
+                    wrapper = new Wrapper(descriptor);
+                }
                 var includeExplicit = (scenario & 1) != 0; var includeInherited = (scenario & 2) != 0;
                 if ((scenario & 8) != 0) { descriptor.DiscretionaryAcl = null; descriptor.SystemAcl = null; }
                 wrapper.Calls.Clear();
                 var rules = (scenario & 4) == 0 ? wrapper.GetAccessRules(includeExplicit, includeInherited, typeof(P.SecurityIdentifier))
                     : wrapper.GetAuditRules(includeExplicit, includeInherited, typeof(P.SecurityIdentifier));
+                if (scenario >= 16) return new { Rules = rules.Cast<A.AuthorizationRule>().Select(r => new { Sid = r.IdentityReference.Value, Mask = r is AR a ? a.Mask : ((UR)r).Mask, r.IsInherited, Inheritance = (int)r.InheritanceFlags, Propagation = (int)r.PropagationFlags, ObjectType = r is AR ar ? ar.ObjectType : ((UR)r).ObjectType }).ToArray(), wrapper.Calls, State = Snapshot(wrapper) };
                 return new { Rules = rules.Cast<A.AuthorizationRule>().Select(r => new { Sid = r.IdentityReference.Value, r.IsInherited, Inheritance = (int)r.InheritanceFlags, Propagation = (int)r.PropagationFlags }).ToArray(), wrapper.Calls, State = Snapshot(wrapper) };
             case "FacadeReplace":
                 var sections = (AccessControlSections)new[] { 0, 1, 2, 4, 8, 15, 16, 17, -1 }[scenario % 9];
@@ -128,6 +148,21 @@ internal static class FacadeContracts
                     case 10: wrapper.ExitWrite(); return null;
                     default: wrapper.TraceHooks = true; wrapper.ThrowHook = true; var caught = Error(() => wrapper.ModifyAccessRule(AccessControlModification.Add, Access(), out _)); return new { Failure = caught, Unlocked = Error(() => wrapper.Flag(0)), State = Snapshot(wrapper) };
                 }
+            case "FacadeFactoryDefaults":
+                return wrapper.BaseFactory(scenario);
+            case "FacadeIndependentLocks":
+                var peer = new Wrapper(descriptor);
+                using (var done = new ManualResetEventSlim())
+                {
+                    Exception? threadFailure = null;
+                    var thread = new Thread(() => { try { peer.EnterWrite(); try { peer.SetFlag(0, true); } finally { peer.ExitWrite(); } } catch (Exception e) { threadFailure = e; } finally { done.Set(); } });
+                    if (scenario == 0) wrapper.EnterRead(); else wrapper.EnterWrite();
+                    bool independent;
+                    try { thread.Start(); independent = done.Wait(TimeSpan.FromSeconds(5)); }
+                    finally { if (scenario == 0) wrapper.ExitRead(); else wrapper.ExitWrite(); }
+                    thread.Join();
+                    return new { Independent = independent, ExceptionType = threadFailure?.GetType().FullName, First = wrapper.Flags(), Second = peer.Flags() };
+                }
             case "FacadePersist":
                 return wrapper.Persistence(scenario);
             default: throw new ArgumentOutOfRangeException(nameof(op));
@@ -142,9 +177,9 @@ internal static class FacadeContracts
     private static AR Access(Guid g = default) => new(Sid(1), 16, false, 0, 0, AccessControlType.Allow, g, Guid.Empty);
     private static UR Audit(Guid g = default) => new(Sid(1), 16, false, 0, 0, AuditFlags.Success, g, Guid.Empty);
     internal sealed class AR(P.IdentityReference id, int mask, bool inherited, InheritanceFlags inf, PropagationFlags prop, AccessControlType type, Guid obj, Guid child)
-        : A.ObjectAccessRule(id, mask, inherited, inf, prop, obj, child, type);
+        : A.ObjectAccessRule(id, mask, inherited, inf, prop, obj, child, type) { internal int Mask => AccessMask; }
     internal sealed class UR(P.IdentityReference id, int mask, bool inherited, InheritanceFlags inf, PropagationFlags prop, AuditFlags flags, Guid obj, Guid child)
-        : A.ObjectAuditRule(id, mask, inherited, inf, prop, obj, child, flags);
+        : A.ObjectAuditRule(id, mask, inherited, inf, prop, obj, child, flags) { internal int Mask => AccessMask; }
     internal class Wrapper : A.DirectoryObjectSecurity
     {
         internal Wrapper() { }
@@ -178,6 +213,9 @@ internal static class FacadeContracts
         { if (TraceHooks) { Calls.Add("protected-audit"); changed = false; return false; } return base.ModifyAudit(m, r, out changed); }
         internal object? AccessRoute(int n, AR r) { switch(n) { case 0: return ModifyAccessRule(AccessControlModification.Add,r,out _); case 1: AddAccessRule(r); break; case 2: SetAccessRule(r); break; case 3: ResetAccessRule(r); break; case 4: return RemoveAccessRule(r); case 5: RemoveAccessRuleAll(r); break; case 6: RemoveAccessRuleSpecific(r); break; default: return ModifyAccess(AccessControlModification.Add,r,out _); } return null; }
         internal object? AuditRoute(int n, UR r) { switch(n) { case 0: return ModifyAuditRule(AccessControlModification.Add,r,out _); case 1: AddAuditRule(r); break; case 2: SetAuditRule(r); break; case 3: return ModifyAuditRule(AccessControlModification.Reset,r,out _); case 4: return RemoveAuditRule(r); case 5: RemoveAuditRuleAll(r); break; case 6: RemoveAuditRuleSpecific(r); break; default: return ModifyAudit(AccessControlModification.Add,r,out _); } return null; }
+        internal object BaseFactory(int n) => n < 2
+            ? base.AccessRuleFactory(n == 0 ? Sid(1) : null!, 16, false, 0, 0, AccessControlType.Allow, Guid.Empty, Guid.Empty)
+            : base.AuditRuleFactory(n == 2 ? Sid(1) : null!, 16, false, 0, 0, AuditFlags.Success, Guid.Empty, Guid.Empty);
         protected override void Persist(string name, AccessControlSections sections) { Calls.Add($"persist:{name}:{(int)sections}"); }
         internal object? Persistence(int n) { if(n == 0) base.Persist(false,"detached",AccessControlSections.All); else if(n == 1) base.Persist("detached",AccessControlSections.All); else if(n == 2) base.Persist((SafeHandle)null!,AccessControlSections.All); else base.Persist(false,null!,0); return Calls; }
     }
