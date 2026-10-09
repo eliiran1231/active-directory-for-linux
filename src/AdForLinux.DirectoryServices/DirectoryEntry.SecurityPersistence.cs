@@ -40,6 +40,29 @@ public partial class DirectoryEntry
         var refreshed = ReadProperties(requested.Length == 0 ? new[] { "1.1" } : requested, full, readMasks, uncertainty is not null);
         if (uncertainty is { Creating: true })
             throw new InvalidOperationException("The Add outcome is uncertain. A same-DN object, even with matching attributes, does not prove creation identity. Verify it separately and explicitly acquire an existing-entry handle; this creation handle cannot replay Add.");
+        // Requesting a descriptor is not evidence that LDAP returned it. Validate
+        // before refresh can discard cached intent, invalidate its origin or release
+        // the uncertain-write gate. Ordinary missing attributes can still mean deletion.
+        if (uncertainty is { SecuritySections: not SecurityMasks.None }
+            && (full || names.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase)))
+        {
+            if ((uncertainty.SecuritySections & ~readMasks) != 0)
+                throw new InvalidOperationException("Security readback must cover every uncertain written section.");
+            var descriptor = ((IEnumerable<PropertyValueCollection>)refreshed).FirstOrDefault(
+                property => property.PropertyName.Equals("nTSecurityDescriptor", StringComparison.OrdinalIgnoreCase));
+            if (descriptor is not { Count: 1 } || descriptor[0] is not byte[] binary)
+                throw new InvalidOperationException("Write reconciliation requires one returned binary security descriptor.");
+            try
+            {
+                // Coverage comes from the actual SD-flags request, never offsets.
+                // Absent/NULL ACLs and retained opaque storage remain valid readback.
+                _ = Security.Core.SecurityDescriptor.Parse(binary, readMasks);
+            }
+            catch (ArgumentException exception)
+            {
+                throw new InvalidOperationException("Write reconciliation returned a malformed security descriptor.", exception);
+            }
+        }
         if (requireObject && refreshed.Count == 0)
             throw new DirectoryServicesCOMException("The newly created directory entry could not be read back from the directory.");
         IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>

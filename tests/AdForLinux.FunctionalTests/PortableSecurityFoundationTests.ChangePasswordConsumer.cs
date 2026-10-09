@@ -15,11 +15,13 @@ public partial class PortableSecurityFoundationTests
     private static readonly byte[] PasswordSelf = Convert.FromHexString("01010000000000050A000000");
     private static UserPrincipal PasswordPrincipal(EntryWriteFixture fixture, PrincipalContext context)
     {
-        fixture.Entry.PropertyReadOverride = (_, _) =>
+        fixture.Entry.PropertyReadOverride = (names, _) =>
         {
             var properties = new PropertyCollection();
             properties.ReplaceLoaded("objectGUID", new object[] { G1.ToByteArray() });
             properties.ReplaceLoaded("objectSid", new object[] { U1 });
+            if (names.Contains("nTSecurityDescriptor"))
+                properties.ReplaceLoaded("nTSecurityDescriptor", new object[] { fixture.Raw });
             return properties;
         };
         return new UserPrincipal(context, fixture.Entry);

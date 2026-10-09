@@ -120,6 +120,25 @@ must cover every sent attribute and every written security section; full refresh
 requests those attributes, including ones not implied by LDAP's `*`. Production readback
 must find the target object. Failed/incomplete readback keeps the gate closed.
 
+A follow-up review found that the requested attribute names/masks alone were being counted
+as successful security readback. A returned object can omit `nTSecurityDescriptor` even when
+it was requested. Security recovery now requires exactly one returned binary descriptor,
+validated by the retained raw parser, with the read SD-flags covering every uncertain written
+section. A full or descriptor refresh with missing, null, nonbinary, malformed, multivalued or
+insufficiently covered security data throws before publishing any property cache, discarding
+security intent, invalidating its origin or clearing uncertainty. The same handle can retry a
+valid readback; it cannot replay the uncertain write in between.
+
+Coverage is supplied by the actual read mask, never guessed from component offsets. Valid
+absent/NULL ACLs, opaque ACEs, ACL trailers and unexplained descriptor storage are accepted
+without normalization. Ordinary attributes omitted by a successful scoped read still mean
+absence/deletion; the descriptor-specific requirement does not change that contract. Readback
+establishes current data, not proof that the earlier write was accepted. Sixteen additional
+offline cases cover full/partial invalid readback, retained state and later recovery, plus raw
+absent/NULL/empty/opaque descriptor states. All twelve new rejection cases failed against the
+prior implementation. Existing combined-write and password-consumer recovery fixtures now
+return actual descriptor bytes instead of treating an empty property collection as readback.
+
 Recovery clears only the captured ledgers after checking their versions, preventing an old
 retained wrapper from resending an already accepted Add delta. Partial readback of the exact
 sent attribute set can retain unrelated pending edits. A refresh that would discard newer

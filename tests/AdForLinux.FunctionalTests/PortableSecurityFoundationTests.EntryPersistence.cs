@@ -193,6 +193,12 @@ public partial class PortableSecurityFoundationTests
         Assert.Same(security, fixture.Entry.ObjectSecurity);
         Assert.Equal(EntryMasks.Owner, security.PendingWriteSections);
         Assert.Throws<InvalidOperationException>(fixture.Entry.CommitChanges);
+        fixture.Entry.PropertyReadOverride = (_, _) =>
+        {
+            var result = new PropertyCollection();
+            result.ReplaceLoaded("nTSecurityDescriptor", new object[] { fixture.Raw });
+            return result;
+        };
         fixture.Entry.RefreshCache();
         fixture.Entry.CommitChanges();
     }
