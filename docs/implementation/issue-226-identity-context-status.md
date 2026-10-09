@@ -56,6 +56,16 @@ not advertised. Checks walk escaped-comma-aware RDN boundaries, not raw string s
 unrecognized equivalent DN spellings refuse conservatively. Configuration, application and
 other-domain entries never inherit the default domain's NetBIOS label.
 
+The follow-up DN review reproduced 32 failures in 36 candidate-DN cases against `0b9d9aa3`:
+OID attribute aliases and hex-escaped values could miss the literal NC boundary and fall through
+to its domain suffix. Before ancestry checks, both candidate and metadata DNs now require the
+bounded literal CN/OU/DC spelling. Numeric/textual attribute aliases, hex/other unsupported
+escapes, multivalued RDNs and unsupported syntax refuse; this is not a general DN normalization
+API. Ordinary escaped commas/backslashes and case-insensitive CN/OU/DC paths remain supported.
+The follow-up adds 44 regressions: 36 entry/result cases in both lookup directions, six metadata
+alias cases and two legitimate within-domain paths. Entry/metadata rejection precedes account
+subtree lookup; all mutation refusals preserve bytes, state, version and dirty flags.
+
 Controlled reproduction against `10b18078` failed 28 of the initial 30 boundary tests; the
 existing application-partition systemFlags rejection accounted for the two passes. The final
 42-case scope regression set covers both SID-to-name and bare-name mutation refusals, standard

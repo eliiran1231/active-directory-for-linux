@@ -87,6 +87,8 @@ public partial class PortableSecurityFoundationTests
 
     [Theory]
     [InlineData("CN=alice,DC=example,DC=com")]
+    [InlineData("cn=alice,ou=People,dc=example,dc=com")]
+    [InlineData("CN=ordinary user,OU=People,DC=example,DC=com")]
     [InlineData("CN=last\\, first,OU=People,DC=example,DC=com")]
     [InlineData("CN=backslash\\\\,OU=People,DC=example,DC=com")]
     [InlineData("DC=example,DC=com")]
@@ -136,6 +138,80 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(0, fixture.Opened); Assert.Empty(fixture.Requests);
         Assert.Same(state, descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
         Assert.Equal(0, descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
+    }
+
+
+    public static IEnumerable<object[]> ResolverDnAliasCases()
+    {
+        foreach (var mutation in new[] { false, true })
+        foreach (var returnedRow in new[] { false, true })
+        foreach (var dn in new[]
+        {
+            "CN=user,0.9.2342.19200300.100.1.25=child,DC=example,DC=com",
+            "CN=user,2.5.4.3=App,DC=example,DC=com",
+            "CN=user,CN=\\41pp,DC=example,DC=com",
+            "CN=user,CN=Configurati\\6fn,DC=example,DC=com",
+            "CN=user,DC=ch\\69ld,DC=example,DC=com",
+            "CN=user,domainComponent=child,DC=example,DC=com",
+            "CN=user,commonName=App,DC=example,DC=com",
+            "CN=user,CN=App+OU=Other,DC=example,DC=com",
+            "CN=user,CN =App,DC=example,DC=com"
+        }) yield return [dn, mutation, returnedRow];
+    }
+
+    [Theory]
+    [MemberData(nameof(ResolverDnAliasCases))]
+    public void Resolver_unverified_dn_spellings_refuse_authority(string dn, bool mutation, bool returnedRow)
+    {
+        using var fixture = new IdentityFixture();
+        fixture.MetadataResults = request => request.DistinguishedName == string.Empty
+            ? [IdentityFixture.Row(("defaultNamingContext", ["DC=example,DC=com"]),
+                ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]),
+                ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com",
+                    "DC=child,DC=example,DC=com", "CN=App,DC=example,DC=com"]),
+                ("supportedControl", [AdIdentityLookup.DomainScopeControl]))] : null;
+        if (returnedRow) fixture.Results = _ => [IdentityFixture.Row(("objectSid", [U1]),
+            ("sAMAccountName", ["alice"]), ("objectClass", ["user"]), ("distinguishedName", [dn]))];
+        else fixture.Entry.Path = "LDAP://dc.example/" + dn;
+        var descriptor = new A.CommonSecurityDescriptor(true, true, Build(U2, U2, Acl(4), null), 0);
+        var wrapper = new FacadeContracts.Wrapper(descriptor); var resolver = fixture.Resolver; resolver.Bind(wrapper);
+        var state = descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
+        Assert.Throws<NotSupportedException>(() =>
+        {
+            if (mutation) wrapper.SetOwner(new NTAccount("alice"));
+            else resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount));
+        });
+        if (!returnedRow) Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+        Assert.Same(state, descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
+        Assert.Equal(0, descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
+    }
+
+
+    [Theory]
+    [InlineData("0.9.2342.19200300.100.1.25=child,DC=example,DC=com", false)]
+    [InlineData("0.9.2342.19200300.100.1.25=child,DC=example,DC=com", true)]
+    [InlineData("CN=Configurati\\6fn,DC=example,DC=com", false)]
+    [InlineData("CN=Configurati\\6fn,DC=example,DC=com", true)]
+    [InlineData("CN=\\41pp,DC=example,DC=com", false)]
+    [InlineData("CN=\\41pp,DC=example,DC=com", true)]
+    public void Resolver_unverified_metadata_dn_refuses_before_account_search(string context, bool mutation)
+    {
+        using var fixture = new IdentityFixture();
+        fixture.MetadataResults = request => request.DistinguishedName == string.Empty
+            ? [IdentityFixture.Row(("defaultNamingContext", ["DC=example,DC=com"]),
+                ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]),
+                ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com", context]),
+                ("supportedControl", [AdIdentityLookup.DomainScopeControl]))] : null;
+        var wrapper = new FacadeContracts.Wrapper(); var resolver = fixture.Resolver; resolver.Bind(wrapper);
+        var state = wrapper.Descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
+        Assert.Throws<NotSupportedException>(() =>
+        {
+            if (mutation) wrapper.SetOwner(new NTAccount("alice"));
+            else resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount));
+        });
+        Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+        Assert.Same(state, wrapper.Descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
+        Assert.Equal(0, wrapper.Descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
     }
 
     private sealed class LifetimeConnection : IDisposable

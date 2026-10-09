@@ -108,6 +108,8 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
             || !root.Values("supportedControl").Contains(DomainScopeControl))
             throw new NotSupportedException("Complete naming-context metadata and critical domain-scope control support are required.");
         namingContexts = contexts.Cast<string>().ToArray();
+        foreach (var context in namingContexts) RequireLiteralDn(context);
+        RequireLiteralDn(domain); RequireLiteralDn(config);
         if (!namingContexts.Contains(domain, StringComparer.OrdinalIgnoreCase)
             || !namingContexts.Contains(config, StringComparer.OrdinalIgnoreCase)
             || string.Equals(domain, config, StringComparison.OrdinalIgnoreCase))
@@ -123,6 +125,7 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
     }
     private void RequireDomainDn(string? distinguishedName, string domain)
     {
+        RequireLiteralDn(distinguishedName);
         // Compare complete RDN boundaries, never a textual suffix that could begin at
         // an escaped comma. Unknown equivalent DN spellings refuse conservatively.
         // Most-specific advertised NC wins; subordinate/application/configuration NCs
@@ -139,6 +142,38 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
             if (LdapDistinguishedName.RelativeName(current).StartsWith("DC=", StringComparison.OrdinalIgnoreCase)) break;
         }
         throw new NotSupportedException("The entry or returned identity is outside the verified domain naming context.");
+    }
+    private static void RequireLiteralDn(string? distinguishedName)
+    {
+        // This bounded resolver compares literal RDNs, not arbitrary RFC 4514
+        // equivalents. Validate BOTH metadata and candidate DNs before ancestry:
+        // aliases/hex escapes must never fall through to a parent domain suffix.
+        if (string.IsNullOrWhiteSpace(distinguishedName)) throw UnsupportedDn();
+        for (var current = distinguishedName; current is not null; current = LdapDistinguishedName.Parent(current))
+        {
+            var rdn = LdapDistinguishedName.RelativeName(current);
+            var equals = rdn.IndexOf('=');
+            if (equals <= 0) throw UnsupportedDn();
+            var attribute = rdn[..equals];
+            if (!attribute.Equals("CN", StringComparison.OrdinalIgnoreCase)
+                && !attribute.Equals("OU", StringComparison.OrdinalIgnoreCase)
+                && !attribute.Equals("DC", StringComparison.OrdinalIgnoreCase)) throw UnsupportedDn();
+            var value = rdn[(equals + 1)..];
+            if (value.Length == 0 || char.IsWhiteSpace(value[0]) || char.IsWhiteSpace(value[^1]) || value[0] == '#')
+                throw UnsupportedDn();
+            for (var i = 0; i < value.Length; i++)
+            {
+                var c = value[i];
+                if (c == '\\')
+                {
+                    // Preserve ordinary escaped commas and backslashes. Other
+                    // escapes (including hex UTF-8) require semantic DN matching.
+                    if (++i == value.Length || value[i] is not (',' or '\\')) throw UnsupportedDn();
+                }
+                else if (char.IsControl(c) || c is '+' or ';' or '"' or '<' or '>') throw UnsupportedDn();
+            }
+        }
+        static NotSupportedException UnsupportedDn() => new("Identity scope requires literal CN/OU/DC RDNs; unsupported DN spellings cannot establish domain authority.");
     }
     private IReadOnlyList<IdentitySearchRow> Search(string dn, string filter, ProtocolScope scope, params string[] attributes)
     {
