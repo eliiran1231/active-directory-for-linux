@@ -27,6 +27,7 @@ internal static class ClosureContracts
         SidClosureContracts.Record(Record);
         IdentityCollectionContracts.Record(Record);
         SddlPayloadContracts.Record(Record);
+        FacadeContracts.Record(Record);
         var recording = new { SchemaVersion = 1, Runtime = RuntimeInformation.FrameworkDescription,
             OS = RuntimeInformation.OSDescription, MicrosoftAssembly = typeof(M.ActiveDirectorySecurity).Assembly.FullName,
             Scope = "Detached ACL, descriptor, SDDL and identity collection contracts only. No directory I/O, identity lookup, persistence or privilege changes.",
