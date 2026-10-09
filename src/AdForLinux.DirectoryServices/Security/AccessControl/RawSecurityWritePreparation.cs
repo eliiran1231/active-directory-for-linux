@@ -7,9 +7,7 @@ using WireMasks = System.DirectoryServices.Protocols.SecurityMasks;
 
 namespace AdForLinux.Security.AccessControl;
 
-// Staged preparation only. DirectoryEntry's BCL-rooted persistence path is not wired
-// to this until the coordinated AD/rule cutover and validated implementation of the
-// approved persistence contracts (see issue-226-persistence-decisions.md).
+// Immutable raw request plan bound to the descriptor and destination read generation.
 internal sealed class PreparedRawSecurityWrite
 {
     private readonly byte[] bytes;
@@ -72,10 +70,26 @@ internal static class RawSecurityWritePreparation
         });
     }
 
-    internal static void ValidateAddDescriptor(byte[]? explicitDescriptor)
+    internal static byte[]? PrepareAdd(byte[]? explicitDescriptor, EntryMasks known)
     {
-        if (explicitDescriptor is not null)
-            throw new NotSupportedException("LDAP Add ignores SD-flags scoping; explicit descriptor creation requires a validated raw-safe implementation.");
-        // No explicit descriptor: omit the attribute and let the server create it.
+        if (explicitDescriptor is null) return null;
+        const EntryMasks all = EntryMasks.Owner | EntryMasks.Group | EntryMasks.Dacl | EntryMasks.Sacl;
+        if (known != all) throw new NotSupportedException("Creation requires explicit knowledge of every descriptor section.");
+        var raw = AdForLinux.DirectoryServices.Security.Core.SecurityDescriptor.Parse(explicitDescriptor, known);
+        // Complete protected input can be transmitted without inventing default or
+        // inheritance semantics. Broader explicit creation remains a validation gap.
+        if (raw.Owner is null || raw.Group is null || raw.Dacl is null || raw.Sacl is null || (raw.Control & 0x3000) != 0x3000)
+            throw new NotSupportedException("Explicit creation with omitted, NULL or inheriting sections awaits validated server-default semantics.");
+        return raw.GetBinaryForm();
+    }
+
+    internal static void AppendAdd(AddRequest request, byte[]? explicitDescriptor, EntryMasks known)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var bytes = PrepareAdd(explicitDescriptor, known);
+        if (request.Attributes.Cast<DirectoryAttribute>().Any(a => a.Name.Equals("nTSecurityDescriptor", StringComparison.OrdinalIgnoreCase))
+            || request.Controls.Cast<DirectoryControl>().Any(c => c.Type == "1.2.840.113556.1.4.801"))
+            throw new InvalidOperationException("Creation already contains untracked descriptor data or a Modify-only security mask.");
+        if (bytes is not null) request.Attributes.Add(new DirectoryAttribute("nTSecurityDescriptor", bytes));
     }
 }

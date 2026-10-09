@@ -69,6 +69,14 @@ internal static class FacadeMutation
 
 public abstract partial class CommonAcl
 {
+    internal void CopyDetachedLiveState(CommonAcl source)
+    {
+        _acl = new RawAcl(FacadeMutation.Bytes(source._acl), 0);
+        _isDirty = source._isDirty;
+        RetainedMutation = source.RetainedMutation;
+        if (this is DiscretionaryAcl target && source is DiscretionaryAcl d)
+            target.EveryOneFullAccessForNullDacl = d.EveryOneFullAccessForNullDacl;
+    }
     private readonly List<WeakReference<CommonSecurityDescriptor>> owners = new();
     internal C.AclMutationEngine? RetainedMutation { get; private set; }
     internal void Retain(C.AclMutationEngine state) => RetainedMutation = state;
@@ -135,6 +143,21 @@ public abstract partial class CommonAcl
 
 public sealed partial class CommonSecurityDescriptor
 {
+    internal CommonSecurityDescriptor CopyDetachedState()
+    {
+        lock (FacadeMutation.Gate)
+        {
+            var copy = new CommonSecurityDescriptor(IsContainer, IsDS, FacadeMutation.Bytes(this), 0);
+            copy.MutationState = MutationState; // immutable raw/live data, no owner capability
+            copy.MutationVersion = MutationVersion;
+            copy.sectionVersions = (long[])sectionVersions.Clone();
+            if (_dacl is not null) copy._dacl!.CopyDetachedLiveState(_dacl);
+            if (_sacl is not null) copy._sacl!.CopyDetachedLiveState(_sacl);
+            copy._rawSd.DiscretionaryAcl = copy._dacl?.RawAcl;
+            copy._rawSd.SystemAcl = copy._sacl?.RawAcl;
+            return copy;
+        }
+    }
     private int assignmentDepth;
     internal C.AclMutationEngine MutationState { get; private set; } = null!;
     // Independent of every ObjectSecurity wrapper's native dirty flags.

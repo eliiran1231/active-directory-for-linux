@@ -1,7 +1,7 @@
 using System.Collections;
 using System.ComponentModel;
 using System.DirectoryServices.Protocols;
-using System.Security.Principal;
+using AdForLinux.Security.Principal;
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 
@@ -140,22 +140,12 @@ public abstract class Principal : IDisposable
                 return null;
             }
 
-#pragma warning disable CA1416 // Guarded by the runtime platform check below.
-            if (!OperatingSystem.IsWindows())
-            {
-                throw new PlatformNotSupportedException(
-                    "System.Security.Principal.SecurityIdentifier is not implemented by .NET on Linux. " +
-                    "Use SidValue for the portable SID string.");
-            }
-
             return new SecurityIdentifier(bytes, 0);
-#pragma warning restore CA1416
         }
     }
 
     /// <summary>
-    /// The portable SDDL-form SID string. Unlike <see cref="Sid"/>, this works
-    /// on Linux where .NET's <see cref="SecurityIdentifier"/> is a platform stub.
+    /// The portable SDDL-form SID string, retained alongside the portable <see cref="Sid"/> value.
     /// </summary>
     public string? SidValue
     {

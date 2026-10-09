@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using Xunit;
 using A = AdForLinux.Security.AccessControl;
+using D = AdForLinux.DirectoryServices;
 using P = AdForLinux.Security.Principal;
 
 namespace AdForLinux.FunctionalTests;
@@ -15,6 +16,19 @@ public partial class PortableSecurityFoundationTests
     // Explicit substitution only: shared framework enums and all other BCL dependencies stay unchanged.
     private static readonly Dictionary<Type, string> SurfaceTypes = new()
     {
+        [typeof(D.ActiveDirectorySecurity)] = "System.DirectoryServices.ActiveDirectorySecurity",
+        [typeof(D.ActiveDirectoryAccessRule)] = "System.DirectoryServices.ActiveDirectoryAccessRule",
+        [typeof(D.ActiveDirectoryAuditRule)] = "System.DirectoryServices.ActiveDirectoryAuditRule",
+        [typeof(D.ListChildrenAccessRule)] = "System.DirectoryServices.ListChildrenAccessRule",
+        [typeof(D.CreateChildAccessRule)] = "System.DirectoryServices.CreateChildAccessRule",
+        [typeof(D.DeleteChildAccessRule)] = "System.DirectoryServices.DeleteChildAccessRule",
+        [typeof(D.PropertyAccessRule)] = "System.DirectoryServices.PropertyAccessRule",
+        [typeof(D.PropertySetAccessRule)] = "System.DirectoryServices.PropertySetAccessRule",
+        [typeof(D.ExtendedRightAccessRule)] = "System.DirectoryServices.ExtendedRightAccessRule",
+        [typeof(D.DeleteTreeAccessRule)] = "System.DirectoryServices.DeleteTreeAccessRule",
+        [typeof(D.ActiveDirectoryRights)] = "System.DirectoryServices.ActiveDirectoryRights",
+        [typeof(D.ActiveDirectorySecurityInheritance)] = "System.DirectoryServices.ActiveDirectorySecurityInheritance",
+        [typeof(D.PropertyAccess)] = "System.DirectoryServices.PropertyAccess",
         [typeof(P.IdentityReference)] = "System.Security.Principal.IdentityReference",
         [typeof(P.IdentityReferenceCollection)] = "System.Security.Principal.IdentityReferenceCollection",
         [typeof(P.IdentityNotMappedException)] = "System.Security.Principal.IdentityNotMappedException",
@@ -59,7 +73,7 @@ public partial class PortableSecurityFoundationTests
         var root = document.RootElement;
         Assert.Equal("issue-226-required-surface-v1", root.GetProperty("Schema").GetString());
         var recorded = root.GetProperty("Types").EnumerateArray().ToDictionary(t => t.GetProperty("Type").GetString()!);
-        Assert.Equal(29, SurfaceTypes.Count);
+        Assert.Equal(42, SurfaceTypes.Count);
         var foundGaps = new List<string>();
         foreach (var (portable, referenceName) in SurfaceTypes)
         {

@@ -15,6 +15,9 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
     private readonly Action? _validateOwner;
+    internal object ChangeGate { get; } = new();
+    private long _changeVersion;
+    internal long ChangeVersion => Interlocked.Read(ref _changeVersion);
 
     internal PropertyValueCollection(string propertyName, Action<PropertyValueCollection>? onChanged = null, Action? validateOwner = null)
     {
@@ -30,13 +33,13 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     /// True once the values were changed since the last load or commit. The
     /// entry uses this to know what to send on CommitChanges.
     /// </summary>
-    internal bool Changed => _changes.Count != 0;
+    internal bool Changed { get { lock (ChangeGate) return _changes.Count != 0; } }
 
     /// <summary>The ordered LDAP changes staged since the last load or commit.</summary>
-    internal IReadOnlyList<PropertyValueChange> Changes => _changes;
+    internal IReadOnlyList<PropertyValueChange> Changes { get { lock (ChangeGate) return _changes.ToArray(); } }
 
     /// <summary>Clears staged changes after a successful commit or load.</summary>
-    internal void ResetChanged() => _changes.Clear();
+    internal void ResetChanged() { lock (ChangeGate) { _changes.Clear(); Interlocked.Increment(ref _changeVersion); } }
 
     /// <summary>Gets the value at an index.</summary>
     public object? this[int index]
@@ -184,15 +187,15 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
 
     private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)
     {
-        // A whole-attribute operation supersedes every earlier pending delta.
-        // This also prevents a stale Add/Delete from making an intentional
-        // replacement fail before LDAP reaches the replacement operation.
-        if (type is PropertyValueChangeType.Replace or PropertyValueChangeType.Clear)
+        var snapshot = values.ToArray();
+        lock (ChangeGate)
         {
-            _changes.Clear();
+            // A replacement supersedes earlier deltas, but never a delta recorded
+            // after a request has captured and acknowledged this ledger.
+            if (type is PropertyValueChangeType.Replace or PropertyValueChangeType.Clear) _changes.Clear();
+            _changes.Add(new PropertyValueChange(type, snapshot));
+            Interlocked.Increment(ref _changeVersion);
         }
-
-        _changes.Add(new PropertyValueChange(type, values.ToArray()));
         _onChanged?.Invoke(this);
     }
 

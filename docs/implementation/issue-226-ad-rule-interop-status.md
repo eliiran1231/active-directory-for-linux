@@ -1,5 +1,10 @@
 # Internal AD rule conversion matrix
 
+Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
+supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
+unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,
+not claims of live-directory parity.
+
 This slice stages strict AD subtype snapshots and conversion boundaries while the existing
 public AD rule hierarchy remains BCL-based. It adds no public API, optional-companion assembly
 name, portable AD subclass hierarchy or persistence behavior. The required-surface inventory

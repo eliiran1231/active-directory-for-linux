@@ -1,5 +1,10 @@
 # Detached public foundation status — incomplete full-closure migration
 
+Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
+supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
+unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,
+not claims of live-directory parity.
+
 Latest dependency: the [entry-bound resolver and raw-write preparation](issue-226-identity-context-status.md)
 now provide explicit library-owned AD resolution, revocable wrapper binding and controlled
 transport/lifecycle tests. Standalone identity values still carry no context. The historical

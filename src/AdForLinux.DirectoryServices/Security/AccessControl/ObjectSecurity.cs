@@ -59,6 +59,22 @@ namespace AdForLinux.Security.AccessControl
         internal SecurityMasks RetrievedSections => _readContext?.Original.RetrievedSections ?? SecurityMasks.None;
         internal SecurityMasks PendingWriteSections => _readContext is null ? SecurityMasks.None
             : _securityDescriptor.ChangesSince(_readContext.Version) & RetrievedSections;
+        internal SecurityMasks AssignmentSections => PendingWriteSections
+            | (_ownerModified ? SecurityMasks.Owner : 0) | (_groupModified ? SecurityMasks.Group : 0)
+            | (_daclModified ? SecurityMasks.Dacl : 0) | (_saclModified ? SecurityMasks.Sacl : 0);
+
+        // Destination-local baseline only; identity binding is explicitly reacquired
+        // by the owning entry. Cross-entry source authority is never copied.
+        internal void CopyDestinationReadState(ObjectSecurity destination)
+        {
+            lock (FacadeMutation.Gate)
+            {
+                _readContext = destination._readContext;
+                HasRawReadContext = destination.HasRawReadContext;
+                _ownerModified = destination._ownerModified; _groupModified = destination._groupModified;
+                _daclModified = destination._daclModified; _saclModified = destination._saclModified;
+            }
+        }
 
         private bool _ownerModified;
         private bool _groupModified;

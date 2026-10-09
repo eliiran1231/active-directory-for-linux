@@ -1,5 +1,10 @@
 # Detached-public transition — full required closure, staged implementation
 
+Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
+supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
+unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,
+not claims of live-directory parity.
+
 The approved architecture remains one portable surface: supporting types in
 `AdForLinux.Security.Principal` and `AdForLinux.Security.AccessControl`, inside the existing
 main `AdForLinux.DirectoryServices` DLL. The nine AD rule classes and `ActiveDirectorySecurity`

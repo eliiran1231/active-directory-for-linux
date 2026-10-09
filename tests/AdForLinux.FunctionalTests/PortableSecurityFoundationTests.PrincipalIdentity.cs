@@ -203,7 +203,7 @@ public partial class PortableSecurityFoundationTests
         Assert.Null(typeof(PrincipalContext).GetMethod("CreateIdentityResolver", BindingFlags.Public | BindingFlags.Instance));
         Assert.DoesNotContain(typeof(DirectoryIdentityResolver).Assembly.GetReferencedAssemblies(),
             assembly => assembly.Name == typeof(PrincipalContext).Assembly.GetName().Name);
-        Assert.Equal(typeof(System.Security.Principal.SecurityIdentifier), typeof(Principal).GetProperty("Sid")!.PropertyType);
+        Assert.Equal(typeof(SecurityIdentifier), typeof(Principal).GetProperty("Sid")!.PropertyType);
     }
 
     [Fact]

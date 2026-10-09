@@ -1,6 +1,12 @@
 using System.ComponentModel;
 using System.Security.AccessControl;
-using System.Security.Principal;
+using AdForLinux.Security.Principal;
+using DirectoryObjectSecurity = AdForLinux.Security.AccessControl.DirectoryObjectSecurity;
+using CommonSecurityDescriptor = AdForLinux.Security.AccessControl.CommonSecurityDescriptor;
+using AccessRule = AdForLinux.Security.AccessControl.AccessRule;
+using AuditRule = AdForLinux.Security.AccessControl.AuditRule;
+using ObjectAccessRule = AdForLinux.Security.AccessControl.ObjectAccessRule;
+using ObjectAuditRule = AdForLinux.Security.AccessControl.ObjectAuditRule;
 
 #pragma warning disable CA1416 // These APIs manipulate in-memory AD descriptors; no local OS ACL is accessed.
 
@@ -62,6 +68,9 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
         _retrievedMasks = retrievedMasks;
     }
 
+    internal ActiveDirectorySecurity(CommonSecurityDescriptor descriptor, SecurityMasks retrievedMasks)
+        : base(descriptor) { _retrievedMasks = retrievedMasks; }
+
     internal SecurityMasks RetrievedMasks => _retrievedMasks;
 
     internal bool IsModified()
@@ -69,7 +78,7 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
         ReadLock();
         try
         {
-            return OwnerModified || GroupModified || AccessRulesModified || AuditRulesModified;
+            return PendingWriteSections != SecurityMasks.None;
         }
         finally
         {

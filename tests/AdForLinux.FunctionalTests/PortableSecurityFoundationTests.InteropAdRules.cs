@@ -47,17 +47,15 @@ public partial class PortableSecurityFoundationTests
         var ctor = AdConstructors(CurrentAdRuleTypes[kind])[constructor];
         var expected = ExpectedAdRule(kind, ctor, variant);
         A.InteropAdRuleCodec.Validate(expected);
-        if (!OperatingSystem.IsWindows())
-        {
-            var detached = A.InteropAdRuleCodec.Export(expected, value => value with { }, value => value);
-            Assert.True(expected.Same(detached));
-            Assert.Throws<PlatformNotSupportedException>(() => A.InteropAdRuleCodec.CreateCurrentRule(expected));
-            return;
-        }
-        var nativeCtor = AdConstructors(NativeAdRuleTypes[kind])[constructor];
-        var current = (AuthorizationRule)ctor.Invoke(AdArguments(ctor, variant));
-        var native = (AuthorizationRule)nativeCtor.Invoke(AdArguments(nativeCtor, variant));
+        var current = (A.AuthorizationRule)ctor.Invoke(AdArguments(ctor, variant));
         var fromCurrent = A.InteropAdRuleCodec.CaptureCurrentRule(current);
+        Assert.True(expected.Same(fromCurrent));
+        var portableBack = A.InteropAdRuleCodec.CreateCurrentRule(fromCurrent);
+        Assert.Equal(current.GetType(), portableBack.GetType());
+        Assert.True(fromCurrent.Same(A.InteropAdRuleCodec.CaptureCurrentRule(portableBack)));
+        if (!OperatingSystem.IsWindows()) return;
+        var nativeCtor = AdConstructors(NativeAdRuleTypes[kind])[constructor];
+        var native = (AuthorizationRule)nativeCtor.Invoke(AdArguments(nativeCtor, variant));
         var fromNative = A.InteropAdRuleCodec.Import(native, CaptureNativeAdRule);
         Assert.True(expected.Same(fromCurrent));
         Assert.True(expected.Same(fromNative));
@@ -104,7 +102,9 @@ public partial class PortableSecurityFoundationTests
         {
             var name = p.ParameterType.Name;
             if (name == nameof(M.IdentityReference))
-                return invalid == name ? null : variant % 2 == 0 ? (object)new M.SecurityIdentifier(U1, 0) : new M.NTAccount("EXAMPLE\\Alice");
+                return invalid == name ? null : p.ParameterType == typeof(P.IdentityReference)
+                    ? variant % 2 == 0 ? (object)new P.SecurityIdentifier(U1, 0) : new P.NTAccount("EXAMPLE\\Alice")
+                    : variant % 2 == 0 ? (object)new M.SecurityIdentifier(U1, 0) : new M.NTAccount("EXAMPLE\\Alice");
             if (p.ParameterType == typeof(Guid)) return (object)(p.Name!.Contains("inherited", StringComparison.OrdinalIgnoreCase)
                 ? variant % 4 == 0 ? Guid.Empty : G2 : variant % 3 == 0 ? Guid.Empty : G1);
             var value = name switch
@@ -137,9 +137,10 @@ public partial class PortableSecurityFoundationTests
         var ctor = AdConstructors(CurrentAdRuleTypes[kind])[constructor];
         var error = Record.Exception(() => A.InteropAdRuleCodec.Validate(ExpectedAdRule(kind, ctor, 1, invalid)));
         Assert.True(error is ArgumentException or NotSupportedException);
+        var current = Assert.Throws<TargetInvocationException>(() => ctor.Invoke(AdArguments(ctor, 1, invalid))).InnerException!;
+        Assert.IsAssignableFrom<ArgumentException>(current);
         if (!OperatingSystem.IsWindows()) return; // No native exception claim on Linux.
         var nativeCtor = AdConstructors(NativeAdRuleTypes[kind])[constructor];
-        var current = Assert.Throws<TargetInvocationException>(() => ctor.Invoke(AdArguments(ctor, 1, invalid))).InnerException!;
         var native = Assert.Throws<TargetInvocationException>(() => nativeCtor.Invoke(AdArguments(nativeCtor, 1, invalid))).InnerException!;
         Assert.Equal(native.GetType(), current.GetType());
         Assert.Equal((native as ArgumentException)?.ParamName, (current as ArgumentException)?.ParamName);
@@ -188,6 +189,7 @@ public partial class PortableSecurityFoundationTests
         var value = ExpectedAdRule(kind, AdConstructors(CurrentAdRuleTypes[kind]).Last(), 4);
         value = value with { Fields = value.Fields with { IsInherited = true } };
         A.InteropAdRuleCodec.Validate(value);
+        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(A.InteropAdRuleCodec.CreateCurrentRule(value))));
         if (!OperatingSystem.IsWindows()) return;
         var native = A.InteropAdRuleCodec.Export(value, CreateNativeAdRule, CaptureNativeAdRule);
         Assert.True(native.IsInherited);
@@ -215,11 +217,11 @@ public partial class PortableSecurityFoundationTests
         lock (A.FacadeMutation.Gate)
             Assert.Throws<InvalidOperationException>(() => A.InteropAdRuleCodec.Export(value, v => v, v => v));
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Validate(value with { Kind = (A.InteropAdRuleKind)99 }));
+        Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.CaptureCurrentRule(new UnknownCurrentAdRule(new P.SecurityIdentifier(U1, 0))));
         if (!OperatingSystem.IsWindows()) return;
-        Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.CaptureCurrentRule(new UnknownCurrentAdRule(new M.SecurityIdentifier(U1, 0))));
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Import(new UnknownNativeAdRule(new M.SecurityIdentifier(U1, 0)), CaptureNativeAdRule));
     }
-    private sealed class UnknownCurrentAdRule(M.IdentityReference id) : D.ActiveDirectoryAccessRule(id, D.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
+    private sealed class UnknownCurrentAdRule(P.IdentityReference id) : D.ActiveDirectoryAccessRule(id, D.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
     private sealed class UnknownNativeAdRule(M.IdentityReference id) : N.ActiveDirectoryAccessRule(id, N.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
 
     public static IEnumerable<object[]> AdRuleFactoryMatrix()
@@ -244,6 +246,7 @@ public partial class PortableSecurityFoundationTests
         var value = new A.InteropAdRuleValue(audit ? A.InteropAdRuleKind.Audit : A.InteropAdRuleKind.Access,
             fields, D.ActiveDirectoryInheritance.FromFlags(inf, prop));
         A.InteropAdRuleCodec.Validate(value);
+        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(A.InteropAdRuleCodec.CreateCurrentRule(value))));
         if (!OperatingSystem.IsWindows()) return;
         var native = A.InteropAdRuleCodec.Export(value, CreateNativeAdRule, CaptureNativeAdRule);
         var current = A.InteropAdRuleCodec.CreateCurrentRule(CaptureNativeAdRule(native));

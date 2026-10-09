@@ -38,7 +38,6 @@ public partial class DirectoryEntry : Component
     private bool _usePropertyCache = true;
     private DirectoryEntryConfiguration? _options;
     private ActiveDirectorySecurity? _objectSecurity;
-    private bool _objectSecurityChanged;
     private bool _disposed;
 
     /// <summary>Creates an unbound entry, like Microsoft's parameterless constructor.</summary>
@@ -270,20 +269,8 @@ public partial class DirectoryEntry : Component
     /// <summary>Gets or sets this entry's Active Directory security descriptor.</summary>
     public ActiveDirectorySecurity ObjectSecurity
     {
-        get
-        {
-            EnsureAccessControlSupported();
-            return _objectSecurity ??= ReadObjectSecurity();
-        }
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            EnsureAccessControlSupported();
-            IdentityLifetime.Invalidate();
-            _objectSecurity = value;
-            _objectSecurityChanged = true;
-            CommitIfNotCaching();
-        }
+        get => GetPortableObjectSecurity();
+        set => AssignPortableObjectSecurity(value);
     }
 
     /// <summary>The parent entry, or <see langword="null"/> for a naming-context root.</summary>
@@ -362,86 +349,7 @@ public partial class DirectoryEntry : Component
     /// <c>Children.Add</c>) this creates it; for an existing one it sends only
     /// the changed attributes, like Microsoft's <c>CommitChanges</c>.
     /// </summary>
-    public void CommitChanges()
-    {
-        // ADSI treats SetInfo on an already disposed, clean entry as a no-op.
-        // Other operations still reject the disposed instance through their
-        // normal binding guards.
-        if (_disposed)
-        {
-            return;
-        }
-
-        // A clean, unbound entry has no provider state to commit. New children
-        // and pending writes must still bind even if their connection was reset.
-        if (_connection is null && !_isNew && _pendingPropertyChanges.Count == 0
-            && !_objectSecurityChanged && !(_objectSecurity?.IsModified() ?? false))
-        {
-            return;
-        }
-
-        var connection = GetConnection();
-        PropertyValueCollection[] committedProperties;
-
-        if (_isNew)
-        {
-            committedProperties = ((IEnumerable<PropertyValueCollection>)Properties).ToArray();
-            var add = new AddRequest(_path.DistinguishedName);
-            foreach (var property in committedProperties)
-            {
-                if (property.Count > 0)
-                {
-                    add.Attributes.Add(ToAttribute(property));
-                }
-            }
-
-            AddObjectSecurity(add);
-
-            connection.SendRequestCompatible(add);
-            _isNew = false;
-        }
-        else
-        {
-            EnsureLoaded();
-            committedProperties = _pendingPropertyChanges.ToArray();
-            var modify = new ModifyRequest(_path.DistinguishedName);
-            foreach (var property in committedProperties)
-            {
-                if (!property.Changed)
-                {
-                    continue;
-                }
-
-                AddModifications(modify, property);
-            }
-
-            AddObjectSecurity(modify);
-
-            if (modify.Modifications.Count > 0)
-            {
-                connection.SendRequestCompatible(modify);
-            }
-        }
-
-        foreach (var property in committedProperties)
-        {
-            property.ResetChanged();
-        }
-
-        IdentityLifetime.Invalidate();
-        _pendingPropertyChanges.Clear();
-
-        // A successful SetInfo mirrors ADSI: the next managed property access
-        // must bind again and observe server-generated or normalized values.
-        // Keep the pre-commit collection intact until this point so a failed
-        // request retains local state.
-        _properties = null;
-
-        // Microsoft also discards the initialized security descriptor after a
-        // successful SetInfo, regardless of whether it supplied the change.
-        _objectSecurity = null;
-        _objectSecurityChanged = false;
-    }
+    public void CommitChanges() => CommitPortableChanges();
 
     /// <summary>
     /// Sends a single Replace for one attribute right away, without touching the
@@ -498,6 +406,8 @@ public partial class DirectoryEntry : Component
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
     {
+        ThrowIfDisposed();
+        if (SecurityReadOverride is { } read) return read(masks).ToArray();
         var request = new SearchRequest(
             _path.DistinguishedName,
             "(objectClass=*)",
@@ -662,7 +572,7 @@ public partial class DirectoryEntry : Component
         switch (value)
         {
             case byte[] bytes:
-                attribute.Add(bytes);
+                attribute.Add((byte[])bytes.Clone());
                 break;
             case string text:
                 attribute.Add(text);
@@ -698,96 +608,16 @@ public partial class DirectoryEntry : Component
     }
 
     /// <summary>Re-reads this object's attributes from the server.</summary>
-    public void RefreshCache()
-    {
-        var refreshed = ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true);
-        IdentityLifetime.Invalidate();
-        _pendingPropertyChanges.Clear();
-        _properties = refreshed;
-        _objectSecurity = null;
-        _objectSecurityChanged = false;
-    }
+    public void RefreshCache() => RefreshPortableCache(new[] { "*", "nTSecurityDescriptor" }, full: true);
 
-    /// <summary>
-    /// Atomically reloads a newly added entry. If the follow-up base search
-    /// does not return the object, throws without replacing the add-request cache.
-    /// </summary>
-    internal void RefreshCacheAfterCreate()
-    {
-        var refreshed = ReadProperties(
-            new[] { "*", "nTSecurityDescriptor" },
-            loadDefaultProperties: true);
-        if (refreshed.Count == 0)
-        {
-            throw new DirectoryServicesCOMException(
-                "The newly created directory entry could not be read back from the directory.");
-        }
+    internal void RefreshCacheAfterCreate() => RefreshPortableCache(new[] { "*", "nTSecurityDescriptor" }, full: true, requireObject: true);
 
-        IdentityLifetime.Invalidate();
-        _properties = refreshed;
-        _objectSecurity = null;
-        _objectSecurityChanged = false;
-    }
-
-    /// <summary>Re-reads the specified attributes into the local property cache.</summary>
     public void RefreshCache(string[] propertyNames)
     {
         ThrowIfDisposed();
-        // ADSI dereferences the array before validating it.
         _ = propertyNames.Length;
-        if (propertyNames.Any(propertyName => propertyName is null))
-        {
-            throw new COMException("The requested property name is invalid.");
-        }
-
-        // LDAP treats an empty attribute list as "all user attributes", while
-        // ADSI GetInfoEx with no names does not turn a partial refresh into a
-        // full managed-cache replacement. Request LDAP's explicit no-attributes
-        // selector so the call still validates/binds the entry without changing
-        // any cached property.
-        if (propertyNames.Length == 0)
-        {
-            _ = ReadProperties(new[] { "1.1" });
-            return;
-        }
-
-        var refreshed = ReadProperties(propertyNames);
-        var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
-        properties.MarkLoaded();
-        foreach (var propertyName in propertyNames)
-        {
-            if (propertyName is null)
-            {
-                continue;
-            }
-
-            properties.RemoveCached(propertyName);
-            _pendingPropertyChanges.RemoveWhere(property =>
-                string.Equals(property.PropertyName, propertyName, StringComparison.OrdinalIgnoreCase));
-
-        }
-
-        foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
-        {
-            // ADSI does not expose a literal ranged request through its managed
-            // PropertyCollection. Keep an already cached base property intact.
-            if (HasRangeSpecifier(property.PropertyName)
-                && propertyNames.Any(HasRangeSpecifier))
-            {
-                continue;
-            }
-
-            properties.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
-        }
-
-        _properties = properties;
-
-        if (propertyNames.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
-        {
-            IdentityLifetime.Invalidate();
-            _objectSecurity = null;
-            _objectSecurityChanged = false;
-        }
+        if (propertyNames.Any(name => name is null)) throw new COMException("The requested property name is invalid.");
+        RefreshPortableCache(propertyNames, full: false);
     }
 
     /// <summary>
@@ -946,7 +776,12 @@ public partial class DirectoryEntry : Component
         bool loadDefaultProperties = false)
     {
         ThrowIfDisposed();
-        if (PropertyReadOverride is { } read) return read(requestedProperties, loadDefaultProperties);
+        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        if (PropertyReadOverride is { } read)
+        {
+            var controlled = read(requestedProperties, loadDefaultProperties);
+            return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => controlled);
+        }
         var connection = GetConnection();
         var request = new SearchRequest(
             _path.DistinguishedName,
@@ -966,11 +801,13 @@ public partial class DirectoryEntry : Component
 
         if (response.Entries.Count > 0)
         {
-            _boundDistinguishedName = response.Entries[0].DistinguishedName;
             LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties);
         }
-
-        return properties;
+        return IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+        {
+            if (response.Entries.Count > 0) _boundDistinguishedName = response.Entries[0].DistinguishedName;
+            return properties;
+        });
     }
 
     private static bool HasRangeSpecifier(string propertyName) =>
@@ -987,50 +824,6 @@ public partial class DirectoryEntry : Component
         .Replace("(", "\\28")
         .Replace(")", "\\29")
         .Replace("\0", "\\00");
-
-    private ActiveDirectorySecurity ReadObjectSecurity()
-    {
-        var masks = EffectiveSecurityMasks();
-        return new ActiveDirectorySecurity(ReadSecurityDescriptorImmediate(masks), masks);
-    }
-
-    private static void EnsureAccessControlSupported()
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            throw new PlatformNotSupportedException(
-                "ActiveDirectorySecurity derives from the Windows-only System.Security.AccessControl object-security model.");
-        }
-    }
-
-    private bool AddObjectSecurity(DirectoryRequest request)
-    {
-        if (_objectSecurity is null || (!_objectSecurityChanged && !_objectSecurity.IsModified()))
-        {
-            return false;
-        }
-
-        var binaryForm = _objectSecurity.GetSecurityDescriptorBinaryForm();
-        switch (request)
-        {
-            case AddRequest add:
-                add.Attributes.Add(new DirectoryAttribute("nTSecurityDescriptor", binaryForm));
-                break;
-            case ModifyRequest modify:
-                var replacement = new DirectoryAttributeModification
-                {
-                    Name = "nTSecurityDescriptor",
-                    Operation = DirectoryAttributeOperation.Replace,
-                };
-                replacement.Add(binaryForm);
-                modify.Modifications.Add(replacement);
-                break;
-        }
-
-        request.Controls.Add(new SecurityDescriptorFlagControl(
-            (System.DirectoryServices.Protocols.SecurityMasks)(int)_objectSecurity.RetrievedMasks));
-        return true;
-    }
 
     private void CommitIfNotCaching()
     {
@@ -1063,35 +856,29 @@ public partial class DirectoryEntry : Component
         }
     }
 
-    internal LdapConnection GetConnection()
-    {
-        ThrowIfDisposed();
-        return _connection ??= LdapExceptionTranslator.Execute(CreateBoundConnection);
-    }
+    internal LdapConnection GetConnection() => GetOwnedConnection(false);
 
-    /// <summary>
-    /// Schema discovery uses a dedicated connection so it never attempts a
-    /// second request on a connection that is yielding asynchronous results.
-    /// </summary>
-    internal LdapConnection GetSchemaConnection()
-    {
-        ThrowIfDisposed();
-        return _schemaConnection ??= CreateBoundConnection();
-    }
+    internal LdapConnection GetSchemaConnection() => GetOwnedConnection(true);
 
-    private LdapConnection CreateBoundConnection()
+    private LdapConnection GetOwnedConnection(bool schema)
     {
-        var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        var snapshot = IdentityLifetime.Checked(generation, ThrowIfDisposed,
+            () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
+        if (snapshot.Existing is not null) return snapshot.Existing;
+        var created = LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(snapshot.Options));
+        LdapConnection? selected = null;
         try
         {
-            LdapConnectionFactory.ConfigureReferralChasing(connection, Options.Referral);
-            return connection;
+            LdapConnectionFactory.ConfigureReferralChasing(created, snapshot.Referral);
+            selected = IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+            {
+                if (schema) return _schemaConnection ??= created;
+                return _connection ??= created;
+            });
+            return selected;
         }
-        catch
-        {
-            connection.Dispose();
-            throw;
-        }
+        finally { if (!ReferenceEquals(selected, created)) created.Dispose(); }
     }
 
     internal void OnReferralChanged() => ResetConnection();
@@ -1192,23 +979,14 @@ public partial class DirectoryEntry : Component
     private void OnPropertyChanged(PropertyValueCollection property)
     {
         ThrowIfDisposed();
-        if (_usePropertyCache || _isNew)
+        Interlocked.Increment(ref _entryChangeVersion);
+        if (_properties is null && !_isNew)
         {
-            if (_properties is null && !_isNew)
-            {
-                // A retained wrapper writes into the newly bound native cache.
-                Properties.EnsureLoaded();
-                _properties!.ReplaceLoaded(property.PropertyName, property.Cast<object>());
-            }
-            _pendingPropertyChanges.Add(property);
-            return;
+            Properties.EnsureLoaded();
+            _properties!.ReplaceLoaded(property.PropertyName, property.Cast<object>());
         }
-
-        var request = new ModifyRequest(_path.DistinguishedName);
-        AddModifications(request, property);
-        GetConnection().SendRequestCompatible(request);
-        property.ResetChanged();
-        _properties = null;
+        lock (_entryWriteGate) _pendingPropertyChanges.Add(property);
+        if (!_usePropertyCache && !_isNew) CommitPortableChanges();
     }
 
     private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
@@ -1304,7 +1082,7 @@ public partial class DirectoryEntry : Component
         _pendingPropertyChanges.Clear();
         _properties = null;
         _objectSecurity = null;
-        _objectSecurityChanged = false;
+
         ResetConnection();
     }
 
@@ -1353,7 +1131,7 @@ public partial class DirectoryEntry : Component
         _pendingPropertyChanges.Clear();
         _properties = null;
         _objectSecurity = null;
-        _objectSecurityChanged = false;
+
     }
 
     internal void ThrowIfDisposed()
@@ -1378,7 +1156,7 @@ public partial class DirectoryEntry : Component
             {
                 _properties = null;
                 _objectSecurity = null;
-                _objectSecurityChanged = false;
+
             }
 
             _disposed = true;

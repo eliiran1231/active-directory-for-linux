@@ -1,5 +1,10 @@
 # Entry-bound identity resolution and raw write preparation — staged dependency
 
+Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
+supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
+unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,
+not claims of live-directory parity.
+
 This implements the next portable dependency after the NULL-DACL correction. It follows
 [D11 and D4](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-decisions.md)
 and the [context ownership design](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/context-bound-identity-resolution.md).

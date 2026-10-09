@@ -2,7 +2,7 @@
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using D = AdForLinux.DirectoryServices;
-using B = System.Security.AccessControl;
+using B = AdForLinux.Security.AccessControl;
 
 namespace AdForLinux.Security.AccessControl;
 
@@ -62,11 +62,9 @@ internal static class InteropAdRuleCodec
         var result = inspect(source); Validate(result); return result;
     }
 
-    [SupportedOSPlatform("windows")]
     internal static InteropAdRuleValue CaptureCurrentRule(B.AuthorizationRule source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("The current public AD hierarchy requires Windows.");
         var kind = source.GetType() == typeof(D.ActiveDirectoryAccessRule) ? InteropAdRuleKind.Access
             : source.GetType() == typeof(D.ActiveDirectoryAuditRule) ? InteropAdRuleKind.Audit
             : source.GetType() == typeof(D.ListChildrenAccessRule) ? InteropAdRuleKind.ListChildren
@@ -78,7 +76,7 @@ internal static class InteropAdRuleCodec
             : source.GetType() == typeof(D.DeleteTreeAccessRule) ? InteropAdRuleKind.DeleteTree
             : throw new NotSupportedException("Unknown AD rule subclasses cannot be converted implicitly.");
         var access = source as D.ActiveDirectoryAccessRule; var audit = source as D.ActiveDirectoryAuditRule;
-        var fields = new InteropRuleValue(InteropValueCodec.CaptureIdentity(InteropValueCodec.FromMicrosoftIdentity(source.IdentityReference)),
+        var fields = new InteropRuleValue(InteropValueCodec.CaptureIdentity(source.IdentityReference),
             (int)(access?.ActiveDirectoryRights ?? audit!.ActiveDirectoryRights), source.IsInherited,
             source.InheritanceFlags, source.PropagationFlags, audit is not null, true,
             access?.AccessControlType ?? AccessControlType.Allow, audit?.AuditFlags ?? AuditFlags.None,
@@ -88,12 +86,10 @@ internal static class InteropAdRuleCodec
         Validate(result); return result;
     }
 
-    [SupportedOSPlatform("windows")]
     internal static B.AuthorizationRule CreateCurrentRule(InteropAdRuleValue value)
     {
         Validate(value);
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("The current public AD hierarchy requires Windows.");
-        var f = value.Fields; var id = InteropValueCodec.ToMicrosoftIdentity(f.Identity.ToPortable());
+        var f = value.Fields; var id = f.Identity.ToPortable();
         var inheritance = value.InheritanceType; var type = f.AccessType;
         var property = f.Mask == 16 ? D.PropertyAccess.Read : D.PropertyAccess.Write;
         B.AuthorizationRule result = value.Kind switch

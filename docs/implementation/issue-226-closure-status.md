@@ -1,5 +1,10 @@
 # Detached ACL, descriptor and SID closure status
 
+Current integration: [portable public AD cutover and raw persistence](issue-226-entry-persistence-status.md)
+supersedes the historical staging statements below about the BCL-rooted AD hierarchy and
+unwired DirectoryEntry path. Historical oracle counts and preservation boundaries remain evidence,
+not claims of live-directory parity.
+
 Latest measured checkpoint: **3,589 closure rows**, including 321 ObjectSecurity/facade rows,
 and **29 mapped supporting types**. The NULL-DACL rollback correction adds 72 native rows
 without changing the preceding 3,517; 40 failures deliberately preserve atomic rollback,

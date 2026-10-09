@@ -64,12 +64,7 @@ public class LowLevelFeatureFamiliesTests
     [Fact]
     public void Security_rule_values_and_inheritance_match_the_directory_contract()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
-        var identity = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+        var identity = new AdForLinux.Security.Principal.SecurityIdentifier(WellKnownSidType.WorldSid, null);
         var propertyType = Guid.NewGuid();
         var inheritedType = Guid.NewGuid();
         var rule = new ActiveDirectoryAccessRule(
@@ -93,19 +88,16 @@ public class LowLevelFeatureFamiliesTests
     }
 
     [Fact]
-    public void Object_security_is_explicitly_windows_only()
+    public void Object_security_uses_portable_descriptor_on_every_platform()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
-        using var entry = new DirectoryEntry();
-        Assert.Throws<PlatformNotSupportedException>(() => entry.ObjectSecurity);
+        using var entry = new DirectoryEntry("LDAP://dc.example/CN=item,DC=example,DC=com");
+        entry.SecurityReadOverride = _ => SecurityDescriptorFixtures.Build(
+            SecurityDescriptorFixtures.U1, SecurityDescriptorFixtures.U1, SecurityDescriptorFixtures.Acl(4));
+        Assert.IsAssignableFrom<AdForLinux.Security.AccessControl.DirectoryObjectSecurity>(entry.ObjectSecurity);
     }
 
     [Fact]
-    public void Required_sid_and_acl_primitives_are_unavailable_on_linux()
+    public void Framework_sid_remains_windows_only_while_portable_security_constructs_on_linux()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -117,7 +109,7 @@ public class LowLevelFeatureFamiliesTests
         var worldSid = new byte[] { 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 };
 
         Assert.Throws<PlatformNotSupportedException>(() => new SecurityIdentifier(worldSid, 0));
-        Assert.Throws<PlatformNotSupportedException>(() => new ActiveDirectorySecurity());
+        Assert.IsAssignableFrom<AdForLinux.Security.AccessControl.DirectoryObjectSecurity>(new ActiveDirectorySecurity());
     }
 
     [Fact]

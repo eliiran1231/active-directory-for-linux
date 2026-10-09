@@ -94,8 +94,8 @@ public partial class PortableSecurityFoundationTests
         Assert.Throws<InvalidOperationException>(() => wrapper.SetGroup(new SecurityIdentifier(U2, 0)));
         wrapper.Descriptor.Group = new SecurityIdentifier(U2, 0); // shared facade edits are caught again at preparation
         Assert.Throws<InvalidOperationException>(() => A.RawSecurityWritePreparation.PrepareModify(wrapper, EntryMasks.Group));
-        A.RawSecurityWritePreparation.ValidateAddDescriptor(null);
-        Assert.Throws<NotSupportedException>(() => A.RawSecurityWritePreparation.ValidateAddDescriptor(wrapper.GetSecurityDescriptorBinaryForm()));
+        Assert.Null(A.RawSecurityWritePreparation.PrepareAdd(null, EntryMasks.None));
+        Assert.Throws<NotSupportedException>(() => A.RawSecurityWritePreparation.PrepareAdd(wrapper.GetSecurityDescriptorBinaryForm(), EntryMasks.Owner));
         Assert.Throws<ArgumentOutOfRangeException>(() => A.RawSecurityWritePreparation.Masks((AccessControlSections)16));
         Assert.Equal(0, fixture.Opened);
     }
