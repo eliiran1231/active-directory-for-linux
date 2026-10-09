@@ -117,7 +117,7 @@ public partial class PortableSecurityFoundationTests
     [Theory]
     [InlineData(false, "merged")] [InlineData(true, "merged")]
     [InlineData(false, "inherited")] [InlineData(true, "inherited")]
-    [InlineData(false, "addition")] [InlineData(true, "addition")]
+    [InlineData(false, "inherited-addition")] [InlineData(true, "inherited-addition")]
     [InlineData(false, "reorder")] [InlineData(true, "reorder")]
     [InlineData(false, "ambiguous")] [InlineData(true, "ambiguous")]
     public void InteropAcl_UnprovenStructuralEditsStillRefuseAtomically(bool audit, string kind)
@@ -134,7 +134,7 @@ public partial class PortableSecurityFoundationTests
         var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
         var parsed = C.SecurityDescriptor.Parse(export.Value, AllEntrySections);
         var aces = (audit ? parsed.Sacl! : parsed.Dacl!).Aces.Select(a => a.RawBytes.ToArray()).ToList();
-        if (kind == "addition") aces.Add(Ace(type, flags, 64, Everyone));
+        if (kind == "inherited-addition") aces.Add(Ace(type, (byte)(flags | 16), 64, Everyone));
         else if (kind == "reorder") aces.Reverse();
         else aces.RemoveAt(0);
         var candidate = Build(U1, U1, audit ? Acl(4) : Acl(4, aces.ToArray()), audit ? Acl(4, aces.ToArray()) : Acl(4));

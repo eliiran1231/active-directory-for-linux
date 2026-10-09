@@ -207,7 +207,8 @@ internal sealed class AclMutationEngine
     private sealed record ProjectedState(ProjectedGroup[] Groups, byte[] RawAcl);
 
     // Detached edit-back is a value diff, not an operation journal. Only unique,
-    // single-contributor, explicit mask edits and deletions have a proven interpretation.
+    // single-contributor mask/deletion edits and non-merging explicit insertions have
+    // a proven interpretation. Insertion never infers changes to existing occurrences.
     internal AclMutationEngine ReconcileInteropEdits(SecurityMasks section, byte[] baseline, byte[] edited)
     {
         var isDacl = ValidateSection(section);
@@ -217,12 +218,12 @@ internal sealed class AclMutationEngine
         if (!DescriptorRewriter.EncodeAcl(current, current.Aces).AsSpan().SequenceEqual(baseline))
             throw new NotSupportedException("Fresh-import regrouping cannot be mapped back to retained live occurrences.");
         var before = Acl.Read(baseline); var after = Acl.Read(edited);
-        // Size/count may shrink when a uniquely mapped occurrence is removed. All
-        // other header fields and the present/NULL state must stay unchanged.
+        // Only size/count can change. Revision, reserved fields and the present/NULL
+        // state stay unchanged; insertion and deletion use separate proof paths.
         if (!baseline.AsSpan(0, 2).SequenceEqual(edited.AsSpan(0, 2))
             || !baseline.AsSpan(6, 2).SequenceEqual(edited.AsSpan(6, 2))
-            || before.Aces.Count < after.Aces.Count || !after.Trailing.IsEmpty)
-            throw new NotSupportedException("ACL additions, revision/reserved fields and trailing data cannot be reconciled.");
+            || !after.Trailing.IsEmpty)
+            throw new NotSupportedException("ACL revision/reserved fields and trailing data cannot be reconciled.");
 
         var groups = new List<(Ace View, int[] RawIndices)>();
         var retained = RetainedState(section);
@@ -257,6 +258,7 @@ internal sealed class AclMutationEngine
         }
         if (!SameEntries(groups.Select(g => g.View).ToArray(), before.Aces))
             throw new NotSupportedException("The exported occurrences do not have a proven contributor mapping.");
+        if (after.Aces.Count > before.Aces.Count) return ReconcileInsertions();
         var replacements = raw.Aces.ToArray();
         var removed = new HashSet<int>();
         var survivors = new List<(Ace View, int[] RawIndices)>();
@@ -303,6 +305,64 @@ internal sealed class AclMutationEngine
         if (!DescriptorRewriter.EncodeAcl(result, result.Aces).AsSpan().SequenceEqual(edited))
             throw new NotSupportedException("The edit changes projection grouping or order outside the candidate.");
         return next;
+
+        AclMutationEngine ReconcileInsertions()
+        {
+            var candidateGroups = new List<(Ace View, int[] RawIndices)>();
+            var added = new List<Ace>();
+            var oldIndex = 0;
+            foreach (var ace in after.Aces)
+            {
+                if (oldIndex < groups.Count && ace.RawBytes.SequenceEqual(groups[oldIndex].View.RawBytes))
+                {
+                    candidateGroups.Add(groups[oldIndex++]); continue;
+                }
+                if (!Explicit(ace) || !MicrosoftObservableProjector.IsUnderstoodAce(ace, isDacl)
+                    || ace.AccessMask == 0 || (!isDacl && (ace.AceFlags & 0xC0) == 0)
+                    || groups.Any(group => SameExceptMask(group.View, ace)))
+                    throw new NotSupportedException("Insertion requires a new explicit ACE, not a change or reordering of a survivor.");
+                var singleton = Acl.Read(DescriptorRewriter.EncodeAcl(raw, new[] { ace }));
+                var normalized = MicrosoftObservableProjector.NormalizeForEdit(singleton, isDacl);
+                if (normalized.Aces.Count != 1 || !normalized.Aces[0].RawBytes.SequenceEqual(ace.RawBytes))
+                    throw new NotSupportedException("A new ACE cannot require projection normalization.");
+                // Check both directions: object/scope absorption is asymmetric. Raw
+                // originals are checked too, so insertion cannot activate hidden data.
+                foreach (var other in groups.Select(group => group.View).Concat(raw.Aces).Concat(added))
+                    if (SameExceptMask(other, ace) || TryMerge(other, ace, out _) || TryMerge(ace, other, out _))
+                        throw new NotSupportedException("Insertion cannot merge with or ambiguously duplicate another occurrence.");
+                added.Add(ace); candidateGroups.Add((ace, Array.Empty<int>()));
+            }
+            if (oldIndex != groups.Count)
+                throw new NotSupportedException("Insertion cannot remove or change existing occurrences.");
+
+            // Stable raw placement: immediately before the first contributor of the
+            // next surviving live group, or at the raw end when none follows. Never
+            // relocate survivors to accommodate a backward anchor in unsorted raw data.
+            var placed = new List<Ace>(); var rawCursor = 0;
+            for (var i = 0; i < candidateGroups.Count; i++)
+            {
+                if (candidateGroups[i].RawIndices.Length != 0) continue;
+                var following = candidateGroups.Skip(i + 1).FirstOrDefault(group => group.RawIndices.Length != 0);
+                var anchor = following.RawIndices is null ? raw.Aces.Count : following.RawIndices.Min();
+                if (anchor < rawCursor)
+                    throw new NotSupportedException("Insertion anchors would move existing raw contributors.");
+                while (rawCursor < anchor) placed.Add(raw.Aces[rawCursor++]);
+                placed.Add(candidateGroups[i].View);
+            }
+            while (rawCursor < raw.Aces.Count) placed.Add(raw.Aces[rawCursor++]);
+            var insertedBytes = DescriptorRewriter.EncodeAcl(raw, placed);
+            var insertedDescriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
+                new Dictionary<SecurityMasks, byte[]?> { [section] = insertedBytes });
+            ProjectedState? insertedState = retained is null ? null : new(candidateGroups.Select(group =>
+                new ProjectedGroup(group.View, group.RawIndices.Length == 0 ? new[] { group.View }
+                    : group.RawIndices.Select(index => raw.Aces[index]).ToArray())).ToArray(), insertedBytes);
+            var inserted = new AclMutationEngine(insertedDescriptor, OriginalDescriptor, WriteIntent | section,
+                isDacl ? insertedState : _projectedDacl, isDacl ? _projectedSacl : insertedState);
+            var projected = inserted.GetObservableAcl(section)!;
+            if (!DescriptorRewriter.EncodeAcl(projected, projected.Aces).AsSpan().SequenceEqual(edited))
+                throw new NotSupportedException("Raw placement does not reproduce the edited target exactly.");
+            return inserted;
+        }
 
         static bool SameExceptMask(Ace left, Ace right) => left.Size == right.Size
             && left.RawBytes[..4].SequenceEqual(right.RawBytes[..4])

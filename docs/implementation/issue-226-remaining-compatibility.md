@@ -20,14 +20,14 @@ established by detached Windows objects or controlled LDAP request capture.
 
 ## Concrete exposure proposal
 
-Keep Microsoft dependencies in the optional Windows companion. Expose distinct operations
-for detached data copies and provenance-bearing editable exports; only the latter can
-reconcile into the original portable wrapper and generation. Use an opaque data-only
-provenance value; never carry resolvers, credentials or connections. Context-dependent
-identity/alias conversion should require an explicit caller-supplied authority and remain
-separate from value conversion. The remaining decision is the companion's package/API
-spelling and friend-access arrangement. No new public helper or companion name is committed
-by this proposal, and it does not block testing the internal contracts.
+The [exact Microsoft companion contract](issue-226-microsoft-companion-proposal.md) now
+proposes `AdForLinux.DirectoryServices.Microsoft` as NuGet package, assembly and namespace;
+`MicrosoftConversions` extensions; immutable `SecurityDescriptorSnapshot`; and disposable
+`MicrosoftSecurityEdit` with explicit one-success `ApplyTo(source)`. It includes complete
+signatures, version/friend access, disposal/authority semantics, caller examples and migration
+differences. These are proposed names, not implemented public declarations. The optional
+companion/detached conversion/separate edit-back architecture is already approved and is not
+being asked again. Internal compatibility work remains independent of the final naming decision.
 
 ## Unchanged limits
 
@@ -50,9 +50,10 @@ final observable target must match exactly, or the whole operation rolls back. T
 new cases exercise this boundary, including actual Microsoft detached edits on Windows.
 See [the precise edit-back contract](issue-226-interop-status.md#unique-contributor-deletion-follow-up).
 
-The next independent implementation slice is insertion of unambiguous non-merging explicit
-ACEs with a proven raw placement rule; merged edits, splits and reorderings still need their
-own contributor proofs. Explicit Add guards remain unchanged: Microsoft's
+The next pass implements unambiguous non-merging explicit insertion using stable raw
+survivor anchors, as described in the [insertion follow-up](issue-226-interop-status.md#non-merging-explicit-insertion-follow-up).
+Mixed insertion-plus-existing-ACE changes, revision-changing insertions, merged edits, splits
+and reorderings still need their own contributor proofs. Explicit Add guards remain unchanged: Microsoft's
 [SD Flags Control specification](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/932a7a8d-8c93-4448-8093-c79b7d9ba499)
 confirms that Add ignores that control, but does not prove this client's omitted/NULL/default
 or inheritance behavior. Broader request-plan tests and separately authorized server evidence

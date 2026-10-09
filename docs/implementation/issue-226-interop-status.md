@@ -42,14 +42,14 @@ exchange export provenance. Existing pending edits are neither cleared nor recla
 ACL edit-back permits nonzero mask changes and deletion of explicit, uniquely identifiable
 live occurrences with exactly one raw contributor. Surviving occurrences retain order, ACE
 type/flags, identity and GUID fields. ACL state, revision and reserved fields stay unchanged;
-only size/count may shrink for deletion. Existing retained provenance is
+only size/count may shrink for deletion or grow for the separate insertion path below. Existing retained provenance is
 validated directly; fresh imports build occurrence-index mappings using only the reviewed
 normalization, sorting and single-pass compaction rules. The clean export baseline must equal
 the current retained live ACL, and the resulting projection must equal the edited target.
 
 Unchanged merged groups and inactive originals retain their exact raw bytes, including original
 NoPropagate bits. Changed merged contributors, duplicate same-shape occurrences, inherited ACEs,
-zero masks, additions, merged/ambiguous/inherited removals, splits, reordering, control fields and ambiguous fresh-import
+zero masks, merging/ambiguous/inherited additions or removals, splits, reordering, control fields and ambiguous fresh-import
 regrouping refuse. Shared ACL objects retain identity; all owners reconcile in one existing
 facade transaction or roll back together, including a failure after the other ACL was edited.
 Detached replacement requires explicit section intent and a loaded destination baseline under
@@ -97,7 +97,8 @@ and current-hierarchy conversion for all nine AD rule classes and their 45 const
 with actual Microsoft comparisons on Windows. Portable AD materialization is now integrated with the coherent hierarchy/consumer cutover;
 no parallel AD rule hierarchy was introduced.
 
-Next dependencies: additions, splits, reordering and ambiguous/multiple-contributor edit-back;
+Next dependencies: mixed insertion-plus-existing-ACE changes, revision-changing insertions,
+splits, reordering and ambiguous/multiple-contributor edit-back;
 actual Microsoft AD-security companion exposure; reviewed friend-access and final public names.
 The [approved persistence contracts](issue-226-persistence-decisions.md) are integrated with
 entry transport; live AD and any effective-access evaluator remain outside this slice.
@@ -129,3 +130,37 @@ compound rollback. Fourteen positive removal cases all failed against the previo
 reconciler. Windows tests perform actual Microsoft CommonSecurityDescriptor/ACL edits; Linux
 uses portable detached objects. This does not claim a public companion API or Microsoft AD
 transport parity, and changes no native oracle recording or preservation policy.
+
+
+## Non-merging explicit insertion follow-up
+
+A candidate with more live ACEs takes a separate insertion proof. Every original exported
+occurrence must survive byte-identically and in its previous order. Each extra ACE must be
+explicit, understood, nonzero, unambiguous and already in its normalized form. Neither direction
+of the reviewed merge rules may merge it with a live survivor, any raw original (including
+hidden occurrences), or another new ACE. No operation history, scope change or replacement
+of an existing occurrence is inferred from a larger candidate.
+
+Placement is deterministic: put each new ACE immediately before the first raw contributor
+of its next surviving live group, or at the raw end if no group follows. Copy every original
+raw occurrence in its existing order, byte for byte. Multiple new ACEs at one anchor retain
+their candidate order. Backward anchors in an independently sorted raw layout refuse rather
+than moving survivors. Retained live groups gain only the new single-contributor occurrences;
+old groups and their contributor arrays remain intact. The complete resulting projection must
+match the edited target before publication. Empty-to-populated *present* ACLs are supported;
+absent/NULL transitions and revision/header changes are not implicit insertion operations.
+
+Forty-seven new offline cases cover common/object DACL/SACL insertions at every position,
+merged/inactive/inherited raw survivors, shared descriptor identity, retained contributor
+state and follow-on mask edits, pre-existing Owner intent, empty ACLs, multiple insertions,
+backward-anchor and raw-capacity refusal, normalization/merge/unknown/zero/inherited refusal, mixed-change
+refusal and rollback after another section fails. All 22 selected successful insertion cases
+failed against the previous implementation. Existing general-addition refusal fixtures now
+specifically assert inherited-addition refusal; positive cases are no longer mislabeled as
+unsupported. Windows executes actual Microsoft detached AddAccess/AddAudit operations.
+No native recording, preservation policy or uncertain-write behavior changes.
+
+The [exact companion proposal](issue-226-microsoft-companion-proposal.md) specifies package,
+assembly, namespace, extension signatures, snapshots, one-success edit sessions, disposal,
+authority separation and friend access. Those public names and wrappers remain unimplemented
+pending the final exposure decision; the approved architecture is not being reopened.
