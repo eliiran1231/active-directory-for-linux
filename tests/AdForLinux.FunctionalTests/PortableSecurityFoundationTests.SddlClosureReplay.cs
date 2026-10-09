@@ -40,6 +40,7 @@ public partial class PortableSecurityFoundationTests
     // portable refusal; this does not substitute a canned native outcome or silently skip a row.
     private static string? SddlDeferredReason(JsonElement row)
     {
+        if (AccessFilterLossHashes.ContainsKey(row.GetProperty("Case").GetInt32())) return "native access-filter omission";
         var operation = row.GetProperty("Operation").GetString();
         var arguments = row.GetProperty("Arguments");
         if (operation is "SddlParse" or "SddlRoundTrip" or "SddlHostRelative")
@@ -132,7 +133,7 @@ public partial class PortableSecurityFoundationTests
     {
         if (SddlDeferredReason(row) is null) return false;
         var caseId = row.GetProperty("Case").GetInt32();
-        Assert.True(SddlDeferredNativeHashes.TryGetValue(caseId, out var expectedHash), "Unreviewed SDDL deferral " + caseId);
+        Assert.True(SddlDeferredNativeHashes.TryGetValue(caseId, out var expectedHash) || AccessFilterLossHashes.TryGetValue(caseId, out expectedHash), "Unreviewed SDDL deferral " + caseId);
         Assert.Equal(expectedHash, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(row)))));
         Assert.Equal(JsonValueKind.Null, row.GetProperty("ExceptionType").ValueKind);
         Assert.NotEqual(JsonValueKind.Null, row.GetProperty("Outcome").ValueKind);
@@ -152,8 +153,10 @@ public partial class PortableSecurityFoundationTests
             if (reason is not null) { reasons.Add(reason); caseIds.Add(document.RootElement.GetProperty("Case").GetInt32()); }
         }
         Assert.Equal(new[] { 334, 336, 338, 340, 655, 656, 657, 658, 659, 660, 661, 662,
-            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 2635 }, caseIds.Order());
-        Assert.Equal(36, reasons.Count);
+            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 2635 }.Concat(AccessFilterLossHashes.Keys).Order(), caseIds.Order());
+        Assert.Equal(36 + AccessFilterLossHashes.Count, reasons.Count);
+        Assert.Equal(118, AccessFilterLossHashes.Count);
+        Assert.Equal(AccessFilterLossHashes.Count, reasons.Count(r => r == "native access-filter omission"));
         Assert.Equal(8, reasons.Count(r => r == "host-relative authority"));
         Assert.Equal(1, reasons.Count(r => r == "native resource omission"));
         Assert.Equal(1, reasons.Count(r => r == "native collapsed callback tail omission"));

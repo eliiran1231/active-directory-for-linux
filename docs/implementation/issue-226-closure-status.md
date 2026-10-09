@@ -1,5 +1,11 @@
 # Detached ACL, descriptor and SID closure status
 
+Latest codec evidence: [FL representation follow-up](issue-226-sddl-progress.md#access-filter-fl-representation-follow-up)
+adds 719 measured rows, bringing closure to 4,308. Counts in earlier slice sections below are
+historical. Current accounting: 2,855 exact successes, 1,250 exact exceptions, 154 explicit SDDL
+refusals, eight facade preservation refusals and 41 atomic-failure differences. No class is
+certified complete by these counts.
+
 Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
 AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
 of them as future work are historical slice boundaries, not current missing dependencies.

@@ -152,10 +152,15 @@ internal static class SddlCodec
     {
         var fields = text.Split(';', 7).Select(field => field.Trim()).ToArray();
         if (fields.Length is not (6 or 7)) throw Invalid();
+        // Native rejects FL in a DACL before examining flags, trustee or condition.
+        if (fields[0].Equals("FL", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!system) throw NativeInvalid(1804);
+            return ParseAccessFilter(fields);
+        }
         if (fields.Length == 7 && fields[0] is not ("XA" or "XD" or "XU" or "ZA" or "RA")) throw Invalid();
         if (!AceTypes.TryGetValue(fields[0], out var type))
         {
-            if (fields[0] is "RA" or "FL") throw new NotSupportedException("Resource and access-filter ACE payloads are not implemented.");
             throw NativeInvalid(1804);
         }
         if (!system && type is 7 or 8) throw NativeInvalid(1804);
@@ -208,6 +213,47 @@ internal static class SddlCodec
         if (collapsedCallbackObject) Array.Resize(ref opaque, opaque!.Length + 4);
         return isObject ? new ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedType, callback, opaque)
             : new CommonAce(flags, qualifier, mask, sid, callback, opaque);
+    }
+
+    private static CustomAce ParseAccessFilter(string[] fields)
+    {
+        if (fields.Length != 7) throw Invalid();
+        var flagText = fields[1].ToUpperInvariant();
+        if ((flagText.Length & 1) != 0) throw Invalid();
+        byte flags = 0;
+        for (var i = 0; i < flagText.Length; i += 2)
+        {
+            // TP shares bit 0x40 with audit success, but SA is invalid for FL.
+            flags |= flagText.Substring(i, 2) switch
+            {
+                "OI" => (byte)1, "CI" => (byte)2, "NP" => (byte)4,
+                "IO" => (byte)8, "ID" => (byte)16, "TP" => (byte)64,
+                _ => throw NativeInvalid(1004)
+            };
+        }
+        var mask = ParseRights(fields[2], 21);
+        if ((unchecked((uint)mask) & 0xff000000u) != 0 || fields[3].Length != 0 || fields[4].Length != 0 || fields[5].Length == 0)
+            throw Invalid();
+        var sid = ParseSid(fields[5]);
+        var sidBytes = new byte[sid.BinaryLength]; sid.GetBinaryForm(sidBytes, 0);
+        if ((flags & 64) == 0)
+        {
+            if (sid.Value != "S-1-1-0") throw Invalid();
+        }
+        else
+        {
+            // Measured native trust-filter shape: authority 19, exactly two RIDs.
+            // A zero first RID requires a zero second RID; nonzero values are not
+            // limited to named trust levels (including UINT_MAX in the oracle).
+            if (sidBytes.Length != 16 || !sid.Value.StartsWith("S-1-19-", StringComparison.Ordinal)
+                || (BinaryPrimitives.ReadUInt32LittleEndian(sidBytes.AsSpan(8)) == 0
+                    && BinaryPrimitives.ReadUInt32LittleEndian(sidBytes.AsSpan(12)) != 0)) throw Invalid();
+        }
+        var condition = SddlConditionCodec.Parse(fields[6]);
+        var payload = new byte[4 + sidBytes.Length + condition.Length];
+        BinaryPrimitives.WriteInt32LittleEndian(payload, mask);
+        sidBytes.CopyTo(payload, 4); condition.CopyTo(payload, 4 + sidBytes.Length);
+        return new CustomAce((AceType)21, (AceFlags)flags, payload);
     }
 
     private static AceFlags ParseFlags(string text)
@@ -287,6 +333,13 @@ internal static class SddlCodec
     private static void AppendAce(StringBuilder result, GenericAce ace, bool system)
     {
         var type = (byte)ace.AceType;
+        if (type == 21)
+        {
+            if (!system) throw new InvalidOperationException("Access filters cannot be formatted in a DACL.");
+            // GetSddlForm's ordinary Audit/All selection omits the whole native FL
+            // ACE, including unknown or malformed payloads. Never imitate that loss.
+            throw new NotSupportedException("Native SDDL export omits access filters; portable export refuses that information loss.");
+        }
         if (type == 18 && !system) throw new InvalidOperationException("Resource attributes cannot be formatted in a DACL.");
         if (type == 18) throw new NotSupportedException("Native SDDL export omits resource attributes; portable export refuses that information loss.");
         var token = AceTypes.FirstOrDefault(pair => pair.Value == type).Key;

@@ -34,7 +34,7 @@ public partial class PortableSecurityFoundationTests
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
         var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
-        Assert.Equal(3589,firstRows.Length);
+        Assert.Equal(4308,firstRows.Length);
         var differences=new List<int>();
         Assert.Equal(firstRows.Length,secondRows.Length);
         for(var i=0;i<firstRows.Length;i++)

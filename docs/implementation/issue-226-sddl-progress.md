@@ -6,7 +6,8 @@ The syntax references are Microsoft's [descriptor string format](https://learn.m
 
 ## Actual coverage
 
-The current net8/net10 closure recordings each contain 1,681 SDDL observations:
+Before the access-filter follow-up below, the net8/net10 closure recordings each contained
+1,681 SDDL observations (the historical accounting for that slice):
 
 | Result | Cases |
 |---|---:|
@@ -123,3 +124,70 @@ depth increase caused roughly 13–14 times the allocation on Linux .NET 10.
 
 The complete-payload byte-identical reparse guard remains mandatory. No native recordings,
 refusal inventory, raw/live state boundaries or preservation policy changed.
+
+## Access Filter (FL) representation follow-up
+
+Actual Windows probe runs [37999848527](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37999848527)
+and [38000157544](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38000157544)
+add **719 observations** (404 initial + 315 boundary rows), identical on .NET 8/10. Every
+preceding 3,589 closure observation is unchanged. Total closure evidence is now **4,308**,
+including **2,400 SDDL observations**. The [log-derived provenance](../research/acl-windows-oracle/results/log-derived-38000157544-provenance.json)
+records exact probe heads/jobs and file hashes. Both probe-only heads passed the old 11,119
+core and 321 companion tests per runtime; their expected failure was closure freshness
+against the older baseline. No recording was fabricated or inferred from portable results.
+
+The [documented FL/TP tokens](https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-strings)
+are implemented only as detached representation, not condition/access evaluation:
+
+- FL belongs to the SACL. DACL text produces measured Win32 error 1804 before flag/trustee/
+  condition validation; binary DACL FL formatting throws InvalidOperationException.
+- Native text import creates ACL revision 2 and a type-21 CustomAce. Its payload is a
+  little-endian 32-bit mask, a SID, then the same padded `artx` conditional encoding used
+  by the existing callback codec. The exact bytes are replayed, including compound, member,
+  attribute-only, octet, composite and integer-boundary expressions.
+- Bits 0–23 of the mask are accepted, including the complete `0xffffff` mask; each bit 24–31
+  and tested combinations containing them are rejected with ArgumentException(sddlForm).
+  Generic-rights tokens therefore cannot be accepted merely because other ACEs accept them.
+- Without TP, the trustee must be Everyone (`S-1-1-0`). TP uses flag bit 0x40 and requires
+  authority 19 with exactly two subauthorities. First subauthority zero requires second zero;
+  nonzero first values are not restricted to named trust levels (the probes include 1,
+  512, 1024, 1536, 65535 and UINT_MAX). No trust decision is performed.
+- OI/CI/NP/IO/ID and TP retain their bytes. SA, FA and CR are invalid FL flag tokens and
+  report Win32 error 1004; SA must not become a spelling of TP despite sharing bit 0x40.
+  Tested lowercase FL/TP and duplicate TP forms are accepted. GUID fields, missing/empty
+  conditions, wrong trustees and malformed conditions retain measured rejection behavior.
+
+**Ordinary native GetSddlForm(Audit/All) omits the entire FL ACE.** This also happens for
+independently built malformed/unknown payloads, invalid mask/flag combinations and trailing
+bytes. Mixed SACL output keeps audit ACEs while dropping the filter. It is not lossless
+formatting, and this implementation deliberately refuses it with NotSupportedException.
+Exports selecting only unrelated sections still succeed without changing stored bytes.
+No alternative formatter or new public export mode is introduced.
+
+The new rows account for 313 exact successful outcomes (including error-detail records),
+288 exact native exceptions and **118 pinned preservation refusals** for native FL omission.
+Each refusal fixes the complete row SHA-256, ID, inputs and native outcome; no generic
+unknown-ACE allowlist hides mismatches. Existing 36 SDDL refusals remain unchanged: **154
+SDDL refusals total**, of which 146 concern native information loss and eight host authority.
+The closure totals are now 2,855 exact successes, 1,250 exact exceptions, 154 SDDL refusals,
+eight facade preservation refusals and 41 atomic-failure differences.
+
+Eight additional local preservation cases exercise exact condition payload reuse, section
+selection, independent binary copies, and mutation of every condition byte plus truncated,
+unknown and trailing payloads. CustomAce.GetOpaque retains its existing mutable-array contract;
+copy isolation is tested between independently deserialized descriptors. Replaying the first
+404 new native rows against the old codec produced 279 failures before implementation.
+
+Limits remain explicit: this adds supported FL text-to-binary conversion, not a loss-bearing
+text export, effective-access evaluator, live SACL persistence validation, or general FL
+projection/mutation/companion conversion. The core continues to treat FL as opaque. Additional
+unrecorded syntax, maximum-size/encoding combinations and conditional forms remain probe-driven
+compatibility work; successful binary import never authorizes dropping their bytes.
+
+Local verification for this FL implementation: full Release solution rebuild, zero errors and
+14 existing xUnit2013 warnings. Linux .NET 8 and .NET 10 each pass 11,846 offline core tests,
+55 offline consumer tests and 34 fixture-registration tests. Unfiltered companion runs pass
+four Linux-applicable cases and skip 14 Windows-only groups each; local package checks pass.
+Full unfiltered functional/differential suites remain outside this no-live-AD task because
+their fixtures perform directory operations. Exact published-head Windows core/companion,
+native freshness and artifact results are recorded on PR 228 after publication.

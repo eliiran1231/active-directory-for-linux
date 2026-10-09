@@ -577,3 +577,17 @@ behavior can be nontransitive, so importing already-live serialized ACL bytes ag
 valid substitute for a retained-object operation. The replay suite covers all 52 retained-live
 sequences (516 steps) from their original raw import, including each individual step's full
 prefix, immutable snapshots, return/modified flags, raw/live values and accumulated intent.
+
+
+### Access Filter SDDL probes
+
+`AccessFilterContracts` appends 719 actual Windows observations after the preceding 3,589
+closure rows. It probes detached SACL/DACL text, type-specific flags, all 32 mask bits,
+trust-SID shapes, condition/GUID errors, mixed sections and independently constructed binary
+payloads. It performs no access evaluation, identity lookup, directory I/O or privilege work.
+Probe runs 37999848527 and 38000157544 intentionally failed only closure freshness until the
+new log-derived baselines were imported. Both runtimes agree on every added row. Exact source
+heads/jobs and recording hashes are in `results/log-derived-38000157544-provenance.json`.
+The native omission of FL during ordinary SDDL export is retained as measured evidence,
+not silently declared portable parity; see the implementation SDDL status for its 118 pinned
+new preservation refusals.
