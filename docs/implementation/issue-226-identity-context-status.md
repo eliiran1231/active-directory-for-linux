@@ -52,27 +52,54 @@ support for the critical single-NC [domain-scope control](https://learn.microsof
 Every account subtree search carries that control. The transport retains each result's LDAP
 distinguished name, and qualification/mutation checks its most-specific advertised naming
 context before accepting the SID or emitting a name. Child-domain DC RDNs also refuse when
-not advertised. Checks walk escaped-comma-aware RDN boundaries, not raw string suffixes;
-unrecognized equivalent DN spellings refuse conservatively. Configuration, application and
+not advertised. All DNs first satisfy the bounded spelling contract below, then checks walk
+complete RDN boundaries, not raw string suffixes. Configuration, application and
 other-domain entries never inherit the default domain's NetBIOS label.
 
-The follow-up DN review reproduced 32 failures in 36 candidate-DN cases against `0b9d9aa3`:
-OID attribute aliases and hex-escaped values could miss the literal NC boundary and fall through
-to its domain suffix. Before ancestry checks, both candidate and metadata DNs now require the
-bounded literal CN/OU/DC spelling. Numeric/textual attribute aliases, hex/other unsupported
-escapes, multivalued RDNs and unsupported syntax refuse; this is not a general DN normalization
-API. Ordinary escaped commas/backslashes and case-insensitive CN/OU/DC paths remain supported.
-The follow-up adds 44 regressions: 36 entry/result cases in both lookup directions, six metadata
-alias cases and two legitimate within-domain paths. Entry/metadata rejection precedes account
-subtree lookup; all mutation refusals preserve bytes, state, version and dirty flags.
+### Bounded DN spelling contract for local scope inference
 
-Controlled reproduction against `10b18078` failed 28 of the initial 30 boundary tests; the
-existing application-partition systemFlags rejection accounted for the two passes. The final
-42-case scope regression set covers both SID-to-name and bare-name mutation refusals, standard
-GC endpoints, advertised/unadvertised child NCs, DC/CN-named application partitions, configuration
-and foreign NCs, missing metadata/DNs, escaped suffixes and successful ordinary/escaped RDNs.
-Failure leaves raw/observable state, versions and dirty flags unchanged. No new domain-routing
-policy or live GC/AD behavior is claimed by these controlled tests.
+AD [Unicode comparison](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/dbb175fb-40f3-42a4-9257-4fc02a6fa943)
+ignores nonspacing marks and character width as well as case; it is not .NET ordinal matching.
+Local NC membership inference therefore admits only this grammar:
+
+```text
+DN        = RDN ("," RDN)*
+RDN       = Attribute "=" Value
+Attribute = CN | OU | DC                 (ASCII, case-insensitive)
+Value     = one or more ASCII A-Z, a-z, 0-9
+```
+
+This contract is checked on every candidate entry/result DN, default/configuration NC and every
+advertised namingContexts value, before any ancestry comparison. All whitespace (including
+single internal ASCII spaces), punctuation, escapes, non-ASCII characters, OID/textual aliases,
+empty values and multivalued RDNs refuse. Even an unrelated advertised NC outside this grammar
+prevents local inference. Within the accepted alphabet, ASCII case is the only admitted
+comparison variation; width/diacritic forms, alternate whitespace and syntax spellings cannot
+hide a more-specific NC. No culture-sensitive comparison, Unicode normalization, mark removal,
+whitespace folding, value rewriting or public DN-normalization API is introduced.
+
+**Compatibility restriction:** legitimate AD DNs with spaces, hyphens (including DNS-domain
+labels), punctuation, Unicode or escaped commas/backslashes now refuse this resolver path.
+Broader DN support requires independently established matching/membership, not expanding this
+allowlist by guesswork. This restriction is on DN-based scope inference; it does not narrow
+UTF-8 escaping of account lookup assertions or alter stored descriptors. Supported ASCII
+letter/digit paths, case variations and domain-root targets continue to resolve in both
+directions. Existing data-preservation, generation checks and persistence policy gates remain.
+
+The OID/hex review reproduced 32 failures in 36 cases against `0b9d9aa3`. The subsequent
+Unicode/whitespace matrix reproduced 205 failures in 441 cases against `26b56db8`; previous
+checks accounted for the other 236 refusals. The current follow-up adds 449 tests: 440 value /
+input-location / translation-direction combinations, an exhaustive 128-ASCII-character value
+check, four supported-path cases and four case-varied application-boundary cases. It covers
+precomposed/combining marks, full-width forms, ligatures, ignorable characters, 24 non-ASCII or
+control whitespace characters, ASCII spacing/punctuation and escaped forms. Metadata and entry
+failures precede account subtree lookup; mutation failures preserve bytes/state/version/flags.
+Three prior positive tests for spaces and escaped comma/backslash values now explicitly test
+the documented refusal instead of silently dropping their coverage.
+
+Earlier scope regressions cover GC ports, advertised/unadvertised child NCs, application and
+configuration partitions, foreign NCs, missing metadata/DNs and escaped suffixes. None of these
+controlled tests claims live GC/AD validation or enables new routing.
 
 Typed access/audit helpers now check retrieved DACL/SACL coverage before preparing a
 name-based mutation. Fourteen routes assert zero opened sessions and zero queries for unread

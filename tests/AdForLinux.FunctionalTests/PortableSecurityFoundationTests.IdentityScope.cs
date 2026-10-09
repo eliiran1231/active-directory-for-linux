@@ -88,9 +88,6 @@ public partial class PortableSecurityFoundationTests
     [Theory]
     [InlineData("CN=alice,DC=example,DC=com")]
     [InlineData("cn=alice,ou=People,dc=example,dc=com")]
-    [InlineData("CN=ordinary user,OU=People,DC=example,DC=com")]
-    [InlineData("CN=last\\, first,OU=People,DC=example,DC=com")]
-    [InlineData("CN=backslash\\\\,OU=People,DC=example,DC=com")]
     [InlineData("DC=example,DC=com")]
     public void Resolver_scope_accepts_verified_domain_rdns_and_requires_critical_single_nc_search(string dn)
     {
@@ -105,6 +102,13 @@ public partial class PortableSecurityFoundationTests
         Assert.True(control.IsCritical); Assert.True(control.ServerSide); Assert.Empty(control.GetValue());
         Assert.Contains("distinguishedName", request.Attributes.Cast<string>());
     }
+    [Theory]
+    [InlineData("CN=ordinary user,OU=People,DC=example,DC=com")]
+    [InlineData("CN=last\\, first,OU=People,DC=example,DC=com")]
+    [InlineData("CN=backslash\\\\,OU=People,DC=example,DC=com")]
+    public void Resolver_previously_accepted_non_alphanumeric_paths_now_refuse_scope(string dn)
+        => Resolver_unverified_dn_spellings_refuse_authority(dn, false, false);
+
     [Theory]
     [InlineData(false, 0)]
     [InlineData(false, 1)]

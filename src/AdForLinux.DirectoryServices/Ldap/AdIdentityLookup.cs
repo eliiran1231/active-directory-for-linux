@@ -145,36 +145,32 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
     }
     private static void RequireLiteralDn(string? distinguishedName)
     {
-        // This bounded resolver compares literal RDNs, not arbitrary RFC 4514
-        // equivalents. Validate BOTH metadata and candidate DNs before ancestry:
-        // aliases/hex escapes must never fall through to a parent domain suffix.
-        if (string.IsNullOrWhiteSpace(distinguishedName)) throw UnsupportedDn();
+        // Scope inference is valid only on this deliberately narrow grammar:
+        // DN = RDN ("," RDN)*; RDN = (CN | OU | DC) "=" [A-Za-z0-9]+.
+        // Attribute names and values compare case-insensitively only AFTER every
+        // metadata/candidate RDN satisfies that grammar. No whitespace, punctuation,
+        // escapes, multivalued RDNs, Unicode or attribute aliases are admitted.
+        // Thus AD's width/diacritic/space equivalences cannot hide an NC boundary.
+        // Do not broaden this alphabet using .NET culture/normalization guesses.
+        if (string.IsNullOrEmpty(distinguishedName)) throw UnsupportedDn();
         for (var current = distinguishedName; current is not null; current = LdapDistinguishedName.Parent(current))
         {
             var rdn = LdapDistinguishedName.RelativeName(current);
             var equals = rdn.IndexOf('=');
             if (equals <= 0) throw UnsupportedDn();
             var attribute = rdn[..equals];
-            if (!attribute.Equals("CN", StringComparison.OrdinalIgnoreCase)
-                && !attribute.Equals("OU", StringComparison.OrdinalIgnoreCase)
-                && !attribute.Equals("DC", StringComparison.OrdinalIgnoreCase)) throw UnsupportedDn();
+            if (attribute.Any(c => c > 127)
+                || (!attribute.Equals("CN", StringComparison.OrdinalIgnoreCase)
+                    && !attribute.Equals("OU", StringComparison.OrdinalIgnoreCase)
+                    && !attribute.Equals("DC", StringComparison.OrdinalIgnoreCase))) throw UnsupportedDn();
             var value = rdn[(equals + 1)..];
-            if (value.Length == 0 || char.IsWhiteSpace(value[0]) || char.IsWhiteSpace(value[^1]) || value[0] == '#')
-                throw UnsupportedDn();
-            for (var i = 0; i < value.Length; i++)
-            {
-                var c = value[i];
-                if (c == '\\')
-                {
-                    // Preserve ordinary escaped commas and backslashes. Other
-                    // escapes (including hex UTF-8) require semantic DN matching.
-                    if (++i == value.Length || value[i] is not (',' or '\\')) throw UnsupportedDn();
-                }
-                else if (char.IsControl(c) || c is '+' or ';' or '"' or '<' or '>') throw UnsupportedDn();
-            }
+            if (value.Length == 0) throw UnsupportedDn();
+            foreach (var c in value)
+                if (c is not (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9')) throw UnsupportedDn();
         }
-        static NotSupportedException UnsupportedDn() => new("Identity scope requires literal CN/OU/DC RDNs; unsupported DN spellings cannot establish domain authority.");
+        static NotSupportedException UnsupportedDn() => new("Identity scope requires literal CN/OU/DC RDNs with ASCII letters/digits only; other DN spellings cannot establish domain authority.");
     }
+
     private IReadOnlyList<IdentitySearchRow> Search(string dn, string filter, ProtocolScope scope, params string[] attributes)
     {
         validate();
