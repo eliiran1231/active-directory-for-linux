@@ -208,7 +208,8 @@ internal sealed class AclMutationEngine
 
     // Detached edit-back is a value diff, not an operation journal. Only unique,
     // single-contributor mask/deletion edits and non-merging explicit insertions have
-    // a proven interpretation. Insertion never infers changes to existing occurrences.
+    // a proven interpretation. Every operation below uses the original occurrence map;
+    // intermediate candidates never become a replacement baseline.
     internal AclMutationEngine ReconcileInteropEdits(SecurityMasks section, byte[] baseline, byte[] edited)
     {
         var isDacl = ValidateSection(section);
@@ -219,7 +220,7 @@ internal sealed class AclMutationEngine
             throw new NotSupportedException("Fresh-import regrouping cannot be mapped back to retained live occurrences.");
         var before = Acl.Read(baseline); var after = Acl.Read(edited);
         // Only size/count can change. Revision, reserved fields and the present/NULL
-        // state stay unchanged; insertion and deletion use separate proof paths.
+        // state stay unchanged; each edit is proven against original contributors.
         if (!baseline.AsSpan(0, 2).SequenceEqual(edited.AsSpan(0, 2))
             || !baseline.AsSpan(6, 2).SequenceEqual(edited.AsSpan(6, 2))
             || !after.Trailing.IsEmpty)
@@ -258,115 +259,115 @@ internal sealed class AclMutationEngine
         }
         if (!SameEntries(groups.Select(g => g.View).ToArray(), before.Aces))
             throw new NotSupportedException("The exported occurrences do not have a proven contributor mapping.");
-        if (after.Aces.Count > before.Aces.Count) return ReconcileInsertions();
+        // Read projection intentionally preserves noncanonical input. Matching its
+        // bytes cannot prove that a canonical CommonAcl can install the candidate.
+        if (!MicrosoftObservableProjector.HasCanonicalQualifierOrder(before.Aces, isDacl)
+            || !MicrosoftObservableProjector.HasCanonicalQualifierOrder(after.Aces, isDacl))
+            throw new NotSupportedException("Edit-back requires canonical explicit/inherited and deny/allow ordering.");
         var replacements = raw.Aces.ToArray();
         var removed = new HashSet<int>();
-        var survivors = new List<(Ace View, int[] RawIndices)>();
-        var candidateIndex = 0;
-        for (var i = 0; i < groups.Count; i++)
+        var touched = new List<Ace>();
+        var candidateGroups = new List<(Ace View, int[] RawIndices)>();
+        var added = new List<Ace>();
+        var oldIndex = 0;
+        foreach (var ace in after.Aces)
         {
-            var old = before.Aces[i];
-            var changed = candidateIndex < after.Aces.Count ? after.Aces[candidateIndex] : null;
-            var sameShape = changed is not null && SameExceptMask(old, changed);
-            if (sameShape && old.RawBytes.SequenceEqual(changed!.RawBytes))
+            // Match only original non-mask fields, never the output of a previous
+            // edit. Unchanged duplicate shapes can survive in their original order;
+            // changing or removing one requires unique original identity below.
+            var match = groups.FindIndex(oldIndex, group => SameExceptMask(group.View, ace));
+            if (match < 0)
             {
-                survivors.Add(groups[i]); candidateIndex++; continue;
-            }
-            if (!Explicit(old) || groups[i].RawIndices.Length != 1
-                || groups.Count(g => SameExceptMask(g.View, old)) != 1)
-                throw new NotSupportedException("Ambiguous, merged or inherited ACE edits cannot be reconciled.");
-            var index = groups[i].RawIndices[0];
-            if (!sameShape)
-            {
-                // A candidate must be an order-preserving subsequence of the old
-                // shapes. Drop only this proven raw occurrence, never hidden or
-                // merged contributors. Unconsumed additions/reordering fail below.
-                removed.Add(index); continue;
-            }
-            if (!MicrosoftObservableProjector.IsUnderstoodAce(changed!, isDacl) || changed!.AccessMask == 0)
-                throw new NotSupportedException("The edited ACE is not a supported nonzero mask change.");
-            var bytes = replacements[index].RawBytes.ToArray();
-            BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), changed.AccessMask);
-            replacements[index] = Ace.Read(bytes);
-            survivors.Add((changed, groups[i].RawIndices)); candidateIndex++;
-        }
-        if (candidateIndex != after.Aces.Count)
-            throw new NotSupportedException("ACE additions, scope changes or reordering require separate provenance.");
-        var encoded = DescriptorRewriter.EncodeAcl(raw, replacements.Where((_, i) => !removed.Contains(i)).ToArray());
-        var descriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
-            new Dictionary<SecurityMasks, byte[]?> { [section] = encoded });
-        ProjectedState? nextState = null;
-        if (retained is not null)
-            nextState = new(survivors.Select(group => new ProjectedGroup(group.View,
-                group.RawIndices.Select(index => replacements[index]).ToArray())).ToArray(), encoded);
-        var next = new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section,
-            isDacl ? nextState : _projectedDacl, isDacl ? _projectedSacl : nextState);
-        var result = next.GetObservableAcl(section)!;
-        if (!DescriptorRewriter.EncodeAcl(result, result.Aces).AsSpan().SequenceEqual(edited))
-            throw new NotSupportedException("The edit changes projection grouping or order outside the candidate.");
-        return next;
-
-        AclMutationEngine ReconcileInsertions()
-        {
-            // Projection deliberately preserves noncanonical input; byte equality
-            // alone therefore cannot prove that a CommonAcl can accept this edit.
-            if (!MicrosoftObservableProjector.HasCanonicalQualifierOrder(before.Aces, isDacl)
-                || !MicrosoftObservableProjector.HasCanonicalQualifierOrder(after.Aces, isDacl))
-                throw new NotSupportedException("Insertion requires canonical explicit/inherited and deny/allow ordering.");
-            var candidateGroups = new List<(Ace View, int[] RawIndices)>();
-            var added = new List<Ace>();
-            var oldIndex = 0;
-            foreach (var ace in after.Aces)
-            {
-                if (oldIndex < groups.Count && ace.RawBytes.SequenceEqual(groups[oldIndex].View.RawBytes))
-                {
-                    candidateGroups.Add(groups[oldIndex++]); continue;
-                }
+                if (groups.Any(group => SameExceptMask(group.View, ace)))
+                    throw new NotSupportedException("An original occurrence was duplicated or reordered.");
                 if (!Explicit(ace) || !MicrosoftObservableProjector.IsUnderstoodAce(ace, isDacl)
-                    || ace.AccessMask == 0 || (!isDacl && (ace.AceFlags & 0xC0) == 0)
-                    || groups.Any(group => SameExceptMask(group.View, ace)))
-                    throw new NotSupportedException("Insertion requires a new explicit ACE, not a change or reordering of a survivor.");
+                    || ace.AccessMask == 0 || (!isDacl && (ace.AceFlags & 0xC0) == 0))
+                    throw new NotSupportedException("Insertion requires a new understood explicit nonzero ACE.");
                 var singleton = Acl.Read(DescriptorRewriter.EncodeAcl(raw, new[] { ace }));
                 var normalized = MicrosoftObservableProjector.NormalizeForEdit(singleton, isDacl);
                 if (normalized.Aces.Count != 1 || !normalized.Aces[0].RawBytes.SequenceEqual(ace.RawBytes))
                     throw new NotSupportedException("A new ACE cannot require projection normalization.");
-                // Check both directions: object/scope absorption is asymmetric. Raw
-                // originals are checked too, so insertion cannot activate hidden data.
-                foreach (var other in groups.Select(group => group.View).Concat(raw.Aces).Concat(added))
-                    if (SameExceptMask(other, ace) || TryMerge(other, ace, out _) || TryMerge(ace, other, out _))
-                        throw new NotSupportedException("Insertion cannot merge with or ambiguously duplicate another occurrence.");
                 added.Add(ace); candidateGroups.Add((ace, Array.Empty<int>()));
+                continue;
             }
-            if (oldIndex != groups.Count)
-                throw new NotSupportedException("Insertion cannot remove or change existing occurrences.");
-
-            // Stable raw placement: immediately before the first contributor of the
-            // next surviving live group, or at the raw end when none follows. Never
-            // relocate survivors to accommodate a backward anchor in unsorted raw data.
-            var placed = new List<Ace>(); var rawCursor = 0;
-            for (var i = 0; i < candidateGroups.Count; i++)
+            while (oldIndex < match) DeleteOriginal(oldIndex++);
+            var original = groups[oldIndex++];
+            if (!original.View.RawBytes.SequenceEqual(ace.RawBytes))
             {
-                if (candidateGroups[i].RawIndices.Length != 0) continue;
-                var following = candidateGroups.Skip(i + 1).FirstOrDefault(group => group.RawIndices.Length != 0);
-                var anchor = following.RawIndices is null ? raw.Aces.Count : following.RawIndices.Min();
-                if (anchor < rawCursor)
-                    throw new NotSupportedException("Insertion anchors would move existing raw contributors.");
-                while (rawCursor < anchor) placed.Add(raw.Aces[rawCursor++]);
-                placed.Add(candidateGroups[i].View);
+                RequireUnique(original);
+                if (!MicrosoftObservableProjector.IsUnderstoodAce(ace, isDacl) || ace.AccessMask == 0)
+                    throw new NotSupportedException("The edited ACE is not a supported nonzero mask change.");
+                var index = original.RawIndices[0];
+                var bytes = replacements[index].RawBytes.ToArray();
+                BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), ace.AccessMask);
+                replacements[index] = Ace.Read(bytes); touched.Add(original.View);
             }
-            while (rawCursor < raw.Aces.Count) placed.Add(raw.Aces[rawCursor++]);
-            var insertedBytes = DescriptorRewriter.EncodeAcl(raw, placed);
-            var insertedDescriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
-                new Dictionary<SecurityMasks, byte[]?> { [section] = insertedBytes });
-            ProjectedState? insertedState = retained is null ? null : new(candidateGroups.Select(group =>
-                new ProjectedGroup(group.View, group.RawIndices.Length == 0 ? new[] { group.View }
-                    : group.RawIndices.Select(index => raw.Aces[index]).ToArray())).ToArray(), insertedBytes);
-            var inserted = new AclMutationEngine(insertedDescriptor, OriginalDescriptor, WriteIntent | section,
-                isDacl ? insertedState : _projectedDacl, isDacl ? _projectedSacl : insertedState);
-            var projected = inserted.GetObservableAcl(section)!;
-            if (!DescriptorRewriter.EncodeAcl(projected, projected.Aces).AsSpan().SequenceEqual(edited))
-                throw new NotSupportedException("Raw placement does not reproduce the edited target exactly.");
-            return inserted;
+            candidateGroups.Add((ace, original.RawIndices));
+        }
+        while (oldIndex < groups.Count) DeleteOriginal(oldIndex++);
+
+        for (var i = 0; i < added.Count; i++)
+        {
+            var ace = added[i];
+            // A same-identity insertion combined with removal/mask change could be
+            // a scope/qualifier replacement or split. Do not infer that intent.
+            if (touched.Any(original => original.Sid!.Equals(ace.Sid)))
+                throw new NotSupportedException("Insertion overlaps a changed identity; replacement or split intent is ambiguous.");
+            // Object/scope absorption is asymmetric. Check both directions against
+            // original raw/live data AND final survivors, without cascading remaps.
+            var others = groups.Select(group => group.View).Concat(raw.Aces)
+                .Concat(candidateGroups.Where(group => group.RawIndices.Length != 0).Select(group => group.View))
+                .Concat(replacements.Where((_, index) => !removed.Contains(index))).Concat(added.Take(i));
+            foreach (var other in others)
+                if (SameExceptMask(other, ace) || TryMerge(other, ace, out _) || TryMerge(ace, other, out _))
+                    throw new NotSupportedException("Insertion cannot merge with or ambiguously duplicate another occurrence.");
+        }
+
+        // Anchor new ACEs before the next surviving ORIGINAL contributor, or at
+        // the raw end. Deletions do not renumber anchors; mask edits replace bytes
+        // at their original indices. Hidden/unrelated originals never move.
+        var placed = new List<Ace>(); var rawCursor = 0;
+        for (var i = 0; i < candidateGroups.Count; i++)
+        {
+            if (candidateGroups[i].RawIndices.Length != 0) continue;
+            var following = candidateGroups.Skip(i + 1).FirstOrDefault(group => group.RawIndices.Length != 0);
+            var anchor = following.RawIndices is null ? raw.Aces.Count : following.RawIndices.Min();
+            if (anchor < rawCursor)
+                throw new NotSupportedException("Insertion anchors would move existing raw contributors.");
+            CopyThrough(anchor); placed.Add(candidateGroups[i].View);
+        }
+        CopyThrough(raw.Aces.Count);
+        var encoded = DescriptorRewriter.EncodeAcl(raw, placed);
+        var descriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
+            new Dictionary<SecurityMasks, byte[]?> { [section] = encoded });
+        ProjectedState? nextState = retained is null ? null : new(candidateGroups.Select(group =>
+            new ProjectedGroup(group.View, group.RawIndices.Length == 0 ? new[] { group.View }
+                : group.RawIndices.Select(index => replacements[index]).ToArray())).ToArray(), encoded);
+        var next = new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section,
+            isDacl ? nextState : _projectedDacl, isDacl ? _projectedSacl : nextState);
+        var result = next.GetObservableAcl(section)!;
+        if (!DescriptorRewriter.EncodeAcl(result, result.Aces).AsSpan().SequenceEqual(edited))
+            throw new NotSupportedException("The compound raw edit does not reproduce the target projection exactly.");
+        return next;
+
+        void RequireUnique((Ace View, int[] RawIndices) original)
+        {
+            if (!Explicit(original.View) || original.RawIndices.Length != 1
+                || groups.Count(group => SameExceptMask(group.View, original.View)) != 1)
+                throw new NotSupportedException("Ambiguous, merged or inherited ACE edits cannot be reconciled.");
+        }
+        void DeleteOriginal(int index)
+        {
+            var original = groups[index]; RequireUnique(original);
+            removed.Add(original.RawIndices[0]); touched.Add(original.View);
+        }
+        void CopyThrough(int anchor)
+        {
+            while (rawCursor < anchor)
+            {
+                if (!removed.Contains(rawCursor)) placed.Add(replacements[rawCursor]);
+                rawCursor++;
+            }
         }
 
         static bool SameExceptMask(Ace left, Ace right) => left.Size == right.Size

@@ -21,7 +21,8 @@ established by detached Windows objects or controlled LDAP request capture.
 ## Concrete exposure proposal
 
 The [exact Microsoft companion contract](issue-226-microsoft-companion-proposal.md) now
-proposes `AdForLinux.DirectoryServices.Microsoft` as NuGet package, assembly and namespace;
+recommends `AdForLinux.DirectoryServices.MicrosoftInterop` as NuGet package, assembly and namespace
+for D8 continuity, retaining `.Microsoft` as an alternative;
 `MicrosoftConversions` extensions; immutable `SecurityDescriptorSnapshot`; and disposable
 `MicrosoftSecurityEdit` with explicit one-success `ApplyTo(source)`. It includes complete
 signatures, version/friend access, disposal/authority semantics, caller examples and migration
@@ -52,8 +53,9 @@ See [the precise edit-back contract](issue-226-interop-status.md#unique-contribu
 
 The next pass implements unambiguous non-merging explicit insertion using stable raw
 survivor anchors, as described in the [insertion follow-up](issue-226-interop-status.md#non-merging-explicit-insertion-follow-up).
-Mixed insertion-plus-existing-ACE changes, revision-changing insertions, merged edits, splits
-and reorderings still need their own contributor proofs. Explicit Add guards remain unchanged: Microsoft's
+The compound follow-up now combines unique original-contributor mask changes/deletions and
+independent non-merging insertions atomically. Overlapping touched identities, ambiguous
+replacement/split intent, revision changes, merged edits and reorderings still refuse. Explicit Add guards remain unchanged: Microsoft's
 [SD Flags Control specification](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/932a7a8d-8c93-4448-8093-c79b7d9ba499)
 confirms that Add ignores that control, but does not prove this client's omitted/NULL/default
 or inheritance behavior. Broader request-plan tests and separately authorized server evidence

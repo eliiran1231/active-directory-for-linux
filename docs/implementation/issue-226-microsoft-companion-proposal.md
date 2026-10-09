@@ -9,11 +9,19 @@ Internal conversion and edit-back work continues independently.
 
 ## Package and dependency arrangement
 
+**Recommended naming: `AdForLinux.DirectoryServices.MicrosoftInterop`.** This continues the
+`MicrosoftInterop` wording in [D8](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-decisions.md#d8-microsoft-interop-packaging)
+and makes the interoperability purpose clearer. The earlier
+`AdForLinux.DirectoryServices.Microsoft` remains an alternative package/assembly/namespace
+name. This recommendation is not a decision or approval. The signatures and friend entry
+below show the recommended spelling; choosing the alternative would consistently substitute
+that spelling without changing the architecture, types or behavior.
+
 | Item | Exact proposal |
 | --- | --- |
-| NuGet package ID | `AdForLinux.DirectoryServices.Microsoft` |
-| Assembly / file | `AdForLinux.DirectoryServices.Microsoft` / `AdForLinux.DirectoryServices.Microsoft.dll` |
-| Public namespace | `AdForLinux.DirectoryServices.Microsoft` |
+| NuGet package ID | `AdForLinux.DirectoryServices.MicrosoftInterop` |
+| Assembly / file | `AdForLinux.DirectoryServices.MicrosoftInterop` / `AdForLinux.DirectoryServices.MicrosoftInterop.dll` |
+| Public namespace | `AdForLinux.DirectoryServices.MicrosoftInterop` |
 | Extension class | `MicrosoftConversions` |
 | Target frameworks | `net8.0-windows;net10.0-windows` |
 | Main dependency | `AdForLinux.DirectoryServices`, exact matching package version |
@@ -28,14 +36,14 @@ No new ACL/rule hierarchy, parallel AD API, credential provider or transport is 
 After approval, add exactly this friend declaration to the main project:
 
 ```xml
-<InternalsVisibleTo Include="AdForLinux.DirectoryServices.Microsoft" />
+<InternalsVisibleTo Include="AdForLinux.DirectoryServices.MicrosoftInterop" />
 ```
 
 The companion calls the existing internal snapshot, strict conversion and reconciliation
 boundary. Internal snapshots remain internal; only the wrappers below become public. Existing
 friend declarations remain unchanged. No reflection into Microsoft private members or new
-public raw/provenance setters are needed. Both projects are currently unsigned; the named
-friend relationship follows that existing build arrangement. It is not an authorization or
+public raw/provenance setters are needed. The main project is currently unsigned; the proposed companion's named
+friend relationship would follow that existing build arrangement. It is not an authorization or
 security boundary. If signing is introduced in a separate change, the exact companion public
 key must be specified in the friend declaration; this proposal does not change signing or
 security settings. Companion/core versions move together because the internal ABI is not a
@@ -53,7 +61,7 @@ using M = System.DirectoryServices;
 using MP = System.Security.Principal;
 using MA = System.Security.AccessControl;
 
-namespace AdForLinux.DirectoryServices.Microsoft;
+namespace AdForLinux.DirectoryServices.MicrosoftInterop;
 
 public static class MicrosoftConversions
 {
@@ -173,7 +181,7 @@ checks still protect publication against concurrent portable edits.
 ## User-visible contract example (proposed API, not runnable today)
 
 ```csharp
-using AdForLinux.DirectoryServices.Microsoft;
+using AdForLinux.DirectoryServices.MicrosoftInterop;
 using D = AdForLinux.DirectoryServices;
 using M = System.DirectoryServices;
 using MP = System.Security.Principal;

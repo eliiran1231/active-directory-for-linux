@@ -97,7 +97,7 @@ and current-hierarchy conversion for all nine AD rule classes and their 45 const
 with actual Microsoft comparisons on Windows. Portable AD materialization is now integrated with the coherent hierarchy/consumer cutover;
 no parallel AD rule hierarchy was introduced.
 
-Next dependencies: mixed insertion-plus-existing-ACE changes, revision-changing insertions,
+Next dependencies: overlapping/ambiguous compound edits, revision-changing insertions,
 splits, reordering and ambiguous/multiple-contributor edit-back;
 actual Microsoft AD-security companion exposure; reviewed friend-access and final public names.
 The [approved persistence contracts](issue-226-persistence-decisions.md) are integrated with
@@ -190,3 +190,39 @@ that a fresh Microsoft CommonSecurityDescriptor reports noncanonical, preserves 
 and throws InvalidOperationException on a future AddAccess/AddAudit. Linux exercises the same
 contract with portable objects. This is new directed runtime evidence, not an edited native
 recording. Public companion proposal/exposure and all preservation policies are unchanged.
+
+
+## Atomic combinations against original provenance
+
+The reconciler now uses one original occurrence map for unique-contributor mask changes,
+unique explicit deletions and non-merging explicit insertions. Matching uses original non-mask
+fields and original order. A deletion never renumbers a later anchor, and an intermediate mask
+result never becomes a new match baseline. Unchanged duplicate shapes can only survive in
+original order; changing or deleting one still requires a unique original occurrence and a
+single contributor. Unchanged merged groups and hidden raw originals remain byte-identical.
+
+Only the final candidate is published. New ACEs must remain non-merging in both directions
+against original raw/live data, final survivors and other insertions. A new ACE sharing a SID
+with any mask-changed or deleted original refuses: a value diff cannot distinguish independent
+insertion from scope/qualifier replacement or splitting that identity. This conservative
+boundary does not infer broader replacement intent. Raw placement keeps the existing stable
+next-survivor anchors and original survivor order, skipping only proven deletions. Canonicality,
+headers, capacity, unknown storage, final projection and source freshness remain checked.
+Retained groups use the surviving original contributor indices plus new single contributors.
+
+Fifty new deterministic cases cover common/object DACL/SACL combinations with increasing,
+unchanged and decreasing counts, fresh/retained provenance, mask+insert, delete+insert and
+multiple mixed changes. All 32 selected positive combinations failed on the preceding head.
+Tests verify exact raw survivor bytes (including inactive, inherited, merged and NoPropagate
+originals), shared identity, pre-existing intent and later mutation. Compound Owner/Group/DACL/
+SACL publication is covered, as are rollback after a later ACL failure, a shared owner's
+unknown-layout resize refusal and retry using restored provenance. Replacement/split ambiguity,
+merged edits, inherited removal, opaque data and noncanonical order still refuse. Windows
+executes actual Microsoft raw mask edits, detached Remove/Add operations and owner/group setters;
+no native oracle recording is altered. Earlier mixed-operation refusal fixtures now test
+unsupported scope/qualifier replacement instead of refusing the newly proven independent case.
+
+Public exposure remains unapproved. The proposal document now recommends
+`AdForLinux.DirectoryServices.MicrosoftInterop` for continuity with D8 and clearer purpose,
+retaining `.Microsoft` as an alternative. No public name, friend entry, companion package,
+authentication behavior or preservation policy has been changed by this recommendation.

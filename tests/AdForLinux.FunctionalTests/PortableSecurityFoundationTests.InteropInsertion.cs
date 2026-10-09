@@ -135,8 +135,8 @@ public partial class PortableSecurityFoundationTests
     [InlineData(false, "zero")] [InlineData(true, "zero")]
     [InlineData(false, "opaque")] [InlineData(true, "opaque")]
     [InlineData(false, "wrong-kind")] [InlineData(true, "wrong-kind")]
-    [InlineData(false, "mask")] [InlineData(true, "mask")]
-    [InlineData(false, "remove")] [InlineData(true, "remove")]
+    [InlineData(false, "scope")] [InlineData(true, "scope")]
+    [InlineData(false, "replace")] [InlineData(true, "replace")]
     [InlineData(false, "reorder")] [InlineData(true, "reorder")]
     [InlineData(false, "duplicate")] [InlineData(true, "duplicate")]
     public void InteropAcl_InsertionRefusesUnprovenChangesAtomically(bool audit, string change)
@@ -153,11 +153,12 @@ public partial class PortableSecurityFoundationTests
             "merge" => Ace(type, flags, 64, U1),
             "zero" => Ace(type, flags, 0, Everyone),
             "opaque" => new byte[] { 0x42, 0, 4, 0 },
+            "replace" => audit ? ObjAce(7, flags, 16, 1, G1, null, U1) : Ace(1, flags, 16, U1),
             "wrong-kind" => Ace(audit ? (byte)0 : (byte)2, audit ? (byte)0 : (byte)0x40, 16, Everyone),
             _ => Ace(type, flags, 16, Everyone)
         };
-        if (change == "mask") edited[0] = Ace(type, flags, 64, U1);
-        if (change == "remove") { edited.RemoveAt(0); edited.Add(Ace(type, flags, 16, Admins)); }
+        if (change == "scope") edited[0] = Ace(type, (byte)(flags | 1), 64, U1);
+        if (change == "replace") { edited.RemoveAt(0); edited.Add(Ace(type, flags, 16, Admins)); }
         if (change == "reorder") edited.Reverse();
         edited.Insert(0, added);
         if (change == "duplicate") edited.Insert(0, added);
