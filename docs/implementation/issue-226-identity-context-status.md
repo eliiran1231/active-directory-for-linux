@@ -7,6 +7,9 @@ The existing BCL-rooted AD class/rule hierarchy and DirectoryEntry security pers
 remain unchanged. This is not the coordinated public cutover, live AD validation or an
 effective-access evaluator.
 
+Latest independent dependency: [the internal PrincipalContext adapter](issue-226-principal-identity-status.md)
+now shares the borrowed-owner resolver with entry bindings. It adds no public helper or transport cutover.
+
 ## Shipped resolver and context lifetime
 
 `DirectoryIdentityResolver.ForEntry(entry)` captures a weak, revocable owner binding without
@@ -151,7 +154,8 @@ hooks are source-integrated, not claimed as live evidence. Windows runs continue
 existing native observations. The 36 SDDL refusals, eight facade refusals and 41 atomic-failure
 differences are unchanged.
 
-Remaining work includes the PrincipalContext adapter, native/wire evidence for outstanding commit
+Remaining work includes public PrincipalContext adapter exposure within the approved coherent surface,
+native/wire evidence for outstanding commit
 and Add choices, the coordinated AD/rule/consumer cutover, optional MicrosoftInterop companion,
 broader deferred SDDL/facade cases and explicitly authorized AD validation. No live AD bind,
 lookup, permission write, credential change, merge or issue closure is part of this slice.

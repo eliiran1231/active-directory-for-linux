@@ -11,20 +11,22 @@ namespace AdForLinux.DirectoryServices;
 /// the entry invalidates this resolver. Reacquire explicitly; no credentials are retained here.</remarks>
 public sealed class DirectoryIdentityResolver
 {
-    private readonly WeakReference<DirectoryEntry> entry;
+    private readonly IdentityResolverBinding binding;
     private readonly long generation;
 
-    private DirectoryIdentityResolver(DirectoryEntry owner)
+    private DirectoryIdentityResolver(IdentityResolverBinding binding)
     {
-        entry = new(owner);
-        generation = owner.IdentityLifetime.Capture(owner.ThrowIfDisposed);
+        this.binding = binding;
+        generation = binding.Capture();
     }
+
+    internal static DirectoryIdentityResolver ForBinding(IdentityResolverBinding binding) => new(binding);
 
     /// <summary>Captures a revocable binding without connecting or performing a lookup.</summary>
     public static DirectoryIdentityResolver ForEntry(DirectoryEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return new(entry);
+        return new(new EntryIdentityResolverBinding(entry));
     }
 
     /// <summary>Explicitly attaches this resolver to this wrapper only, without copying descriptor data.</summary>
@@ -55,16 +57,8 @@ public sealed class DirectoryIdentityResolver
         return result;
     }
 
-    internal T Checked<T>(Func<T> action)
-    {
-        if (!entry.TryGetTarget(out var owner)) throw new ObjectDisposedException(nameof(DirectoryEntry), "The identity context owner is no longer available.");
-        return owner.IdentityLifetime.Checked(generation, owner.ThrowIfDisposed, action);
-    }
-    internal IdentityReadOrigin GetReadOrigin()
-    {
-        if (!entry.TryGetTarget(out var owner)) throw new ObjectDisposedException(nameof(DirectoryEntry));
-        return Checked(() => new IdentityReadOrigin(owner.IdentityLifetime.Id, generation, owner.IdentityTarget));
-    }
+    internal T Checked<T>(Func<T> action) => binding.Checked(generation, action);
+    internal IdentityReadOrigin GetReadOrigin() => binding.GetReadOrigin(generation);
 
     internal IdentityReference[] Resolve(IdentityReference[] identities, Type targetType, bool mutation, bool forceSuccess = true)
     {
@@ -72,23 +66,23 @@ public sealed class DirectoryIdentityResolver
         if (identities.All(i => i.GetType() == targetType)) return (IdentityReference[])identities.Clone();
         foreach (var account in identities.OfType<NTAccount>())
             _ = AdIdentityLookup.EscapeText(account.Value); // reject malformed UTF-16 before opening a session
-        if (!entry.TryGetTarget(out var owner)) throw new ObjectDisposedException(nameof(DirectoryEntry));
-        var (options, target) = Checked(() => (owner.BuildOptions(), owner.IdentityTarget));
+        using var operation = binding.Acquire(generation);
+        var options = operation.Options; var target = operation.Target;
         if (options.Port is 3268 or 3269)
             throw new NotSupportedException("Global Catalog identity lookup requires explicit domain routing and is not supported.");
-        if (string.IsNullOrWhiteSpace(target))
+        if (string.IsNullOrWhiteSpace(target) && !(target is null && operation.UseVerifiedDomainRoot))
             throw new NotSupportedException("Identity lookup requires an entry within a verified domain naming context.");
         if (mutation && (options.IsAnonymous || options.AuthenticationType is not (AuthType.Basic or AuthType.Negotiate)
             || string.IsNullOrEmpty(options.BindDn) || string.IsNullOrEmpty(options.BindPassword)))
             throw new NotSupportedException("Name-based mutation requires explicit authenticated credentials; ambient identity pinning is not established.");
-        _ = AdIdentityLookup.EscapeText(target); // reject malformed UTF-16 before session creation
-        // The independent session owns its connection only for this operation. The entry
+        if (target is not null) _ = AdIdentityLookup.EscapeText(target); // reject malformed UTF-16 before session creation
+        // The independent session owns its connection only for this operation. The owner
         // may close concurrently: generation checks reject results, without disposing a
         // connection while its bounded request is in flight.
         var deadline = Stopwatch.StartNew();
-        using var session = owner.IdentitySessionFactory(options);
+        using var session = operation.OpenSession(options);
         Checked(() => true);
-        var lookup = new AdIdentityLookup(session, options.Timeout - deadline.Elapsed, () => Checked(() => true), target);
+        var lookup = new AdIdentityLookup(session, options.Timeout - deadline.Elapsed, () => Checked(() => true), target, operation.UseVerifiedDomainRoot);
         var cache = new Dictionary<IdentityReference, IdentityReference?>();
         var result = new IdentityReference[identities.Length];
         var missing = new IdentityNotMappedException();

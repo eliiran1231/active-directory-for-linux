@@ -169,4 +169,5 @@ case preserves atomic rollback instead of native partial failure; all 36 SDDL re
 This completes the staged facade member slice, not the full AD hierarchy or transport cutover.
 The next [context resolver/raw-preparation dependency](issue-226-identity-context-status.md) now
 has a staged implementation and controlled tests. Public commit-mask/Add choices, the
-PrincipalContext adapter and coordinated AD transport cutover remain outstanding.
+The [internal PrincipalContext adapter](issue-226-principal-identity-status.md) is implemented; its
+public exposure and coordinated AD transport cutover remain outstanding.

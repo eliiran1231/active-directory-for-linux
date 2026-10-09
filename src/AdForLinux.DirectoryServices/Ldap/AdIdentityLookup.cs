@@ -57,12 +57,13 @@ internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
 
 // AD domain lookup, not Windows LSA/trust traversal. No guessed server, domain label,
 // foreign-principal CN, referral follow-up, or fallback credential is used.
-internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan timeout, Action validate, string entryTarget)
+internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan timeout, Action validate, string? entryTarget, bool useVerifiedDomainRoot = false)
 {
     internal const string DomainScopeControl = "1.2.840.113556.1.4.1339";
     private readonly Stopwatch elapsed = Stopwatch.StartNew();
     private static readonly UTF8Encoding Utf8 = new(false, true);
     private (string Domain, string Netbios, string Dns)? scope;
+    private string? verifiedEntryTarget;
     internal IdentityReference? Translate(IdentityReference identity)
     {
         var domain = scope ??= Discover();
@@ -121,14 +122,16 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
             || !string.Equals(crossRef.Text("nCName"), domain, StringComparison.OrdinalIgnoreCase)
             || crossRef.Text("nETBIOSName") is not { Length: > 0 } netbios || crossRef.Text("dnsRoot") is not { Length: > 0 } dns)
             throw new NotSupportedException("Unambiguous domain qualification metadata is unavailable.");
-        RequireDomainMember(entryTarget, domain);
+        var target = entryTarget ?? (useVerifiedDomainRoot ? domain : null);
+        RequireDomainMember(target, domain);
+        verifiedEntryTarget = target;
         return (domain, netbios, dns);
     }
     internal void Complete()
     {
         // Recheck current membership after all mappings. This is not a directory
         // transaction or an object-identity pin across deletion/recreation.
-        if (scope is { } verified) RequireDomainMember(entryTarget, verified.Domain);
+        if (scope is { } verified) RequireDomainMember(verifiedEntryTarget, verified.Domain);
     }
 
     private void RequireDomainMember(string? distinguishedName, string domain)

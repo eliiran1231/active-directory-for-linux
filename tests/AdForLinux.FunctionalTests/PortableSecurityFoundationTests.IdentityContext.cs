@@ -43,9 +43,10 @@ public partial class PortableSecurityFoundationTests
             {
                 Assert.Equal("dc.example", options.Host);
                 Assert.Equal(AuthType.Negotiate, options.AuthenticationType);
-                Opened++; return new Session(this);
+                return CreateSession();
             };
         }
+        internal IIdentitySearchSession CreateSession() { Opened++; return new Session(this); }
         internal DirectoryIdentityResolver Resolver => DirectoryIdentityResolver.ForEntry(Entry);
         internal static IdentitySearchRow Row(params (string Name, object[] Values)[] values)
             => new(values.ToDictionary(v => v.Name, v => v.Values, StringComparer.OrdinalIgnoreCase),
