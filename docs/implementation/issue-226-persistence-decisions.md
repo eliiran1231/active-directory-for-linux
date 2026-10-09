@@ -73,3 +73,12 @@ The [explicit Add source review and opt-in validation plan](issue-226-add-valida
 now records the existing complete protected request subset, exact local retention/refusal
 tests and the remaining server-dependent forms. This is a refinement of the validation
 work, not approval to run live AD or expose the proposed MicrosoftInterop companion.
+
+## Subsequent exact companion approval
+
+On 2026-10-09 the user approved the exact optional
+[MicrosoftInterop contract](issue-226-microsoft-companion-proposal.md), including independent
+ToMicrosoftObject copies and optional checked ExportForEdit/ApplyTo with managed-only disposal.
+The public package/assembly/namespace is AdForLinux.DirectoryServices.MicrosoftInterop. This
+settles that exposure choice only; persistence decisions, live AD authorization, public
+identity-context helpers and server-validation prerequisites remain separate.

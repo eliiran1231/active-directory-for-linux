@@ -2,8 +2,8 @@
 
 Status: offline implementation and source research only. No live AD run, credentials,
 network settings, schema, privileges or directory ACLs were changed. This document does
-not authorize those operations. MicrosoftInterop public exposure remains a separate
-pending proposal; the four approved persistence contracts are not reopened here.
+not authorize those operations. MicrosoftInterop public exposure was separately approved after this Add slice; that
+approval does not authorize live AD. The four approved persistence contracts are not reopened here.
 
 ## What is established locally
 

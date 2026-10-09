@@ -1,23 +1,17 @@
-# Proposed Microsoft companion public contract
+# Approved Microsoft companion public contract
 
-**Proposal only: names/signatures below are not implemented or released.** The optional
-companion, detached `ToMicrosoftObject` conversion and separate provenance-bearing edit-back
-architecture are already approved. This document supplies the remaining exact naming and
-lifetime choices; it does not ask to reapprove that architecture. The final naming/exposure
-decision is still outstanding under [the recorded contracts](issue-226-persistence-decisions.md).
-Internal conversion and edit-back work continues independently.
+The user approved this exact optional contract and the recommended MicrosoftInterop name
+on 2026-10-09. The wrappers are now implemented in source; no NuGet release is published.
+`ToMicrosoftObject` remains the simple independent-copy path. Checked edit-back is optional,
+and persistence remains an explicit separate caller operation. This approval does not
+authorize live AD, authentication/security changes or an effective-access evaluator.
 
 ## Package and dependency arrangement
 
-**Recommended naming: `AdForLinux.DirectoryServices.MicrosoftInterop`.** This continues the
-`MicrosoftInterop` wording in [D8](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-decisions.md#d8-microsoft-interop-packaging)
-and makes the interoperability purpose clearer. The earlier
-`AdForLinux.DirectoryServices.Microsoft` remains an alternative package/assembly/namespace
-name. This recommendation is not a decision or approval. The signatures and friend entry
-below show the recommended spelling; choosing the alternative would consistently substitute
-that spelling without changing the architecture, types or behavior.
+**Approved naming: `AdForLinux.DirectoryServices.MicrosoftInterop`.** This continues the
+MicrosoftInterop wording in D8. The earlier `.Microsoft` alternative was not selected.
 
-| Item | Exact proposal |
+| Item | Approved contract |
 | --- | --- |
 | NuGet package ID | `AdForLinux.DirectoryServices.MicrosoftInterop` |
 | Assembly / file | `AdForLinux.DirectoryServices.MicrosoftInterop` / `AdForLinux.DirectoryServices.MicrosoftInterop.dll` |
@@ -33,7 +27,7 @@ surface and runtime checks at Microsoft-object construction/conversion boundarie
 not offer Linux stubs or cause the main library to load Microsoft DirectoryServices on Linux.
 No new ACL/rule hierarchy, parallel AD API, credential provider or transport is introduced.
 
-After approval, add exactly this friend declaration to the main project:
+The main project now contains this friend declaration to the main project:
 
 ```xml
 <InternalsVisibleTo Include="AdForLinux.DirectoryServices.MicrosoftInterop" />
@@ -42,14 +36,14 @@ After approval, add exactly this friend declaration to the main project:
 The companion calls the existing internal snapshot, strict conversion and reconciliation
 boundary. Internal snapshots remain internal; only the wrappers below become public. Existing
 friend declarations remain unchanged. No reflection into Microsoft private members or new
-public raw/provenance setters are needed. The main project is currently unsigned; the proposed companion's named
-friend relationship would follow that existing build arrangement. It is not an authorization or
+public raw/provenance setters are needed. The main project is currently unsigned; the companion's named
+friend relationship follows that existing build arrangement. It is not an authorization or
 security boundary. If signing is introduced in a separate change, the exact companion public
 key must be specified in the friend declaration; this proposal does not change signing or
 security settings. Companion/core versions move together because the internal ABI is not a
 cross-version public contract.
 
-## Exact proposed conversion signatures
+## Conversion signatures
 
 Aliases in these declarations are ordinary C# aliases, not new public types:
 
@@ -98,8 +92,9 @@ extension-name families or public field-only rule classes are proposed.
 
 Rule collections use the same known AD-family allowlist and preserve order and multiplicity.
 A conversion stages every element and returns a read-only list only after all elements pass.
-Using `IReadOnlyList` avoids pretending to construct or mutate Microsoft's internally filled
-AuthorizationRuleCollection. Unsupported custom subclasses and non-AD rule families refuse;
+Using `IReadOnlyList` makes the result a frozen independent list. Microsoft's collection has
+a public AddRule method; this helper does not return a mutable or linked native collection.
+Unsupported custom subclasses and non-AD rule families refuse;
 this initial public surface does not silently flatten their behavior/state. A future explicit
 caller-factory bridge for arbitrary ObjectSecurity subclasses is separate from this smallest
 AD companion surface. Internal field-only converters are not an implicit public fallback.
@@ -168,7 +163,7 @@ there is no `allowLossy` flag or fallback replacement.
 A successful ApplyTo consumes the session, including a no-op; another ApplyTo throws
 InvalidOperationException. Failed application does not consume it, so a candidate may be
 corrected and retried only while source provenance remains valid. Object/Snapshot remain
-readable after successful application until disposal. This one-success lifetime is a proposed
+readable after successful application until disposal. This one-success lifetime is a companion
 wrapper rule, not a claim about the current internal baseline API.
 
 Dispose is idempotent, discards managed references and makes Object/Snapshot/ApplyTo throw
@@ -178,7 +173,7 @@ independent usable data. No memory-zeroing guarantee is made. The mutable edit s
 thread-safe; callers synchronize editing/application/disposal. Source freshness/atomicity
 checks still protect publication against concurrent portable edits.
 
-## User-visible contract example (proposed API, not runnable today)
+## User-visible contract example
 
 ```csharp
 using AdForLinux.DirectoryServices.MicrosoftInterop;
@@ -203,7 +198,8 @@ entry.CommitChanges(); // Explicit caller action; existing raw section planner i
 
 The example requires a complete exportable descriptor and an unambiguous non-merging new
 rule; it is not a guarantee that every Microsoft AddAccessRule result can be reconciled.
-It describes an intended caller contract and is not authorization or evidence of live AD use.
+The [compiled example](../examples/MicrosoftInteropUsage.cs) is included in companion tests;
+its EditAndSave method is compiled but never executed by offline tests. It is not live AD evidence.
 For inspection/copying only, use `CaptureSnapshot` or `ToMicrosoftObject`, not ExportForEdit.
 
 ## Migration and release gates
@@ -225,9 +221,9 @@ For inspection/copying only, use `CaptureSnapshot` or `ToMicrosoftObject`, not E
   Their authority contract remains separate; name-based edits still require the current verified
   context. No effective-access evaluator or live server defaults are implied.
 
-Before exposing these names, decide this exact surface and implement its wrappers/lifetimes,
-compile the examples in companion tests, and run actual Microsoft ActiveDirectorySecurity
-conversion on both Windows runtimes. Existing internal CommonSecurityDescriptor edit-back
-and AD-rule tests prove useful parts, not the complete proposed public companion. This commit
-adds documentation only for the public surface: no package project, public helper, friend
-entry, signing change or release artifact is introduced.
+The optional project, exact friend entry and wrappers are implemented. The solution compiles
+the usage example and the public companion tests exercise actual Microsoft objects on Windows.
+Linux runs the portable coverage/guard tests, builds both Windows-targeted companion TFMs and
+validates local package contents and dependency isolation; Windows-only tests are explicitly
+skipped there. Exact core/native NuGet dependencies are checked from generated nuspecs.
+Packaging for offline verification is not release publication. No signing change is introduced.

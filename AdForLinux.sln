@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.FunctionalTests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DifferentialTests", "tests\AdForLinux.DifferentialTests\AdForLinux.DifferentialTests.csproj", "{1B2F0979-D404-49CE-B660-825276F9B40D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DirectoryServices.MicrosoftInterop", "src\AdForLinux.DirectoryServices.MicrosoftInterop\AdForLinux.DirectoryServices.MicrosoftInterop.csproj", "{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.MicrosoftInterop.Tests", "tests\AdForLinux.MicrosoftInterop.Tests\AdForLinux.MicrosoftInterop.Tests.csproj", "{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +28,14 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -42,6 +54,8 @@ Global
 		{1B2F0979-D404-49CE-B660-825276F9B40D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7} = {C2AA4E38-FAB4-4339-8690-72187906222C}
+		{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7} = {378D9D75-B8ED-4ABE-B9CC-42BC7508C835}
 		{84AA60D7-7535-4FC0-B016-2C2FB6D4B4F9} = {378D9D75-B8ED-4ABE-B9CC-42BC7508C835}
 		{4DE60A22-5A9C-4A11-9199-0366DA0E0D2B} = {378D9D75-B8ED-4ABE-B9CC-42BC7508C835}
 		{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4} = {C2AA4E38-FAB4-4339-8690-72187906222C}

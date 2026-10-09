@@ -1,6 +1,6 @@
 # Remaining compatibility inventory
 
-Inventory at published head `0fe25daa6e0e3bda233893963c32149755667c89`.
+Inventory updated for the approved optional MicrosoftInterop source implementation.
 This separates missing behavior from undecided exposure and validation that cannot be
 established by detached Windows objects or controlled LDAP request capture.
 
@@ -12,23 +12,19 @@ established by detached Windows objects or controlled LDAP request capture.
 | Recorded SDDL loss | 28 native-success exports omit resource/label/policy data, opaque bytes, audit flags or the no-GUID ZA tail. Portable export refuses. | Preserve binary data. A lossy diagnostic export or alternate loss-bearing representation is a separate contract; do not change ordinary export silently. |
 | Recorded SDDL authority | Eight LA/LG rows depend on the Windows machine SID. | Requires an explicit authority mechanism; do not infer host/directory authority from a string. |
 | Unrecorded SDDL | Additional conditional encodings, access-filter forms and resource boundaries are not established by the existing 1,681 SDDL observations. | Offline native probe work; successful binary import does not authorize a lossy text export. |
-| Interop edit-back | Internal export validates actual target construction, wrapper/generation provenance and raw contributors. Unique mask edits work; structural changes and merged/ambiguous edits currently refuse. | Independent offline implementation work: start with explicit unique single-contributor deletion, proving survivor bytes and final projection. Additions/splits/reordering require separate proofs. |
-| Interop exposure | Identity, nine AD-rule subtypes, ordered collections and descriptor snapshots are internal. The optional Microsoft companion is approved, but its final package/API names and friend-access arrangement are not settled. | Genuine exposure decision, not a reason to stop internal compatibility work. No public names are selected here. |
+| Interop edit-back | Owner/group, proven unique mask edits/deletions and non-merging insertions can compose against original provenance. | Ambiguous replacements/splits/merges, opaque edits and unproven placement still refuse atomically; these need separate evidence, not fallback replacement. |
+| Interop exposure | Approved optional MicrosoftInterop wrappers are implemented with strict conversion, defensive snapshots and checked one-success edit sessions. | Source/build/package tests only; no package release. Public identity-context helpers remain a separate decision. |
 | LDAP Add request planning | Omission uses AD defaults. Explicit input currently requires all sections known, owner/group present, both ACLs non-NULL and protected. Raw bytes are sent without Modify SD-flags. | Broader explicit inputs are an implementation/validation gap, not a permanent exclusion. Request capture can prove bytes and atomicity, but cannot prove server creation semantics. |
 | LDAP Add server behavior | Request-byte retention is covered for the existing complete protected subset; server acceptance/readback, defaulting, inheritance, owner constraints and SACL retrieval remain unvalidated. | [Source findings and 15-cell opt-in plan](issue-226-add-validation-plan.md). Requires a disposable OU, fixed parent fixtures, explicit accounts and separate observer/cleanup authority; no live run authorized. An uncertain Add remains quarantined; same-DN readback is not proof of creation identity. |
 | Modify / concurrency | Raw section planning and successful binary recovery are implemented offline. Other directory writers, server normalization and authenticated identity continuity are not covered by that proof. | Live AD/provider validation only; no claim of server-side compare-and-swap. |
 
-## Concrete exposure proposal
+## Approved exposure contract
 
-The [exact Microsoft companion contract](issue-226-microsoft-companion-proposal.md) now
-recommends `AdForLinux.DirectoryServices.MicrosoftInterop` as NuGet package, assembly and namespace
-for D8 continuity, retaining `.Microsoft` as an alternative;
-`MicrosoftConversions` extensions; immutable `SecurityDescriptorSnapshot`; and disposable
-`MicrosoftSecurityEdit` with explicit one-success `ApplyTo(source)`. It includes complete
-signatures, version/friend access, disposal/authority semantics, caller examples and migration
-differences. These are proposed names, not implemented public declarations. The optional
-companion/detached conversion/separate edit-back architecture is already approved and is not
-being asked again. Internal compatibility work remains independent of the final naming decision.
+The [exact Microsoft companion contract](issue-226-microsoft-companion-proposal.md) is approved
+and implemented under `AdForLinux.DirectoryServices.MicrosoftInterop`. The `.Microsoft`
+alternative was not selected. Copy conversion is the simple path; checked edit-back remains
+optional and CommitChanges remains separate. Approval covers source implementation and tests,
+not live AD, package release or changes to preservation/authentication policy.
 
 ## Unchanged limits
 

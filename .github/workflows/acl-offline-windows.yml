@@ -34,6 +34,24 @@ jobs:
           --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests|FullyQualifiedName~AdForLinux.FunctionalTests.PortableSecurityFoundationTests"
           --logger "trx;LogFileName=acl-offline-${{ matrix.framework }}.trx"
           --results-directory artifacts/test-results
+      - name: Public Microsoft companion and compiled usage examples
+        shell: pwsh
+        run: >-
+          dotnet test tests/AdForLinux.MicrosoftInterop.Tests/AdForLinux.MicrosoftInterop.Tests.csproj
+          --configuration Release --framework ${{ matrix.framework }}-windows --no-build
+          --logger "trx;LogFileName=companion-${{ matrix.framework }}.trx"
+          --results-directory artifacts/test-results
+      - name: Verify optional companion packaging without publication
+        shell: pwsh
+        run: |
+          dotnet pack src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet pack src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet pack src/AdForLinux.DirectoryServices.MicrosoftInterop/AdForLinux.DirectoryServices.MicrosoftInterop.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/verify-companion-packages.py artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record pinned Microsoft detached-object oracle
         shell: pwsh
         run: |

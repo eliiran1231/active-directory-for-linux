@@ -1,8 +1,7 @@
-# Internal Microsoft descriptor snapshot boundary
+# Microsoft descriptor snapshot and optional companion boundary
 
-This implements an internal, testable part of approved D1/D2/D8. It does not choose final
-public helper, assembly or package names. The optional Microsoft companion remains the
-approved packaging destination; the main DLL acquires no Microsoft DirectoryServices
+The internal, tested D1/D2/D8 boundary now backs the approved optional public
+`AdForLinux.DirectoryServices.MicrosoftInterop` companion. The main DLL acquires no Microsoft DirectoryServices
 dependency. The later [coherent AD/entry integration](issue-226-entry-persistence-status.md)
 is implemented; the descriptions of the original detached slices below do not postpone that cutover.
 
@@ -99,7 +98,8 @@ no parallel AD rule hierarchy was introduced.
 
 Next dependencies: overlapping/ambiguous compound edits, revision-changing insertions,
 splits, reordering and ambiguous/multiple-contributor edit-back;
-actual Microsoft AD-security companion exposure; reviewed friend-access and final public names.
+additional unrecorded conversion boundaries. Public companion exposure and its exact named
+friend relationship were subsequently approved and implemented (see final section).
 The [approved persistence contracts](issue-226-persistence-decisions.md) are integrated with
 entry transport; live AD and any effective-access evaluator remain outside this slice.
 The [remaining compatibility inventory](issue-226-remaining-compatibility.md) separates these
@@ -162,8 +162,8 @@ No native recording, preservation policy or uncertain-write behavior changes.
 
 The [exact companion proposal](issue-226-microsoft-companion-proposal.md) specifies package,
 assembly, namespace, extension signatures, snapshots, one-success edit sessions, disposal,
-authority separation and friend access. Those public names and wrappers remain unimplemented
-pending the final exposure decision; the approved architecture is not being reopened.
+authority separation and friend access. Those public names and wrappers were subsequently approved and implemented; see the final
+section. The architecture and preservation rules are unchanged.
 
 ## Insertion canonicality correction
 
@@ -222,7 +222,31 @@ executes actual Microsoft raw mask edits, detached Remove/Add operations and own
 no native oracle recording is altered. Earlier mixed-operation refusal fixtures now test
 unsupported scope/qualifier replacement instead of refusing the newly proven independent case.
 
-Public exposure remains unapproved. The proposal document now recommends
-`AdForLinux.DirectoryServices.MicrosoftInterop` for continuity with D8 and clearer purpose,
-retaining `.Microsoft` as an alternative. No public name, friend entry, companion package,
-authentication behavior or preservation policy has been changed by this recommendation.
+## Approved optional public companion
+
+The user approved `AdForLinux.DirectoryServices.MicrosoftInterop` as package, assembly and
+namespace. The optional Windows-targeted project exposes the exact documented extensions,
+immutable defensive-copy snapshot and disposable one-success edit session. No change to the
+main/AccountManagement dependency graph or existing AD class names is required.
+
+Conversion calls actual Microsoft constructors/serializers and verifies the resulting fields
+or binary image. Snapshot export reuses the strict existing allowlist. Partial AD import
+coverage now intersects the wrapper's explicit masks; stored sections never promote coverage.
+Import carries no resolver, entry authority or inherited pending intent. Unknown rule types,
+lossy descriptor import/export and unsupported edit-back still refuse.
+
+A session owns copied data, GUID/version tokens and a Microsoft object, never the source
+wrapper or a resolver/connection. A successful local ApplyTo consumes it, including no-op;
+failed apply leaves it retryable only while the source remains current. Disposing is idempotent,
+never applies/saves, and invalidates session getters/application. Previously returned data
+remains usable. The simple ToMicrosoftObject path remains independent of edit sessions.
+
+Public tests cover copy isolation, partial coverage, immutable snapshots, actual AD-security
+roundtrips, disposal and source collection, retry/consumption/staleness, strict rule subtype/
+field conversions, collection order/duplicates and refusal of custom/non-AD rules. Compiled
+examples distinguish local application from explicit CommitChanges; no save runs in tests.
+Package verification checks exact core/native dependency versions and absence of the optional
+companion/native DirectoryServices dependency from core and AccountManagement.
+
+This implements source exposure only, not a NuGet release. Explicit Add server validation,
+ambient identity pinning, context-helper exposure and unknown SDDL boundaries remain separate.

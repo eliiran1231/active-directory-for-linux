@@ -53,10 +53,15 @@ public abstract partial class ObjectSecurity
                 return new(interopSource, _securityDescriptor.MutationVersion, identityAttachment,
                     _securityDescriptor.MutationState.Descriptor.GetBinaryForm(),
                     (_readContext?.Original ?? _securityDescriptor.MutationState.OriginalDescriptor).GetBinaryForm(),
-                    FacadeMutation.Bytes(_securityDescriptor), RetrievedSections, PendingWriteSections, IsContainer, IsDS);
+                    FacadeMutation.Bytes(_securityDescriptor), InteropCoverage, PendingWriteSections & InteropCoverage, IsContainer, IsDS);
         }
         finally { ReadUnlock(); }
     }
+
+    // An AD wrapper may describe explicit partial import coverage without carrying
+    // a server read context. Never promote that coverage to All from stored bytes.
+    private SecurityMasks InteropCoverage => this is ActiveDirectorySecurity ad
+        ? RetrievedSections & ad.RetrievedMasks : RetrievedSections;
 
     // The optional companion supplies the actual Microsoft constructor/serializer.
     // They execute outside all portable locks and are never retained in provenance.
@@ -71,6 +76,17 @@ public abstract partial class ObjectSecurity
         if (_lock.IsReadLockHeld || _lock.IsWriteLockHeld || Monitor.IsEntered(FacadeMutation.Gate))
             throw new InvalidOperationException("External conversion cannot run while the caller holds a portable security lock.");
         var snapshot = CaptureInteropSnapshot();
+        return ExportInteropSnapshot(snapshot, construct, serialize);
+    }
+
+    internal static (T Value, InteropBaseline Provenance) ExportInteropSnapshot<T>(InteropSnapshot snapshot,
+        Func<byte[], bool, bool, T> construct, Func<T, byte[]> serialize)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(construct);
+        ArgumentNullException.ThrowIfNull(serialize);
+        if (Monitor.IsEntered(FacadeMutation.Gate))
+            throw new InvalidOperationException("External conversion cannot run inside the portable mutation gate.");
         if (snapshot.Retrieved != InteropAll)
             throw new NotSupportedException("A complete Microsoft descriptor export cannot represent unread sections.");
         var raw = C.SecurityDescriptor.Parse(snapshot.Raw, InteropAll);
@@ -85,6 +101,15 @@ public abstract partial class ObjectSecurity
         if (!actual.AsSpan().SequenceEqual(expected))
             throw new NotSupportedException("The Microsoft import changed data outside the verified projection contract.");
         return (value, new(snapshot, actual));
+    }
+
+    internal static void ValidateInteropImport(byte[] native, byte[] portable)
+    {
+        // Validate source storage before comparing actual serialized results. Import
+        // cannot recover already-lost native data, or drop more while crossing back.
+        _ = C.MicrosoftObservableProjector.Project(C.SecurityDescriptor.Parse(native, InteropAll));
+        if (!CanonicalInteropImage(native).AsSpan().SequenceEqual(CanonicalInteropImage(portable)))
+            throw new NotSupportedException("Portable import changed the Microsoft descriptor serialization.");
     }
 
     // A detached buffer is never sufficient provenance. Only this source wrapper at
