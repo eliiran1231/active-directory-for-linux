@@ -678,14 +678,10 @@ namespace AdForLinux.Security.AccessControl
 
             try
             {
-                var changed = false;
-                var result = FacadeMutation.Run(() =>
-                {
-                    CaptureDirtyFlags();
-                    return ModifyAccess(modification, rule, out changed);
-                });
-                modified = changed;
-                return result;
+                // Invoke extension hooks outside the shared transaction gate. The
+                // concrete base mutation owns its transaction; user overrides retain
+                // native wrapper-lock discipline without blocking peer-wrapper work.
+                return ModifyAccess(modification, rule, out modified);
             }
             finally
             {
@@ -708,14 +704,10 @@ namespace AdForLinux.Security.AccessControl
 
             try
             {
-                var changed = false;
-                var result = FacadeMutation.Run(() =>
-                {
-                    CaptureDirtyFlags();
-                    return ModifyAudit(modification, rule, out changed);
-                });
-                modified = changed;
-                return result;
+                // Invoke extension hooks outside the shared transaction gate. The
+                // concrete base mutation owns its transaction; user overrides retain
+                // native wrapper-lock discipline without blocking peer-wrapper work.
+                return ModifyAudit(modification, rule, out modified);
             }
             finally
             {

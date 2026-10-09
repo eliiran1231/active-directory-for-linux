@@ -283,4 +283,66 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(SecurityMasks.Sacl, descriptor.MutationState.WriteIntent);
         Assert.Equal(new[] { false, false, false, true }, wrapper.Flags());
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Extension_callbacks_do_not_hold_the_shared_mutation_gate(bool factory)
+    {
+        var descriptor = new A.CommonSecurityDescriptor(true, true, "O:WDD:(A;;RP;;;WD)");
+        using var peerReady = new ManualResetEventSlim();
+        using var insideHook = new ManualResetEventSlim();
+        using var peerDone = new ManualResetEventSlim();
+        var peer = new FacadeContracts.Wrapper(descriptor);
+        var wrapper = new CallbackWrapper(descriptor, factory, () =>
+        {
+            insideHook.Set();
+            return peerDone.Wait(TimeSpan.FromSeconds(5));
+        });
+        Exception? failure = null;
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                peer.EnterWrite();
+                try
+                {
+                    peerReady.Set();
+                    if (!insideHook.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException();
+                    peer.SetOwner(new SecurityIdentifier("S-1-5-18"));
+                }
+                finally { peer.ExitWrite(); }
+            }
+            catch (Exception error) { failure = error; }
+            finally { peerDone.Set(); }
+        });
+        worker.Start();
+        try
+        {
+            Assert.True(peerReady.Wait(TimeSpan.FromSeconds(5)));
+            if (factory) Assert.Single(wrapper.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<A.AuthorizationRule>());
+            else Assert.True(wrapper.ModifyAccessRule(AccessControlModification.Add,
+                new FacadeContracts.AR(new SecurityIdentifier("S-1-1-0"), 16, false, 0, 0, AccessControlType.Allow, Guid.Empty, Guid.Empty), out _));
+        }
+        finally { insideHook.Set(); Assert.True(worker.Join(TimeSpan.FromSeconds(10))); }
+        Assert.Null(failure);
+        Assert.True(wrapper.SawPeerProgress, "A callback held the shared state gate while its peer needed to mutate.");
+        Assert.Equal("S-1-5-18", descriptor.Owner!.Value);
+    }
+
+    private sealed class CallbackWrapper(A.CommonSecurityDescriptor descriptor, bool factory, Func<bool> progress)
+        : FacadeContracts.Wrapper(descriptor)
+    {
+        internal bool SawPeerProgress;
+        protected override bool ModifyAccess(AccessControlModification modification, A.AccessRule rule, out bool modified)
+        {
+            SawPeerProgress = progress(); modified = false; return true;
+        }
+        public override A.AccessRule AccessRuleFactory(IdentityReference identityReference, int accessMask, bool isInherited,
+            InheritanceFlags inheritanceFlags, PropagationFlags propagationFlags, AccessControlType type)
+        {
+            if (factory) SawPeerProgress = progress();
+            return base.AccessRuleFactory(identityReference, accessMask, isInherited, inheritanceFlags, propagationFlags, type);
+        }
+    }
 }

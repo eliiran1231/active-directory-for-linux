@@ -54,8 +54,8 @@ namespace AdForLinux.Security.AccessControl
 
             try
             {
-                lock (FacadeMutation.Gate)
-                {
+                // Common ACL reads take the state gate individually. Do not hold it
+                // while calling virtual factories: a factory may use a peer wrapper.
                 AuthorizationRuleCollection result = new AuthorizationRuleCollection();
 
                 if (!IsValidTargetTypeStatic(targetType))
@@ -247,7 +247,6 @@ namespace AdForLinux.Security.AccessControl
                 }
 
                 return result;
-                            }
             }
             finally
             {

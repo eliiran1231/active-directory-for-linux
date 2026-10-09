@@ -57,7 +57,12 @@ unreferenced storage, resource-manager data or control fields their native assig
 not carry; complete binary constructors preserve those inputs.
 
 An internal transaction gate serializes actual shared state operations. It is not the protected
-compatibility lock. Nested operations have rollback savepoints so an override catching a failed
+compatibility lock. Virtual factories and protected modification overrides execute outside
+that gate while retaining their native wrapper-lock discipline; callbacks can therefore allow
+peer wrappers to make progress without creating a lock-order cycle. Individual ACL reads still
+serialize against staged state changes. Base compound operations retain their transaction;
+arbitrary user override code controls its own sequence of completed operations.
+Nested operations have rollback savepoints so an override catching a failed
 inner edit cannot leave that edit's staged state behind. Compound setter/helper failures restore
 raw and live values, facade references, provenance, mutation versions and protected flags.
 
@@ -90,12 +95,14 @@ preservation refusals and this one pinned atomic-failure difference. Runtime dif
 Local safety regressions cover retained contributors across shared wrappers and ACL aliases,
 opaque opposite sections, shared-owner rollback, nested savepoints, no-op write intent,
 wrapper-local snapshots, raw NULL versus absent DACL state, independent thread locks,
+peer-wrapper mutation from factory/protected-hook callbacks,
 refused incoming storage and failed unresolved-name edits without revision-upgrade residue.
 Full Linux and exact-head Windows results and artifact links are maintained in draft PR228.
 
 Context-bound cross-kind identity translation remains unfinished. There is no invented ambient
 resolver. Broader native facade combinations remain probe-driven compatibility work, including
 unbound ACL value edits whose raw normalization cannot yet be reconciled when later attached.
+Future resolver callbacks must also remain outside the shared state gate.
 The complete AD/rule/consumer cutover still requires reviewed raw write preparation, explicit
 retrieved-section/context binding and coordinated compile/reflection fixture migration. Public
 observable binary output must never be treated as raw persistence bytes. The existing AD
