@@ -164,3 +164,29 @@ The [exact companion proposal](issue-226-microsoft-companion-proposal.md) specif
 assembly, namespace, extension signatures, snapshots, one-success edit sessions, disposal,
 authority separation and friend access. Those public names and wrappers remain unimplemented
 pending the final exposure decision; the approved architecture is not being reopened.
+
+## Insertion canonicality correction
+
+Independent review of `aea54572a3ded6cb848168fa6a04791de0779f03` found that projection
+byte equality alone was insufficient: the read projector deliberately preserves a known
+noncanonical ACL. A candidate appending Deny after Allow, or an explicit ACE after inherited
+ACEs, could therefore pass insertion while the shared CommonAcl retained its immutable
+`IsCanonical == true` flag. That disagreed with a fresh Microsoft import and left future
+mutator guards inconsistent.
+
+Insertion now requires canonical qualifier/inheritance order in both baseline and candidate
+at the raw planner. Independently, facade edit-back validates the candidate with the same
+canonicality classifier used at construction and requires the source's cached canonicality
+to be true before replacing its ACL bytes. The classifier inspects raw order without sorting.
+No survivor is moved and no readonly flag is changed to make a candidate appear acceptable.
+Unchanged detached exports still remain no-ops; modified noncanonical ACLs explicitly refuse.
+
+Twenty regressions all failed on the preceding implementation. They cover common/object
+Deny-after-Allow DACLs, explicit-after-inherited DACLs and SACLs, fresh and retained contributors,
+direct planner calls, shared ACL aliases, pre-existing intent, subsequent valid mutators,
+stale provenance, compound rollback and successful retry with the same restored provenance.
+On Windows, tests create the candidate through actual Microsoft RawAcl insertion, then verify
+that a fresh Microsoft CommonSecurityDescriptor reports noncanonical, preserves the bytes,
+and throws InvalidOperationException on a future AddAccess/AddAudit. Linux exercises the same
+contract with portable objects. This is new directed runtime evidence, not an edited native
+recording. Public companion proposal/exposure and all preservation policies are unchanged.

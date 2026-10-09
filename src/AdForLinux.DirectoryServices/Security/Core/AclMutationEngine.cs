@@ -308,6 +308,11 @@ internal sealed class AclMutationEngine
 
         AclMutationEngine ReconcileInsertions()
         {
+            // Projection deliberately preserves noncanonical input; byte equality
+            // alone therefore cannot prove that a CommonAcl can accept this edit.
+            if (!MicrosoftObservableProjector.HasCanonicalQualifierOrder(before.Aces, isDacl)
+                || !MicrosoftObservableProjector.HasCanonicalQualifierOrder(after.Aces, isDacl))
+                throw new NotSupportedException("Insertion requires canonical explicit/inherited and deny/allow ordering.");
             var candidateGroups = new List<(Ace View, int[] RawIndices)>();
             var added = new List<Ace>();
             var oldIndex = 0;

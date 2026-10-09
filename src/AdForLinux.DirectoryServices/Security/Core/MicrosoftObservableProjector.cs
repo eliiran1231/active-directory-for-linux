@@ -100,7 +100,7 @@ internal static class MicrosoftObservableProjector
         return Acl.Read(DescriptorRewriter.EncodeAcl(acl, result));
     }
 
-    private static bool HasCanonicalQualifierOrder(IReadOnlyList<Ace> aces, bool isDacl)
+    internal static bool HasCanonicalQualifierOrder(IReadOnlyList<Ace> aces, bool isDacl)
     {
         var previous = -1;
         foreach (var ace in aces)

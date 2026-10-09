@@ -1663,7 +1663,7 @@ namespace AdForLinux.Security.AccessControl
         // Returns 'true' if the ACL is in canonical order; 'false' otherwise
         //
 
-        private bool CanonicalCheck(bool isDacl)
+        private static bool CanonicalCheck(RawAcl acl, bool isDacl)
         {
             if (isDacl)
             {
@@ -1684,11 +1684,11 @@ namespace AdForLinux.Security.AccessControl
                 // of this check!
                 //
 
-                for (int i = 0; i < _acl.Count; i++)
+                for (int i = 0; i < acl.Count; i++)
                 {
                     int aceStage;
 
-                    GenericAce ace = _acl[i];
+                    GenericAce ace = acl[i];
 
                     if ((ace.AceFlags & AceFlags.Inherited) != 0)
                     {
@@ -1754,11 +1754,11 @@ namespace AdForLinux.Security.AccessControl
                 // of this check!
                 //
 
-                for (int i = 0; i < _acl.Count; i++)
+                for (int i = 0; i < acl.Count; i++)
                 {
                     int aceStage;
 
-                    GenericAce ace = _acl[i];
+                    GenericAce ace = acl[i];
 
                     if (ace == null)
                     {
@@ -1901,7 +1901,7 @@ namespace AdForLinux.Security.AccessControl
             // See whether the ACL is canonical to begin with
             //
 
-            if (CanonicalCheck(isDacl))
+            if (CanonicalCheck(_acl, isDacl))
             {
                 //
                 // Sort and compact the array

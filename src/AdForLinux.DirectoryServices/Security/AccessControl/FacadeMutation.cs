@@ -123,7 +123,15 @@ public abstract partial class CommonAcl
         => Edit(plan, () => { action(); return true; });
     internal void ReconcileInteropEdits(byte[] baseline, byte[] edited)
         => Edit((engine, section) => engine.ReconcileInteropEdits(section, baseline, edited),
-            () => { _acl = new RawAcl(edited, 0); _isDirty = false; });
+            () =>
+            {
+                var candidate = new RawAcl(edited, 0);
+                // _isCanonical is immutable. Do not install bytes that contradict
+                // it or bypass the ordinary noncanonical-ACL mutation guard.
+                if (!_isCanonical || !CanonicalCheck(candidate, this is DiscretionaryAcl))
+                    throw new NotSupportedException("Interop edit-back requires a canonical source and candidate ACL.");
+                _acl = candidate; _isDirty = false;
+            });
     // Protection also exposes the synthetic Everyone ACL. Treat that marker-only
     // transition as an ACL edit so all owners reconcile or roll back together.
     internal void MaterializeNullDacl()
