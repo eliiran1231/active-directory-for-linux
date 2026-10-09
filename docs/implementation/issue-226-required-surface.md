@@ -41,7 +41,7 @@ Implement the supporting closure while the existing AD classes still use the BCL
 
 The manifest proves API shape only. Constructor validation, SDDL behavior, mutable facade ownership, shared descriptor mutation visibility, lock semantics, dirty flags, identity translation, raw preservation and write-intent behavior still need their own detached observations and tests. It does not resolve them by reflection or claim they are complete.
 
-`PortableSecurityFoundationTests.Surface.cs` consumes both checked-in Windows manifests as embedded resources `AclOracle.Surface.net8.json` and `AclOracle.Surface.net10.json`. It uses an explicit 27-type substitution map for the five current identity/collection/exception types, six rule/collection types, seven ACE types, six ACL/enumerator types, and three descriptor types; it does not rewrite an entire framework namespace. For each implemented type it checks every recorded declared public/protected member, rejects extra members, and compares signatures, parameter names, accessibility, method dispatch flags, base definitions, custom modifiers, constants, and type/base/interface shape. Compiler attributes and nullable annotations are retained in the manifest but are not asserted as binary signature parity. Private accessor implementation details are outside that comparison. Missing manifests fail the test rather than skip it.
+`PortableSecurityFoundationTests.Surface.cs` consumes both checked-in Windows manifests as embedded resources `AclOracle.Surface.net8.json` and `AclOracle.Surface.net10.json`. It uses an explicit 29-type substitution map for the five current identity/collection/exception types, six rule/collection types, seven ACE types, six ACL/enumerator types, three descriptor types and two ObjectSecurity facade types; it does not rewrite an entire framework namespace. For each implemented type it checks every recorded declared public/protected member, rejects extra members, and compares signatures, parameter names, accessibility, method dispatch flags, base definitions, custom modifiers, constants, and type/base/interface shape. Compiler attributes and nullable annotations are retained in the manifest but are not asserted as binary signature parity. Private accessor implementation details are outside that comparison. Missing manifests fail the test rather than skip it.
 
 The pointer constructor follow-up closes the last declared SID member gap; no gap remains within the 27 mapped types. The `WellKnownSidType`/domain-SID constructor and `IsWellKnown(WellKnownSidType)` are now implemented and must match the complete recorded member shapes. This requires the domain-SID property and helpers to be implemented; it does not allow them to disappear silently. Remove each gap as the member is implemented, and expand the exact type map as the remaining required closure lands. API-shape matching does not waive the separate numeric parsing, alias, translation, validation or behavioral replay obligations.
 
@@ -51,3 +51,11 @@ Its 3,268 native observations distinguish 2,292 exact successful outcomes, 940 e
 exceptions and 36 explicit portable refusals. Surface parity for the 27 mapped types is an
 API-shape check, not a claim of parity for deferred SDDL or of completion of ObjectSecurity,
 DirectoryObjectSecurity, context-bound resolution or the AD hierarchy cutover.
+
+
+The [ObjectSecurity facade slice](issue-226-object-security-status.md) expands exact declared
+surface coverage to 29 types with no missing member among those types. Its 249 actual Windows
+facade observations bring closure evidence to 3,517 rows. One exact case follows the approved
+atomic-failure policy instead of Microsoft's partial failed mutation; it is pinned separately.
+The 36 SDDL refusals and the full 55-type target remain unchanged. AD/rule/consumer cutover and
+context-bound identity translation remain required.

@@ -39,6 +39,8 @@ public partial class PortableSecurityFoundationTests
         [typeof(A.DiscretionaryAcl)] = "System.Security.AccessControl.DiscretionaryAcl",
         [typeof(A.SystemAcl)] = "System.Security.AccessControl.SystemAcl",
         [typeof(A.AceEnumerator)] = "System.Security.AccessControl.AceEnumerator",
+        [typeof(A.ObjectSecurity)] = "System.Security.AccessControl.ObjectSecurity",
+        [typeof(A.DirectoryObjectSecurity)] = "System.Security.AccessControl.DirectoryObjectSecurity",
         [typeof(A.GenericSecurityDescriptor)] = "System.Security.AccessControl.GenericSecurityDescriptor",
         [typeof(A.RawSecurityDescriptor)] = "System.Security.AccessControl.RawSecurityDescriptor",
         [typeof(A.CommonSecurityDescriptor)] = "System.Security.AccessControl.CommonSecurityDescriptor"
@@ -57,7 +59,7 @@ public partial class PortableSecurityFoundationTests
         var root = document.RootElement;
         Assert.Equal("issue-226-required-surface-v1", root.GetProperty("Schema").GetString());
         var recorded = root.GetProperty("Types").EnumerateArray().ToDictionary(t => t.GetProperty("Type").GetString()!);
-        Assert.Equal(27, SurfaceTypes.Count);
+        Assert.Equal(29, SurfaceTypes.Count);
         var foundGaps = new List<string>();
         foreach (var (portable, referenceName) in SurfaceTypes)
         {

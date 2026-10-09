@@ -17,6 +17,7 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(caseId,row.GetProperty("Case").GetInt32());
         object? outcome=null;
         var exception=Record.Exception(()=>outcome=ReplayClosure(operation,row.GetProperty("Arguments")));
+        if(operation.StartsWith("Facade",StringComparison.Ordinal) && AssertFacadePreservationRefusal(row,exception)) return;
         if(operation.StartsWith("Sddl",StringComparison.Ordinal) && AssertSddlDeferred(row,exception)) return;
         Assert.Equal(row.GetProperty("ExceptionType").GetString(),exception?.GetType().FullName);
         Assert.Equal(row.GetProperty("ParamName").GetString(),(exception as ArgumentException)?.ParamName);
@@ -33,7 +34,7 @@ public partial class PortableSecurityFoundationTests
         using var first=JsonDocument.Parse(firstStream);using var second=JsonDocument.Parse(secondStream);
         var firstRows=first.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         var secondRows=second.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
-        Assert.Equal(3268,firstRows.Length);
+        Assert.Equal(3517,firstRows.Length);
         var differences=new List<int>();
         Assert.Equal(firstRows.Length,secondRows.Length);
         for(var i=0;i<firstRows.Length;i++)
@@ -65,6 +66,7 @@ public partial class PortableSecurityFoundationTests
         var actual=JsonSerializer.SerializeToElement(outcome);
         var expected=row.GetProperty("Outcome");
         var caseId=row.GetProperty("Case").GetInt32();
+        if(caseId == 3398) { AssertFacadeAtomicFailure(row,outcome); return; }
         if(caseId is 2314 or 2317)
         {
             Assert.Equal("IdentityMappingException",row.GetProperty("Operation").GetString());
@@ -102,6 +104,7 @@ public partial class PortableSecurityFoundationTests
 
     private static object? ReplayClosure(string operation,JsonElement arguments)
     {
+        if(operation.StartsWith("Facade",StringComparison.Ordinal)) return FacadeContracts.Execute(operation,arguments.GetProperty("Scenario").GetInt32());
         if(operation=="SidPointer") return ReplaySidPointer(arguments);
         if(operation.StartsWith("Identity",StringComparison.Ordinal)) return PortableIdentityCollectionContracts.Execute(operation,arguments.GetProperty("Scenario").GetInt32());
         if(operation.StartsWith("Acl",StringComparison.Ordinal)) return ReplayAclClosure(operation,arguments);

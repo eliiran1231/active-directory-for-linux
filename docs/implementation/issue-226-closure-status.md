@@ -121,3 +121,14 @@ so the current total is 36. [Details and exact byte counts](issue-226-sddl-progr
 explain native ZA tail omission. [Current provenance](../research/acl-windows-oracle/results/log-derived-37840983666-provenance.json)
 records the actual source logs. Negation precedence, hash octets, local/prefixed name classes
 and percent escapes now have directed native regression coverage.
+
+
+## ObjectSecurity facade follow-up
+
+The [measured facade implementation](issue-226-object-security-status.md) now adds ObjectSecurity
+and DirectoryObjectSecurity, raising exact declared surface coverage to 29 types and closure
+evidence to 3,517 rows. Shared descriptor mutations reconcile with retained raw/live/provenance
+state, while locks, dirty flags and read contexts remain wrapper-local. One pinned invalid-enum
+case preserves atomic rollback instead of native partial failure; all 36 SDDL refusals remain.
+This completes the staged facade member slice, not the full AD hierarchy or transport cutover.
+Context-bound identity resolution and reviewed raw write preparation remain the next dependencies.

@@ -4,6 +4,7 @@
     <!-- Runs on Linux in Docker against the smblds Samba AD DC. -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);PORTABLE_FACADE</DefineConstants>
     <RootNamespace>AdForLinux.FunctionalTests</RootNamespace>
   </PropertyGroup>
 
@@ -16,6 +17,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices\AdForLinux.DirectoryServices.csproj" />
     <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices.AccountManagement\AdForLinux.DirectoryServices.AccountManagement.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
   </ItemGroup>
 
   <ItemGroup>

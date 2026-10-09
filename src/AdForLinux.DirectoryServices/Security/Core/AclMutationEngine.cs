@@ -316,6 +316,61 @@ internal sealed class AclMutationEngine
     public AclMutationResult SetOwner(Sid owner) => SetIdentity(SecurityMasks.Owner, owner);
     public AclMutationResult SetGroup(Sid group) => SetIdentity(SecurityMasks.Group, group);
 
+    // Explicit facade section assignment is distinct from projected rule editing.
+    // Retain provenance for every untouched ACL and apply the same layout safeguards.
+    internal AclMutationEngine ReplaceSections(IReadOnlyDictionary<SecurityMasks, byte[]?> replacements,
+        ushort controlMask, ushort control)
+    {
+        var changed = (SecurityMasks)0;
+        foreach (var (section, bytes) in replacements)
+        {
+            RequireRetrieved(section);
+            if (section is SecurityMasks.Dacl or SecurityMasks.Sacl)
+            {
+                if (Descriptor.HasAclDataWithoutPresentBit(section))
+                    throw new InvalidOperationException("Section replacement cannot discard ACL storage hidden by an absent present bit.");
+                var original = section == SecurityMasks.Dacl ? Descriptor.Dacl : Descriptor.Sacl;
+                if (original is not null)
+                {
+                    var old = new byte[original.BinaryLength]; original.WriteTo(old);
+                    if (bytes is not null && old.AsSpan().SequenceEqual(bytes)) continue;
+                    if (original.AclRevision is not (Acl.Revision or Acl.RevisionDS)
+                        || !original.Trailing.IsEmpty || original.Sbz1 != 0 || original.Sbz2 != 0
+                        || original.Aces.Any(a => !MicrosoftObservableProjector.IsUnderstoodAce(a, section == SecurityMasks.Dacl)))
+                        throw new InvalidOperationException("Section replacement would discard unreviewed ACL data.");
+                }
+            }
+            else
+            {
+                var original = section == SecurityMasks.Owner ? Descriptor.Owner : Descriptor.Group;
+                if (original is null ? bytes is null : bytes is not null && original.ToArray().AsSpan().SequenceEqual(bytes)) continue;
+            }
+            changed |= section;
+        }
+        var replaced = changed;
+        var flags = (ushort)((Descriptor.Control & ~controlMask) | (control & controlMask));
+        if (((flags ^ Descriptor.Control) & 0x1504) != 0) { RequireRetrieved(SecurityMasks.Dacl); changed |= SecurityMasks.Dacl; }
+        if (((flags ^ Descriptor.Control) & 0x2A10) != 0) { RequireRetrieved(SecurityMasks.Sacl); changed |= SecurityMasks.Sacl; }
+        if (changed == 0 && flags == Descriptor.Control) return this;
+        var next = DescriptorRewriter.Rewrite(Descriptor, flags, replacements);
+        if (next.GetBinaryForm().AsSpan().SequenceEqual(Descriptor.GetBinaryForm())) return this;
+        return new AclMutationEngine(next, OriginalDescriptor, WriteIntent | changed,
+            (replaced & SecurityMasks.Dacl) == 0 ? _projectedDacl : null,
+            (replaced & SecurityMasks.Sacl) == 0 ? _projectedSacl : null);
+    }
+
+    internal AclMutationEngine CopyAclProvenance(AclMutationEngine source, SecurityMasks section)
+    {
+        var state = source.RetainedState(section);
+        if (state is null || ReferenceEquals(state, RetainedState(section))) return this;
+        var acl = section == SecurityMasks.Dacl ? Descriptor.Dacl : Descriptor.Sacl;
+        if (acl is null) throw new InvalidOperationException("Missing copied ACL storage.");
+        ValidateProvenance(acl, state);
+        return new AclMutationEngine(Descriptor, OriginalDescriptor, WriteIntent,
+            section == SecurityMasks.Dacl ? state : _projectedDacl,
+            section == SecurityMasks.Sacl ? state : _projectedSacl);
+    }
+
     private AclMutationResult SetIdentity(SecurityMasks section, Sid identity)
     {
         ArgumentNullException.ThrowIfNull(identity);

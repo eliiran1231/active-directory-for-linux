@@ -153,6 +153,8 @@ namespace AdForLinux.Security.AccessControl
         {
             get
             {
+                lock (FacadeMutation.Gate)
+                {
                 int result = HeaderLength;
 
                 if (Owner != null)
@@ -178,6 +180,7 @@ namespace AdForLinux.Security.AccessControl
                 }
 
                 return result;
+                            }
             }
         }
 
@@ -190,7 +193,9 @@ namespace AdForLinux.Security.AccessControl
         //
 
         public string GetSddlForm(AccessControlSections includeSections)
-            => SddlCodec.Format(this, includeSections);
+        {
+            lock (FacadeMutation.Gate) return SddlCodec.Format(this, includeSections);
+        }
 
         //
         // Converts the security descriptor to its binary form
@@ -198,6 +203,8 @@ namespace AdForLinux.Security.AccessControl
 
         public void GetBinaryForm(byte[] binaryForm, int offset)
         {
+            lock (FacadeMutation.Gate)
+            {
             ArgumentNullException.ThrowIfNull(binaryForm);
 
             ArgumentOutOfRangeException.ThrowIfNegative(offset);
@@ -326,6 +333,7 @@ namespace AdForLinux.Security.AccessControl
 
                 MarshalInt(binaryForm, daclOffset, 0);
             }
+                    }
         }
         #endregion
     }
@@ -333,6 +341,17 @@ namespace AdForLinux.Security.AccessControl
 
     public sealed class RawSecurityDescriptor : GenericSecurityDescriptor
     {
+        private byte[]? preservedInput, preservedView;
+        internal byte[] PreservedInput()
+        {
+            var current = FacadeMutation.Bytes(this);
+            if (preservedInput is null) return current;
+            if (current.AsSpan().SequenceEqual(preservedView)) return (byte[])preservedInput.Clone();
+            if (!preservedInput.AsSpan().SequenceEqual(preservedView))
+                throw new InvalidOperationException("A changed raw descriptor cannot discard its unexplained imported storage.");
+            return current;
+        }
+
         #region Private Members
 
         private SecurityIdentifier? _owner;
@@ -536,7 +555,9 @@ namespace AdForLinux.Security.AccessControl
             {
                 ResourceManagerControl = rmControl;
             }
-        }
+                    preservedInput = binaryForm.AsSpan(offset).ToArray();
+            preservedView = FacadeMutation.Bytes(this);
+}
 
         #endregion
 
@@ -670,7 +691,7 @@ namespace AdForLinux.Security.AccessControl
     }
 
 
-    public sealed class CommonSecurityDescriptor : GenericSecurityDescriptor
+    public sealed partial class CommonSecurityDescriptor : GenericSecurityDescriptor
     {
         #region Private Members
 
@@ -687,6 +708,8 @@ namespace AdForLinux.Security.AccessControl
         [MemberNotNull(nameof(_rawSd))]
         private void CreateFromParts(bool isContainer, bool isDS, ControlFlags flags, SecurityIdentifier? owner, SecurityIdentifier? group, SystemAcl? systemAcl, DiscretionaryAcl? discretionaryAcl)
         {
+            lock (FacadeMutation.Gate)
+            {
             if (systemAcl != null &&
                 systemAcl.IsContainer != isContainer)
             {
@@ -741,6 +764,7 @@ namespace AdForLinux.Security.AccessControl
             // to conform to native behavior, we will add allow everyone ace for DACL
             //
 
+            var suppliedDacl = discretionaryAcl;
             discretionaryAcl ??= DiscretionaryAcl.CreateAllowEveryoneFullAccess(_isDS, _isContainer);
 
             _dacl = discretionaryAcl;
@@ -765,6 +789,17 @@ namespace AdForLinux.Security.AccessControl
             }
 
             _rawSd = new RawSecurityDescriptor(actualFlags, owner, group, systemAcl?.RawAcl, discretionaryAcl.RawAcl);
+            var implicitDacl = suppliedDacl is null || suppliedDacl.EveryOneFullAccessForNullDacl;
+            var rawFlags = implicitDacl
+                ? (actualFlags & ~ControlFlags.DiscretionaryAclPresent) | (flags & ControlFlags.DiscretionaryAclPresent)
+                : actualFlags;
+            InitializeMutation(FacadeMutation.Bytes(new RawSecurityDescriptor(rawFlags, owner, group, systemAcl?.RawAcl, implicitDacl ? null : suppliedDacl!.RawAcl)));
+            var replacements = new Dictionary<AdForLinux.DirectoryServices.SecurityMasks, byte[]?>();
+            if (_sacl != null) replacements[AdForLinux.DirectoryServices.SecurityMasks.Sacl] = _sacl.PreservedInput();
+            if (!_dacl.EveryOneFullAccessForNullDacl) replacements[AdForLinux.DirectoryServices.SecurityMasks.Dacl] = _dacl.PreservedInput();
+            var preserved = AdForLinux.DirectoryServices.Security.Core.DescriptorRewriter.Rewrite(MutationState.Descriptor, MutationState.Descriptor.Control, replacements);
+            InitializeMutation(preserved.GetBinaryForm(), copyProvenance: true);
+                    }
         }
 
         #endregion
@@ -794,6 +829,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rawSecurityDescriptor);
 
+            var imported = rawSecurityDescriptor.PreservedInput();
             CreateFromParts(
                 isContainer,
                 isDS,
@@ -802,6 +838,7 @@ namespace AdForLinux.Security.AccessControl
                 rawSecurityDescriptor.Group,
                 rawSecurityDescriptor.SystemAcl == null ? null : new SystemAcl(isContainer, isDS, rawSecurityDescriptor.SystemAcl, trusted),
                 rawSecurityDescriptor.DiscretionaryAcl == null ? null : new DiscretionaryAcl(isContainer, isDS, rawSecurityDescriptor.DiscretionaryAcl, trusted));
+            InitializeMutation(imported);
         }
 
         //
@@ -820,6 +857,7 @@ namespace AdForLinux.Security.AccessControl
         public CommonSecurityDescriptor(bool isContainer, bool isDS, byte[] binaryForm, int offset)
             : this(isContainer, isDS, new RawSecurityDescriptor(binaryForm, offset), true)
         {
+            InitializeMutation(binaryForm.AsSpan(offset).ToArray());
         }
 
         #endregion
@@ -828,12 +866,12 @@ namespace AdForLinux.Security.AccessControl
 
         internal sealed override GenericAcl? GenericSacl
         {
-            get { return _sacl; }
+            get { lock (FacadeMutation.Gate) { return _sacl; } }
         }
 
         internal sealed override GenericAcl? GenericDacl
         {
-            get { return _dacl; }
+            get { lock (FacadeMutation.Gate) { return _dacl; } }
         }
 
         #endregion
@@ -842,12 +880,12 @@ namespace AdForLinux.Security.AccessControl
 
         public bool IsContainer
         {
-            get { return _isContainer; }
+            get { lock (FacadeMutation.Gate) { return _isContainer; } }
         }
 
         public bool IsDS
         {
-            get { return _isDS; }
+            get { lock (FacadeMutation.Gate) { return _isDS; } }
         }
 
 
@@ -858,9 +896,9 @@ namespace AdForLinux.Security.AccessControl
         public override ControlFlags ControlFlags
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return _rawSd.ControlFlags;
-            }
+            } }
         }
 
         //
@@ -870,14 +908,17 @@ namespace AdForLinux.Security.AccessControl
         public override SecurityIdentifier? Owner
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return _rawSd.Owner;
-            }
+            } }
 
             set
             {
+                Assign(AdForLinux.DirectoryServices.SecurityMasks.Owner, () =>
+                {
                 _rawSd.Owner = value;
-            }
+                            });
+        }
         }
 
         //
@@ -887,26 +928,31 @@ namespace AdForLinux.Security.AccessControl
         public override SecurityIdentifier? Group
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return _rawSd.Group;
-            }
+            } }
 
             set
             {
+                Assign(AdForLinux.DirectoryServices.SecurityMasks.Group, () =>
+                {
                 _rawSd.Group = value;
-            }
+                            });
+        }
         }
 
 
         public SystemAcl? SystemAcl
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return _sacl;
-            }
+            } }
 
             set
             {
+                Assign(AdForLinux.DirectoryServices.SecurityMasks.Sacl, () =>
+                {
                 if (value != null)
                 {
                     if (value.IsContainer != this.IsContainer)
@@ -940,7 +986,8 @@ namespace AdForLinux.Security.AccessControl
                     _rawSd.SystemAcl = null;
                     RemoveControlFlags(ControlFlags.SystemAclPresent);
                 }
-            }
+                            });
+        }
         }
 
         //
@@ -950,12 +997,14 @@ namespace AdForLinux.Security.AccessControl
         public DiscretionaryAcl? DiscretionaryAcl
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return _dacl;
-            }
+            } }
 
             set
             {
+                Assign(AdForLinux.DirectoryServices.SecurityMasks.Dacl, () =>
+                {
                 if (value != null)
                 {
                     if (value.IsContainer != this.IsContainer)
@@ -992,17 +1041,18 @@ namespace AdForLinux.Security.AccessControl
 
                 _rawSd.DiscretionaryAcl = _dacl.RawAcl;
                 AddControlFlags(ControlFlags.DiscretionaryAclPresent);
-            }
+                            });
+        }
         }
 
         public bool IsSystemAclCanonical
         {
-            get { return (SystemAcl == null || SystemAcl.IsCanonical); }
+            get { lock (FacadeMutation.Gate) { return (SystemAcl == null || SystemAcl.IsCanonical); } }
         }
 
         public bool IsDiscretionaryAclCanonical
         {
-            get { return (DiscretionaryAcl == null || DiscretionaryAcl.IsCanonical); }
+            get { lock (FacadeMutation.Gate) { return (DiscretionaryAcl == null || DiscretionaryAcl.IsCanonical); } }
         }
 
         #endregion
@@ -1011,6 +1061,10 @@ namespace AdForLinux.Security.AccessControl
 
         public void SetSystemAclProtection(bool isProtected, bool preserveInheritance)
         {
+            FacadeMutation.Run(() =>
+            {
+            FacadeMutation.Capture(this, CaptureFacade);
+            var baseline = MutationState;
             if (!isProtected)
             {
                 RemoveControlFlags(ControlFlags.SystemAclProtected);
@@ -1024,10 +1078,16 @@ namespace AdForLinux.Security.AccessControl
 
                 AddControlFlags(ControlFlags.SystemAclProtected);
             }
+                    Publish(baseline.SetProtectionProjected(AdForLinux.DirectoryServices.SecurityMasks.Sacl, isProtected, preserveInheritance).Engine);
+            });
         }
 
         public void SetDiscretionaryAclProtection(bool isProtected, bool preserveInheritance)
         {
+            FacadeMutation.Run(() =>
+            {
+            FacadeMutation.Capture(this, CaptureFacade);
+            var baseline = MutationState;
             if (!isProtected)
             {
                 RemoveControlFlags(ControlFlags.DiscretionaryAclProtected);
@@ -1045,6 +1105,8 @@ namespace AdForLinux.Security.AccessControl
             {
                 DiscretionaryAcl.EveryOneFullAccessForNullDacl = false;
             }
+                    Publish(baseline.SetProtectionProjected(AdForLinux.DirectoryServices.SecurityMasks.Dacl, isProtected, preserveInheritance).Engine);
+            });
         }
 
         public void PurgeAccessControl(SecurityIdentifier sid)
@@ -1063,14 +1125,22 @@ namespace AdForLinux.Security.AccessControl
 
         public void AddDiscretionaryAcl(byte revision, int trusted)
         {
+            FacadeMutation.Run(() =>
+            {
+            FacadeMutation.Capture(this, CaptureFacade);
             this.DiscretionaryAcl = new DiscretionaryAcl(this.IsContainer, this.IsDS, revision, trusted);
             this.AddControlFlags(ControlFlags.DiscretionaryAclPresent);
+                    });
         }
 
         public void AddSystemAcl(byte revision, int trusted)
         {
+            FacadeMutation.Run(() =>
+            {
+            FacadeMutation.Capture(this, CaptureFacade);
             this.SystemAcl = new SystemAcl(this.IsContainer, this.IsDS, revision, trusted);
             this.AddControlFlags(ControlFlags.SystemAclPresent);
+                    });
         }
 
         #endregion
@@ -1078,8 +1148,11 @@ namespace AdForLinux.Security.AccessControl
         #region internal Methods
         internal void UpdateControlFlags(ControlFlags flagsToUpdate, ControlFlags newFlags)
         {
+            ChangeFlags((ushort)flagsToUpdate, () =>
+            {
             ControlFlags finalFlags = newFlags | (_rawSd.ControlFlags & (~flagsToUpdate));
             _rawSd.SetFlags(finalFlags);
+                    });
         }
 
         //
@@ -1090,31 +1163,37 @@ namespace AdForLinux.Security.AccessControl
 
         internal void AddControlFlags(ControlFlags flags)
         {
+            ChangeFlags((ushort)flags, () =>
+            {
             _rawSd.SetFlags(_rawSd.ControlFlags | flags);
+                    });
         }
 
         internal void RemoveControlFlags(ControlFlags flags)
         {
+            ChangeFlags((ushort)flags, () =>
+            {
             unchecked
             {
                 _rawSd.SetFlags(_rawSd.ControlFlags & ~flags);
             }
+                    });
         }
 
         internal bool IsSystemAclPresent
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return (_rawSd.ControlFlags & ControlFlags.SystemAclPresent) != 0;
-            }
+            } }
         }
 
         internal bool IsDiscretionaryAclPresent
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 return (_rawSd.ControlFlags & ControlFlags.DiscretionaryAclPresent) != 0;
-            }
+            } }
         }
         #endregion
     }

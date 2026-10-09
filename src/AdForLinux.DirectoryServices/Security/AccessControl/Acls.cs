@@ -229,6 +229,17 @@ namespace AdForLinux.Security.AccessControl
 
     public sealed class RawAcl : GenericAcl
     {
+        private byte[]? preservedInput, preservedView;
+        internal byte[] PreservedInput()
+        {
+            var current = FacadeMutation.Bytes(this);
+            if (preservedInput is null) return current;
+            if (current.AsSpan().SequenceEqual(preservedView)) return (byte[])preservedInput.Clone();
+            if (!preservedInput.AsSpan().SequenceEqual(preservedView))
+                throw new InvalidOperationException("A changed raw ACL cannot discard its unexplained imported storage.");
+            return current;
+        }
+
         #region Private Members
 
         private byte _revision;
@@ -411,7 +422,10 @@ namespace AdForLinux.Security.AccessControl
             : base()
         {
             SetBinaryForm(binaryForm, offset);
-        }
+                    var length = binaryForm[offset + 2] | binaryForm[offset + 3] << 8;
+            preservedInput = binaryForm.AsSpan(offset, length).ToArray();
+            preservedView = FacadeMutation.Bytes(this);
+}
 
         #endregion
 
@@ -571,8 +585,24 @@ namespace AdForLinux.Security.AccessControl
     }
 
 
-    public abstract class CommonAcl : GenericAcl
+    public abstract partial class CommonAcl : GenericAcl
     {
+        private byte[]? importedAcl, importedAclView;
+        internal byte[] PreservedInput()
+        {
+            if (RetainedMutation is { } retained)
+            {
+                var raw = this is DiscretionaryAcl ? retained.Descriptor.Dacl : retained.Descriptor.Sacl;
+                if (raw is not null) { var bytes = new byte[raw.BinaryLength]; raw.WriteTo(bytes); return bytes; }
+            }
+            var current = FacadeMutation.Bytes(this);
+            if (importedAcl is null) return current;
+            if (current.AsSpan().SequenceEqual(importedAclView)) return (byte[])importedAcl.Clone();
+            if (!importedAcl.AsSpan().SequenceEqual(importedAclView))
+                throw new InvalidOperationException("An untracked ACL edit cannot discard its raw contributors.");
+            return current;
+        }
+
         #region Add/Remove Logic Support
 
         [Flags]
@@ -814,7 +844,7 @@ namespace AdForLinux.Security.AccessControl
 
         #region Private Members
 
-        private readonly RawAcl _acl;
+        private RawAcl _acl;
         private bool _isDirty;
         private readonly bool _isCanonical;
         private readonly bool _isContainer;
@@ -1826,6 +1856,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rawAcl);
 
+            importedAcl = rawAcl.PreservedInput();
             _isContainer = isContainer;
             _isDS = isDS;
 
@@ -1884,7 +1915,8 @@ namespace AdForLinux.Security.AccessControl
             {
                 _isCanonical = false;
             }
-        }
+                    importedAclView = FacadeMutation.Bytes(this);
+}
 
         #endregion
 
@@ -1892,7 +1924,7 @@ namespace AdForLinux.Security.AccessControl
 
         internal RawAcl RawAcl
         {
-            get { return _acl; }
+            get { lock (FacadeMutation.Gate) { return _acl; } }
         }
 
         #endregion
@@ -1947,6 +1979,14 @@ namespace AdForLinux.Security.AccessControl
         //
 
         internal void AddQualifiedAce(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
+        {
+            Edit((engine, section) => engine.ModifyProjected(section,
+                AdForLinux.DirectoryServices.Security.Core.AclModification.Add,
+                Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
+                () => AddQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+        }
+
+        internal void AddQualifiedAceCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
         {
             ArgumentNullException.ThrowIfNull(sid);
 
@@ -2027,6 +2067,14 @@ namespace AdForLinux.Security.AccessControl
         //
 
         internal void SetQualifiedAce(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
+        {
+            Edit((engine, section) => engine.ModifyProjected(section,
+                AdForLinux.DirectoryServices.Security.Core.AclModification.Set,
+                Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
+                () => SetQualifiedAceCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+        }
+
+        internal void SetQualifiedAceCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
         {
             ArgumentNullException.ThrowIfNull(sid);
 
@@ -2135,6 +2183,14 @@ namespace AdForLinux.Security.AccessControl
         //
 
         internal bool RemoveQualifiedAces(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, bool saclSemantics, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
+        {
+            return Edit((engine, section) => engine.ModifyProjected(section,
+                AdForLinux.DirectoryServices.Security.Core.AclModification.Remove,
+                Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
+                () => RemoveQualifiedAcesCore(sid, qualifier, accessMask, flags, saclSemantics, objectFlags, objectType, inheritedObjectType));
+        }
+
+        internal bool RemoveQualifiedAcesCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, bool saclSemantics, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
         {
             if (accessMask == 0)
             {
@@ -2576,6 +2632,14 @@ namespace AdForLinux.Security.AccessControl
 
         internal void RemoveQualifiedAcesSpecific(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
         {
+            Edit((engine, section) => engine.ModifyProjected(section,
+                AdForLinux.DirectoryServices.Security.Core.AclModification.RemoveSpecific,
+                Rule(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType)).Engine,
+                () => RemoveQualifiedAcesSpecificCore(sid, qualifier, accessMask, flags, objectFlags, objectType, inheritedObjectType));
+        }
+
+        internal void RemoveQualifiedAcesSpecificCore(SecurityIdentifier sid, AceQualifier qualifier, int accessMask, AceFlags flags, ObjectAceFlags objectFlags, Guid objectType, Guid inheritedObjectType)
+        {
             if (accessMask == 0)
             {
                 throw new ArgumentException(
@@ -2702,7 +2766,7 @@ namespace AdForLinux.Security.AccessControl
 
         public sealed override byte Revision
         {
-            get { return _acl.Revision; }
+            get { lock (FacadeMutation.Gate) { return _acl.Revision; } }
         }
 
         //
@@ -2712,10 +2776,10 @@ namespace AdForLinux.Security.AccessControl
         public sealed override int Count
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 CanonicalizeIfNecessary();
                 return _acl.Count;
-            }
+            } }
         }
 
         //
@@ -2725,10 +2789,10 @@ namespace AdForLinux.Security.AccessControl
         public sealed override int BinaryLength
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 CanonicalizeIfNecessary();
                 return _acl.BinaryLength;
-            }
+            } }
         }
 
         //
@@ -2737,17 +2801,17 @@ namespace AdForLinux.Security.AccessControl
 
         public bool IsCanonical
         {
-            get { return _isCanonical; }
+            get { lock (FacadeMutation.Gate) { return _isCanonical; } }
         }
 
         public bool IsContainer
         {
-            get { return _isContainer; }
+            get { lock (FacadeMutation.Gate) { return _isContainer; } }
         }
 
         public bool IsDS
         {
-            get { return _isDS; }
+            get { lock (FacadeMutation.Gate) { return _isDS; } }
         }
 
         #endregion
@@ -2760,8 +2824,11 @@ namespace AdForLinux.Security.AccessControl
 
         public sealed override void GetBinaryForm(byte[] binaryForm, int offset)
         {
+            lock (FacadeMutation.Gate)
+            {
             CanonicalizeIfNecessary();
             _acl.GetBinaryForm(binaryForm, offset);
+                    }
         }
 
         //
@@ -2773,10 +2840,10 @@ namespace AdForLinux.Security.AccessControl
         public sealed override GenericAce this[int index]
         {
             get
-            {
+            { lock (FacadeMutation.Gate) {
                 CanonicalizeIfNecessary();
                 return _acl[index].Copy();
-            }
+            } }
 
             set
             {
@@ -2785,6 +2852,11 @@ namespace AdForLinux.Security.AccessControl
         }
 
         public void RemoveInheritedAces()
+        {
+            Edit((engine, section) => engine.SetProtectionProjected(section, true, false).Engine.ReplaceSections(new Dictionary<AdForLinux.DirectoryServices.SecurityMasks, byte[]?>(), (ushort)(section == AdForLinux.DirectoryServices.SecurityMasks.Dacl ? 0x1000 : 0x2000), engine.Descriptor.Control), () => RemoveInheritedAcesCore());
+        }
+
+        private void RemoveInheritedAcesCore()
         {
             ThrowIfNotCanonical();
 
@@ -2806,6 +2878,11 @@ namespace AdForLinux.Security.AccessControl
         }
 
         public void Purge(SecurityIdentifier sid)
+        {
+            Edit((engine, section) => engine.PurgeProjected(section, FacadeMutation.Sid(sid)).Engine, () => PurgeCore(sid));
+        }
+
+        private void PurgeCore(SecurityIdentifier sid)
         {
             ArgumentNullException.ThrowIfNull(sid);
 

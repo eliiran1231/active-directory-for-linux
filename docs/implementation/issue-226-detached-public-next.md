@@ -157,3 +157,14 @@ existing functionality. Principal.Sid must move to the approved portable SID val
 keep SidValue and update platform-specific documentation. Differential tests with BCL SID/
 rule-base variables need explicit portable substitutions, not broad name-normalizing
 reflection. Keep native-oracle argument types separate from portable replay types.
+
+
+## ObjectSecurity facade follow-up
+
+The [measured facade implementation](issue-226-object-security-status.md) now adds ObjectSecurity
+and DirectoryObjectSecurity, raising exact declared surface coverage to 29 types and closure
+evidence to 3,517 rows. Shared descriptor mutations reconcile with retained raw/live/provenance
+state, while locks, dirty flags and read contexts remain wrapper-local. One pinned invalid-enum
+case preserves atomic rollback instead of native partial failure; all 36 SDDL refusals remain.
+This completes the staged facade member slice, not the full AD hierarchy or transport cutover.
+Context-bound identity resolution and reviewed raw write preparation remain the next dependencies.
