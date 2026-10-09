@@ -73,6 +73,28 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
 
     internal SecurityMasks RetrievedMasks => _retrievedMasks;
 
+    // Internal consumers share the entry-bound facade, freshness checks and raw
+    // commit planner. Planning is detached and never executes under security locks.
+    internal void EditRawDacl(Func<byte[], byte[]> edit)
+    {
+        RequireDacl();
+        var read = CaptureIdentityRead();
+        byte[] raw;
+        lock (AdForLinux.Security.AccessControl.FacadeMutation.Gate)
+            raw = _securityDescriptor.MutationState.Descriptor.GetBinaryForm();
+        var changed = edit(raw);
+        WriteLock();
+        try
+        {
+            ValidateIdentityRead(read, () =>
+            {
+                SetSecurityDescriptorBinaryForm(changed, AccessControlSections.Access);
+                return true;
+            });
+        }
+        finally { WriteUnlock(); }
+    }
+
     internal bool IsModified()
     {
         ReadLock();

@@ -44,8 +44,9 @@ internal static class RawSecurityWritePreparation
             if (selectedSections != changed) throw new InvalidOperationException("The explicit write selection must account for all pending sections without widening it.");
             var state = security._securityDescriptor.MutationState;
             var raw = state.Descriptor.GetBinaryForm();
-            if (raw.AsSpan().SequenceEqual(security.OriginalReadSnapshot!.GetBinaryForm())) changed = EntryMasks.None;
-            return new PreparedRawSecurityWrite(raw, changed, read, security);
+            var net = state.Descriptor.NetChangedSections(security.OriginalReadSnapshot!);
+            if ((net & ~changed) != 0) throw new InvalidOperationException("A net section change lacks explicit retrieved write intent.");
+            return new PreparedRawSecurityWrite(raw, net, read, security);
         });
     }
 

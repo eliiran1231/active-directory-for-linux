@@ -336,8 +336,9 @@ public partial class DirectoryEntry : Component
         {
             // The wrapper itself does not bind, even after disposal. Loading
             // directory values still checks disposal through GetConnection().
-            return _properties ??= new PropertyCollection(OnPropertyChanged,
-                () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+            lock (_entryWriteGate)
+                return _properties ??= new PropertyCollection(OnPropertyChanged,
+                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
         }
     }
 
@@ -425,22 +426,6 @@ public partial class DirectoryEntry : Component
         }
 
         return binaryForm;
-    }
-
-    internal void ReplaceSecurityDescriptorImmediate(byte[] binaryForm, SecurityMasks masks)
-    {
-        var replacement = new DirectoryAttributeModification
-        {
-            Name = "nTSecurityDescriptor",
-            Operation = DirectoryAttributeOperation.Replace,
-        };
-        replacement.Add(binaryForm);
-
-        var request = new ModifyRequest(_path.DistinguishedName);
-        request.Modifications.Add(replacement);
-        request.Controls.Add(new SecurityDescriptorFlagControl(
-            (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
-        GetConnection().SendRequestCompatible(request);
     }
 
     /// <summary>
@@ -773,7 +758,7 @@ public partial class DirectoryEntry : Component
 
     private PropertyCollection ReadProperties(
         string[] requestedProperties,
-        bool loadDefaultProperties = false)
+        bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false)
     {
         ThrowIfDisposed();
         var generation = IdentityLifetime.Capture(ThrowIfDisposed);
@@ -793,10 +778,12 @@ public partial class DirectoryEntry : Component
                 "nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
         {
             request.Controls.Add(new SecurityDescriptorFlagControl(
-                (System.DirectoryServices.Protocols.SecurityMasks)(int)EffectiveSecurityMasks()));
+                (System.DirectoryServices.Protocols.SecurityMasks)(int)(readSecurityMasks ?? EffectiveSecurityMasks())));
         }
 
         var response = (SearchResponse)connection.SendRequestCompatible(request);
+        if (requireObject && response.Entries.Count != 1)
+            throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
         var properties = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
 
         if (response.Entries.Count > 0)
@@ -979,14 +966,31 @@ public partial class DirectoryEntry : Component
     private void OnPropertyChanged(PropertyValueCollection property)
     {
         ThrowIfDisposed();
-        Interlocked.Increment(ref _entryChangeVersion);
-        if (_properties is null && !_isNew)
+        BeforePropertyRegistration?.Invoke(property);
+        PropertyCollection? reload = null;
+        bool commit;
+        lock (_entryWriteGate)
         {
-            Properties.EnsureLoaded();
-            _properties!.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+            ThrowIfDisposed();
+            // Membership and its version are one publication. A request must see
+            // both, or see neither and reject this later registration at completion.
+            _pendingPropertyChanges.Add(property);
+            _entryChangeVersion++;
+            if (_properties is null && !_isNew)
+                reload = _properties = new PropertyCollection(OnPropertyChanged,
+                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+            commit = !_usePropertyCache && !_isNew;
         }
-        lock (_entryWriteGate) _pendingPropertyChanges.Add(property);
-        if (!_usePropertyCache && !_isNew) CommitPortableChanges();
+        if (reload is not null)
+        {
+            // Registration is retained even if loading fails. Never hold the entry
+            // gate through I/O, or republish a cache superseded while it was loading.
+            reload.EnsureLoaded();
+            lock (_entryWriteGate)
+                if (ReferenceEquals(_properties, reload))
+                    reload.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+        }
+        if (commit) CommitPortableChanges();
     }
 
     private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
@@ -1077,12 +1081,13 @@ public partial class DirectoryEntry : Component
     {
         using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
-        _path = path;
-        _pathText = pathText ?? path.ToString();
-        _pendingPropertyChanges.Clear();
-        _properties = null;
-        _objectSecurity = null;
-
+        lock (_entryWriteGate)
+        {
+            _path = path;
+            _pathText = pathText ?? path.ToString();
+            _pendingPropertyChanges.Clear(); _properties = null; _objectSecurity = null;
+            _entryChangeVersion++;
+        }
         ResetConnection();
     }
 
@@ -1091,25 +1096,29 @@ public partial class DirectoryEntry : Component
         using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
         ResetConnection();
-        // Unsaved children retain creation values; persisted bindings discard
-        // pending native writes when their credentials change.
-        if (_isNew && _properties is not null)
+        lock (_entryWriteGate)
         {
-            // An unsaved child has no server object to reload. Carry its staged
-            // attributes (including objectClass) into a non-loading wrapper.
-            var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
-            foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
+            _entryChangeVersion++;
+            // Unsaved children retain creation values; persisted bindings discard
+            // pending native writes when their credentials change.
+            if (_isNew && _properties is not null)
             {
-                replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+                // An unsaved child has no server object to reload. Carry its staged
+                // attributes (including objectClass) into a non-loading wrapper.
+                var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
+                {
+                    replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
+                }
+                _properties = replacement;
+                return;
             }
-            _properties = replacement;
-            return;
-        }
 
-        _pendingPropertyChanges.Clear();
-        // The managed security descriptor has its own dirty tracking and must
-        // remain available if a subsequent commit fails under new credentials.
-        _properties = null;
+            _pendingPropertyChanges.Clear();
+            // The managed security descriptor has its own dirty tracking and must
+            // remain available if a subsequent commit fails under new credentials.
+            _properties = null;
+        }
     }
 
     private void ResetConnection()
@@ -1128,10 +1137,11 @@ public partial class DirectoryEntry : Component
         using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
         ResetConnection();
-        _pendingPropertyChanges.Clear();
-        _properties = null;
-        _objectSecurity = null;
-
+        lock (_entryWriteGate)
+        {
+            _pendingPropertyChanges.Clear(); _properties = null; _objectSecurity = null;
+            _entryChangeVersion++;
+        }
     }
 
     internal void ThrowIfDisposed()

@@ -226,7 +226,10 @@ public partial class PortableSecurityFoundationTests
         Assert.Throws<InvalidOperationException>(entry.CommitChanges);
         if (change == "property") { Assert.Equal("later", property.Value); Assert.True(property.Changed); }
         if (change == "security") Assert.Equal(AllEntrySections & (EntryMasks.Owner | EntryMasks.Group), security.PendingWriteSections);
-        entry.RefreshCache(); entry.CommitChanges(); Assert.Single(fixture.Writes);
+        // A successful response racing with local changes is not permission to
+        // discard unsent edits or reconcile a different binding automatically.
+        Assert.Throws<InvalidOperationException>(entry.RefreshCache);
+        Assert.Single(fixture.Writes);
     }
 
     [Theory]

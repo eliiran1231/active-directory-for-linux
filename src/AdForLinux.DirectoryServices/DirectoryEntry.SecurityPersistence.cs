@@ -11,23 +11,35 @@ public partial class DirectoryEntry
     private readonly object _entryWriteGate = new();
     private long _entryChangeVersion;
     private int _commitRunning;
-    private bool _commitNeedsRefresh;
+    private sealed record UncertainWrite(bool Creating, long Generation, string[] Attributes,
+        SecurityMasks SecuritySections, PropertyValueCollection[] Properties, long[] Versions,
+        ActiveDirectorySecurity? Security, long SecurityVersion);
+    private UncertainWrite? _uncertainWrite;
     // Controlled seams execute the same production planner/publication paths. They
-    // replace only transport, and never become public callbacks or copied authority.
+    // replace transport or pause scheduling, and never become public callbacks or copied authority.
     internal Func<SecurityMasks, byte[]>? SecurityReadOverride { get; set; }
     internal Func<DirectoryRequest, ResultCode>? WriteRequestOverride { get; set; }
+    internal Action<PropertyValueCollection>? BeforePropertyRegistration { get; set; }
 
     private void RefreshPortableCache(string[] names, bool full, bool requireObject = false)
     {
         var generation = IdentityLifetime.Capture(ThrowIfDisposed);
-        ActiveDirectorySecurity? security; long entryVersion; long securityVersion;
+        ActiveDirectorySecurity? security; long entryVersion; long securityVersion; UncertainWrite? uncertainty;
         lock (A.FacadeMutation.Gate)
         lock (_entryWriteGate)
         {
             security = _objectSecurity; entryVersion = _entryChangeVersion;
             securityVersion = security?.CaptureIdentityRead().Version ?? 0;
+            uncertainty = _uncertainWrite;
         }
-        var refreshed = ReadProperties(names.Length == 0 ? new[] { "1.1" } : names, full);
+        if (uncertainty is { } prior && prior.Generation != generation)
+            throw new InvalidOperationException("An uncertain write belongs to an earlier entry binding. Reconcile that target separately before using a new entry handle.");
+        var readMasks = EffectiveSecurityMasks();
+        var requested = full && uncertainty is not null
+            ? names.Concat(uncertainty.Attributes).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() : names;
+        var refreshed = ReadProperties(requested.Length == 0 ? new[] { "1.1" } : requested, full, readMasks, uncertainty is not null);
+        if (uncertainty is { Creating: true })
+            throw new InvalidOperationException("The Add outcome is uncertain. A same-DN object, even with matching attributes, does not prove creation identity. Verify it separately and explicitly acquire an existing-entry handle; this creation handle cannot replay Add.");
         if (requireObject && refreshed.Count == 0)
             throw new DirectoryServicesCOMException("The newly created directory entry could not be read back from the directory.");
         IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
@@ -38,37 +50,71 @@ public partial class DirectoryEntry
                 if (_entryChangeVersion != entryVersion || !ReferenceEquals(_objectSecurity, security)
                     || (security?._securityDescriptor.MutationVersion ?? 0) != securityVersion)
                     throw new InvalidOperationException("Entry state changed while refresh was in flight.");
+                if (!ReferenceEquals(_uncertainWrite, uncertainty))
+                    throw new InvalidOperationException("The write recovery state changed during refresh.");
                 if (names.Length == 0) return true;
-                if (full)
+                var recovery = uncertainty is not null
+                    && uncertainty.Attributes.All(name => requested.Contains(name, StringComparer.OrdinalIgnoreCase))
+                    && (uncertainty.SecuritySections & ~readMasks) == 0;
+                var ledgers = uncertainty?.Properties ?? Array.Empty<PropertyValueCollection>();
+                var acquired = 0;
+                try
                 {
-                    var owned = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
-                    foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
-                        owned.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
-                    _pendingPropertyChanges.Clear(); _properties = owned;
-                }
-                else
-                {
-                    var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
-                    properties.MarkLoaded();
-                    foreach (var name in names)
+                    foreach (var property in ledgers) { Monitor.Enter(property.ChangeGate); acquired++; }
+                    if (uncertainty is not null)
                     {
-                        properties.RemoveCached(name);
-                        _pendingPropertyChanges.RemoveWhere(p => p.PropertyName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                        bool Discards(string name) => full || names.Contains(name, StringComparer.OrdinalIgnoreCase);
+                        foreach (var property in _pendingPropertyChanges)
+                        {
+                            if (!Discards(property.PropertyName)) continue;
+                            var index = Array.IndexOf(ledgers, property);
+                            if (index < 0 || property.ChangeVersion != uncertainty.Versions[index])
+                                throw new InvalidOperationException("Readback would discard unsent property edits. Retain them and reconcile the uncertain operation explicitly.");
+                        }
+                        if (Discards("nTSecurityDescriptor") && security is not null && security.PendingWriteSections != SecurityMasks.None
+                            && (!ReferenceEquals(security, uncertainty.Security) || securityVersion != uncertainty.SecurityVersion))
+                            throw new InvalidOperationException("Readback would discard unsent descriptor edits.");
+                        if (recovery && ledgers.Where((property, i) => property.ChangeVersion != uncertainty.Versions[i]).Any())
+                            throw new InvalidOperationException("A retained property changed after the uncertain request; recovery cannot acknowledge it.");
                     }
-                    foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
+                    if (full)
                     {
-                        if (HasRangeSpecifier(property.PropertyName) && names.Any(HasRangeSpecifier)) continue;
-                        properties.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
+                        var owned = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                        foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
+                            owned.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
+                        _pendingPropertyChanges.Clear(); _properties = owned;
                     }
-                    _properties = properties;
+                    else
+                    {
+                        var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                        properties.MarkLoaded();
+                        foreach (var name in names)
+                        {
+                            properties.RemoveCached(name);
+                            _pendingPropertyChanges.RemoveWhere(p => p.PropertyName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                        }
+                        foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
+                        {
+                            if (HasRangeSpecifier(property.PropertyName) && names.Any(HasRangeSpecifier)) continue;
+                            properties.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
+                        }
+                        _properties = properties;
+                    }
+                    if (full || names.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
+                    {
+                        IdentityLifetime.Invalidate(); _objectSecurity = null;
+                    }
+                    if (recovery)
+                    {
+                        foreach (var property in ledgers) property.ResetChanged();
+                        _uncertainWrite = null;
+                    }
+                    else if (uncertainty is not null)
+                        _uncertainWrite = uncertainty with { Generation = IdentityLifetime.Capture(ThrowIfDisposed) };
+                    _entryChangeVersion++;
+                    return true;
                 }
-                if (full || names.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
-                {
-                    IdentityLifetime.Invalidate(); _objectSecurity = null;
-                    _commitNeedsRefresh = false;
-                }
-                _entryChangeVersion++;
-                return true;
+                finally { for (var i = acquired - 1; i >= 0; i--) Monitor.Exit(ledgers[i].ChangeGate); }
             }
         });
     }
@@ -156,7 +202,7 @@ public partial class DirectoryEntry
         try
         {
             ThrowIfDisposed();
-            if (_commitNeedsRefresh) throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
+            if (_uncertainWrite is not null) throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
             var generation = IdentityLifetime.Capture(ThrowIfDisposed);
             ActiveDirectorySecurity? security; PropertyValueCollection[] properties; long version; bool creating;
             lock (A.FacadeMutation.Gate)
@@ -224,6 +270,10 @@ public partial class DirectoryEntry
                 return securityRead is null ? Publish() : security!.ValidateIdentityRead(securityRead, Publish);
             });
             Checked(() => true);
+            var uncertain = new UncertainWrite(creating, generation,
+                request is AddRequest addRequest ? addRequest.Attributes.Cast<DirectoryAttribute>().Select(a => a.Name).ToArray()
+                    : ((ModifyRequest)request).Modifications.Cast<DirectoryAttributeModification>().Select(a => a.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                plan?.Sections ?? SecurityMasks.None, properties, propertyVersions, security, securityRead?.Version ?? 0);
             if (hasRequest)
             {
                 ResultCode result;
@@ -239,7 +289,7 @@ public partial class DirectoryEntry
                 {
                     // A missing response cannot prove the server rejected the write.
                     // Retain intent but require readback before sending it a second time.
-                    _commitNeedsRefresh = true;
+                    lock (_entryWriteGate) _uncertainWrite = uncertain;
                     if (LdapExceptionTranslator.IsProtocolFailure(error)) throw LdapExceptionTranslator.Translate(error);
                     throw;
                 }
@@ -259,7 +309,7 @@ public partial class DirectoryEntry
             }
             catch
             {
-                if (hasRequest) _commitNeedsRefresh = true;
+                if (hasRequest) lock (_entryWriteGate) _uncertainWrite = uncertain;
                 throw;
             }
         }

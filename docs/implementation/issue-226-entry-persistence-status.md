@@ -41,7 +41,7 @@ copies the source resolver, credentials, connections or read authority. Unsuppor
 refuse before publishing the replacement.
 
 Commit prepares one Modify request containing ordinary property deltas and, when needed,
-one raw `nTSecurityDescriptor` replacement with the exact edited-section SD-flags control.
+one raw `nTSecurityDescriptor` replacement with the exact net-changed-section SD-flags control.
 It never persists `GetSecurityDescriptorBinaryForm()`'s observable projection. Unchanged
 unknown callbacks, zero-mask originals and other raw data remain intact. Clean or reverted
 descriptor edits send no security request. A clean initialized descriptor is invalidated
@@ -87,3 +87,78 @@ edit-back, unrecorded SDDL boundaries, explicit creation variants and ambient id
 pinning remain dependencies. Detached Persist hooks still require an explicit platform
 override; entry persistence now has its own raw-safe path. No live AD validation, merge or
 issue closure is part of this slice.
+
+
+## Production review corrections
+
+The initial integration at `b6a3af040b71c17e271888fa2d9ce3f8f7d40c35` had four
+reviewed gaps. The correction is covered by 45 additional offline cases. Three deterministic
+registration interleavings, five uncertain-delivery cases, four mixed-section reversions and
+two mixed-rights password cases were also run against the prior implementations: all 14 fail.
+No native recording was changed or invented for these local request/atomicity tests.
+
+### Atomic property registration
+
+Previously OnPropertyChanged advanced the entry version before registering its property.
+A request could snapshot that new version without the property, then acknowledge success
+and clear the subsequently registered but unsent edit. Commit, full refresh and partial
+refresh reproduced this exact window with controlled scheduling.
+
+Pending-set membership and version publication now happen together under the entry gate,
+before any retained-cache reload. Cache reload failures keep the registered edit. Reload
+and cache-off commit execute outside the gate; stale reloads cannot replace a cache that
+another operation published. Lifecycle pending-set clearing and lazy cache publication use
+the same gate. Tests cover normal/cache-off registration, retained wrappers, failed reload,
+peer commit progress, existing pending deltas and stale reload publication.
+
+### Explicit uncertain-write recovery
+
+Uncertainty retains the operation kind, binding generation, exact sent attribute set,
+security-section mask, captured property ledgers and descriptor version. A descriptor-only
+refresh cannot clear uncertainty for an ordinary property write or combined Modify. Readback
+must cover every sent attribute and every written security section; full refresh explicitly
+requests those attributes, including ones not implied by LDAP's `*`. Production readback
+must find the target object. Failed/incomplete readback keeps the gate closed.
+
+Recovery clears only the captured ledgers after checking their versions, preventing an old
+retained wrapper from resending an already accepted Add delta. Partial readback of the exact
+sent attribute set can retain unrelated pending edits. A refresh that would discard newer
+unsent property or descriptor edits refuses atomically. A changed binding cannot reconcile
+the old request implicitly. This is not an assertion that the server accepted a timed-out
+Modify; readback establishes the current baseline and never automatically replays its deltas.
+
+**Uncertain Add cannot be automatically reconciled by this handle.** Add supplies no verified
+server-generated object identity when its response is lost. A successful search at the same
+DN, even with matching attributes and an objectGUID newly observed during readback, cannot
+prove that this request created that object. Refresh therefore refuses to adopt it, retains
+creation intent and keeps subsequent Add blocked. The caller must verify the outcome
+separately and deliberately acquire an existing-entry handle, or establish absence before
+constructing a new creation request. This conservative limit prevents duplicate creation and
+wrong-object adoption; neither attribute equality nor DN equality is treated as identity proof.
+
+### Net security sections
+
+Historical write intent and retrieved coverage are still validated. The outgoing mask is
+then reduced by comparing each retained raw section to its original read baseline. Reverting
+Owner while changing Group sends only Group, and likewise for DACL/SACL protection reversions.
+SID/ACL bytes include reserved fields, opaque payloads and ACL trailers; associated control
+bits are compared too. Physical repacking of fully understood components does not itself
+create a section write. Changed global header state or unexplained storage refuses because
+it cannot be attributed safely to an SD-flags section. Observable projection is never used
+for this comparison.
+
+### AccountManagement change-password consumer
+
+AuthenticablePrincipal.OnAfterSave now edits the entry-bound portable descriptor and uses
+CommitChanges, including raw mask preparation, generation/version checks and delivery recovery.
+The legacy immediate descriptor replacement bypass has been removed. Detached proposal
+planning runs outside security locks; publication checks the captured entry/descriptor state.
+
+ChangePasswordAcl keeps non-change-password rights in matching mixed-rights ACEs. It validates
+its proposed DACL replacement through the shared preservation-aware engine and checks that
+the retained-layout proposal matches the approved raw components/storage. Unreviewed revisions,
+ACL trailers, reserved ACL fields and opaque ACEs refuse rather than disappearing. Descriptor
+section-import safeguards can also refuse layouts such as unexplained gaps. These are visible
+consumer preservation limits, not claims of Microsoft parity for those inputs. Tests execute
+real UserPrincipal.Save over controlled transport, including DACL-only wire masks, unread
+DACL refusal, lifecycle races, known rejection/retry and accepted-then-timeout recovery.
