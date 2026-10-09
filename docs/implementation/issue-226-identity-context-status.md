@@ -45,61 +45,25 @@ Queries stay within this verified domain. Binary SID and UTF-8 text assertions e
 octet; malformed UTF-16 is rejected before connecting. Names support qualified NetBIOS/DNS-domain
 SAM values, bare SAM names in that single domain, and exact UPN matching without UPN-based routing.
 
-The scope-review correction rejects standard GC ports 3268/3269 before opening a session.
-The entry must have a nonempty DN within the verified default domain; the default NC is not
-silently adopted for an entry in another partition. RootDSE must advertise namingContexts and
-support for the critical single-NC [domain-scope control](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/ba5f20c6-7753-417c-b93d-e66e722458ed).
-Every account subtree search carries that control. The transport retains each result's LDAP
-distinguished name, and qualification/mutation checks its most-specific advertised naming
-context before accepting the SID or emitting a name. Child-domain DC RDNs also refuse when
-not advertised. All DNs first satisfy the bounded spelling contract below, then checks walk
-complete RDN boundaries, not raw string suffixes. Configuration, application and
-other-domain entries never inherit the default domain's NetBIOS label.
+The resolver rejects standard GC ports 3268/3269 before opening a session. It verifies the
+entry's membership through a server search from the independently verified domain NC, never
+from the candidate DN: Subtree scope, a critical single-NC domain-scope control, an exact
+strict UTF-8 escaped distinguishedName filter, SizeLimit 2 and the remaining deadline. A unique,
+complete result with a protocol DN suffices; the proof requests no attributes (`1.1`) and adds
+no objectGUID/SID read-permission requirement. Failure precedes account lookup.
 
-### Bounded DN spelling contract for local scope inference
+All account searches retain the same critical control/session/base. Returned account DNs get
+membership checks, and the original entry is checked again after all mappings, before local
+publication. Missing/inaccessible/ambiguous/partial/referral results never become proof or trigger
+fallback routing. Existing generation/attachment/version checks remain. The temporary local
+CN/OU/DC alphanumeric spelling guard is removed: valid Unicode, spaces, punctuation, hyphens and
+equivalent spellings can succeed when AD confirms membership. The client does not normalize DNs.
 
-AD [Unicode comparison](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/dbb175fb-40f3-42a4-9257-4fc02a6fa943)
-ignores nonspacing marks and character width as well as case; it is not .NET ordinal matching.
-Local NC membership inference therefore admits only this grammar:
-
-```text
-DN        = RDN ("," RDN)*
-RDN       = Attribute "=" Value
-Attribute = CN | OU | DC                 (ASCII, case-insensitive)
-Value     = one or more ASCII A-Z, a-z, 0-9
-```
-
-This contract is checked on every candidate entry/result DN, default/configuration NC and every
-advertised namingContexts value, before any ancestry comparison. All whitespace (including
-single internal ASCII spaces), punctuation, escapes, non-ASCII characters, OID/textual aliases,
-empty values and multivalued RDNs refuse. Even an unrelated advertised NC outside this grammar
-prevents local inference. Within the accepted alphabet, ASCII case is the only admitted
-comparison variation; width/diacritic forms, alternate whitespace and syntax spellings cannot
-hide a more-specific NC. No culture-sensitive comparison, Unicode normalization, mark removal,
-whitespace folding, value rewriting or public DN-normalization API is introduced.
-
-**Compatibility restriction:** legitimate AD DNs with spaces, hyphens (including DNS-domain
-labels), punctuation, Unicode or escaped commas/backslashes now refuse this resolver path.
-Broader DN support requires independently established matching/membership, not expanding this
-allowlist by guesswork. This restriction is on DN-based scope inference; it does not narrow
-UTF-8 escaping of account lookup assertions or alter stored descriptors. Supported ASCII
-letter/digit paths, case variations and domain-root targets continue to resolve in both
-directions. Existing data-preservation, generation checks and persistence policy gates remain.
-
-The OID/hex review reproduced 32 failures in 36 cases against `0b9d9aa3`. The subsequent
-Unicode/whitespace matrix reproduced 205 failures in 441 cases against `26b56db8`; previous
-checks accounted for the other 236 refusals. The current follow-up adds 449 tests: 440 value /
-input-location / translation-direction combinations, an exhaustive 128-ASCII-character value
-check, four supported-path cases and four case-varied application-boundary cases. It covers
-precomposed/combining marks, full-width forms, ligatures, ignorable characters, 24 non-ASCII or
-control whitespace characters, ASCII spacing/punctuation and escaped forms. Metadata and entry
-failures precede account subtree lookup; mutation failures preserve bytes/state/version/flags.
-Three prior positive tests for spaces and escaped comma/backslash values now explicitly test
-the documented refusal instead of silently dropping their coverage.
-
-Earlier scope regressions cover GC ports, advertised/unadvertised child NCs, application and
-configuration partitions, foreign NCs, missing metadata/DNs and escaped suffixes. None of these
-controlled tests claims live GC/AD validation or enables new routing.
+[Server-membership design, primary evidence, request sequence and controlled verification](issue-226-server-membership.md)
+records why this proves current NC membership and its limits. Metadata inconsistencies still
+refuse conservatively. It is not snapshot isolation, immutable object identity across same-DN
+replacement, a new ambient-authentication policy or transport write authority. No live AD claim
+is made by the controlled tests.
 
 Typed access/audit helpers now check retrieved DACL/SACL coverage before preparing a
 name-based mutation. Fourteen routes assert zero opened sessions and zero queries for unread

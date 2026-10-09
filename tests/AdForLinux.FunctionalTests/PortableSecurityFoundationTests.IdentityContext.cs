@@ -22,6 +22,18 @@ public partial class PortableSecurityFoundationTests
         internal Action<SearchRequest>? BeforeResponse;
         internal Func<SearchRequest, IReadOnlyList<IdentitySearchRow>>? Results;
         internal Func<SearchRequest, IReadOnlyList<IdentitySearchRow>?>? MetadataResults;
+        internal Func<SearchRequest, IReadOnlyList<IdentitySearchRow>>? MembershipResults;
+        internal IEnumerable<SearchRequest> AccountRequests => Requests.Where(r => r.Attributes.Contains("sAMAccountName"));
+        internal static bool IsMembership(SearchRequest request) => request.Attributes.Contains("1.1");
+        internal static IdentitySearchRow MembershipRow(SearchRequest request)
+            => new(new Dictionary<string, object[]>(), MembershipTarget(request));
+        internal static string MembershipTarget(SearchRequest request)
+        {
+            var filter = (string)request.Filter;
+            var value = filter["(distinguishedName=".Length..^1];
+            return System.Text.Encoding.UTF8.GetString(Enumerable.Range(0, value.Length / 3)
+                .Select(i => Convert.ToByte(value.Substring(i * 3 + 1, 2), 16)).ToArray());
+        }
         internal string Name = "alice";
         internal IdentityFixture(bool ambient = false)
         {
@@ -54,6 +66,8 @@ public partial class PortableSecurityFoundationTests
                         ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com"]), ("supportedControl", ["1.2.840.113556.1.4.1339"]))];
                 if (request.DistinguishedName.StartsWith("CN=Partitions,", StringComparison.Ordinal))
                     return [Row(("nCName", ["DC=example,DC=com"]), ("nETBIOSName", ["EXAMPLE"]), ("dnsRoot", ["example.com"]), ("systemFlags", ["3"]))];
+                if (IsMembership(request)) return fixture.MembershipResults?.Invoke(request)
+                    ?? [MembershipRow(request)];
                 return fixture.Results?.Invoke(request) ?? [fixture.Account()];
             }
             public void Dispose() => fixture.Closed++;
@@ -70,12 +84,12 @@ public partial class PortableSecurityFoundationTests
         var result = fixture.Resolver.Translate(values, typeof(NTAccount), true);
         Assert.Equal(new[] { "EXAMPLE\\alice", "EXAMPLE\\alice", "EXAMPLE\\known" }, result.Select(x => x.Value));
         Assert.Same(result[0], result[1]);
-        Assert.Equal(3, fixture.Requests.Count);
+        Assert.Equal(6, fixture.Requests.Count);
         Assert.Equal(ProtocolScope.Base, fixture.Requests[0].Scope);
         Assert.Equal(ProtocolScope.OneLevel, fixture.Requests[1].Scope);
         Assert.Equal("DC=example,DC=com", fixture.Requests[2].DistinguishedName);
         Assert.Equal(ProtocolScope.Subtree, fixture.Requests[2].Scope);
-        Assert.Equal("(&(objectClass=*)(objectSid=" + string.Concat(U1.Select(b => "\\" + b.ToString("x2"))) + "))", fixture.Requests[2].Filter);
+        Assert.Equal("(&(objectClass=*)(objectSid=" + string.Concat(U1.Select(b => "\\" + b.ToString("x2"))) + "))", fixture.AccountRequests.Single().Filter);
         fixture.Name = "renamed";
         Assert.Equal("EXAMPLE\\renamed", fixture.Resolver.Translate(sid, typeof(NTAccount)).Value);
         Assert.Equal(2, fixture.Opened); Assert.Equal(2, fixture.Closed);
@@ -91,7 +105,7 @@ public partial class PortableSecurityFoundationTests
     {
         using var fixture = new IdentityFixture();
         Assert.Equal(new SecurityIdentifier(U1, 0), fixture.Resolver.Translate(new NTAccount(input), typeof(SecurityIdentifier)));
-        Assert.Equal("(&(objectClass=*)(" + attribute + "=" + AdIdentityLookup.EscapeText(value) + "))", fixture.Requests.Last().Filter);
+        Assert.Equal("(&(objectClass=*)(" + attribute + "=" + AdIdentityLookup.EscapeText(value) + "))", fixture.AccountRequests.Single().Filter);
         Assert.Equal("\\c3\\a9\\f0\\9f\\98\\80", AdIdentityLookup.EscapeText("é😀"));
         Assert.Throws<System.Text.EncoderFallbackException>(() => AdIdentityLookup.EscapeText("\ud800"));
     }
@@ -324,7 +338,7 @@ public partial class PortableSecurityFoundationTests
         var wrapper = new FacadeContracts.Wrapper(new A.CommonSecurityDescriptor(true, true, raw, 0)); fixture.Resolver.Bind(wrapper);
         var rules = wrapper.GetAccessRules(true, false, typeof(NTAccount)).Cast<A.AccessRule>().ToArray();
         Assert.Single(rules); Assert.Equal("EXAMPLE\\alice", rules[0].IdentityReference.Value);
-        Assert.Equal(3, fixture.Requests.Count);
+        Assert.Equal(6, fixture.Requests.Count);
     }
 
     [Fact]

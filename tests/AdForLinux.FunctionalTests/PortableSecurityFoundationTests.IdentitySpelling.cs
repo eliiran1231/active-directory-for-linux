@@ -30,7 +30,7 @@ public partial class PortableSecurityFoundationTests
 
     [Theory]
     [MemberData(nameof(ResolverUnsupportedSpellingCases))]
-    public void Resolver_spelling_contract_refuses_unverifiable_values_at_every_authority_input(string value, string location, bool mutation)
+    public void Resolver_arbitrary_dn_spellings_never_replace_server_membership(string value, string location, bool mutation)
     {
         using var fixture = new IdentityFixture();
         const string domain = "DC=example,DC=com", config = "CN=Configuration,DC=example,DC=com";
@@ -43,6 +43,8 @@ public partial class PortableSecurityFoundationTests
         if (location == "entry") fixture.Entry.Path = "LDAP://dc.example/CN=user," + suspect;
         if (location == "result") fixture.Results = _ => [IdentityFixture.Row(("objectSid", [U1]),
             ("sAMAccountName", ["alice"]), ("objectClass", ["user"]), ("distinguishedName", ["CN=user," + suspect]))];
+        fixture.MembershipResults = request => location != "result" || IdentityFixture.MembershipTarget(request) != fixture.Entry.IdentityTarget
+            ? [] : [IdentityFixture.MembershipRow(request)];
         var descriptor = new A.CommonSecurityDescriptor(true, true, Build(U2, U2, Acl(4), null), 0);
         var wrapper = new FacadeContracts.Wrapper(descriptor); var resolver = fixture.Resolver; resolver.Bind(wrapper);
         var state = descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
@@ -51,7 +53,7 @@ public partial class PortableSecurityFoundationTests
             if (mutation) wrapper.SetOwner(new NTAccount("alice"));
             else resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount));
         });
-        if (location != "result") Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+        if (location != "result") Assert.Empty(fixture.AccountRequests);
         Assert.Same(state, descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
         Assert.Equal(0, descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
     }
@@ -61,7 +63,7 @@ public partial class PortableSecurityFoundationTests
     [InlineData("cn=User01,ou=People42,dc=example,dc=com", true)]
     [InlineData("DC=example,DC=com", false)]
     [InlineData("DC=example,DC=com", true)]
-    public void Resolver_spelling_contract_preserves_supported_ascii_paths(string dn, bool mutation)
+    public void Resolver_server_proof_supports_ordinary_paths(string dn, bool mutation)
     {
         using var fixture = new IdentityFixture();
         fixture.Entry.Path = "LDAP://dc.example/" + dn;
@@ -83,11 +85,11 @@ public partial class PortableSecurityFoundationTests
     [InlineData("entry", true)]
     [InlineData("result", false)]
     [InlineData("result", true)]
-    public void Resolver_spelling_contract_recognizes_supported_application_boundary_case(string location, bool mutation)
-        => Resolver_spelling_contract_refuses_unverifiable_values_at_every_authority_input("appPARTITION", location, mutation);
+    public void Resolver_server_proof_refuses_case_varied_application_boundary(string location, bool mutation)
+        => Resolver_arbitrary_dn_spellings_never_replace_server_membership("appPARTITION", location, mutation);
 
     [Fact]
-    public void Resolver_spelling_contract_exhaustively_bounds_ascii_value_characters()
+    public void Resolver_all_ascii_metadata_characters_still_require_server_membership()
     {
         for (var code = 0; code < 128; code++)
         {
@@ -97,13 +99,9 @@ public partial class PortableSecurityFoundationTests
                     ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]),
                     ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com", "CN=A" + (char)code + "B,DC=example,DC=com"]),
                     ("supportedControl", [AdIdentityLookup.DomainScopeControl]))] : null;
-            var supported = code is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9';
-            if (supported) Assert.Equal("EXAMPLE\\alice", fixture.Resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount)).Value);
-            else
-            {
-                Assert.Throws<NotSupportedException>(() => fixture.Resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount)));
-                Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
-            }
+            fixture.MembershipResults = _ => [];
+            Assert.Throws<NotSupportedException>(() => fixture.Resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount)));
+            Assert.Empty(fixture.AccountRequests);
         }
     }
 }

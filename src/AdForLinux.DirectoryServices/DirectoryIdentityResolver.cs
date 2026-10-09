@@ -81,6 +81,7 @@ public sealed class DirectoryIdentityResolver
         if (mutation && (options.IsAnonymous || options.AuthenticationType is not (AuthType.Basic or AuthType.Negotiate)
             || string.IsNullOrEmpty(options.BindDn) || string.IsNullOrEmpty(options.BindPassword)))
             throw new NotSupportedException("Name-based mutation requires explicit authenticated credentials; ambient identity pinning is not established.");
+        _ = AdIdentityLookup.EscapeText(target); // reject malformed UTF-16 before session creation
         // The independent session owns its connection only for this operation. The entry
         // may close concurrently: generation checks reject results, without disposing a
         // connection while its bounded request is in flight.
@@ -99,6 +100,7 @@ public sealed class DirectoryIdentityResolver
             result[i] = translated ?? identity;
             if (translated is null) missing.UnmappedIdentities.Add(identity);
         }
+        lookup.Complete();
         Checked(() => true);
         if (forceSuccess && missing.UnmappedIdentities.Count != 0) throw missing;
         return result;

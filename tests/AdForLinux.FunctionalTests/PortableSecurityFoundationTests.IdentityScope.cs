@@ -70,6 +70,9 @@ public partial class PortableSecurityFoundationTests
             if (dn is not null) fields.Add(("distinguishedName", [dn]));
             return [IdentityFixture.Row(fields.ToArray())];
         };
+        fixture.MembershipResults = request => scenario.StartsWith("entry-")
+            || (scenario.StartsWith("row-") && IdentityFixture.MembershipTarget(request) != fixture.Entry.IdentityTarget)
+            ? [] : [IdentityFixture.MembershipRow(request)];
         var descriptor = new A.CommonSecurityDescriptor(true, true, Build(U2, U2, Acl(4), null), 0);
         var wrapper = new FacadeContracts.Wrapper(descriptor); var resolver = fixture.Resolver; resolver.Bind(wrapper);
         var state = descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
@@ -82,7 +85,7 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(0, descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
         if (scenario is "gc" or "gc-tls") Assert.Equal(0, fixture.Opened);
         if (scenario.StartsWith("entry-") || scenario is "missing-contexts" or "missing-control" or "application-default")
-            Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+            Assert.Empty(fixture.AccountRequests);
     }
 
     [Theory]
@@ -96,7 +99,7 @@ public partial class PortableSecurityFoundationTests
         fixture.Results = _ => [IdentityFixture.Row(("objectSid", [U1]), ("sAMAccountName", ["alice"]),
             ("objectClass", ["user"]), ("distinguishedName", [dn]))];
         Assert.Equal("EXAMPLE\\alice", fixture.Resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount)).Value);
-        var request = fixture.Requests.Last();
+        var request = fixture.AccountRequests.Single();
         var control = Assert.Single(request.Controls.Cast<System.DirectoryServices.Protocols.DirectoryControl>());
         Assert.Equal(AdIdentityLookup.DomainScopeControl, control.Type);
         Assert.True(control.IsCritical); Assert.True(control.ServerSide); Assert.Empty(control.GetValue());
@@ -106,8 +109,8 @@ public partial class PortableSecurityFoundationTests
     [InlineData("CN=ordinary user,OU=People,DC=example,DC=com")]
     [InlineData("CN=last\\, first,OU=People,DC=example,DC=com")]
     [InlineData("CN=backslash\\\\,OU=People,DC=example,DC=com")]
-    public void Resolver_previously_accepted_non_alphanumeric_paths_now_refuse_scope(string dn)
-        => Resolver_unverified_dn_spellings_refuse_authority(dn, false, false);
+    public void Resolver_non_alphanumeric_paths_accept_only_with_server_membership(string dn)
+        => Resolver_scope_accepts_verified_domain_rdns_and_requires_critical_single_nc_search(dn);
 
     [Theory]
     [InlineData(false, 0)]
@@ -165,7 +168,7 @@ public partial class PortableSecurityFoundationTests
 
     [Theory]
     [MemberData(nameof(ResolverDnAliasCases))]
-    public void Resolver_unverified_dn_spellings_refuse_authority(string dn, bool mutation, bool returnedRow)
+    public void Resolver_alias_dn_without_server_membership_refuses_authority(string dn, bool mutation, bool returnedRow)
     {
         using var fixture = new IdentityFixture();
         fixture.MetadataResults = request => request.DistinguishedName == string.Empty
@@ -177,6 +180,8 @@ public partial class PortableSecurityFoundationTests
         if (returnedRow) fixture.Results = _ => [IdentityFixture.Row(("objectSid", [U1]),
             ("sAMAccountName", ["alice"]), ("objectClass", ["user"]), ("distinguishedName", [dn]))];
         else fixture.Entry.Path = "LDAP://dc.example/" + dn;
+        fixture.MembershipResults = request => !returnedRow || IdentityFixture.MembershipTarget(request) != fixture.Entry.IdentityTarget
+            ? [] : [IdentityFixture.MembershipRow(request)];
         var descriptor = new A.CommonSecurityDescriptor(true, true, Build(U2, U2, Acl(4), null), 0);
         var wrapper = new FacadeContracts.Wrapper(descriptor); var resolver = fixture.Resolver; resolver.Bind(wrapper);
         var state = descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
@@ -185,7 +190,7 @@ public partial class PortableSecurityFoundationTests
             if (mutation) wrapper.SetOwner(new NTAccount("alice"));
             else resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount));
         });
-        if (!returnedRow) Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+        if (!returnedRow) Assert.Empty(fixture.AccountRequests);
         Assert.Same(state, descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
         Assert.Equal(0, descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
     }
@@ -206,6 +211,7 @@ public partial class PortableSecurityFoundationTests
                 ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]),
                 ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com", context]),
                 ("supportedControl", [AdIdentityLookup.DomainScopeControl]))] : null;
+        fixture.MembershipResults = _ => []; // metadata spelling alone grants no membership
         var wrapper = new FacadeContracts.Wrapper(); var resolver = fixture.Resolver; resolver.Bind(wrapper);
         var state = wrapper.Descriptor.MutationState; var bytes = wrapper.GetSecurityDescriptorBinaryForm();
         Assert.Throws<NotSupportedException>(() =>
@@ -213,7 +219,7 @@ public partial class PortableSecurityFoundationTests
             if (mutation) wrapper.SetOwner(new NTAccount("alice"));
             else resolver.Translate(new SecurityIdentifier(U1, 0), typeof(NTAccount));
         });
-        Assert.DoesNotContain(fixture.Requests, r => r.Scope == System.DirectoryServices.Protocols.SearchScope.Subtree);
+        Assert.Empty(fixture.AccountRequests);
         Assert.Same(state, wrapper.Descriptor.MutationState); Assert.Equal(bytes, wrapper.GetSecurityDescriptorBinaryForm());
         Assert.Equal(0, wrapper.Descriptor.MutationVersion); Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
     }

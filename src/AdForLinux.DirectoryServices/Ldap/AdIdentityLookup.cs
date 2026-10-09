@@ -32,8 +32,7 @@ internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
     public IReadOnlyList<IdentitySearchRow> Search(SearchRequest request, TimeSpan remaining)
     {
         var response = (SearchResponse)LdapExceptionTranslator.Execute(() => connection.SendRequest(request, remaining));
-        if (response.ResultCode != ResultCode.Success || response.References.Count != 0)
-            throw new NotSupportedException("Identity lookup did not return a complete result within the authorized domain.");
+        RequireCompleteResult(response.ResultCode, response.References.Count);
         var result = new List<IdentitySearchRow>();
         foreach (SearchResultEntry row in response.Entries)
         {
@@ -48,6 +47,11 @@ internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
         }
         return result;
     }
+    internal static void RequireCompleteResult(ResultCode resultCode, int referenceCount)
+    {
+        if (resultCode != ResultCode.Success || referenceCount != 0)
+            throw new NotSupportedException("Identity lookup did not return a complete result within the authorized domain.");
+    }
     public void Dispose() => connection.Dispose();
 }
 
@@ -59,7 +63,6 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
     private readonly Stopwatch elapsed = Stopwatch.StartNew();
     private static readonly UTF8Encoding Utf8 = new(false, true);
     private (string Domain, string Netbios, string Dns)? scope;
-    private string[] namingContexts = [];
     internal IdentityReference? Translate(IdentityReference identity)
     {
         var domain = scope ??= Discover();
@@ -88,7 +91,7 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
         if (rows.Count == 0) return null;
         if (rows.Count != 1) throw new InvalidOperationException("Identity lookup is ambiguous within the authorized domain.");
         var row = rows[0];
-        RequireDomainDn(row.DistinguishedName, domain.Domain);
+        RequireDomainMember(row.DistinguishedName, domain.Domain);
         if (row.Values("objectClass").OfType<string>().Any(c => c.Equals("foreignSecurityPrincipal", StringComparison.OrdinalIgnoreCase)))
             throw new NotSupportedException("Foreign security principals require an explicitly authorized issuing-domain context.");
         if (row.Values("objectSid") is not [byte[] binary] || row.Text("sAMAccountName") is not { Length: > 0 } sam) return null;
@@ -107,68 +110,39 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
         if (contexts.Length == 0 || contexts.Any(v => v is not string text || string.IsNullOrWhiteSpace(text))
             || !root.Values("supportedControl").Contains(DomainScopeControl))
             throw new NotSupportedException("Complete naming-context metadata and critical domain-scope control support are required.");
-        namingContexts = contexts.Cast<string>().ToArray();
-        foreach (var context in namingContexts) RequireLiteralDn(context);
-        RequireLiteralDn(domain); RequireLiteralDn(config);
+        var namingContexts = contexts.Cast<string>().ToArray();
         if (!namingContexts.Contains(domain, StringComparer.OrdinalIgnoreCase)
             || !namingContexts.Contains(config, StringComparer.OrdinalIgnoreCase)
             || string.Equals(domain, config, StringComparison.OrdinalIgnoreCase))
             throw new NotSupportedException("The default domain naming context is ambiguous.");
-        RequireDomainDn(entryTarget, domain);
         var crossRef = Unique(Search("CN=Partitions," + config, "(&(objectClass=crossRef)(nCName=" + EscapeText(domain) + "))",
             ProtocolScope.OneLevel, "nCName", "nETBIOSName", "dnsRoot", "systemFlags"));
         if (!int.TryParse(crossRef.Text("systemFlags"), out var flags) || (flags & 2) == 0
             || !string.Equals(crossRef.Text("nCName"), domain, StringComparison.OrdinalIgnoreCase)
             || crossRef.Text("nETBIOSName") is not { Length: > 0 } netbios || crossRef.Text("dnsRoot") is not { Length: > 0 } dns)
             throw new NotSupportedException("Unambiguous domain qualification metadata is unavailable.");
+        RequireDomainMember(entryTarget, domain);
         return (domain, netbios, dns);
     }
-    private void RequireDomainDn(string? distinguishedName, string domain)
+    internal void Complete()
     {
-        RequireLiteralDn(distinguishedName);
-        // Compare complete RDN boundaries, never a textual suffix that could begin at
-        // an escaped comma. Unknown equivalent DN spellings refuse conservatively.
-        // Most-specific advertised NC wins; subordinate/application/configuration NCs
-        // must not inherit the server-default NetBIOS qualification.
-        for (var current = distinguishedName; !string.IsNullOrWhiteSpace(current); current = LdapDistinguishedName.Parent(current))
-        {
-            if (namingContexts.Contains(current, StringComparer.OrdinalIgnoreCase))
-            {
-                if (string.Equals(current, domain, StringComparison.OrdinalIgnoreCase)) return;
-                break;
-            }
-            // A child domain or DC-named partition is outside this domain even if the
-            // endpoint omitted that replica from its advertised naming contexts.
-            if (LdapDistinguishedName.RelativeName(current).StartsWith("DC=", StringComparison.OrdinalIgnoreCase)) break;
-        }
-        throw new NotSupportedException("The entry or returned identity is outside the verified domain naming context.");
+        // Recheck current membership after all mappings. This is not a directory
+        // transaction or an object-identity pin across deletion/recreation.
+        if (scope is { } verified) RequireDomainMember(entryTarget, verified.Domain);
     }
-    private static void RequireLiteralDn(string? distinguishedName)
+
+    private void RequireDomainMember(string? distinguishedName, string domain)
     {
-        // Scope inference is valid only on this deliberately narrow grammar:
-        // DN = RDN ("," RDN)*; RDN = (CN | OU | DC) "=" [A-Za-z0-9]+.
-        // Attribute names and values compare case-insensitively only AFTER every
-        // metadata/candidate RDN satisfies that grammar. No whitespace, punctuation,
-        // escapes, multivalued RDNs, Unicode or attribute aliases are admitted.
-        // Thus AD's width/diacritic/space equivalences cannot hide an NC boundary.
-        // Do not broaden this alphabet using .NET culture/normalization guesses.
-        if (string.IsNullOrEmpty(distinguishedName)) throw UnsupportedDn();
-        for (var current = distinguishedName; current is not null; current = LdapDistinguishedName.Parent(current))
-        {
-            var rdn = LdapDistinguishedName.RelativeName(current);
-            var equals = rdn.IndexOf('=');
-            if (equals <= 0) throw UnsupportedDn();
-            var attribute = rdn[..equals];
-            if (attribute.Any(c => c > 127)
-                || (!attribute.Equals("CN", StringComparison.OrdinalIgnoreCase)
-                    && !attribute.Equals("OU", StringComparison.OrdinalIgnoreCase)
-                    && !attribute.Equals("DC", StringComparison.OrdinalIgnoreCase))) throw UnsupportedDn();
-            var value = rdn[(equals + 1)..];
-            if (value.Length == 0) throw UnsupportedDn();
-            foreach (var c in value)
-                if (c is not (>= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9')) throw UnsupportedDn();
-        }
-        static NotSupportedException UnsupportedDn() => new("Identity scope requires literal CN/OU/DC RDNs with ASCII letters/digits only; other DN spellings cannot establish domain authority.");
+        if (string.IsNullOrWhiteSpace(distinguishedName))
+            throw new NotSupportedException("A nonempty DN is required to verify domain membership.");
+        // The base is independently verified metadata, NEVER the candidate DN.
+        // AD evaluates DN equality. The critical control restricts this search to
+        // that base's NC; a complete unique response is the scope proof. Request
+        // no attributes: scope proof introduces no GUID/SID read-permission gate.
+        var rows = Search(domain, "(distinguishedName=" + EscapeText(distinguishedName) + ")",
+            ProtocolScope.Subtree, "1.1");
+        if (rows.Count != 1 || string.IsNullOrWhiteSpace(rows[0].DistinguishedName))
+            throw new NotSupportedException("The entry's membership in the verified domain could not be established.");
     }
 
     private IReadOnlyList<IdentitySearchRow> Search(string dn, string filter, ProtocolScope scope, params string[] attributes)
