@@ -107,3 +107,19 @@ Therefore **35 refusals remain from the original 38, plus one newly discovered r
 **36 total (28 lossy native exports and eight host-authority aliases)**. This is not counted
 as parity and does not weaken preservation. All other new observations have exact native
 binary/text/exception parity. Full SDDL/identity/ObjectSecurity closure remains unfinished.
+
+## Linear-time condition rendering
+
+`SddlConditionCodec.Render` now emits nodes and punctuation through an explicit work stack
+into one `StringBuilder`. It no longer constructs a complete string for every subtree;
+rendering work and allocation grow linearly with the nodes and emitted text, including
+skewed expression trees. Literal formatting and canonical parentheses remain unchanged.
+
+The allocation regression measures warmed synchronous formatting at depths 512 and 2,048
+for unary, left-skewed and right-skewed expressions, checks exact output and payload
+roundtrips, and verifies the input bytes remain unchanged. It uses per-thread allocation
+counts, not elapsed time. All three cases fail against the previous renderer: the fourfold
+depth increase caused roughly 13–14 times the allocation on Linux .NET 10.
+
+The complete-payload byte-identical reparse guard remains mandatory. No native recordings,
+refusal inventory, raw/live state boundaries or preservation policy changed.

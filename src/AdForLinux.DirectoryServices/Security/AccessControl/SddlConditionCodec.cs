@@ -106,23 +106,51 @@ internal static class SddlConditionCodec
     }
     private static string Render(Node root)
     {
-        var pending = new Stack<(Node Node, bool Visited)>();
-        var rendered = new Stack<string>(); pending.Push((root, false));
+        // Emit each node directly into one buffer. Materializing every subtree would
+        // repeatedly copy its descendants and allocate quadratically for skewed trees.
+        var output = new StringBuilder();
+        var pending = new Stack<(Node? Node, string? Text)>();
+        pending.Push((root, null));
         while (pending.TryPop(out var item))
         {
-            if (!item.Visited)
+            if (item.Node is not { } node) { output.Append(item.Text); continue; }
+            if (node.Children.Length == 0) { output.Append(RenderLiteral(node)); continue; }
+            if (node.Code == 0x50)
             {
-                pending.Push((item.Node, true));
-                for (var i = item.Node.Children.Length - 1; i >= 0; i--) pending.Push((item.Node.Children[i], false));
+                output.Append('{'); pending.Push((null, "}"));
+                for (var i = node.Children.Length - 1; i >= 0; i--)
+                {
+                    pending.Push((node.Children[i], null));
+                    if (i != 0) pending.Push((null, ", "));
+                }
                 continue;
             }
-            var children = new string[item.Node.Children.Length];
-            for (var i = children.Length - 1; i >= 0; i--) children[i] = rendered.Pop();
-            rendered.Push(RenderOne(item.Node, children));
+            output.Append('('); pending.Push((null, ")"));
+            var logical = node.Code is 0xa0 or 0xa1 or 0xa2;
+            if (Unary(node.Code))
+            {
+                output.Append(Op(node.Code));
+                if (node.Code != 0xa2) output.Append(' ');
+                PushChild(node.Children[0], logical);
+            }
+            else
+            {
+                PushChild(node.Children[1], logical);
+                pending.Push((null, " " + Op(node.Code) + " "));
+                PushChild(node.Children[0], logical);
+            }
         }
-        return rendered.Pop();
+        return output.ToString();
+
+        void PushChild(Node child, bool logical)
+        {
+            var wrap = logical && child.Code >= 0xf8;
+            if (wrap) pending.Push((null, ")"));
+            pending.Push((child, null));
+            if (wrap) pending.Push((null, "("));
+        }
     }
-    private static string RenderOne(Node node, string[] children)
+    private static string RenderLiteral(Node node)
     {
         if (node.Code is >= 0xf8 and <= 0xfb)
         {
@@ -137,7 +165,7 @@ internal static class SddlConditionCodec
             if (sid.BinaryLength != node.Data.Length) throw Unsupported();
             return "SID(" + (SecurityIdentifier.GetSddlAlias(sid) ?? sid.Value) + ")";
         }
-        if (node.Code == 0x50) return "{" + string.Join(", ", children) + "}";
+        if (node.Code == 0x50) return "{}";
         if (node.Code == 4)
         {
             var bits = BinaryPrimitives.ReadUInt64LittleEndian(node.Data);
@@ -146,11 +174,7 @@ internal static class SddlConditionCodec
             var digits = radix switch { 1 => Octal(magnitude), 3 => "0x" + magnitude.ToString("x", CultureInfo.InvariantCulture), _ => magnitude.ToString(CultureInfo.InvariantCulture) };
             return (sign == 1 ? "+" : sign == 2 ? "-" : "") + digits;
         }
-        string LogicalChild(int index) => node.Children[index].Code >= 0xf8 ? "(" + children[index] + ")" : children[index];
-        if (node.Code == 0xa2) return "(!" + LogicalChild(0) + ")";
-        if (node.Code is 0xa0 or 0xa1) return "(" + LogicalChild(0) + " " + Op(node.Code) + " " + LogicalChild(1) + ")";
-        if (Unary(node.Code)) return "(" + Op(node.Code) + (node.Code == 0xa2 ? "" : " ") + children[0] + ")";
-        return "(" + children[0] + " " + Op(node.Code) + " " + children[1] + ")";
+        throw Unsupported();
     }
     private static string Octal(ulong value)
     {
