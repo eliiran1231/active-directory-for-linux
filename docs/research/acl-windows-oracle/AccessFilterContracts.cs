@@ -58,6 +58,35 @@ internal static class AccessFilterContracts
             foreach (var sections in new[] { 0, 1, 2, 4, 8, 15 })
                 Format(record, system, 0, 16, "S-1-1-0", valid, sections);
         }
+        Boundaries(record);
+    }
+
+    private static void Boundaries(Action<string, object, Func<object?>> record)
+    {
+        var texts = new List<string>();
+        foreach (var bit in Enumerable.Range(0, 32))
+            texts.Add($"S:(FL;;0x{1u << bit:x};;;WD;(@User.A == 1))");
+        foreach (var mask in new[] { "0xffffff", "0x1ffffff", "0x2ffffff", "0xfffffff", "GR", "GW", "GX" })
+            texts.Add($"S:(FL;;{mask};;;WD;(@User.A == 1))");
+        foreach (var first in new[] { 0, 1, 512, 1024, 1536, 65535 })
+        foreach (var second in new[] { 0, 1, 1024, 2048, 4096, 8192, 65535 })
+            texts.Add($"S:(FL;TP;RP;;;S-1-19-{first}-{second};(@User.A == 1))");
+        foreach (var sid in new[] { "WD", "SY", "S-1-19", "S-1-19-512", "S-1-19-512-4096-1", "S-1-18-512-4096", "S-1-19-4294967295-4294967295" })
+            texts.Add($"S:(FL;TP;RP;;;{sid};(@User.A == 1))");
+        foreach (var flags in new[] { "TP", "tp", "TPTP", "OICINPIOIDTP", "TPSA", "TPFA", "TPCR", "OIoi", "oi", "CR", "SA", "FA" })
+            texts.Add($"S:(FL;{flags};RP;;;S-1-19-512-4096;(@User.A == 1))");
+        foreach (var tail in new[] { "", ";", ";()", ";(@User.A == 1)", ";(@User.A ==)" })
+            texts.Add($"S:(FL;TP;RP;;;S-1-19-512-4096{tail})");
+        foreach (var text in texts)
+        {
+            record("SddlParse", new { Text = text }, () => Snapshot(new RawSecurityDescriptor(text)));
+            record("SddlRoundTrip", new { Text = text, Sections = 15 }, () => new RawSecurityDescriptor(text).GetSddlForm(AccessControlSections.All));
+            record("SddlErrorDetails", new { Text = text }, () =>
+            {
+                try { _ = new RawSecurityDescriptor(text); return null; }
+                catch (Exception ex) { return new { Type = ex.GetType().FullName, ParamName = (ex as ArgumentException)?.ParamName, NativeErrorCode = (ex as System.ComponentModel.Win32Exception)?.NativeErrorCode }; }
+            });
+        }
     }
 
     private static void Format(Action<string, object, Func<object?>> record, bool system, byte flags, int mask, string sidText, byte[] condition, int sections)
