@@ -18,7 +18,8 @@ internal static class FacadeContracts
         foreach (var (op, count) in new[] { ("FacadeConstruction", 6), ("FacadeLocks", 32),
             ("FacadeSharing", 9), ("FacadeDirty", 12), ("FacadeDispatch", 16),
             ("FacadeModify", 84), ("FacadeEnumeration", 16), ("FacadeReplace", 36),
-            ("FacadeValidation", 12), ("FacadePersist", 4), ("FacadeIndependentLocks", 2), ("FacadeFactoryDefaults", 4), ("FacadeEnumerationObjects", 16) })
+            ("FacadeValidation", 12), ("FacadePersist", 4), ("FacadeIndependentLocks", 2), ("FacadeFactoryDefaults", 4), ("FacadeEnumerationObjects", 16),
+            ("FacadeNullDaclFailure", 40), ("FacadeNullDaclSuccess", 24), ("FacadeNullDaclProtection", 8) })
             for (var i = 0; i < count; i++)
             { var scenario = i; record(op, new { Scenario = i }, () => Execute(op, scenario)); }
     }
@@ -29,6 +30,31 @@ internal static class FacadeContracts
         var wrapper = new Wrapper(descriptor);
         switch (op)
         {
+            case "FacadeNullDaclFailure":
+            case "FacadeNullDaclSuccess":
+            case "FacadeNullDaclProtection":
+            {
+                var perState = op == "FacadeNullDaclFailure" ? 20 : op == "FacadeNullDaclSuccess" ? 12 : 4;
+                var flags = scenario >= perState ? ControlFlags.DiscretionaryAclPresent : ControlFlags.None;
+                descriptor = new A.CommonSecurityDescriptor(true, true, flags, null, null, null, null);
+                var shared = descriptor.DiscretionaryAcl!;
+                var alias = new A.CommonSecurityDescriptor(true, true, flags, null, null, null, shared);
+                wrapper = new Wrapper(descriptor);
+                var aliasWrapper = new Wrapper(alias);
+                var before = Snapshot(wrapper); var aliasBefore = Snapshot(aliasWrapper);
+                var nullRoute = scenario % perState;
+                var nullResult = Error(() =>
+                {
+                    if (op == "FacadeNullDaclProtection")
+                    { descriptor.SetDiscretionaryAclProtection((nullRoute & 1) != 0, (nullRoute & 2) != 0); return null; }
+                    if (op == "FacadeNullDaclSuccess") return NullDaclEdit(shared, nullRoute, Sid(2), 16);
+                    return NullDaclEdit(shared, nullRoute >= 16 ? nullRoute - 8 : nullRoute % 8,
+                        nullRoute is >= 8 and < 16 ? Sid(2) : null!, nullRoute is >= 8 and < 16 ? 0 : 16);
+                });
+                return new { Before = before, AliasBefore = aliasBefore, Result = nullResult,
+                    After = Snapshot(wrapper), AliasAfter = Snapshot(aliasWrapper),
+                    Shared = ReferenceEquals(shared, alias.DiscretionaryAcl) && ReferenceEquals(shared, descriptor.DiscretionaryAcl) };
+            }
             case "FacadeConstruction":
                 if (scenario == 0) return Snapshot(new Wrapper());
                 if (scenario == 1) return Snapshot(new Wrapper(null!));
@@ -167,6 +193,27 @@ internal static class FacadeContracts
                 return wrapper.Persistence(scenario);
             default: throw new ArgumentOutOfRangeException(nameof(op));
         }
+    }
+    internal static object? NullDaclEdit(A.DiscretionaryAcl acl, int route, P.SecurityIdentifier sid, int mask)
+    {
+        var rule = Access(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"));
+        switch (route)
+        {
+            case 0: acl.AddAccess(AccessControlType.Allow, sid, mask, 0, 0); break;
+            case 1: acl.SetAccess(AccessControlType.Allow, sid, mask, 0, 0); break;
+            case 2: return acl.RemoveAccess(AccessControlType.Allow, sid, mask, 0, 0);
+            case 3: acl.RemoveAccessSpecific(AccessControlType.Allow, sid, mask, 0, 0); break;
+            case 4: acl.AddAccess(AccessControlType.Allow, sid, mask, 0, 0, ObjectAceFlags.ObjectAceTypePresent, rule.ObjectType, Guid.Empty); break;
+            case 5: acl.SetAccess(AccessControlType.Allow, sid, mask, 0, 0, ObjectAceFlags.ObjectAceTypePresent, rule.ObjectType, Guid.Empty); break;
+            case 6: return acl.RemoveAccess(AccessControlType.Allow, sid, mask, 0, 0, ObjectAceFlags.ObjectAceTypePresent, rule.ObjectType, Guid.Empty);
+            case 7: acl.RemoveAccessSpecific(AccessControlType.Allow, sid, mask, 0, 0, ObjectAceFlags.ObjectAceTypePresent, rule.ObjectType, Guid.Empty); break;
+            case 8: acl.AddAccess(AccessControlType.Allow, sid, rule); break;
+            case 9: acl.SetAccess(AccessControlType.Allow, sid, rule); break;
+            case 10: return acl.RemoveAccess(AccessControlType.Allow, sid, rule);
+            case 11: acl.RemoveAccessSpecific(AccessControlType.Allow, sid, rule); break;
+            default: throw new ArgumentOutOfRangeException(nameof(route));
+        }
+        return null;
     }
     private static object Error(Func<object?> action)
     { try { return new { Value = action(), ExceptionType = (string?)null, ParamName = (string?)null }; } catch (Exception e) { return new { Value = (object?)null, ExceptionType = e.GetType().FullName, ParamName = (e as ArgumentException)?.ParamName }; } }
