@@ -174,7 +174,8 @@ public partial class PortableSecurityFoundationTests
         var edited = variant switch
         {
             0 => Build(U2, U1, Acl(4, Ace(0, 0, 16, U1)), Acl(4, Ace(2, 0x40, 16, U1))),
-            1 => Build(U2, U1, Acl(4), Acl(4)),
+            // Unique deletion to an empty ACL is supported; a NULL state transition is not.
+            1 => Build(U2, U1, Acl(4), null, extraControl: SaclPresent),
             _ => Build(U2, U1, Acl(4), Acl(4, Ace(2, 0x40, 16, U1)), extraControl: 0x1000)
         };
         var before = wrapper.Descriptor.MutationState;

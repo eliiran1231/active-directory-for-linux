@@ -89,7 +89,7 @@ public abstract partial class ObjectSecurity
 
     // A detached buffer is never sufficient provenance. Only this source wrapper at
     // the captured generation may reconcile. ACL edits require the independently
-    // verified unique-contributor mask mapping; replacement is not a fallback.
+    // verified unique-contributor edit mapping; replacement is not a fallback.
     internal SecurityMasks ReconcileInterop(InteropBaseline provenance, byte[] edited)
     {
         ArgumentNullException.ThrowIfNull(provenance);
@@ -118,7 +118,7 @@ public abstract partial class ObjectSecurity
                     var acl = i == 2 ? (CommonAcl?)_securityDescriptor.SystemAcl : _securityDescriptor.DiscretionaryAcl;
                     if (acl is null || InteropComponent(candidate, i).IsEmpty || InteropComponent(baseline, i).IsEmpty)
                         throw new NotSupportedException("ACL state transitions require explicit operation provenance.");
-                    acl.ReconcileInteropMasks(InteropComponent(baseline, i).ToArray(), InteropComponent(candidate, i).ToArray());
+                    acl.ReconcileInteropEdits(InteropComponent(baseline, i).ToArray(), InteropComponent(candidate, i).ToArray());
                     if (i == 2) { _saclModified = true; changed |= SecurityMasks.Sacl; }
                     else { _daclModified = true; changed |= SecurityMasks.Dacl; }
                 }

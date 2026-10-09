@@ -3,7 +3,8 @@
 This implements an internal, testable part of approved D1/D2/D8. It does not choose final
 public helper, assembly or package names. The optional Microsoft companion remains the
 approved packaging destination; the main DLL acquires no Microsoft DirectoryServices
-dependency. Existing public AD classes and transport remain unwired.
+dependency. The later [coherent AD/entry integration](issue-226-entry-persistence-status.md)
+is implemented; the descriptions of the original detached slices below do not postpone that cutover.
 
 `ObjectSecurity.Interop.cs` captures current raw bytes, original read bytes, current observable
 bytes, retrieved sections, pending section intent, wrapper identity and descriptor generation.
@@ -38,16 +39,17 @@ Updates run inside the existing facade transaction, with dirty flags rolled back
 Two wrappers sharing a descriptor observe its edits and generation invalidation, but cannot
 exchange export provenance. Existing pending edits are neither cleared nor reclassified.
 
-ACL edit-back now permits only nonzero mask changes on explicit, uniquely identifiable live
-occurrences with exactly one raw contributor. ACL state, header, revision, count, order, ACE
-type/flags, identity and GUID fields must remain unchanged. Existing retained provenance is
+ACL edit-back permits nonzero mask changes and deletion of explicit, uniquely identifiable
+live occurrences with exactly one raw contributor. Surviving occurrences retain order, ACE
+type/flags, identity and GUID fields. ACL state, revision and reserved fields stay unchanged;
+only size/count may shrink for deletion. Existing retained provenance is
 validated directly; fresh imports build occurrence-index mappings using only the reviewed
 normalization, sorting and single-pass compaction rules. The clean export baseline must equal
 the current retained live ACL, and the resulting projection must equal the edited target.
 
 Unchanged merged groups and inactive originals retain their exact raw bytes, including original
 NoPropagate bits. Changed merged contributors, duplicate same-shape occurrences, inherited ACEs,
-zero masks, additions/removals, splits, reordering, control fields and ambiguous fresh-import
+zero masks, additions, merged/ambiguous/inherited removals, splits, reordering, control fields and ambiguous fresh-import
 regrouping refuse. Shared ACL objects retain identity; all owners reconcile in one existing
 facade transaction or roll back together, including a failure after the other ACL was edited.
 Detached replacement requires explicit section intent and a loaded destination baseline under
@@ -92,11 +94,38 @@ all-seven-specialized-subtype coverage. Native oracle recordings remain unchange
 
 The [AD rule matrix](issue-226-ad-rule-interop-status.md) now stages exact subtype snapshots
 and current-hierarchy conversion for all nine AD rule classes and their 45 constructors,
-with actual Microsoft comparisons on Windows. Public portable AD materialization still waits
-for coherent hierarchy/consumer cutover; no parallel AD rule hierarchy was introduced.
+with actual Microsoft comparisons on Windows. Portable AD materialization is now integrated with the coherent hierarchy/consumer cutover;
+no parallel AD rule hierarchy was introduced.
 
-Next dependencies: ambiguous/multiple-contributor and structural ACL edit-back; Microsoft
-AD-security conversion and coherent portable AD-class cutover; reviewed companion friend-access
-and final public names. Integration of the [approved persistence contracts](issue-226-persistence-decisions.md),
-live AD and any effective-access evaluator are outside this slice.
+Next dependencies: additions, splits, reordering and ambiguous/multiple-contributor edit-back;
+actual Microsoft AD-security companion exposure; reviewed friend-access and final public names.
+The [approved persistence contracts](issue-226-persistence-decisions.md) are integrated with
+entry transport; live AD and any effective-access evaluator remain outside this slice.
+The [remaining compatibility inventory](issue-226-remaining-compatibility.md) separates these
+implementation gaps from genuine exposure decisions and live-server validation.
 Every existing protected hook remains intact.
+
+
+## Unique-contributor deletion follow-up
+
+The reconciler accepts an order-preserving subsequence of exported ACE shapes, optionally
+with already-supported nonzero mask edits. Every removed occurrence must be explicit,
+uniquely identifiable by its non-mask fields and backed by exactly one raw contributor.
+Unchanged merged groups and raw occurrences excluded by projection retain every byte,
+including NoPropagate flags. Existing retained contributor state is rebuilt from surviving
+occurrences; a fresh import keeps its original raw occurrence ordering. Deleting the last
+live ACE produces a present empty ACL, never absent or NULL.
+
+The final observable ACL must equal the target bytes before publication. Added ACEs,
+reordering, scope/qualifier changes, inherited or merged removals, ambiguous duplicate shapes,
+state transitions and changed header/reserved fields still refuse atomically. Shared ACL
+identity and existing pending intent survive; failure in a later ACL rolls back every affected
+owner and dirty flag. Stale export provenance remains invalid even for an unchanged target.
+
+Thirty-one directed offline cases cover common/object DACL/SACL removal, inactive and merged
+raw survivor bytes, shared owners, retained provenance and follow-on edits, existing Owner
+intent, empty ACLs, all deletion positions combined with mask edits, refusal boundaries and
+compound rollback. Fourteen positive removal cases all failed against the previous mask-only
+reconciler. Windows tests perform actual Microsoft CommonSecurityDescriptor/ACL edits; Linux
+uses portable detached objects. This does not claim a public companion API or Microsoft AD
+transport parity, and changes no native oracle recording or preservation policy.

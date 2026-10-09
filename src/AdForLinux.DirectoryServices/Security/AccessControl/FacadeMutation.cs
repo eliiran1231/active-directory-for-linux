@@ -121,8 +121,8 @@ public abstract partial class CommonAcl
         });
     private void Edit(Func<C.AclMutationEngine, SecurityMasks, C.AclMutationEngine> plan, Action action)
         => Edit(plan, () => { action(); return true; });
-    internal void ReconcileInteropMasks(byte[] baseline, byte[] edited)
-        => Edit((engine, section) => engine.ReconcileInteropMasks(section, baseline, edited),
+    internal void ReconcileInteropEdits(byte[] baseline, byte[] edited)
+        => Edit((engine, section) => engine.ReconcileInteropEdits(section, baseline, edited),
             () => { _acl = new RawAcl(edited, 0); _isDirty = false; });
     // Protection also exposes the synthetic Everyone ACL. Treat that marker-only
     // transition as an ACL edit so all owners reconcile or roll back together.

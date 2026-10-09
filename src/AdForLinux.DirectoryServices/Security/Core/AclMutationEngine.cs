@@ -207,8 +207,8 @@ internal sealed class AclMutationEngine
     private sealed record ProjectedState(ProjectedGroup[] Groups, byte[] RawAcl);
 
     // Detached edit-back is a value diff, not an operation journal. Only unique,
-    // single-contributor, explicit mask edits have a proven interpretation here.
-    internal AclMutationEngine ReconcileInteropMasks(SecurityMasks section, byte[] baseline, byte[] edited)
+    // single-contributor, explicit mask edits and deletions have a proven interpretation.
+    internal AclMutationEngine ReconcileInteropEdits(SecurityMasks section, byte[] baseline, byte[] edited)
     {
         var isDacl = ValidateSection(section);
         var raw = (isDacl ? Descriptor.Dacl : Descriptor.Sacl)
@@ -217,9 +217,12 @@ internal sealed class AclMutationEngine
         if (!DescriptorRewriter.EncodeAcl(current, current.Aces).AsSpan().SequenceEqual(baseline))
             throw new NotSupportedException("Fresh-import regrouping cannot be mapped back to retained live occurrences.");
         var before = Acl.Read(baseline); var after = Acl.Read(edited);
-        if (!baseline.AsSpan(0, 8).SequenceEqual(edited.AsSpan(0, 8)) || before.Aces.Count != after.Aces.Count
-            || !after.Trailing.IsEmpty)
-            throw new NotSupportedException("ACL shape/revision changes are not mask edits.");
+        // Size/count may shrink when a uniquely mapped occurrence is removed. All
+        // other header fields and the present/NULL state must stay unchanged.
+        if (!baseline.AsSpan(0, 2).SequenceEqual(edited.AsSpan(0, 2))
+            || !baseline.AsSpan(6, 2).SequenceEqual(edited.AsSpan(6, 2))
+            || before.Aces.Count < after.Aces.Count || !after.Trailing.IsEmpty)
+            throw new NotSupportedException("ACL additions, revision/reserved fields and trailing data cannot be reconciled.");
 
         var groups = new List<(Ace View, int[] RawIndices)>();
         var retained = RetainedState(section);
@@ -255,32 +258,50 @@ internal sealed class AclMutationEngine
         if (!SameEntries(groups.Select(g => g.View).ToArray(), before.Aces))
             throw new NotSupportedException("The exported occurrences do not have a proven contributor mapping.");
         var replacements = raw.Aces.ToArray();
+        var removed = new HashSet<int>();
+        var survivors = new List<(Ace View, int[] RawIndices)>();
+        var candidateIndex = 0;
         for (var i = 0; i < groups.Count; i++)
         {
-            var old = before.Aces[i]; var changed = after.Aces[i];
-            if (old.RawBytes.SequenceEqual(changed.RawBytes)) continue;
+            var old = before.Aces[i];
+            var changed = candidateIndex < after.Aces.Count ? after.Aces[candidateIndex] : null;
+            var sameShape = changed is not null && SameExceptMask(old, changed);
+            if (sameShape && old.RawBytes.SequenceEqual(changed!.RawBytes))
+            {
+                survivors.Add(groups[i]); candidateIndex++; continue;
+            }
             if (!Explicit(old) || groups[i].RawIndices.Length != 1
-                || groups.Count(g => SameExceptMask(g.View, old)) != 1
-                || !MicrosoftObservableProjector.IsUnderstoodAce(changed, isDacl)
-                || changed.AccessMask == 0 || !SameExceptMask(old, changed))
-                throw new NotSupportedException("Ambiguous, inherited or structural ACE edits cannot be reconciled.");
+                || groups.Count(g => SameExceptMask(g.View, old)) != 1)
+                throw new NotSupportedException("Ambiguous, merged or inherited ACE edits cannot be reconciled.");
             var index = groups[i].RawIndices[0];
+            if (!sameShape)
+            {
+                // A candidate must be an order-preserving subsequence of the old
+                // shapes. Drop only this proven raw occurrence, never hidden or
+                // merged contributors. Unconsumed additions/reordering fail below.
+                removed.Add(index); continue;
+            }
+            if (!MicrosoftObservableProjector.IsUnderstoodAce(changed!, isDacl) || changed!.AccessMask == 0)
+                throw new NotSupportedException("The edited ACE is not a supported nonzero mask change.");
             var bytes = replacements[index].RawBytes.ToArray();
             BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(4), changed.AccessMask);
             replacements[index] = Ace.Read(bytes);
+            survivors.Add((changed, groups[i].RawIndices)); candidateIndex++;
         }
-        var encoded = DescriptorRewriter.EncodeAcl(raw, replacements);
+        if (candidateIndex != after.Aces.Count)
+            throw new NotSupportedException("ACE additions, scope changes or reordering require separate provenance.");
+        var encoded = DescriptorRewriter.EncodeAcl(raw, replacements.Where((_, i) => !removed.Contains(i)).ToArray());
         var descriptor = DescriptorRewriter.Rewrite(Descriptor, Descriptor.Control,
             new Dictionary<SecurityMasks, byte[]?> { [section] = encoded });
         ProjectedState? nextState = null;
         if (retained is not null)
-            nextState = new(after.Aces.Select((ace, i) => new ProjectedGroup(ace,
-                groups[i].RawIndices.Select(index => replacements[index]).ToArray())).ToArray(), encoded);
+            nextState = new(survivors.Select(group => new ProjectedGroup(group.View,
+                group.RawIndices.Select(index => replacements[index]).ToArray())).ToArray(), encoded);
         var next = new AclMutationEngine(descriptor, OriginalDescriptor, WriteIntent | section,
             isDacl ? nextState : _projectedDacl, isDacl ? _projectedSacl : nextState);
         var result = next.GetObservableAcl(section)!;
         if (!DescriptorRewriter.EncodeAcl(result, result.Aces).AsSpan().SequenceEqual(edited))
-            throw new NotSupportedException("The mask edit changes projection grouping or order.");
+            throw new NotSupportedException("The edit changes projection grouping or order outside the candidate.");
         return next;
 
         static bool SameExceptMask(Ace left, Ace right) => left.Size == right.Size
