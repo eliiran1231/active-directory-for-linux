@@ -82,6 +82,7 @@ the future portable AD surface. SID/name snapshot primitives are feasible indepe
 this slice does not invent a public bridge or finalize packaging/interface choices.
 
 Next integration gates are adoption of the context helper's public exposure within the coherent
-portable surface; the pending persistence policies before transport cutover; reviewed companion
+portable surface; implementation of the [approved persistence contracts](issue-226-persistence-decisions.md)
+before transport cutover; reviewed companion
 naming/snapshot interface and measured import/edit-back reconciliation for Microsoft interop;
 and separately authorized live AD validation. No claim of full dependency closure is made.

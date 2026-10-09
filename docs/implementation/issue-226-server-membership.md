@@ -107,5 +107,5 @@ recordings are claimed.
 
 Full Linux .NET 8/10 and exact-published-head Windows offline builds/tests and committed native
 oracle freshness comparisons are required before reporting this slice verified. Broader routing,
-authorized live AD validation, PrincipalContext integration, and the four pending persistence
-policy decisions remain outside this change.
+authorized live AD validation, PrincipalContext integration, and implementation of the
+[approved persistence contracts](issue-226-persistence-decisions.md) remain outside this change.

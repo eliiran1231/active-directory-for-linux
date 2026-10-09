@@ -8,7 +8,8 @@ using WireMasks = System.DirectoryServices.Protocols.SecurityMasks;
 namespace AdForLinux.Security.AccessControl;
 
 // Staged preparation only. DirectoryEntry's BCL-rooted persistence path is not wired
-// to this until the coordinated AD/rule cutover and outstanding wire-mask/Add policy.
+// to this until the coordinated AD/rule cutover and validated implementation of the
+// approved persistence contracts (see issue-226-persistence-decisions.md).
 internal sealed class PreparedRawSecurityWrite
 {
     private readonly byte[] bytes;
@@ -74,7 +75,7 @@ internal static class RawSecurityWritePreparation
     internal static void ValidateAddDescriptor(byte[]? explicitDescriptor)
     {
         if (explicitDescriptor is not null)
-            throw new NotSupportedException("LDAP Add ignores SD-flags scoping; explicit descriptor creation defaults require a separate approved contract.");
+            throw new NotSupportedException("LDAP Add ignores SD-flags scoping; explicit descriptor creation requires a validated raw-safe implementation.");
         // No explicit descriptor: omit the attribute and let the server create it.
     }
 }

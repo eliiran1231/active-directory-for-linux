@@ -50,7 +50,8 @@ NoPropagate bits. Changed merged contributors, duplicate same-shape occurrences,
 zero masks, additions/removals, splits, reordering, control fields and ambiguous fresh-import
 regrouping refuse. Shared ACL objects retain identity; all owners reconcile in one existing
 facade transaction or roll back together, including a failure after the other ACL was edited.
-Full replacement is a separate pending policy and is never a fallback. This is deliberately
+Detached replacement requires explicit section intent and a loaded destination baseline under
+the [approved contracts](issue-226-persistence-decisions.md); it is never an implicit fallback. This is deliberately
 not complete ACL edit-back or a reconstruction of the caller's operation history.
 
 The 36 new offline cases cover actual detached objects, unchanged and normalized exports,
@@ -96,6 +97,6 @@ for coherent hierarchy/consumer cutover; no parallel AD rule hierarchy was intro
 
 Next dependencies: ambiguous/multiple-contributor and structural ACL edit-back; Microsoft
 AD-security conversion and coherent portable AD-class cutover; reviewed companion friend-access
-and final public names. The four pending
-persistence policies, live AD and any effective-access evaluator are outside this slice.
+and final public names. Integration of the [approved persistence contracts](issue-226-persistence-decisions.md),
+live AD and any effective-access evaluator are outside this slice.
 Every existing protected hook remains intact.

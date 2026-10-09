@@ -138,10 +138,10 @@ pending state. This is not server-side compare-and-swap: same-section concurrent
 still need the separately reviewed persistence contract.
 
 LDAP Add is separate because SD-flags do not scope creation. No explicit descriptor means omit
-the attribute; the staged helper refuses explicit creation descriptors while defaults/intent
-remain undecided. It is not wired into existing Add behavior. Cross-entry assignment intent,
-same-entry/detached replacement, the public commit mask and server creation defaults still need
-their recorded policy/oracle decisions before rollout.
+the attribute. Under the [approved contracts](issue-226-persistence-decisions.md), explicit
+creation descriptors remain a temporary unsupported boundary until validated. The staged
+helper is not wired into existing Add behavior. The four policy choices are approved; their
+public integration and independent native/wire validation remain required before rollout.
 
 ## Evidence and remaining scope
 
@@ -155,7 +155,7 @@ existing native observations. The 36 SDDL refusals, eight facade refusals and 41
 differences are unchanged.
 
 Remaining work includes public PrincipalContext adapter exposure within the approved coherent surface,
-native/wire evidence for outstanding commit
-and Add choices, the coordinated AD/rule/consumer cutover, optional MicrosoftInterop companion,
+native/wire evidence for approved commit
+and Add contracts, the coordinated AD/rule/consumer cutover, optional MicrosoftInterop companion,
 broader deferred SDDL/facade cases and explicitly authorized AD validation. No live AD bind,
 lookup, permission write, credential change, merge or issue closure is part of this slice.

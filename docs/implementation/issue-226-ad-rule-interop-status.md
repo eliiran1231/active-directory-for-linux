@@ -61,5 +61,5 @@ Public AD/rule/consumer cutover is still required before these same AD class nam
 constructed portably. Public companion exposure, final naming and friend access remain staged.
 This does not implement Microsoft AD-security descriptor conversion, opaque/callback rule-list
 conversion, generalized structural or ambiguous ACL edit-back, or arbitrary custom subclasses.
-The four pending persistence policies, live AD, credential/authentication changes and merge are
-outside this slice. Unknown data remains preserved or the complete operation refuses.
+The [four persistence contracts are now approved](issue-226-persistence-decisions.md), but their
+public integration, live AD, credential/authentication changes and merge are outside this slice. Unknown data remains preserved or the complete operation refuses.
