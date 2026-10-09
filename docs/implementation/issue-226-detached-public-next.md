@@ -14,6 +14,10 @@ byte-only placeholder does not settle this.” The user subsequently confirmed t
 The [required-surface manifest](issue-226-required-surface.md) records that target; a bounded
 subset is staging only, never the final compatibility contract.
 
+The [internal Microsoft interop boundary](issue-226-interop-status.md) now stages data-only
+snapshot provenance, strict detached round-trip validation and owner/group edit-back. Changed
+ACL reconciliation and final public companion naming remain explicit dependencies.
+
 ## Recommended buildable sequence
 
 1. Add immutable numeric identity values, the five rule bases and the rule collection in
