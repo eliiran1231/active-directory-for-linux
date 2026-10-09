@@ -131,8 +131,9 @@ peer-wrapper mutation from factory/protected-hook callbacks,
 refused incoming storage and failed unresolved-name edits without revision-upgrade residue.
 Full Linux and exact-head Windows results and artifact links are maintained in draft PR228.
 
-Context-bound cross-kind identity translation remains unfinished. There is no invented ambient
-resolver. Broader native facade combinations remain probe-driven compatibility work, including
+The [entry-bound resolver and raw-preparation slice](issue-226-identity-context-status.md) now
+implements explicit context translation and binding without enabling the AD transport cutover.
+Broader native facade combinations remain probe-driven compatibility work, including
 unbound ACL value edits whose raw normalization cannot yet be reconciled when later attached.
 Future resolver callbacks must also remain outside the shared state gate.
 The complete AD/rule/consumer cutover still requires reviewed raw write preparation, explicit

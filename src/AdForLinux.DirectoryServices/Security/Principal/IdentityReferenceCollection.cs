@@ -57,11 +57,10 @@ public class IdentityReferenceCollection : ICollection<IdentityReference>
             throw new ArgumentException("The targetType parameter must be of IdentityReference type.", nameof(targetType));
 
         // Empty/same-kind translation creates a new collection retaining element identity.
-        // Cross-kind translation has the same explicit staging boundary as the values:
-        // no resolver authority is inferred, no lookup is attempted, and forceSuccess
-        // does not turn the absence of a resolver into a native mapping-failure claim.
+        // Values do not carry resolver authority. Explicit collection resolution is
+        // available through DirectoryIdentityResolver; forceSuccess here never invents it.
         if (_identities.Any(identity => identity.GetType() != targetType))
-            throw new NotSupportedException("Cross-kind translation requires the pending context-bound identity resolver.");
+            throw new NotSupportedException("Cross-kind translation requires an explicit DirectoryIdentityResolver.");
 
         var result = new IdentityReferenceCollection(Count);
         foreach (var identity in _identities) result.Add(identity);

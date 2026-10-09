@@ -20,8 +20,7 @@ public abstract class IdentityReference
         if (!IsValidTargetType(targetType))
             throw new ArgumentException("The target must be a supported identity type.", nameof(targetType));
         if (targetType == GetType()) return this;
-        // Foundation staging only: no resolver authority is inferred from a detached value.
-        // This exception is not the final context-bound resolver exception contract.
-        throw new NotSupportedException("Cross-kind translation requires the pending context-bound identity resolver.");
+        // Values never carry directory authority. Use DirectoryIdentityResolver explicitly.
+        throw new NotSupportedException("Cross-kind translation requires an explicit DirectoryIdentityResolver.");
     }
 }

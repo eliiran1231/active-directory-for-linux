@@ -1,5 +1,11 @@
 # Detached public foundation status — incomplete full-closure migration
 
+Latest dependency: the [entry-bound resolver and raw-write preparation](issue-226-identity-context-status.md)
+now provide explicit library-owned AD resolution, revocable wrapper binding and controlled
+transport/lifecycle tests. Standalone identity values still carry no context. The historical
+staging descriptions below do not supersede this implementation or authorize AD cutover.
+
+
 This stage adds supporting types in the already approved namespaces inside the existing
 `AdForLinux.DirectoryServices` DLL. It does **not** switch the existing AD classes, create a
 parallel AD API, wire LDAP, resolve names, persist anything or implement an access evaluator.

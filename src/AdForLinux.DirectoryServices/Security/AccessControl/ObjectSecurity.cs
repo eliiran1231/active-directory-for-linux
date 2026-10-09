@@ -24,7 +24,7 @@ using C = AdForLinux.DirectoryServices.Security.Core;
 namespace AdForLinux.Security.AccessControl
 {
 
-    public abstract class ObjectSecurity
+    public abstract partial class ObjectSecurity
     {
         #region Private Members
 
@@ -34,8 +34,27 @@ namespace AdForLinux.Security.AccessControl
 
         // Data-only read context is local to this wrapper. It contains no resolver,
         // credentials, connections, persistence capability or ambient authority.
-        private sealed record ReadContext(C.SecurityDescriptor Original, long Version);
-        private readonly ReadContext? _readContext;
+        private sealed record ReadContext(C.SecurityDescriptor Original, long Version, IdentityReadOrigin? Origin = null);
+        private ReadContext? _readContext;
+        internal bool HasRawReadContext { get; private set; }
+        internal IdentityReadOrigin? RawReadOrigin => _readContext?.Origin;
+        internal long ReadVersion => _readContext?.Version ?? 0;
+        internal void SetRawReadContext(SecurityMasks retrieved, DirectoryIdentityResolver source)
+        {
+            if ((retrieved & ~(SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl)) != 0 || retrieved == SecurityMasks.None)
+                throw new ArgumentOutOfRangeException(nameof(retrieved));
+            source.Checked(() =>
+            {
+                lock (FacadeMutation.Gate)
+                {
+                if (_securityDescriptor.MutationVersion != 0) throw new InvalidOperationException("A read context cannot replace pending edits.");
+                _readContext = new ReadContext(C.SecurityDescriptor.Parse(_securityDescriptor.MutationState.Descriptor.GetBinaryForm(), retrieved), 0, source.GetReadOrigin());
+                HasRawReadContext = true;
+                identityAttachment++;
+                return true;
+                }
+            });
+        }
         internal C.SecurityDescriptor? OriginalReadSnapshot => _readContext?.Original;
         internal SecurityMasks RetrievedSections => _readContext?.Original.RetrievedSections ?? SecurityMasks.None;
         internal SecurityMasks PendingWriteSections => _readContext is null ? SecurityMasks.None
@@ -92,6 +111,7 @@ namespace AdForLinux.Security.AccessControl
 
         private void UpdateWithNewSecurityDescriptor(RawSecurityDescriptor newOne, AccessControlSections includeSections) => FacadeMutation.Run(() =>
         {
+            RequireRetrievedSection(RawSecurityWritePreparation.Masks(includeSections & AccessControlSections.All));
             FacadeMutation.ValidateSectionImport(newOne);
             CaptureDirtyFlags();
             UpdateWithNewSecurityDescriptorCore(newOne, includeSections);
@@ -333,36 +353,35 @@ namespace AdForLinux.Security.AccessControl
 
         public IdentityReference? GetOwner(System.Type targetType)
         {
+            RequireRetrievedSection(SecurityMasks.Owner);
+            SecurityIdentifier? identity;
+            IdentityRead read;
             ReadLock();
-
             try
             {
                 lock (FacadeMutation.Gate)
                 {
-                if (_securityDescriptor.Owner == null)
-                {
-                    return null;
+                    identity = _securityDescriptor.Owner;
+                    read = CaptureIdentityRead();
                 }
-
-                return _securityDescriptor.Owner.Translate(targetType);
-                            }
             }
-            finally
-            {
-                ReadUnlock();
-            }
+            finally { ReadUnlock(); }
+            if (identity is null) return null;
+            if (targetType == typeof(SecurityIdentifier)) return identity;
+            return ResolveRead(read, [identity], targetType)[0];
         }
 
         public void SetOwner(IdentityReference identity)
         {
+            RequireRetrievedSection(SecurityMasks.Owner);
             ArgumentNullException.ThrowIfNull(identity);
 
+            using var prepared = PrepareIdentityMutation(identity);
             WriteLock();
 
             try
             {
-                _securityDescriptor.Owner = identity.Translate(typeof(SecurityIdentifier)) as SecurityIdentifier;
-                _ownerModified = true;
+                prepared.Run(() => { CaptureDirtyFlags(); _securityDescriptor.Owner = prepared.Sid; _ownerModified = true; });
             }
             finally
             {
@@ -376,36 +395,35 @@ namespace AdForLinux.Security.AccessControl
 
         public IdentityReference? GetGroup(System.Type targetType)
         {
+            RequireRetrievedSection(SecurityMasks.Group);
+            SecurityIdentifier? identity;
+            IdentityRead read;
             ReadLock();
-
             try
             {
                 lock (FacadeMutation.Gate)
                 {
-                if (_securityDescriptor.Group == null)
-                {
-                    return null;
+                    identity = _securityDescriptor.Group;
+                    read = CaptureIdentityRead();
                 }
-
-                return _securityDescriptor.Group.Translate(targetType);
-                            }
             }
-            finally
-            {
-                ReadUnlock();
-            }
+            finally { ReadUnlock(); }
+            if (identity is null) return null;
+            if (targetType == typeof(SecurityIdentifier)) return identity;
+            return ResolveRead(read, [identity], targetType)[0];
         }
 
         public void SetGroup(IdentityReference identity)
         {
+            RequireRetrievedSection(SecurityMasks.Group);
             ArgumentNullException.ThrowIfNull(identity);
 
+            using var prepared = PrepareIdentityMutation(identity);
             WriteLock();
 
             try
             {
-                _securityDescriptor.Group = identity.Translate(typeof(SecurityIdentifier)) as SecurityIdentifier;
-                _groupModified = true;
+                prepared.Run(() => { CaptureDirtyFlags(); _securityDescriptor.Group = prepared.Sid; _groupModified = true; });
             }
             finally
             {
@@ -415,14 +433,15 @@ namespace AdForLinux.Security.AccessControl
 
         public virtual void PurgeAccessRules(IdentityReference identity)
         {
+            RequireRetrievedSection(SecurityMasks.Dacl);
             ArgumentNullException.ThrowIfNull(identity);
 
+            using var prepared = PrepareIdentityMutation(identity);
             WriteLock();
 
             try
             {
-                _securityDescriptor.PurgeAccessControl((SecurityIdentifier)identity.Translate(typeof(SecurityIdentifier)));
-                _daclModified = true;
+                prepared.Run(() => { CaptureDirtyFlags(); _securityDescriptor.PurgeAccessControl(prepared.Sid); _daclModified = true; });
             }
             finally
             {
@@ -432,14 +451,15 @@ namespace AdForLinux.Security.AccessControl
 
         public virtual void PurgeAuditRules(IdentityReference identity)
         {
+            RequireRetrievedSection(SecurityMasks.Sacl);
             ArgumentNullException.ThrowIfNull(identity);
 
+            using var prepared = PrepareIdentityMutation(identity);
             WriteLock();
 
             try
             {
-                _securityDescriptor.PurgeAudit((SecurityIdentifier)identity.Translate(typeof(SecurityIdentifier)));
-                _saclModified = true;
+                prepared.Run(() => { CaptureDirtyFlags(); _securityDescriptor.PurgeAudit(prepared.Sid); _saclModified = true; });
             }
             finally
             {
@@ -469,6 +489,7 @@ namespace AdForLinux.Security.AccessControl
 
         public void SetAccessRuleProtection(bool isProtected, bool preserveInheritance)
         {
+            RequireRetrievedSection(SecurityMasks.Dacl);
             WriteLock();
 
             try
@@ -504,6 +525,7 @@ namespace AdForLinux.Security.AccessControl
 
         public void SetAuditRuleProtection(bool isProtected, bool preserveInheritance)
         {
+            RequireRetrievedSection(SecurityMasks.Sacl);
             WriteLock();
 
             try
@@ -674,7 +696,7 @@ namespace AdForLinux.Security.AccessControl
                     nameof(rule));
             }
 
-            WriteLock();
+            EnterLibraryWriteLock();
 
             try
             {
@@ -685,7 +707,7 @@ namespace AdForLinux.Security.AccessControl
             }
             finally
             {
-                WriteUnlock();
+                ExitLibraryWriteLock();
             }
         }
 
@@ -700,7 +722,7 @@ namespace AdForLinux.Security.AccessControl
                     nameof(rule));
             }
 
-            WriteLock();
+            EnterLibraryWriteLock();
 
             try
             {
@@ -711,7 +733,7 @@ namespace AdForLinux.Security.AccessControl
             }
             finally
             {
-                WriteUnlock();
+                ExitLibraryWriteLock();
             }
         }
 

@@ -18,7 +18,7 @@ namespace AdForLinux.DirectoryServices;
 /// <see cref="Name"/>, <see cref="SchemaClassName"/>, and <see cref="Guid"/>.
 /// Writing arrives in a later step.
 /// </summary>
-public class DirectoryEntry : Component
+public partial class DirectoryEntry : Component
 {
     private string? _username;
     private string? _password;
@@ -139,6 +139,7 @@ public class DirectoryEntry : Component
                 return;
             }
 
+            using var identityChange = IdentityLifetime.Change();
             _connectionOptionsOverride = null;
             ResetBinding(ParsePath(value), value);
         }
@@ -153,6 +154,7 @@ public class DirectoryEntry : Component
         {
             if (_authenticationType != value)
             {
+                using var identityChange = IdentityLifetime.Change();
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
                 ResetCredentialBinding();
@@ -169,6 +171,7 @@ public class DirectoryEntry : Component
         {
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
+                using var identityChange = IdentityLifetime.Change();
                 _username = value;
                 _connectionOptionsOverride = null;
                 ResetCredentialBinding();
@@ -184,6 +187,7 @@ public class DirectoryEntry : Component
         {
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
+                using var identityChange = IdentityLifetime.Change();
                 _password = value;
                 _connectionOptionsOverride = null;
                 ResetCredentialBinding();
@@ -275,6 +279,7 @@ public class DirectoryEntry : Component
         {
             ArgumentNullException.ThrowIfNull(value);
             EnsureAccessControlSupported();
+            IdentityLifetime.Invalidate();
             _objectSecurity = value;
             _objectSecurityChanged = true;
             CommitIfNotCaching();
@@ -423,6 +428,7 @@ public class DirectoryEntry : Component
             property.ResetChanged();
         }
 
+        IdentityLifetime.Invalidate();
         _pendingPropertyChanges.Clear();
 
         // A successful SetInfo mirrors ADSI: the next managed property access
@@ -695,6 +701,7 @@ public class DirectoryEntry : Component
     public void RefreshCache()
     {
         var refreshed = ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true);
+        IdentityLifetime.Invalidate();
         _pendingPropertyChanges.Clear();
         _properties = refreshed;
         _objectSecurity = null;
@@ -716,6 +723,7 @@ public class DirectoryEntry : Component
                 "The newly created directory entry could not be read back from the directory.");
         }
 
+        IdentityLifetime.Invalidate();
         _properties = refreshed;
         _objectSecurity = null;
         _objectSecurityChanged = false;
@@ -776,6 +784,7 @@ public class DirectoryEntry : Component
 
         if (propertyNames.Contains("nTSecurityDescriptor", StringComparer.OrdinalIgnoreCase))
         {
+            IdentityLifetime.Invalidate();
             _objectSecurity = null;
             _objectSecurityChanged = false;
         }
@@ -936,6 +945,8 @@ public class DirectoryEntry : Component
         string[] requestedProperties,
         bool loadDefaultProperties = false)
     {
+        ThrowIfDisposed();
+        if (PropertyReadOverride is { } read) return read(requestedProperties, loadDefaultProperties);
         var connection = GetConnection();
         var request = new SearchRequest(
             _path.DistinguishedName,
@@ -1286,6 +1297,7 @@ public class DirectoryEntry : Component
 
     private void ResetBinding(LdapPath path, string? pathText = null)
     {
+        using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
         _path = path;
         _pathText = pathText ?? path.ToString();
@@ -1298,6 +1310,7 @@ public class DirectoryEntry : Component
 
     private void ResetCredentialBinding()
     {
+        using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
         ResetConnection();
         // Unsaved children retain creation values; persisted bindings discard
@@ -1323,6 +1336,7 @@ public class DirectoryEntry : Component
 
     private void ResetConnection()
     {
+        using var identityChange = IdentityLifetime.Change();
         SchemaFilterNames = Array.Empty<string?>();
         _boundDistinguishedName = null;
         _connection?.Dispose();
@@ -1333,6 +1347,7 @@ public class DirectoryEntry : Component
 
     private void Unbind()
     {
+        using var identityChange = IdentityLifetime.Change();
         _options?.Reset();
         ResetConnection();
         _pendingPropertyChanges.Clear();
@@ -1352,6 +1367,7 @@ public class DirectoryEntry : Component
     /// <summary>Releases the LDAP connection held by this entry.</summary>
     protected override void Dispose(bool disposing)
     {
+        using var identityChange = IdentityLifetime.Change();
         if (!_disposed)
         {
             if (disposing)

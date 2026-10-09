@@ -167,4 +167,6 @@ evidence to 3,517 rows. Shared descriptor mutations reconcile with retained raw/
 state, while locks, dirty flags and read contexts remain wrapper-local. One pinned invalid-enum
 case preserves atomic rollback instead of native partial failure; all 36 SDDL refusals remain.
 This completes the staged facade member slice, not the full AD hierarchy or transport cutover.
-Context-bound identity resolution and reviewed raw write preparation remain the next dependencies.
+The next [context resolver/raw-preparation dependency](issue-226-identity-context-status.md) now
+has a staged implementation and controlled tests. Public commit-mask/Add choices, the
+PrincipalContext adapter and coordinated AD transport cutover remain outstanding.

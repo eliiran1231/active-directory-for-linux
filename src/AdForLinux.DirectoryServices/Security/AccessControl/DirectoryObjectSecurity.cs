@@ -14,7 +14,7 @@ namespace AdForLinux.Security.AccessControl
     /// <summary>
     /// Managed ACL wrapper for directories. Base for System.DirectoryServices.ActiveDirectorySecurity.
     /// </summary>
-    public abstract class DirectoryObjectSecurity : ObjectSecurity
+    public abstract partial class DirectoryObjectSecurity : ObjectSecurity
     {
         protected DirectoryObjectSecurity()
             : base(true, true)
@@ -50,6 +50,8 @@ namespace AdForLinux.Security.AccessControl
 
         private AuthorizationRuleCollection GetRules(bool access, bool includeExplicit, bool includeInherited, System.Type targetType)
         {
+            RequireRetrievedSection(access ? AdForLinux.DirectoryServices.SecurityMasks.Dacl : AdForLinux.DirectoryServices.SecurityMasks.Sacl);
+            if (targetType == typeof(NTAccount)) return GetTranslatedRules(access, includeExplicit, includeInherited);
             ReadLock();
 
             try
@@ -259,17 +261,20 @@ namespace AdForLinux.Security.AccessControl
         //
         private bool ModifyAccess(AccessControlModification modification, ObjectAccessRule rule, out bool modified)
         {
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
+            if ((uint)modification > (uint)AccessControlModification.RemoveSpecific) throw new ArgumentOutOfRangeException(nameof(modification));
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             var changed = false;
-            var result = FacadeMutation.Run(() =>
+            var result = prepared.Run(() =>
             {
                 CaptureDirtyFlags();
-                return ModifyAccessCore(modification, rule, out changed);
+                return ModifyAccessCore(modification, rule, prepared.Sid, out changed);
             });
             modified = changed;
             return result;
         }
 
-        private bool ModifyAccessCore(AccessControlModification modification, ObjectAccessRule rule, out bool modified)
+        private bool ModifyAccessCore(AccessControlModification modification, ObjectAccessRule rule, SecurityIdentifier sid, out bool modified)
         {
             bool result = true;
 
@@ -304,7 +309,6 @@ namespace AdForLinux.Security.AccessControl
                 }
             }
 
-            SecurityIdentifier sid = (SecurityIdentifier)rule.IdentityReference.Translate(typeof(SecurityIdentifier));
 
             Debug.Assert(SecurityDescriptor.DiscretionaryAcl != null);
             if (rule.AccessControlType == AccessControlType.Allow)
@@ -412,17 +416,20 @@ namespace AdForLinux.Security.AccessControl
         //
         private bool ModifyAudit(AccessControlModification modification, ObjectAuditRule rule, out bool modified)
         {
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
+            if ((uint)modification > (uint)AccessControlModification.RemoveSpecific) throw new ArgumentOutOfRangeException(nameof(modification));
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             var changed = false;
-            var result = FacadeMutation.Run(() =>
+            var result = prepared.Run(() =>
             {
                 CaptureDirtyFlags();
-                return ModifyAuditCore(modification, rule, out changed);
+                return ModifyAuditCore(modification, rule, prepared.Sid, out changed);
             });
             modified = changed;
             return result;
         }
 
-        private bool ModifyAuditCore(AccessControlModification modification, ObjectAuditRule rule, out bool modified)
+        private bool ModifyAuditCore(AccessControlModification modification, ObjectAuditRule rule, SecurityIdentifier sid, out bool modified)
         {
             bool result = true;
 
@@ -457,7 +464,6 @@ namespace AdForLinux.Security.AccessControl
                 }
             }
 
-            SecurityIdentifier sid = (SecurityIdentifier)rule.IdentityReference.Translate(typeof(SecurityIdentifier));
 
             Debug.Assert(SecurityDescriptor.SystemAcl != null);
             switch (modification)
@@ -553,6 +559,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -571,6 +578,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -587,6 +595,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -603,6 +612,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -624,6 +634,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -650,6 +661,7 @@ namespace AdForLinux.Security.AccessControl
                 return;
             }
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -666,6 +678,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -682,6 +695,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -698,6 +712,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -714,6 +729,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
@@ -730,6 +746,7 @@ namespace AdForLinux.Security.AccessControl
         {
             ArgumentNullException.ThrowIfNull(rule);
 
+            using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
 
             try
