@@ -250,3 +250,21 @@ companion/native DirectoryServices dependency from core and AccountManagement.
 
 This implements source exposure only, not a NuGet release. Explicit Add server validation,
 ambient identity pinning, context-helper exposure and unknown SDDL boundaries remain separate.
+
+## Public snapshot and edit-session review corrections
+
+Snapshots now retain all accepted pending intent independently of retrieved coverage. A
+detached partial native import followed by an inherited/base SetOwner, SetGroup, binary/SDDL
+section import or protection edit no longer silently clips the pending section from the
+snapshot. Existing typed ACL guards and detached setter behavior remain unchanged. Export
+still requires complete coverage, and assigning pending edits outside known source/destination
+coverage still refuses. This corrects metadata, not an LDAP write bypass.
+
+Reconciliation now validates the caller-supplied wrapper's current bound resolver lifetime
+through atomic publication, even for no-op. Revoked entries/contexts and mismatched raw read
+origins refuse without changing source bytes, generation, pending intent or attachment.
+The temporary lock order is wrapper write lock, owner lifetime, then shared mutation gate;
+caller-held shared gates refuse before borrowing a lifetime. No authority is stored in a
+session, and no lookup, transport or caller factory runs in publication. Directed races
+exercise revocation before publication and lifetime retention through publication while an
+independent wrapper continues making progress.

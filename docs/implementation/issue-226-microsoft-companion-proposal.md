@@ -129,6 +129,10 @@ public sealed class MicrosoftSecurityEdit : IDisposable
 ```
 
 `CaptureSnapshot` freezes raw/original/observable bytes, coverage and pending intent. It
+reports these independently: a detached inherited/base setter can accept an edit to an
+unread section, and that pending intent remains visible without promoting retrieved coverage.
+Existing detached assignment rejects intent outside the source/destination known sections.
+No additional detached setter restriction is inferred from snapshot coverage. The snapshot
 contains no source reference, resolver, identity attachment authority, credentials, connection,
 callback or write capability. Capturing a partial read is allowed and records that coverage;
 converting it to a complete Microsoft security object still refuses. Snapshot conversion
@@ -151,6 +155,12 @@ the caller to supply the originating portable wrapper explicitly. It checks sour
 generation and attachment even for a no-op. An unrelated wrapper, shared-descriptor peer,
 rebind, refresh or stale generation refuses. Caller edits occur on the real Microsoft object;
 no companion Add/Remove/Set ACL methods are introduced.
+
+Apply also borrows the caller-supplied wrapper's **current** resolver for a local lifetime
+check held through atomic publication, including no-op. Close, disposal, entry reconfiguration,
+descriptor refresh and PrincipalContext revocation cannot be bypassed by a retained wrapper
+whose numeric attachment counter did not change. Entry read-origin provenance must match the
+current binding. The session still retains no resolver/connection; no lookup or LDAP is run.
 
 Apply is atomic in the portable state and returns the existing `D.SecurityMasks` value for
 changed sections; it never calls CommitChanges or sends LDAP. Current unambiguous owner/group,

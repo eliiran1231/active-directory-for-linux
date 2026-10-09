@@ -10,5 +10,6 @@
     <ProjectReference Include="../../src/AdForLinux.DirectoryServices.MicrosoftInterop/AdForLinux.DirectoryServices.MicrosoftInterop.csproj" />
     <Compile Include="../AdForLinux.FunctionalTests/SecurityDescriptorFixtures.cs" Link="SecurityDescriptorFixtures.cs" />
     <Compile Include="../../docs/examples/MicrosoftInteropUsage.cs" Link="MicrosoftInteropUsage.cs" />
+    <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
   </ItemGroup>
 </Project>

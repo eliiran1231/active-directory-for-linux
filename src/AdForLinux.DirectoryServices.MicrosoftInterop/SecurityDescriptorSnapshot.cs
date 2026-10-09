@@ -11,7 +11,9 @@ public sealed class SecurityDescriptorSnapshot
     private readonly A.InteropSnapshot snapshot;
     internal SecurityDescriptorSnapshot(A.InteropSnapshot snapshot) => this.snapshot = snapshot;
 
+    /// <summary>Explicitly known coverage, never promoted from stored bytes or subsequent edits.</summary>
     public SecurityMasks RetrievedSections => snapshot.Retrieved;
+    /// <summary>All accepted local pending edits, independently of coverage. This is not write authorization.</summary>
     public SecurityMasks PendingWriteSections => snapshot.Pending;
     public byte[] GetRawBinaryForm() => snapshot.Raw;
     public byte[] GetOriginalBinaryForm() => snapshot.Original;

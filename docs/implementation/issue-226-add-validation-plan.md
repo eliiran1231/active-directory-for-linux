@@ -72,8 +72,10 @@ Prerequisites to be supplied and verified by that operator:
   plus Linux for the portable path, with exact framework/package versions recorded.
   Use the same explicit principal per comparison; no ambient identity assumptions.
 - Preprovisioned disposable OU and two fixed parent fixtures: P0 with a recorded
-  baseline ACL and P1 with an additional identifiable inheritable ACE for the test
-  class. Record parent bytes and schema class GUID/defaultSecurityDescriptor before
+  baseline ACL and P1 with additional identifiable inheritable access **and audit** ACEs
+  for the test class. Record each ACE's trustee, mask, inheritance flags and class GUID;
+  the audit fixture must be present and readable before claiming to test SACL inheritance.
+  Record parent bytes and schema class GUID/defaultSecurityDescriptor before
   and after the run. The runner may not modify either parent ACL.
 - A delegated creation account with class-specific Create Child on these parents,
   ability to set the chosen mandatory attributes, and required list/read permissions.
@@ -82,6 +84,14 @@ Prerequisites to be supplied and verified by that operator:
   privilege), and Delete Child on the disposable parents to remove even children
   with empty/protected ACLs. Do not grant privileges or change memberships in the run.
   The operator must establish a cleanup route for every planned descriptor first.
+  For cell 3's protected empty DACL, parent read delegation does **not** inherit.
+  Require a per-case observer identity and demonstrated authority on the exact protected
+  descriptor under the target DC policy to read both objectGUID and every requested SD
+  section, plus an independently demonstrated individual-delete route. Record the proof
+  and identities before authorizing that case; do not assume ownership, parent read rights,
+  SACL privilege or administrator membership alone supplies all of these capabilities.
+  If the operator cannot supply that proof, cell 3 is blocked and must not create an object.
+  Do not repair its ACL after creation or waive GUID verification to achieve cleanup.
 - An explicitly chosen permitted owner SID and group SID; an unrelated owner SID
   for the negative case. Any privileged-owner comparison requires a separately
   supplied, already authorized account with the relevant restore privilege.
@@ -108,10 +118,10 @@ P's local refusals reduce actual sends. No automatic retries or repeated fuzz ca
 | Cells | Creator descriptor | Parent / purpose |
 | --- | --- | --- |
 | 1–2 | Omitted | P0 and P1: schema/token defaults and parent effect |
-| 3 | Owner/group explicit, empty protected DACL/SACL | P1: empty differs from omitted; observer cleanup required |
+| 3 | Owner/group explicit, empty protected DACL/SACL | P1: empty differs from omitted; requires proven per-case observer, GUID/SD reads and cleanup independent of inherited read delegation |
 | 4 | Complete protected populated DACL, empty SACL | P1: existing accepted baseline |
 | 5 | Same as 4, unprotected DACL | P1: isolate inheritance |
-| 6 | Same as 4, unprotected populated SACL | P1: SACL inheritance and independent observer readback |
+| 6 | Same as 4, unprotected populated SACL | P1: explicit inheritable audit fixture and independent SACL observer readback |
 | 7 | Absent DACL, otherwise explicit | P0: negative; never substitute a default |
 | 8 | NULL DACL, otherwise explicit | P0: negative; isolated domain required |
 | 9 | Same as 4, absent SACL | P0: absent-to-NULL behavior |

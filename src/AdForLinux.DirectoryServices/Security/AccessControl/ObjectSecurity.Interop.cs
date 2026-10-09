@@ -53,7 +53,7 @@ public abstract partial class ObjectSecurity
                 return new(interopSource, _securityDescriptor.MutationVersion, identityAttachment,
                     _securityDescriptor.MutationState.Descriptor.GetBinaryForm(),
                     (_readContext?.Original ?? _securityDescriptor.MutationState.OriginalDescriptor).GetBinaryForm(),
-                    FacadeMutation.Bytes(_securityDescriptor), InteropCoverage, PendingWriteSections & InteropCoverage, IsContainer, IsDS);
+                    FacadeMutation.Bytes(_securityDescriptor), InteropCoverage, PendingWriteSections, IsContainer, IsDS);
         }
         finally { ReadUnlock(); }
     }
@@ -122,14 +122,23 @@ public abstract partial class ObjectSecurity
         var candidate = CanonicalInteropImage(edited);
         var baseline = provenance.Binary;
         var snapshot = provenance.Snapshot;
+        if (Monitor.IsEntered(FacadeMutation.Gate))
+            throw new InvalidOperationException("Interop publication cannot start inside the portable mutation gate.");
+        // Borrow only the caller-supplied wrapper's current resolver. The session
+        // retains no authority. Lock order matches identity mutation publication:
+        // wrapper write lock, binding lifetime, then the shared mutation gate.
+        var read = CaptureIdentityRead();
         WriteLock();
         try
         {
-            return FacadeMutation.Run(() =>
+            SecurityMasks Publish(IdentityReadOrigin? origin) => FacadeMutation.Run(() =>
             {
                 if (snapshot.Source != interopSource || snapshot.Generation != _securityDescriptor.MutationVersion
-                    || snapshot.Attachment != identityAttachment)
+                    || snapshot.Attachment != identityAttachment || read.Attachment != identityAttachment
+                    || !ReferenceEquals(read.Resolver, identityResolver))
                     throw new InvalidOperationException("The export provenance is unrelated or stale.");
+                if (HasRawReadContext && (origin is null || RawReadOrigin != origin))
+                    throw new InvalidOperationException("The current binding does not own the retained raw read origin.");
                 if (snapshot.Retrieved != InteropAll)
                     throw new NotSupportedException("Unread sections cannot be inferred from a Microsoft descriptor.");
                 if (candidate.AsSpan().SequenceEqual(baseline)) return SecurityMasks.None;
@@ -157,6 +166,11 @@ public abstract partial class ObjectSecurity
                 }
                 return changed;
             });
+            // This checked scope holds the owner's lifetime through publication,
+            // including a no-op. No lookup, transport, virtual hook or caller factory
+            // runs here. Revocation either precedes the edit or follows its completion.
+            return read.Resolver is null ? Publish(null) : read.Resolver.Checked(() =>
+                Publish(HasRawReadContext ? read.Resolver.GetReadOrigin() : null));
         }
         finally { WriteUnlock(); }
     }
