@@ -127,7 +127,7 @@ internal static class SddlConditionCodec
         if (node.Code is >= 0xf8 and <= 0xfb)
         {
             var prefix = node.Code switch { 0xf9 => "@USER.", 0xfa => "@RESOURCE.", 0xfb => "@DEVICE.", _ => "" };
-            return prefix + EscapeName(Unicode(node.Data));
+            return prefix + (node.Code == 0xf8 ? Unicode(node.Data) : EscapeName(Unicode(node.Data)));
         }
         if (node.Code == 0x10) { var value = Unicode(node.Data); if (value.Contains('"') || value.Contains('\0')) throw Unsupported(); return "\"" + value + "\""; }
         if (node.Code == 0x18) return "#" + Convert.ToHexString(node.Data).ToLowerInvariant();
@@ -162,7 +162,7 @@ internal static class SddlConditionCodec
         if (bytes.Length % 2 != 0) throw Unsupported();
         return new UnicodeEncoding(false, false, true).GetString(bytes);
     }
-    internal static string UnescapeName(string text)
+    internal static string UnescapeName(string text, bool conditional = false)
     {
         var result = new StringBuilder();
         for (var i = 0; i < text.Length; i++)
@@ -172,13 +172,21 @@ internal static class SddlConditionCodec
             {
                 if (text.Length - i < 5 || !ushort.TryParse(text.AsSpan(i + 1, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var code) ) throw Invalid();
                 c = (char)code; i += 4;
+                if (conditional && !NeedsNameEscape(c)) throw Invalid();
                 if (c == '\0') break; // Native text conversion terminates an escaped attribute name here.
             }
             if (c == '\0') throw Invalid(); result.Append(c);
         }
         return result.ToString();
     }
-    private static string EscapeName(string text) => string.Concat(text.Select(c => (c >= 0x7f || "!&()><=|% \"".Contains(c)) ? "%" + ((int)c).ToString("x4", CultureInfo.InvariantCulture) : c.ToString()));
+    private static bool NeedsNameEscape(char c) => c < 0x21 || c >= 0x7f || "!&()><=|%,\"".Contains(c);
+    private static string EscapeName(string text) => string.Concat(text.Select(c => NeedsNameEscape(c) ? "%" + ((int)c).ToString("x4", CultureInfo.InvariantCulture) : c.ToString()));
+
+    // The recorded native simple-name class is the legacy Latin-1 alphanumeric
+    // class, not all Unicode letters/digits. All 128 high-byte characters are probed.
+    private static bool SimpleNameCharacter(char c) => char.IsAsciiLetterOrDigit(c) || ":./_".Contains(c)
+        || c is '\u00b2' or '\u00b3' or '\u00b9' or >= '\u00c0' and <= '\u00d6'
+            or >= '\u00d8' and <= '\u00f6' or >= '\u00f8' and <= '\u00ff';
 
     private sealed class Parser(string text)
     {
@@ -194,7 +202,7 @@ internal static class SddlConditionCodec
                 if (expectTerm)
                 {
                     if (Take("(")) { operators.Push(0); continue; }
-                    if (Take("!")) { operators.Push(0xa2); continue; }
+                    if (Take("!")) { if (operators.Peek() == 0xa2) throw Invalid(); operators.Push(0xa2); continue; }
                     var saved = position; var word = Word();
                     if (Operators.TryGetValue(word, out var unary) && Unary(unary))
                     {
@@ -216,7 +224,7 @@ internal static class SddlConditionCodec
                 if (!Operators.TryGetValue(token, out var code) || Unary(code)) throw Invalid();
                 var precedence = Precedence(code);
                 while (operators.Peek() != 0 && Precedence(operators.Peek()) >= precedence) Reduce();
-                if (precedence == 3)
+                if (precedence == 4)
                 {
                     if (values.Count == 0 || values.Peek().Code < 0xf8) throw Invalid();
                     var left = values.Pop(); values.Push(new Node(code, [], [left, Operand(true)]));
@@ -234,7 +242,9 @@ internal static class SddlConditionCodec
                 values.Push(new Node(code, [], children));
             }
         }
-        private static int Precedence(byte code) => code == 0xa1 ? 1 : code == 0xa0 ? 2 : code == 0xa2 ? 4 : 3;
+        // MS-DTYP 2.5.1.3: relations bind before NOT, then AND, then OR.
+        // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/d1a8392f-3f54-4fea-8233-44ede9eb198c
+        private static int Precedence(byte code) => code == 0xa1 ? 1 : code == 0xa0 ? 2 : code == 0xa2 ? 3 : 4;
         private Node Operand(bool literal, bool inComposite = false)
         {
             Space();
@@ -263,7 +273,7 @@ internal static class SddlConditionCodec
             }
             if (Take("#"))
             {
-                var hex = Word(); if (hex.Length == 0) throw Invalid(); try { return new Node(0x18, Convert.FromHexString((hex.Length % 2 == 0 ? "" : "0") + hex), []); } catch (FormatException) { throw Invalid(); }
+                var hex = Word().Replace('#', '0'); if (hex.Length == 0) throw Invalid(); try { return new Node(0x18, Convert.FromHexString((hex.Length % 2 == 0 ? "" : "0") + hex), []); } catch (FormatException) { throw Invalid(); }
             }
             var number = Word(); var bits = SddlResourceCodec.Number(number);
             var sign = number.StartsWith('+') ? (byte)1 : number.StartsWith('-') ? (byte)2 : (byte)3;
@@ -274,14 +284,29 @@ internal static class SddlConditionCodec
         }
         private Node Attribute()
         {
-            var value = Word(); byte code = 0xf8;
-            if (value.StartsWith('@'))
+            Space(); byte code = 0xf8;
+            if (Peek() == '@')
             {
-                var dot = value.IndexOf('.'); if (dot < 0) throw Invalid();
-                code = value[..dot].ToUpperInvariant() switch { "@USER" => 0xf9, "@RESOURCE" => 0xfa, "@DEVICE" => 0xfb, _ => throw Invalid() }; value = value[(dot + 1)..];
+                if (Take("@USER.")) code = 0xf9;
+                else if (Take("@RESOURCE.")) code = 0xfa;
+                else if (Take("@DEVICE.")) code = 0xfb;
+                else throw Invalid();
             }
+            var start = position;
+            while (position < text.Length)
+            {
+                var c = text[position];
+                var simple = SimpleNameCharacter(c);
+                if (code == 0xf8)
+                {
+                    if (!simple && !(c == '@' && position > start)) break;
+                }
+                else if (!simple && !(c >= 0x80 || "#$'*+-;,?@[\\]^`{}~%".Contains(c))) break;
+                position++;
+            }
+            var value = text[start..position];
             if (value.Length == 0) throw Invalid();
-            return new Node(code, Encoding.Unicode.GetBytes(UnescapeName(value)), []);
+            return new Node(code, Encoding.Unicode.GetBytes(code == 0xf8 ? value : UnescapeName(value, conditional: true)), []);
         }
         private string Operator()
         {

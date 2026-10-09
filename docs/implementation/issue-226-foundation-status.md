@@ -175,7 +175,7 @@ in the draft PR description; a passing replay alone is not fresh-native verifica
 The first evidence-only Windows run 37828649371 exposed the stale count assertions and
 incorrect raw re-import replay path; its recorder step was skipped. It is not a green result.
 
-Next required dependencies: context-bound cross-kind translation, the 35 remaining explicit
+Next required dependencies: context-bound cross-kind translation, the 36 current explicit
 SDDL limitations, ObjectSecurity/DirectoryObjectSecurity hooks/locks/dirty flags, and coherent
 raw-safe retained-state/AD integration. Descriptor data carries no credentials, connections
 or resolver authority. Existing AD classes, transport and preservation policy are unchanged.
@@ -189,3 +189,9 @@ canonical conditional output and pointer ownership now replay on both targets. T
 surface test has no missing member among its 27 mapped types. This does not fill the rest
 of the 55-type public/protected dependency closure. ObjectSecurity/DirectoryObjectSecurity,
 context-bound resolution and coherent raw/live/provenance integration remain required.
+
+The review follow-up raises current closure evidence to **3,268 rows**. It fixes conditional
+NOT precedence, hash octets and measured name/escape lexical classes. Original refusals
+remain reduced from 38 to 35, but native no-GUID ZA tail omission adds a newly discovered
+loss boundary: **36 current refusals**. Its exact case, bytes and preservation behavior are
+recorded in [SDDL progress](issue-226-sddl-progress.md#review-follow-up-precedence-name-grammar-and-native-za-tail).

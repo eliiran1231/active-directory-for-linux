@@ -22,7 +22,7 @@ The first closure probe is commit `c9ba866`; calibration is commit `bbb7249`.
 `ClosureContracts.Write` writes a separate `--closure-json` artifact. The checked-in
 [net8 recording](../research/acl-windows-oracle/results/closure-windows-net8.json)
 and [net10 recording](../research/acl-windows-oracle/results/closure-windows-net10.json)
-contain **2,564 observation rows** on .NET 8.0.31 and 10.0.12,
+contain **3,268 observation rows** on .NET 8.0.31 and 10.0.12,
 using Microsoft System.DirectoryServices 9.0.0. Runtime metadata is retained separately.
 The previous 2,224 closure rows are unchanged. The only cross-runtime differences are
 null-message IdentityNotMappedException cases 2314/2317; exact runtime-aware assertions check
@@ -34,8 +34,8 @@ pins their origin and hashes, rather than claiming original artifact ZIP bytes.
 |---|---:|---:|---:|---:|
 | Raw/common ACL constructors and behavior | 112 | 63 | 49 | 0 |
 | Raw/common descriptor constructors and behavior | 119 | 102 | 17 | 0 |
-| SDDL parse | 437 | 273 | 164 | 0 |
-| SDDL round-trip | 409 | 253 | 148 | 8 |
+| SDDL parse | 789 | 442 | 347 | 0 |
+| SDDL round-trip | 761 | 421 | 331 | 9 |
 | Host-relative SDDL semantics | 4 | 0 | 0 | 4 |
 | SDDL binary formatting | 110 | 72 | 15 | 23 |
 | SDDL exception-detail snapshots | 17 | 17 | 0 | 0 |
@@ -46,7 +46,7 @@ pins their origin and hashes, rather than claiming original artifact ZIP bytes.
 | Identity collections | 77 | 32 | 45 | 0 |
 | Mapping exception/serialization metadata | 8 | 7 | 1 | 0 |
 | SID pointer import | 40 | 6 | 34 | 0 |
-| **Total** | **2,564** | **1,955** | **574** | **35** |
+| **Total** | **3,268** | **2,292** | **940** | **36** |
 
 An exception-detail snapshot is a successful recorder operation whose payload describes the
 exception actually thrown by a native SDDL operation, including its native error code.
@@ -61,7 +61,7 @@ those require host authority and are recorded separately, without an ambient por
 
 ## Explicit SDDL limitations
 
-**35 recorded native successes deliberately require portable `NotSupportedException`.**
+**36 recorded native successes deliberately require portable `NotSupportedException`.**
 They are not counted as parity. Their registry pins exact case IDs, arguments, complete native
 row hashes and reason counts; an unreviewed new shape cannot pass through a blanket exception
 allowlist. Formatting refusals also verify that descriptor bytes remain unchanged.
@@ -69,6 +69,7 @@ allowlist. Formatting refusals also verify that descriptor bytes remain unchange
 | Reason | Rows |
 |---|---:|
 | Native omission of resource attributes on formatting | 1 |
+| Native omission of collapsed ZA callback tail on formatting | 1 |
 | Native omission of label/policy entries on formatting | 3 |
 | Host-relative LA/LG aliases | 8 |
 | Native omission of opaque bytes or flag information on formatting | 23 |
@@ -113,3 +114,10 @@ pins runs 37831311746 and 37832226853. The only runtime differences remain cases
 The [SDDL inventory](issue-226-sddl-progress.md) now fixes 35 refusals: 27 native lossy exports
 and eight host-authority aliases. Three earlier codec refusals are resolved; none were
 converted into skipped assertions. All new rows require native parity.
+
+Review probes add another 704 SDDL rows, bringing closure evidence to 3,268. The original
+35 remaining refusals persist; newly discovered case 2635 adds one loss-preserving refusal,
+so the current total is 36. [Details and exact byte counts](issue-226-sddl-progress.md#review-follow-up-precedence-name-grammar-and-native-za-tail)
+explain native ZA tail omission. [Current provenance](../research/acl-windows-oracle/results/log-derived-37840983666-provenance.json)
+records the actual source logs. Negation precedence, hash octets, local/prefixed name classes
+and percent escapes now have directed native regression coverage.

@@ -47,7 +47,7 @@ The pointer constructor follow-up closes the last declared SID member gap; no ga
 
 
 The detached ACL/descriptor follow-up is tracked in [closure status](issue-226-closure-status.md).
-Its 2,564 native observations distinguish 1,955 exact successful outcomes, 574 exact native
-exceptions and 35 explicit portable refusals. Surface parity for the 27 mapped types is an
+Its 3,268 native observations distinguish 2,292 exact successful outcomes, 940 exact native
+exceptions and 36 explicit portable refusals. Surface parity for the 27 mapped types is an
 API-shape check, not a claim of parity for deferred SDDL or of completion of ObjectSecurity,
 DirectoryObjectSecurity, context-bound resolution or the AD hierarchy cutover.

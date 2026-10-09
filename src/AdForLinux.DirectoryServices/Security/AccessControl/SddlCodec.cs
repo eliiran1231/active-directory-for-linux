@@ -127,7 +127,7 @@ internal static class SddlCodec
             var end = AceEnd(text, start);
             var ace = ParseAce(text[(start + 1)..end], system);
             aces.Add(ace);
-            if (ace is ObjectAce || text.AsSpan(start + 1).StartsWith("OA", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OD", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OU", StringComparison.Ordinal)) revision = 4;
+            if (ace is ObjectAce || text.AsSpan(start + 1).StartsWith("OA", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OD", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("OU", StringComparison.Ordinal) || text.AsSpan(start + 1).StartsWith("ZA", StringComparison.Ordinal)) revision = 4;
             start = end + 1;
         }
         var acl = new RawAcl(revision, aces.Count);
@@ -181,6 +181,7 @@ internal static class SddlCodec
         }
         var sid = ParseSid(fields[5]);
         if (type == 18 && (mask != 0 || sid.Value != "S-1-1-0")) throw Invalid();
+        var collapsedCallbackObject = type == 11 && objectFlags == 0;
         var isObject = type is >= 5 and <= 8 or 11;
         if (!isObject && objectFlags != 0)
             throw Invalid();
@@ -202,6 +203,9 @@ internal static class SddlCodec
         };
         var callback = type is 9 or 10 or 11 or 13;
         var opaque = callback ? SddlConditionCodec.Parse(fields[6]) : null;
+        // Native no-GUID ZA conversion collapses the ACE but retains four zero bytes
+        // in its opaque payload. Preserve them; text export must not silently omit them.
+        if (collapsedCallbackObject) Array.Resize(ref opaque, opaque!.Length + 4);
         return isObject ? new ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedType, callback, opaque)
             : new CommonAce(flags, qualifier, mask, sid, callback, opaque);
     }

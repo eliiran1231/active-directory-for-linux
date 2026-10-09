@@ -46,6 +46,7 @@ public partial class PortableSecurityFoundationTests
         {
             var text = arguments.GetProperty("Text").GetString();
             if (text is "O:LA" or "G:LA" or "O:LG" or "G:LG") return "host-relative authority";
+            if (operation == "SddlRoundTrip" && text == "D:(ZA;;RP;;;WD;(@User.Age == 1))") return "native collapsed callback tail omission";
             if (operation == "SddlRoundTrip" && text == "S:(RA;;;;;WD;(\"Department\",TS,0,\"Engineering\"))") return "native resource omission";
             if (operation == "SddlRoundTrip" && text is "S:(ML;;NW;;;LW)" or "S:(SP;;0;;;S-1-17-1)" or "S:(TL;;0;;;S-1-19-512-4096)")
                 return "native label/policy omission";
@@ -89,6 +90,7 @@ public partial class PortableSecurityFoundationTests
     // outcome. A fixture update cannot silently redefine what a reviewed refusal stands for.
     private static readonly Dictionary<int, string> SddlDeferredNativeHashes = new()
     {
+        [2635] = "9D1B42B7424ED12FBA9A6339009CD74A5F051AB1623368DD1EAD84107C4678E2",
         [334] = "F8D5E24F8C0BAB1A63A502A56D4448A16EACAEF80933E9F9D1022098F0729389",
         [336] = "E88713056C66540FB1319764AACCF2354FB00A940C8C44D7AEBC7AC59362796A",
         [338] = "556BE310D624AA6BBF180DDADCCDA80CA0340C1161B64055EBBE1802E09BA3F6",
@@ -150,10 +152,11 @@ public partial class PortableSecurityFoundationTests
             if (reason is not null) { reasons.Add(reason); caseIds.Add(document.RootElement.GetProperty("Case").GetInt32()); }
         }
         Assert.Equal(new[] { 334, 336, 338, 340, 655, 656, 657, 658, 659, 660, 661, 662,
-            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900 }, caseIds.Order());
-        Assert.Equal(35, reasons.Count);
+            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 2635 }, caseIds.Order());
+        Assert.Equal(36, reasons.Count);
         Assert.Equal(8, reasons.Count(r => r == "host-relative authority"));
         Assert.Equal(1, reasons.Count(r => r == "native resource omission"));
+        Assert.Equal(1, reasons.Count(r => r == "native collapsed callback tail omission"));
         Assert.Equal(3, reasons.Count(r => r == "native label/policy omission"));
         Assert.Equal(23, reasons.Count(r => r == "native opaque/flag omission"));
     }

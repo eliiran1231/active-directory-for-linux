@@ -23,6 +23,18 @@ public partial class PortableSecurityFoundationTests
             AssertPreservedCondition(original.Concat(extra).ToArray());
     }
 
+    [Fact]
+    public void No_guid_object_callback_export_refusal_retains_its_native_extra_bytes()
+    {
+        var descriptor = new A.RawSecurityDescriptor("D:(ZA;;RP;;;WD;(@User.Age == 1))");
+        var before = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(before, 0);
+        Assert.Throws<NotSupportedException>(() => descriptor.GetSddlForm(AccessControlSections.All));
+        var after = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(after, 0);
+        Assert.Equal(before, after);
+        var copy = new A.RawSecurityDescriptor(before, 0);
+        copy.GetBinaryForm(after, 0); Assert.Equal(before, after);
+    }
+
     private static void AssertPreservedCondition(byte[] payload)
     {
         var acl = new A.RawAcl(2, 1);
