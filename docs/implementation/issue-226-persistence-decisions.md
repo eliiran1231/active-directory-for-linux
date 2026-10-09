@@ -68,3 +68,8 @@ parent/schema defaults and inheritance, server-adjusted owner/group, SACL/privil
 and successful/failed creation followed by readback against the Microsoft client. No such
 operation is performed or authorized here. Ambient identity pinning remains a distinct
 authentication-context/provider/OS validation issue, not a limitation of carrying bytes in Add.
+
+The [explicit Add source review and opt-in validation plan](issue-226-add-validation-plan.md)
+now records the existing complete protected request subset, exact local retention/refusal
+tests and the remaining server-dependent forms. This is a refinement of the validation
+work, not approval to run live AD or expose the proposed MicrosoftInterop companion.

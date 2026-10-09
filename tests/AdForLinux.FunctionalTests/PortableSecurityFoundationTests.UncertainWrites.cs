@@ -47,11 +47,15 @@ public partial class PortableSecurityFoundationTests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
-    public void Entry_uncertain_creation_never_adopts_same_dn_or_replays_add_after_readback(bool matchingAttributes)
+    [InlineData(false, false)] [InlineData(false, true)]
+    [InlineData(true, false)] [InlineData(true, true)]
+    public void Entry_uncertain_creation_never_adopts_same_dn_or_replays_add_after_readback(bool matchingAttributes, bool explicitDescriptor)
     {
         using var fixture = new EntryWriteFixture();
         using var child = DirectoryEntry.NewChild(fixture.Entry, "CN=child", "user");
+        var raw = Build(U1, U1, Acl(4), Acl(4), extraControl: 0x3000);
+        if (explicitDescriptor) child.ObjectSecurity = new ActiveDirectorySecurity(raw, AllEntrySections);
+        var assigned = explicitDescriptor ? child.ObjectSecurity : null;
         var adds = 0;
         child.WriteRequestOverride = request =>
         { Assert.IsType<AddRequest>(request); adds++; throw new TimeoutException("Accepted Add, lost response."); };
@@ -72,6 +76,11 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(1, adds);
         Assert.True(reads <= 1);
         Assert.True(child.Properties["objectClass"].Changed);
+        if (explicitDescriptor)
+        {
+            Assert.Same(assigned, child.ObjectSecurity);
+            Assert.Equal(raw, assigned!._securityDescriptor.MutationState.Descriptor.GetBinaryForm());
+        }
     }
 
     [Fact]

@@ -71,6 +71,12 @@ explicit creation. Controlled request capture establishes what this implementati
 it does not establish server defaults, privilege handling, inheritance, normalization or
 readback parity. Those require separately authorized live AD validation.
 
+The [explicit Add validation plan](issue-226-add-validation-plan.md) separates request
+byte preservation from server transformations, records the Microsoft managed/ADSI source
+boundary, and specifies an opt-in comparison with disposable-object scope and cleanup.
+Additional offline coverage pins hidden-ACL refusal, raw storage retention, duplicate
+descriptor/control rejection and uncertain creation with an explicitly assigned descriptor.
+
 ## Validation and remaining work
 
 The new offline tests capture the production request planner through internal transport

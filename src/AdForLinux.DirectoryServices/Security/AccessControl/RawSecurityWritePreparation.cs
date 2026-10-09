@@ -77,8 +77,11 @@ internal static class RawSecurityWritePreparation
         const EntryMasks all = EntryMasks.Owner | EntryMasks.Group | EntryMasks.Dacl | EntryMasks.Sacl;
         if (known != all) throw new NotSupportedException("Creation requires explicit knowledge of every descriptor section.");
         var raw = AdForLinux.DirectoryServices.Security.Core.SecurityDescriptor.Parse(explicitDescriptor, known);
-        // Complete protected input can be transmitted without inventing default or
-        // inheritance semantics. Broader explicit creation remains a validation gap.
+        // Dacl/Sacl expose semantic presence, not hidden storage with PRESENT clear.
+        // This gate proves only a complete raw request, not byte-identical AD storage:
+        // protection does not prevent server ACE standardization, inherited-ACE
+        // recomputation or RM-control handling. Never project/repair bytes here.
+        // Broader explicit creation remains a server-validation gap.
         if (raw.Owner is null || raw.Group is null || raw.Dacl is null || raw.Sacl is null || (raw.Control & 0x3000) != 0x3000)
             throw new NotSupportedException("Explicit creation with omitted, NULL or inheriting sections awaits validated server-default semantics.");
         return raw.GetBinaryForm();
