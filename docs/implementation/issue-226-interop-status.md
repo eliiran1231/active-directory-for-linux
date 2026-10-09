@@ -86,11 +86,16 @@ combinations, collections, unsupported fields/subclasses, target loss, callback 
 unique DACL/SACL mask edits, unrelated merged/inactive raw preservation, retained provenance,
 shared identity and compound rollback. Windows uses actual framework identities, subclasses of
 framework rule bases, and native CommonSecurityDescriptor SetAccess/SetAudit calls; Linux uses
-controlled portable values. No Microsoft AD-rule conversion or all-seven-specialized-subtype
-policy is claimed. Native oracle recordings remain unchanged.
+controlled portable values. Those tests alone do not claim Microsoft AD-rule conversion or
+all-seven-specialized-subtype coverage. Native oracle recordings remain unchanged.
 
-Next dependencies: ambiguous/multiple-contributor and structural ACL edit-back; recognized AD
-and specialized rule mappings and Microsoft AD-security conversion after coherent portable
-AD-class cutover; reviewed companion friend-access and final public names. The four pending
+The [AD rule matrix](issue-226-ad-rule-interop-status.md) now stages exact subtype snapshots
+and current-hierarchy conversion for all nine AD rule classes and their 45 constructors,
+with actual Microsoft comparisons on Windows. Public portable AD materialization still waits
+for coherent hierarchy/consumer cutover; no parallel AD rule hierarchy was introduced.
+
+Next dependencies: ambiguous/multiple-contributor and structural ACL edit-back; Microsoft
+AD-security conversion and coherent portable AD-class cutover; reviewed companion friend-access
+and final public names. The four pending
 persistence policies, live AD and any effective-access evaluator are outside this slice.
 Every existing protected hook remains intact.

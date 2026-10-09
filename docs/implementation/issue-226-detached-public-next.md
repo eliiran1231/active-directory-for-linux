@@ -17,7 +17,9 @@ subset is staging only, never the final compatibility contract.
 The [internal Microsoft interop boundary](issue-226-interop-status.md) now stages data-only
 snapshot provenance, strict detached round-trip validation, identity/rule/collection field
 conversion, owner/group edit-back and unique-contributor ACL mask edits. Structural/ambiguous
-ACL reconciliation, AD-specific mappings and final public companion naming remain dependencies.
+ACL reconciliation and final public companion naming remain dependencies. The
+[AD rule snapshot matrix](issue-226-ad-rule-interop-status.md) covers all nine current AD rule
+types without switching their public hierarchy or claiming portable AD construction is complete.
 
 ## Recommended buildable sequence
 
