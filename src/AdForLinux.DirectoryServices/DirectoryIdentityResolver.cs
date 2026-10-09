@@ -73,7 +73,11 @@ public sealed class DirectoryIdentityResolver
         foreach (var account in identities.OfType<NTAccount>())
             _ = AdIdentityLookup.EscapeText(account.Value); // reject malformed UTF-16 before opening a session
         if (!entry.TryGetTarget(out var owner)) throw new ObjectDisposedException(nameof(DirectoryEntry));
-        var options = Checked(() => owner.BuildOptions());
+        var (options, target) = Checked(() => (owner.BuildOptions(), owner.IdentityTarget));
+        if (options.Port is 3268 or 3269)
+            throw new NotSupportedException("Global Catalog identity lookup requires explicit domain routing and is not supported.");
+        if (string.IsNullOrWhiteSpace(target))
+            throw new NotSupportedException("Identity lookup requires an entry within a verified domain naming context.");
         if (mutation && (options.IsAnonymous || options.AuthenticationType is not (AuthType.Basic or AuthType.Negotiate)
             || string.IsNullOrEmpty(options.BindDn) || string.IsNullOrEmpty(options.BindPassword)))
             throw new NotSupportedException("Name-based mutation requires explicit authenticated credentials; ambient identity pinning is not established.");
@@ -83,7 +87,7 @@ public sealed class DirectoryIdentityResolver
         var deadline = Stopwatch.StartNew();
         using var session = owner.IdentitySessionFactory(options);
         Checked(() => true);
-        var lookup = new AdIdentityLookup(session, options.Timeout - deadline.Elapsed, () => Checked(() => true));
+        var lookup = new AdIdentityLookup(session, options.Timeout - deadline.Elapsed, () => Checked(() => true), target);
         var cache = new Dictionary<IdentityReference, IdentityReference?>();
         var result = new IdentityReference[identities.Length];
         var missing = new IdentityNotMappedException();

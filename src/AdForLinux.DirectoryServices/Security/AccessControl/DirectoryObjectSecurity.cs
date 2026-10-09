@@ -558,6 +558,7 @@ namespace AdForLinux.Security.AccessControl
         protected void AddAccessRule(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -577,6 +578,7 @@ namespace AdForLinux.Security.AccessControl
         protected void SetAccessRule(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -594,6 +596,7 @@ namespace AdForLinux.Security.AccessControl
         protected void ResetAccessRule(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -611,6 +614,7 @@ namespace AdForLinux.Security.AccessControl
         protected bool RemoveAccessRule(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -633,6 +637,7 @@ namespace AdForLinux.Security.AccessControl
         protected void RemoveAccessRuleAll(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -655,6 +660,7 @@ namespace AdForLinux.Security.AccessControl
         protected void RemoveAccessRuleSpecific(ObjectAccessRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Dacl);
 
             if (SecurityDescriptor == null)
             {
@@ -677,6 +683,7 @@ namespace AdForLinux.Security.AccessControl
         protected void AddAuditRule(ObjectAuditRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -694,6 +701,7 @@ namespace AdForLinux.Security.AccessControl
         protected void SetAuditRule(ObjectAuditRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -711,6 +719,7 @@ namespace AdForLinux.Security.AccessControl
         protected bool RemoveAuditRule(ObjectAuditRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -728,6 +737,7 @@ namespace AdForLinux.Security.AccessControl
         protected void RemoveAuditRuleAll(ObjectAuditRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();
@@ -745,6 +755,7 @@ namespace AdForLinux.Security.AccessControl
         protected void RemoveAuditRuleSpecific(ObjectAuditRule rule)
         {
             ArgumentNullException.ThrowIfNull(rule);
+            RequireRetrievedSection(AdForLinux.DirectoryServices.SecurityMasks.Sacl);
 
             using var prepared = PrepareIdentityMutation(rule.IdentityReference);
             WriteLock();

@@ -21,6 +21,7 @@ public partial class PortableSecurityFoundationTests
         internal int Opened, Closed;
         internal Action<SearchRequest>? BeforeResponse;
         internal Func<SearchRequest, IReadOnlyList<IdentitySearchRow>>? Results;
+        internal Func<SearchRequest, IReadOnlyList<IdentitySearchRow>?>? MetadataResults;
         internal string Name = "alice";
         internal IdentityFixture(bool ambient = false)
         {
@@ -35,8 +36,10 @@ public partial class PortableSecurityFoundationTests
         }
         internal DirectoryIdentityResolver Resolver => DirectoryIdentityResolver.ForEntry(Entry);
         internal static IdentitySearchRow Row(params (string Name, object[] Values)[] values)
-            => new(values.ToDictionary(v => v.Name, v => v.Values, StringComparer.OrdinalIgnoreCase));
-        internal IdentitySearchRow Account(byte[]? sid = null) => Row(("objectSid", [sid ?? U1]), ("sAMAccountName", [Name]), ("objectClass", ["top", "person", "user"]));
+            => new(values.ToDictionary(v => v.Name, v => v.Values, StringComparer.OrdinalIgnoreCase),
+                values.FirstOrDefault(v => v.Name == "distinguishedName").Values?.SingleOrDefault() as string);
+        internal IdentitySearchRow Account(byte[]? sid = null) => Row(("objectSid", [sid ?? U1]), ("sAMAccountName", [Name]),
+            ("objectClass", ["top", "person", "user"]), ("distinguishedName", ["CN=alice,DC=example,DC=com"]));
         private sealed class Session(IdentityFixture fixture) : IIdentitySearchSession
         {
             public IReadOnlyList<IdentitySearchRow> Search(SearchRequest request, TimeSpan remaining)
@@ -45,8 +48,10 @@ public partial class PortableSecurityFoundationTests
                 Assert.True(remaining > TimeSpan.Zero && remaining <= TimeSpan.FromSeconds(30));
                 Assert.Equal(2, request.SizeLimit);
                 fixture.Requests.Add(request); fixture.BeforeResponse?.Invoke(request);
+                if (fixture.MetadataResults?.Invoke(request) is { } metadata) return metadata;
                 if (request.DistinguishedName == string.Empty)
-                    return [Row(("defaultNamingContext", ["DC=example,DC=com"]), ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]))];
+                    return [Row(("defaultNamingContext", ["DC=example,DC=com"]), ("configurationNamingContext", ["CN=Configuration,DC=example,DC=com"]),
+                        ("namingContexts", ["DC=example,DC=com", "CN=Configuration,DC=example,DC=com"]), ("supportedControl", ["1.2.840.113556.1.4.1339"]))];
                 if (request.DistinguishedName.StartsWith("CN=Partitions,", StringComparison.Ordinal))
                     return [Row(("nCName", ["DC=example,DC=com"]), ("nETBIOSName", ["EXAMPLE"]), ("dnsRoot", ["example.com"]), ("systemFlags", ["3"]))];
                 return fixture.Results?.Invoke(request) ?? [fixture.Account()];
@@ -106,7 +111,7 @@ public partial class PortableSecurityFoundationTests
         {
             "missing" => [], "ambiguous" => [fixture.Account(), fixture.Account()],
             "foreign" => [IdentityFixture.Row(("objectSid", [U1]), ("sAMAccountName", ["alice"]), ("objectClass", ["foreignSecurityPrincipal"]))],
-            "hidden" => [IdentityFixture.Row(("objectClass", ["user"]))],
+            "hidden" => [IdentityFixture.Row(("objectClass", ["user"]), ("distinguishedName", ["CN=alice,DC=example,DC=com"]))],
             "wrong-sid" => [fixture.Account(U2)],
             "timeout" => throw new TimeoutException("controlled timeout"),
             _ => throw new UnauthorizedAccessException("controlled denial")

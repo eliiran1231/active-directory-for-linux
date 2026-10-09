@@ -45,6 +45,37 @@ Queries stay within this verified domain. Binary SID and UTF-8 text assertions e
 octet; malformed UTF-16 is rejected before connecting. Names support qualified NetBIOS/DNS-domain
 SAM values, bare SAM names in that single domain, and exact UPN matching without UPN-based routing.
 
+The scope-review correction rejects standard GC ports 3268/3269 before opening a session.
+The entry must have a nonempty DN within the verified default domain; the default NC is not
+silently adopted for an entry in another partition. RootDSE must advertise namingContexts and
+support for the critical single-NC [domain-scope control](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/ba5f20c6-7753-417c-b93d-e66e722458ed).
+Every account subtree search carries that control. The transport retains each result's LDAP
+distinguished name, and qualification/mutation checks its most-specific advertised naming
+context before accepting the SID or emitting a name. Child-domain DC RDNs also refuse when
+not advertised. Checks walk escaped-comma-aware RDN boundaries, not raw string suffixes;
+unrecognized equivalent DN spellings refuse conservatively. Configuration, application and
+other-domain entries never inherit the default domain's NetBIOS label.
+
+Controlled reproduction against `10b18078` failed 28 of the initial 30 boundary tests; the
+existing application-partition systemFlags rejection accounted for the two passes. The final
+42-case scope regression set covers both SID-to-name and bare-name mutation refusals, standard
+GC endpoints, advertised/unadvertised child NCs, DC/CN-named application partitions, configuration
+and foreign NCs, missing metadata/DNs, escaped suffixes and successful ordinary/escaped RDNs.
+Failure leaves raw/observable state, versions and dirty flags unchanged. No new domain-routing
+policy or live GC/AD behavior is claimed by these controlled tests.
+
+Typed access/audit helpers now check retrieved DACL/SACL coverage before preparing a
+name-based mutation. Fourteen routes assert zero opened sessions and zero queries for unread
+sections, plus unchanged descriptor state. Eleven failed against the prior placement; the
+three public routes already rejected early. Later version/context checks remain in place.
+
+The shared connection factory now owns a newly allocated connection through all configuration
+steps, including authentication type, signing/sealing and StartTLS, and disposes it if setup
+throws. Three controlled lifetime tests cover early/late setup failure, exact exception
+propagation and successful ownership transfer. They exercise the actual factory ownership
+guard with a disposable fake; they do not require a native LDAP library or a server. TLS and
+authentication policy are unchanged.
+
 Queries have a size limit of two to detect ambiguity and share a decreasing operation deadline,
 including connection establishment time. Partial/failed/referral responses never become unique
 matches. ForeignSecurityPrincipal names are refused; CN/displayName never substitute for an
