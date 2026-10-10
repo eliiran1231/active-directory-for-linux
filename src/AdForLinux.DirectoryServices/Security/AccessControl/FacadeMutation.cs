@@ -198,6 +198,28 @@ public sealed partial class CommonSecurityDescriptor
             _rawSd.Owner = owner; _rawSd.Group = group; _rawSd.SetFlags(flags);
             _rawSd.DiscretionaryAcl = dacl?.RawAcl; _rawSd.SystemAcl = sacl?.RawAcl; };
     }
+    // Native setters replace live ACL references and mark wrapper flags even for
+    // identical input. Their intermediate present-bit transitions are not raw edits.
+    // Keep native live effects, but retain data/provenance when the complete supplied
+    // image is identical and observable contents change only by native NULL/absent
+    // present-bit normalization. Raw presence remains distinct from that live view.
+    internal void AssignPreservingIdenticalRaw(byte[] supplied, Action assign)
+    {
+        var state = MutationState;
+        if (!supplied.AsSpan().SequenceEqual(state.Descriptor.GetBinaryForm())) { assign(); return; }
+        var observable = FacadeMutation.Bytes(this);
+        var dacl = _dacl; var sacl = _sacl;
+        var version = MutationVersion; var versions = (long[])sectionVersions.Clone();
+        assign();
+        var after = FacadeMutation.Bytes(this);
+        if (observable.Length != after.Length || !observable.AsSpan(0, 2).SequenceEqual(after.AsSpan(0, 2))
+            || !observable.AsSpan(4).SequenceEqual(after.AsSpan(4))
+            || ((System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(observable.AsSpan(2))
+                ^ System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(after.AsSpan(2))) & ~0x14) != 0) return;
+        MutationState = state; MutationVersion = version; sectionVersions = versions;
+        if (!ReferenceEquals(dacl, _dacl)) _dacl?.Retain(state);
+        if (!ReferenceEquals(sacl, _sacl)) _sacl?.Retain(state);
+    }
     private void Publish(C.AclMutationEngine state)
     {
         if (ReferenceEquals(state, MutationState)) return;

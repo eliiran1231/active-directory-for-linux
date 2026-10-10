@@ -45,14 +45,17 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net10.0.json.gz" LogicalName="AclOracle.RetainedExport.net10.json.gz" />
     <EmbeddedResource Include="SddlRetainedExportDifferences.json" LogicalName="AclOracle.RetainedExport.Differences.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net8.0.json.gz" LogicalName="AclOracle.Composition.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-states-net8.0.json.gz" LogicalName="AclOracle.ReplacementStates.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-net8.0.json.gz" LogicalName="AclOracle.Replacement.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net8.0.json.gz" LogicalName="AclOracle.Alarm.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net8.0.json.gz" LogicalName="AclOracle.RawContract.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net10.0.json.gz" LogicalName="AclOracle.Composition.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-states-net10.0.json.gz" LogicalName="AclOracle.ReplacementStates.net10.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-net10.0.json.gz" LogicalName="AclOracle.Replacement.net10.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net10.0.json.gz" LogicalName="AclOracle.Alarm.net10.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net10.0.json.gz" LogicalName="AclOracle.RawContract.net10.json.gz" />
     <EmbeddedResource Include="SddlCompositionRefusals.json" LogicalName="AclOracle.Composition.Refusals.json" />
+    <EmbeddedResource Include="SddlReplacementStateRefusals.json" LogicalName="AclOracle.ReplacementStates.Refusals.json" />
     <EmbeddedResource Include="SddlReplacementRefusals.json" LogicalName="AclOracle.Replacement.Refusals.json" />
     <EmbeddedResource Include="SddlAlarmRefusals.json" LogicalName="AclOracle.Alarm.Refusals.json" />
     <EmbeddedResource Include="SddlRawContractRefusals.json" LogicalName="AclOracle.RawContract.Refusals.json" />

@@ -30,6 +30,8 @@ jobs:
       - name: Record absent NULL empty and retained integer replacement states
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement-states
+      - name: Verify exact replacement state evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/replacement-states/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-replacement-states-${{ matrix.framework }}.json.gz
       - name: Record selected ACL replacement and shared-alias scenarios
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement

@@ -1,0 +1,28 @@
+{
+  "NativeCasesPerRuntime": 24,
+  "StateTransitionCases": 18,
+  "RetainedIntegerCases": 6,
+  "NativeRuntimeAgreement": true,
+  "OperationSteps": 168,
+  "CompletePortableExactRows": 8,
+  "PinnedDifferenceRows": 16,
+  "PinnedScalarFields": 530,
+  "NativeSuccessfulSteps": 144,
+  "PortableSuccessfulSteps": 126,
+  "MalformedInputFailures": 24,
+  "NonassignableControlRefusals": 12,
+  "UnreviewedReplacementRefusals": 6,
+  "IntegerExportRefusals": 6,
+  "PartialCoverageCases": 48,
+  "FrozenAllocationGaps": [
+    25,
+    243,
+    623
+  ],
+  "CorrectedRawStateScenarios": 6,
+  "NegativeControlFailedTests": 18,
+  "NegativeControlPassedTests": 127,
+  "NewTests": 73,
+  "ProductionChanges": true,
+  "PreservationPolicyChanged": false
+}

@@ -130,7 +130,8 @@ namespace AdForLinux.Security.AccessControl
             RequireRetrievedSection(RawSecurityWritePreparation.Masks(includeSections & AccessControlSections.All));
             FacadeMutation.ValidateSectionImport(newOne);
             CaptureDirtyFlags();
-            UpdateWithNewSecurityDescriptorCore(newOne, includeSections);
+            _securityDescriptor.AssignPreservingIdenticalRaw(newOne.PreservedInput(),
+                () => UpdateWithNewSecurityDescriptorCore(newOne, includeSections));
         });
 
         internal void CaptureDirtyFlags()

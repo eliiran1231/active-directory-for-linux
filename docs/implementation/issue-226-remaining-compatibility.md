@@ -1,5 +1,17 @@
 # PR 228 readiness and remaining compatibility
 
+## NULL/absent/empty replacement follow-up
+
+The [24-case state matrix](issue-226-replacement-states.md) records native NULL,
+absent and empty transitions plus accepted Int8/16/32 callback controls. Eight rows
+match completely; 16 pin 530 scalar preservation differences. Forty-eight portable
+partial-coverage cases keep retrieved metadata separate from pending intent.
+Identical absent-DACL/NULL-SACL assignment now preserves raw bytes and generation
+while retaining native live effects. Incoming AR and unreviewed-data guards remain.
+Unmeasured flag combinations, inherited-entry removal through protection, irregular
+layouts, actual partial server reads and integer export remain open. Allocation
+compatibility gaps remain frozen. This is a bounded slice, not completion.
+
 ## Latest selected-ACL replacement evidence
 
 The [selected replacement matrix](issue-226-selected-replacement.md) measures 64
