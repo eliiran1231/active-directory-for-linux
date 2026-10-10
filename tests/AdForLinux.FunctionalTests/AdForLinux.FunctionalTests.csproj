@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
     <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
   </ItemGroup>
 

@@ -591,3 +591,12 @@ heads/jobs and recording hashes are in `results/log-derived-38000157544-provenan
 The native omission of FL during ordinary SDDL export is retained as measured evidence,
 not silently declared portable parity; see the implementation SDDL status for its 118 pinned
 new preservation refusals.
+
+
+### Prepared boundary investigation (not recorded)
+
+The opt-in `--sddl-boundary-jsonl PATH [START COUNT]` mode prepares 220 size, Unicode/NUL
+and combined-invalid-input probes. It is separate from the normal closure recorder and
+workflow. No Windows outcomes are checked in for these probes. See the
+[local boundary plan](../../implementation/issue-226-sddl-boundary-plan.md) for bounded batches,
+exact UTF-16 evidence encoding and the next authorized native-run requirements.

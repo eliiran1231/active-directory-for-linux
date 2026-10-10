@@ -91,6 +91,10 @@ jobs:
           $recordedRows = ConvertTo-Json -InputObject $recordedClosure.Observations -Depth 50 -Compress
           if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft closure observations differ from committed evidence.' }
           Write-Output "Verified $($freshClosure.Observations.Count) fresh closure observations."
+      - name: Record bounded SDDL boundary observations
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}'
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4

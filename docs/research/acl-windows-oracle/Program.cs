@@ -13,6 +13,16 @@ if (!OperatingSystem.IsWindows())
     return 2;
 }
 
+// Separate opt-in boundary batches leave the normal 4,308-row closure recorder unchanged.
+if (args.Length > 0 && args[0] == "--sddl-boundary-jsonl")
+{
+    if (args.Length is not (2 or 4)) throw new ArgumentException("Usage: --sddl-boundary-jsonl PATH [START COUNT]");
+    var start = args.Length == 4 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 0;
+    var count = args.Length == 4 ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 8;
+    SddlBoundaryContracts.Write(args[1], start, count);
+    return 0;
+}
+
 Console.WriteLine($"Runtime: {RuntimeInformation.FrameworkDescription}; {RuntimeInformation.RuntimeIdentifier}");
 Console.WriteLine($"OS: {RuntimeInformation.OSDescription}");
 Console.WriteLine($"Microsoft assembly: {typeof(M.ActiveDirectorySecurity).Assembly.GetName()}");
