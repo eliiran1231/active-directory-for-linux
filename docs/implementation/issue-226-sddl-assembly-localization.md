@@ -1,4 +1,4 @@
-# Native SDDL assembly localization: fourteen bounded witnesses
+# Native SDDL assembly localization and fixed-total token experiment
 
 The 25 initial, 243 directed and overlapping 623 expanded differences remain frozen.
 Existing observations disprove a monotonic string/final-size threshold: at length 32702,
@@ -91,7 +91,7 @@ from a threshold. No production SDDL change or further probe expansion follows t
 The 25/243/overlapping 623 portability gaps remain unresolved; a testable model of the
 whole-converter allocation/order behavior is still required before implementing parity.
 
-## One fixed-total token-partition experiment (results pending)
+## One fixed-total token-partition experiment: unchanged outcomes
 
 Six new inputs keep the XA token sequence and 32,703 total decoded UTF-16 units
 fixed: attribute/literal splits (1,32702), (16351,16352), (32702,1), each alone and
@@ -107,5 +107,42 @@ The same guard, 15-second process and memory bounds apply; no ACL is installed.
 
 Partition-dependent outcomes would disprove ordered final ACE sizes alone as
 a sufficient model. Unchanged outcomes establish no formula and end this
-experiment family. The first push records actual native evidence; it does not
-invent a baseline or change any production threshold or preservation policy.
+experiment family. The first push records actual native evidence without changing any production
+threshold or preservation policy.
+
+
+At capture head `296c9baa31160f26e0b4ba6b673d275f4db13b47`,
+[run 38089527663](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38089527663)
+passed all four jobs. Each runtime recorded 24 rows. Every direct compile control
+was established: exact 65,444-byte XA ACE, `artx` signature, attribute token 0xF9,
+string token 0x10, equality 0x80, two four-byte length fields and three zero pad bytes.
+The length-field values in bytes were (2,65404), (32702,32704), (65404,2).
+All guards and source ACEs remained intact. Direct replay succeeded in all six cases.
+
+| Attribute / literal UTF-16 units | Whole SDDL alone | Whole SDDL + 20-byte follower | Direct ACL bytes in use, alone / follower |
+| --- | --- | --- | ---: |
+| 1 / 32702 | error 87, returned size 0 | success, descriptor 65492 bytes | 65452 / 65472 |
+| 16351 / 16352 | error 87, returned size 0 | success, descriptor 65492 bytes | 65452 / 65472 |
+| 32702 / 1 | error 87, returned size 0 | success, descriptor 65492 bytes | 65452 / 65472 |
+
+Successful native descriptors have LocalSize equal to returned size, successful
+LocalFree and byte-identical compiled XA ACEs. Both runtimes agree on every field
+and complete buffer apart from environment metadata. `sddl-partition-provenance.json`
+records source head/run/jobs and Windows-emitted original-file SHA-256 values.
+The two gzip recordings preserve the original JSONL bytes. Routine CI compares
+all recorded fields and bytes except runtime/OS; a changed-error negative control
+was rejected by the verifier.
+
+**No partition-dependent outcome was observed. This produces no allocation formula
+and closes this experiment family.** It neither establishes ordered final ACE sizes
+as the cause nor rules out every per-token/intermediate-allocation implementation.
+The original 25/243/overlapping-623 gap ledger remains frozen. There is no new sweep,
+production threshold, error mapping, native ACL application or policy relaxation.
+
+Portable checks compare all six compiled condition payloads byte-for-byte and verify
+lossless formatting/reparse and unchanged source buffers. All three successful native
+whole descriptors match portable string and binary construction exactly. For the three
+alone cases, portable string construction succeeds with 65472-byte descriptors where
+native conversion returns 87; tests explicitly pin those unresolved differences rather
+than counting them as full converter parity. Seven cases (one exact inventory plus six
+comparisons) cover this evidence without adding a production workaround.

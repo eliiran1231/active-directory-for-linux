@@ -288,3 +288,21 @@ credential forwarding, Basic fallback, ambient-mutation continuity assumption, m
 release or live operation is introduced by this follow-up. The separate live scenarios
 in the table still require specifically authorized fixtures; the existing user-run suite
 must not be generalized to server parity or untested object-creation variants.
+
+
+## Fixed-total SDDL token experiment closed
+
+The [six-case token-partition experiment](issue-226-sddl-assembly-localization.md#one-fixed-total-token-partition-experiment-unchanged-outcomes)
+kept 32703 decoded UTF-16 units, XA token count and ordered final ACE sizes fixed.
+All six native compile controls established the same 65444-byte ACE shape. Across
+attribute/literal splits (1,32702), (16351,16352), (32702,1), whole conversion failed
+alone with 87 and succeeded with one ordinary follower on both runtimes. Partitioning
+did not discriminate the proposed sizing models, so this family is closed without a
+formula or production threshold. Portable condition bytes match all six; three successful
+whole conversions match exactly, while three native-failure/portable-success differences
+remain explicit. Earlier recordings and the original gap ledger are unchanged.
+
+The contained-layout guards and approved public identity helper remain completed and
+reviewed. Whole-SDDL allocation behavior is still unresolved. GC/trust topology,
+provider/ambient continuity and additional live fixtures still need separate evidence
+and decisions; no new routing or authority is enabled by this experiment.

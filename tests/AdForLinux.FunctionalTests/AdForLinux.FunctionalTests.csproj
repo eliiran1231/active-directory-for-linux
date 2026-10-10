@@ -69,6 +69,8 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net8.json.gz" LogicalName="AclOracle.Size.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net10.json.gz" LogicalName="AclOracle.Size.net10.json.gz" />
     <EmbeddedResource Include="SddlSizeReplayExceptions.json" LogicalName="AclOracle.Size.Exceptions.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-partition-net8.0.jsonl.gz" LogicalName="AclOracle.TokenPartition.net8.jsonl.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-partition-net10.0.jsonl.gz" LogicalName="AclOracle.TokenPartition.net10.jsonl.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-ace-size-net8.0.jsonl.gz" LogicalName="AclOracle.AceSize.net8.jsonl.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-ace-size-net10.0.jsonl.gz" LogicalName="AclOracle.AceSize.net10.jsonl.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net8.json" LogicalName="AclOracle.Seeded.net8.json" />
