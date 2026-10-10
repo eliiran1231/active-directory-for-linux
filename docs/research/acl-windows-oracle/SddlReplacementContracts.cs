@@ -52,7 +52,8 @@ internal static class SddlReplacementContracts
         var malformed = valid + (input.Audit ? "D:(XA;;RP;;;WD;(@User.Level ==))" : "S:(XU;SA;RP;;;WD;(@User.Level ==))");
         var binary = new Step("binary-replace",input.Target,candidate);
         var owner = new Step("prior-owner",AccessControlSections.Owner,Text:"O:S-1-5-20");
-        var compound = new Step("compound-assignment",AccessControlSections.All,candidate);
+        var compound = new Step("compound-assignment",AccessControlSections.All,Text:
+            "O:S-1-5-19G:S-1-5-32-545" + (input.Audit ? "D:(A;;DT;;;WD)S:(AU;SA;WP;;;WD)" : "D:(A;;WP;;;WD)S:(AU;SA;DT;;;WD)"));
         if (input.Shared)
         {
             yield return owner;
