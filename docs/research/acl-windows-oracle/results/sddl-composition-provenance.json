@@ -1,0 +1,49 @@
+{
+  "SourceHead": "7465fda346bdb1dd577f1b05a5905c6872dd99e4",
+  "Run": 38061071192,
+  "Earlier45CaseProbe": "66a6ea48a14b1a5f3c5ecf9bc641b45f00631b7b",
+  "EarlierRun": 38060696076,
+  "Scope": "48 actual native callback export/reparse observations; formatting and reparse are separate. Includes literal closure 857-859 inputs.",
+  "Runtimes": {
+    "net8.0": {
+      "Job": 114239277691,
+      "BaselineSha256": "ade09b0bb76324303b636565498e112d9c2ab2406545fcb63610f574382c1bd5",
+      "OriginalGzipSha256": "2230260f8c7757fcad2eaba3a613d0cd47bfdf8a40899268badae884fffc912b",
+      "Files": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "5551004ad70035c472946560863e971851351363318d939bfbf3d8d022ee19a3"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "8db014cf5afee51b47f77fd9a11aa5b33cc320365f7e8c5b3a5b829d23651d89"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "de9186a60fc1c0a09f415b78193848081291bf69ba9693431e498dd571105d89"
+        }
+      ],
+      "Artifact": 11672699955
+    },
+    "net10.0": {
+      "Job": 114239277694,
+      "BaselineSha256": "126e59e0eed83787b6f8b8ab34055eabda42ed923baa1a657ada1470addcae85",
+      "OriginalGzipSha256": "d1112c13989836356fcd18b6cdf8f51e779013aa3a3e6ec41d4d6546a7427caa",
+      "Files": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "054dbea6e10649fa9141abcbba6f428bd048b0f00ad79f7139bda28792fd0e55"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "df4e32dd63ad7b3bdd196cb58186a03cda82b4495ba1273f10184320ac8ab699"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "be2fe5ad4f53aa7c9dec1c1987a40e79fd730028ccf468bf7f7235362bae428b"
+        }
+      ],
+      "Artifact": 11673705313
+    }
+  }
+}

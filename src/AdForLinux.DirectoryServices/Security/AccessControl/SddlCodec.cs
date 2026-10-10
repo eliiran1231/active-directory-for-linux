@@ -431,6 +431,11 @@ internal static class SddlCodec
         int mask; SecurityIdentifier sid; var objectType = ""; var inheritedType = "";
         if (ace is QualifiedAce qualified)
         {
+            // Native can emit an empty callback token, but its own text parser
+            // rejects the missing condition. Neither invent a condition nor erase
+            // callback identity by formatting it as an ordinary ACE.
+            if (qualified.IsCallback && qualified.OpaqueLength == 0)
+                throw new NotSupportedException("An empty callback ACE has no reparsable native SDDL representation.");
             if (qualified.OpaqueLength != 0)
             {
                 if (type is not (9 or 10 or 11 or 13)) throw new NotSupportedException("ACE opaque bytes cannot be omitted from SDDL.");

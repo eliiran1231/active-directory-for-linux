@@ -30,6 +30,8 @@ jobs:
       - name: Record callback export-reparse compositions
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode composition
+      - name: Verify exact callback composition evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/composition/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-composition-${{ matrix.framework }}.json.gz
       - name: Record retained export refusal families
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode retained-export

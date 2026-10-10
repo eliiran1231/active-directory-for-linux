@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlCompositionContracts.cs" Link="SddlCompositionContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlExportInputs.cs" Link="SddlExportInputs.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlExportContracts.cs" Link="SddlExportContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedInputs.cs" Link="SddlMixedInputs.cs" />
@@ -39,6 +40,9 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net8.0.json.gz" LogicalName="AclOracle.RetainedExport.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net10.0.json.gz" LogicalName="AclOracle.RetainedExport.net10.json.gz" />
     <EmbeddedResource Include="SddlRetainedExportDifferences.json" LogicalName="AclOracle.RetainedExport.Differences.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net8.0.json.gz" LogicalName="AclOracle.Composition.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net10.0.json.gz" LogicalName="AclOracle.Composition.net10.json.gz" />
+    <EmbeddedResource Include="SddlCompositionRefusals.json" LogicalName="AclOracle.Composition.Refusals.json" />
     <!-- Literal Windows observations; replay remains fully offline on every target. -->
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net8.json.gz" LogicalName="AclOracle.Boundary.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net10.json.gz" LogicalName="AclOracle.Boundary.net10.json.gz" />

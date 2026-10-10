@@ -40,6 +40,7 @@ public partial class PortableSecurityFoundationTests
     // portable refusal; this does not substitute a canned native outcome or silently skip a row.
     private static string? SddlDeferredReason(JsonElement row)
     {
+        if (EmptyCallbackCompositionClosureHashes.ContainsKey(row.GetProperty("Case").GetInt32())) return "native empty-callback non-roundtrippable text";
         if (AccessFilterLossHashes.ContainsKey(row.GetProperty("Case").GetInt32())) return "native access-filter omission";
         var operation = row.GetProperty("Operation").GetString();
         var arguments = row.GetProperty("Arguments");
@@ -129,11 +130,21 @@ public partial class PortableSecurityFoundationTests
         [900] = "64B96573F576A044D406F44F31E5A8E8D6B2D21D9BFEDCAA593C2BAF80749C73",
     };
 
+    // Existing formatting successes remain literal. The new composition probe
+    // measures their native reparse failures; these are policy differences, not
+    // newly discovered native formatting mismatches or parser acceptance gaps.
+    private static readonly Dictionary<int, string> EmptyCallbackCompositionClosureHashes = new()
+    {
+        [857] = "E301199235774EF537B20290FA992C90E5264DA38C4D3CCA7A6742DD26589D53",
+        [858] = "AE7698E41408E23F713102E33BD06FB92E51A25425D51548B26639BF3752E317",
+        [859] = "F49B4A351B9EDF5B828F5D74C68C6BE0E23D722378B5430F438AF4DAB9F48B4A",
+    };
+
     private static bool AssertSddlDeferred(JsonElement row, Exception? exception)
     {
         if (SddlDeferredReason(row) is null) return false;
         var caseId = row.GetProperty("Case").GetInt32();
-        Assert.True(SddlDeferredNativeHashes.TryGetValue(caseId, out var expectedHash) || AccessFilterLossHashes.TryGetValue(caseId, out expectedHash), "Unreviewed SDDL deferral " + caseId);
+        Assert.True(SddlDeferredNativeHashes.TryGetValue(caseId, out var expectedHash) || AccessFilterLossHashes.TryGetValue(caseId, out expectedHash) || EmptyCallbackCompositionClosureHashes.TryGetValue(caseId, out expectedHash), "Unreviewed SDDL deferral " + caseId);
         Assert.Equal(expectedHash, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(row)))));
         Assert.Equal(JsonValueKind.Null, row.GetProperty("ExceptionType").ValueKind);
         Assert.NotEqual(JsonValueKind.Null, row.GetProperty("Outcome").ValueKind);
@@ -153,8 +164,10 @@ public partial class PortableSecurityFoundationTests
             if (reason is not null) { reasons.Add(reason); caseIds.Add(document.RootElement.GetProperty("Case").GetInt32()); }
         }
         Assert.Equal(new[] { 334, 336, 338, 340, 655, 656, 657, 658, 659, 660, 661, 662,
-            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 2635 }.Concat(AccessFilterLossHashes.Keys).Order(), caseIds.Order());
-        Assert.Equal(36 + AccessFilterLossHashes.Count, reasons.Count);
+            872, 873, 875, 876, 878, 879, 881, 882, 884, 885, 887, 888, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 2635 }.Concat(AccessFilterLossHashes.Keys).Concat(EmptyCallbackCompositionClosureHashes.Keys).Order(), caseIds.Order());
+        Assert.Equal(36 + AccessFilterLossHashes.Count + EmptyCallbackCompositionClosureHashes.Count, reasons.Count);
+        Assert.Equal(new[] { 857, 858, 859 }, EmptyCallbackCompositionClosureHashes.Keys.Order());
+        Assert.Equal(3, reasons.Count(r => r == "native empty-callback non-roundtrippable text"));
         Assert.Equal(118, AccessFilterLossHashes.Count);
         Assert.Equal(AccessFilterLossHashes.Count, reasons.Count(r => r == "native access-filter omission"));
         Assert.Equal(8, reasons.Count(r => r == "host-relative authority"));

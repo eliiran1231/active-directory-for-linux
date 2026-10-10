@@ -1,0 +1,444 @@
+[
+  {
+    "Case": 0,
+    "Label": "callback-composition/empty-9-objects-0/export-selected",
+    "NativeObservationSha256": "afb21e9782c5cb862b753db11856cc437af5d809da46acada532920dbf1b971f",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 2,
+    "Label": "callback-composition/empty-9-objects-0/export-all",
+    "NativeObservationSha256": "adfb58a2af1c78841b03b25f90da69238168ea2bcd4daf2e37faa6048a3b5d74",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 3,
+    "Label": "callback-composition/empty-10-objects-0/export-selected",
+    "NativeObservationSha256": "d32c792716bf386e2a698774cd2c5b5479b922ff7c86a730e9fed72b4245bf66",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 5,
+    "Label": "callback-composition/empty-10-objects-0/export-all",
+    "NativeObservationSha256": "20f69766db00c6385fb5340a2e43c22f6e56a8795b43a379b526e4ec0e255eb7",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 6,
+    "Label": "callback-composition/empty-11-objects-0/export-selected",
+    "NativeObservationSha256": "1a5391857c5dd91a6ea89c2a8e1f68ddac8536751e31a4f8f494da1361430624",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 8,
+    "Label": "callback-composition/empty-11-objects-0/export-all",
+    "NativeObservationSha256": "e991d718d1e2f016a62910d186bcb7a307ab34dfc6028a0c1f7d17e295d65789",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 9,
+    "Label": "callback-composition/empty-11-objects-1/export-selected",
+    "NativeObservationSha256": "2f44b4fc2e43fff78231524fee9ed81a873776284b234eb203d162e6265b45ed",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 11,
+    "Label": "callback-composition/empty-11-objects-1/export-all",
+    "NativeObservationSha256": "1fa87fe1ec750e254d07fbc2475ddac90b9dc6fc58006298fdf22c20b89a66be",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 12,
+    "Label": "callback-composition/empty-11-objects-2/export-selected",
+    "NativeObservationSha256": "15fec12264c10ac4b30e84a43151abcc6a88383a7dc4b6036c802ecc3afdd7a6",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 14,
+    "Label": "callback-composition/empty-11-objects-2/export-all",
+    "NativeObservationSha256": "f78bc0051ff01d2ccd2a6d1090cf7abdd76100e4a93a70fbf79340dd0a1181c5",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 15,
+    "Label": "callback-composition/empty-11-objects-3/export-selected",
+    "NativeObservationSha256": "2f2b3e44ee8ba90052345fea16104948a26dbd1e020504b14be3535afc7dc8a0",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 17,
+    "Label": "callback-composition/empty-11-objects-3/export-all",
+    "NativeObservationSha256": "988abd823199ed18173e136381bdade16ec0b040ed9ffabff4eaed41a42ed318",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 21,
+    "Label": "callback-composition/empty-13-objects-0/export-selected",
+    "NativeObservationSha256": "7991ddb7e3362100bd0b37ac0454b6a429c032687cec3be07975e3f10f54bc7d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 23,
+    "Label": "callback-composition/empty-13-objects-0/export-all",
+    "NativeObservationSha256": "a75e41bb0d95da64e37729e05b334691ece2a83afa7f2fc9d9f5ec9b390be024",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 24,
+    "Label": "callback-composition/empty-14-objects-0/export-selected",
+    "NativeObservationSha256": "1a3b1f06cd4737ec6b8ba63101443d9c3ddc613d4071a543c81b4415ac8161ab",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 26,
+    "Label": "callback-composition/empty-14-objects-0/export-all",
+    "NativeObservationSha256": "bf91129d7de890e0abd0cd097ae58090875eb225cf9edc8339246113c9afc8dc",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 30,
+    "Label": "callback-composition/empty-16-objects-1/export-selected",
+    "NativeObservationSha256": "19834a18df49c264ffa12050831555ad4a82df0514d3e11a260827559f2dca58",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 32,
+    "Label": "callback-composition/empty-16-objects-1/export-all",
+    "NativeObservationSha256": "559b94308874b9d7a9bc98eb9c3fe1f26a86285a24f2dd72d16b1e391449f94d",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-retained-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 45,
+    "Label": "callback-composition/closure-857/export-all",
+    "NativeObservationSha256": "a9d27589617939028840d618c32ce18e233997658228f2c3fd810af3c6e0c056",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 46,
+    "Label": "callback-composition/closure-858/export-all",
+    "NativeObservationSha256": "3aa0cfe3732f16e58d3da18287c0d70fd2b595d40ef0e3e1d43d4002b3f041d7",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  },
+  {
+    "Case": 47,
+    "Label": "callback-composition/closure-859/export-all",
+    "NativeObservationSha256": "dbd771b0f0986ac51f13f23a760901bbb0e5daf344dd8a26f0e91df838b0a5c8",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "nonroundtrippable-empty-callback",
+        "PortableExceptionType": "System.NotSupportedException"
+      }
+    ]
+  }
+]

@@ -1,5 +1,15 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest callback composition evidence
+
+The [empty callback composition follow-up](issue-226-callback-composition.md)
+records 48 native rows, including exact closure cases 857–859. Formatting already
+matched native; both native and portable reparsing reject the missing condition.
+Selected empty-callback export now refuses under the existing reconstructibility
+policy. No condition or ordinary ACE replacement is synthesized. There is no new
+parser acceptance gap in this matrix. The 12 exception-type and six raw
+unaudited-ACE facets below remain genuine compatibility gaps, not loss evidence.
+
 ## Latest retained-export evidence
 
 The [retained contributor correction](issue-226-retained-sddl-export.md) replaces
