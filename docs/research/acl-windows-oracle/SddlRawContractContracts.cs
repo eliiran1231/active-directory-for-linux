@@ -1,5 +1,6 @@
 #pragma warning disable CA1416 // Shared detached enum values only.
 using System.Runtime.InteropServices;
+using System.Buffers.Binary;
 using System.Security.AccessControl;
 using System.Text.Json;
 using static SddlExportInputs;
@@ -41,6 +42,24 @@ internal static class SddlRawContractContracts
         Add("truncated-literal-XA",9,0,opaque:Convert.FromHexString("61727478F9000000"));
         Add("underflow-XA",9,0,opaque:Convert.FromHexString("6172747880000000"));
         Add("opaque-unaudited-AU",2,0,opaque:[1,2,3,4]);
+        // Separate single/leading unaudited ACEs from the ordinary audited anchor.
+        foreach (var name in new[] { "unaudited-2-0", "unaudited-7-0", "valid-XU-unaudited", "unknown-XU-unaudited" })
+        {
+            var source = fixtures.Single(f => f.Name == name);
+            var bytes = source.Bytes;
+            var offset = BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(12));
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 2));
+            const int anchorLength = 20;
+            var single = bytes[..(offset + 8)].Concat(bytes[(offset + 8 + anchorLength)..]).ToArray();
+            BinaryPrimitives.WriteUInt16LittleEndian(single.AsSpan(offset + 2), (ushort)(length - anchorLength));
+            BinaryPrimitives.WriteUInt16LittleEndian(single.AsSpan(offset + 4), 1);
+            BinaryPrimitives.WriteInt32LittleEndian(single.AsSpan(16), BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(16)) - anchorLength);
+            fixtures.Add(source with { Name = name + "-single", Bytes = single });
+            var leading = (byte[])bytes.Clone();
+            bytes.AsSpan(offset + 8 + anchorLength, length - 8 - anchorLength).CopyTo(leading.AsSpan(offset + 8));
+            bytes.AsSpan(offset + 8, anchorLength).CopyTo(leading.AsSpan(offset + length - anchorLength));
+            fixtures.Add(source with { Name = name + "-leading", Bytes = leading });
+        }
         foreach (var fixture in fixtures)
         {
             yield return new(fixture,"export-selected",fixture.Dacl ? AccessControlSections.Access : AccessControlSections.Audit,"raw-contract");
@@ -58,7 +77,7 @@ internal static class SddlRawContractContracts
         using var output = new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
         Emit(new { Kind = "Header", Schema = "sddl-raw-contract-v1", Runtime = RuntimeInformation.FrameworkDescription,
             OS = RuntimeInformation.OSDescription, TotalCases = inputs.Length, Start = start, Count = end - start,
-            Scope = "64 detached raw formatting/validation compositions. Binary input, formatting and native reparse are separately recorded. No lookup or persistence." });
+            Scope = "80 detached raw formatting/validation compositions. Binary input, formatting and native reparse are separately recorded. No lookup or persistence." });
         for (var i = start; i < end; i++) Emit(SddlExportContracts.Observe(inputs[i], i));
         void Emit(object value) => output.WriteLine(JsonSerializer.Serialize(value));
     }
