@@ -55,6 +55,13 @@ internal static class SddlExportInputs
         // Exercise native text import's preserved no-GUID ZA tail, not a guessed encoding.
         yield return new("ZA-inactive-tail", "unrepresentable-condition-tail", true, [],
             "O:S-1-5-18G:S-1-5-32-544D:(ZA;IO;RP;;;WD;(@User.A == 1))S:(AU;SA;RP;;;SY)");
+        // Raw SDDL can represent these conditions. Facade removal must not silently
+        // discard their payloads merely because mask/IO normalization removed an ACE.
+        var condition = fl[20..];
+        yield return Make("condition-inactive-valid", "projected-opaque-contributor", true, Ace(9, 8, 16, opaque: condition));
+        yield return Make("condition-zero-valid", "projected-opaque-contributor", true, Ace(9, 0, 0, opaque: condition));
+        yield return Make("audit-condition-zero-valid", "projected-opaque-contributor", false, Ace(13, 64, 0, opaque: condition));
+        yield return Make("condition-active-valid", "retained-opaque-control", true, Ace(9, 0, 16, opaque: condition));
     }
 
     private static Fixture Make(string name, string family, bool dacl, params byte[][] extras)
