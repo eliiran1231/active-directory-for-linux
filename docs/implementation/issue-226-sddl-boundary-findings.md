@@ -178,3 +178,10 @@ Final exact-head Windows results are reported in the PR/checkpoint after publica
 The probe-head Windows runs already passed their then-current 11,869 core and 321
 companion tests per runtime, full builds, package checks and old oracle freshness.
 No merge, release, issue closure, live AD or security-policy change was performed.
+
+## Bounded callback-size precedence follow-up
+
+[The separate 108-case follow-up](issue-226-sddl-ace-size-precedence.md) confirms the
+full-ACE size guard for XD/XU/ZA and corrects 16 ZA malformed-GUID error outcomes.
+The 25/243/overlapping-623 allocation differences above remain open. The allocation
+matrix is frozen pending a testable causal model; no additional cutoff was introduced.

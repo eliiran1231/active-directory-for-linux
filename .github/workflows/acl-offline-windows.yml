@@ -27,6 +27,8 @@ jobs:
       - name: Record bounded ACE-size error precedence
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}' -Mode ace-size
+      - name: Verify exact ACE-size precedence evidence
+        run: python tests/verify-sddl-native-layers.py artifacts/ace-size/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-ace-size-${{ matrix.framework }}.jsonl.gz
       - name: Isolate native conversion and managed binary parsing
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}'

@@ -176,12 +176,14 @@ internal static class SddlCodec
         var objectType = Guid.Empty; var inheritedType = Guid.Empty;
         if (fields[3].Length != 0)
         {
-            if (!Guid.TryParseExact(fields[3], "D", out objectType)) { if (fields[3].StartsWith('{')) throw NativeInvalid(1705); throw Invalid(); }
+            // ZA reports native GUID conversion errors before parsing its condition,
+            // including when the eventual encoded ACE would exceed AceSize.
+            if (!Guid.TryParseExact(fields[3], "D", out objectType)) { if (type == 11 || fields[3].StartsWith('{')) throw NativeInvalid(1705); throw Invalid(); }
             objectFlags |= ObjectAceFlags.ObjectAceTypePresent;
         }
         if (fields[4].Length != 0)
         {
-            if (!Guid.TryParseExact(fields[4], "D", out inheritedType)) throw Invalid();
+            if (!Guid.TryParseExact(fields[4], "D", out inheritedType)) { if (type == 11) throw NativeInvalid(1705); throw Invalid(); }
             objectFlags |= ObjectAceFlags.InheritedObjectAceTypePresent;
         }
         var sid = ParseSid(fields[5]);
