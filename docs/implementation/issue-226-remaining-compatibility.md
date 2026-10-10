@@ -250,6 +250,12 @@ The correction adds 68 directed cases. Linux .NET 8/10 each pass 13,119 core, 33
 skip). The full solution builds without errors. These checks retain the original oracle
 recordings and do not substitute for exact-head Windows freshness or review.
 
+Subsequent review found the same padding/commit mismatch for same-size edits. Twelve more
+cases cover entry-bound preflight and rollback while retaining the existing detached raw
+padding contract. The shared descriptor checks its destination-local baseline before
+publication; copies receive no resolver, authority or inherited entry constraint. Final
+corrected-head test counts and artifacts are reported in PR 228.
+
 The selected implementation goals remain bounded: safe raw-layout editing, identity
 completion and a causal explanation of the large-SDDL mismatch family. The new suffix
 algorithm does not authorize moving unexplained bytes or relaxing atomic refusal.

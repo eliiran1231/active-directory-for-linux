@@ -167,6 +167,10 @@ public sealed partial class CommonSecurityDescriptor
         }
     }
     private int assignmentDepth;
+    // Entry-local data constraint, not a resolver or write capability. Detached
+    // copies deliberately do not inherit it; a destination installs its own baseline.
+    private C.SecurityDescriptor? sectionWriteBaseline;
+    internal void RequireSectionScopedStorage(C.SecurityDescriptor baseline) => sectionWriteBaseline = baseline;
     internal C.AclMutationEngine MutationState { get; private set; } = null!;
     // Independent of every ObjectSecurity wrapper's native dirty flags.
     internal long MutationVersion { get; private set; }
@@ -223,6 +227,9 @@ public sealed partial class CommonSecurityDescriptor
     private void Publish(C.AclMutationEngine state)
     {
         if (ReferenceEquals(state, MutationState)) return;
+        // Shared wrappers and ACL aliases must also fail before generation/state
+        // publication if this entry's strict commit ledger cannot scope the storage.
+        if (sectionWriteBaseline is not null) _ = state.Descriptor.NetChangedSections(sectionWriteBaseline);
         var before = MutationState.Descriptor.GetBinaryForm();
         var after = state.Descriptor.GetBinaryForm();
         var flags = MutationState.Descriptor.Control ^ state.Descriptor.Control;

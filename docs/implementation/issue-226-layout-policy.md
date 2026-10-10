@@ -38,6 +38,12 @@ For descriptors with leading/intercomponent/trailing bytes or orphan storage:
   trailer. Alignment padding is never taken from an existing gap. Combining a suffix
   resize with alias allocation that needs new alignment padding refuses before publication:
   that new unreferenced byte cannot be attributed to the section-scoped change at commit.
+- Detached raw editing retains its existing no-resize alias-allocation padding behavior.
+  An entry-bound descriptor additionally compares every candidate with its own read
+  baseline using the unchanged strict `NetChangedSections` storage ledger before state
+  or generation publication. Thus new unscoped padding fails atomically even without a
+  resize. This data-only constraint covers shared wrappers/ACLs and is not inherited by
+  detached copies; assignment installs the destination's own baseline explicitly.
 - Publication validates the whole descriptor, rejects remaining overlap and verifies every
   original unreferenced byte at its original absolute offset. Unknown bytes are not archived
   elsewhere to claim preservation. Raw operations retain existing no-op and intent behavior.
@@ -150,3 +156,14 @@ a 224-byte mutation, then failed `CommitChanges` because suffix shrink introduce
 unscoped alignment byte. It now refuses at mutation planning with state unchanged. The
 aligned contained-SID cases remain supported. Unknown-storage comparison is unchanged;
 neither correction weakens the existing preservation policy.
+
+The same-size sibling case uses a 71-byte image (prefix gap three, owner 23, group 51,
+independent ACL 63, contained ACL 31). An owner/group replacement formerly appended the
+alias at 72 and created unscoped byte 71, publishing generation 1 before commit refused.
+The entry-bound preflight now rejects it inside the existing rollback transaction.
+Twelve additional cases cover owner/group edits through bound/shared wrappers, nonzero
+prior wrapper assignment intent, pending ordinary-property commit after refusal, aligned
+successful controls, shared ACL rollback, destination assignment, and binary/state copies
+that retain detached padding semantics without resolver authority. The original detached
+core alignment regression remains unchanged. This is a lifecycle correction, not a claim
+that native descriptor import forbids alignment padding.

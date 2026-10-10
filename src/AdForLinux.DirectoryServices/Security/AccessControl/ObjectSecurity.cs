@@ -50,6 +50,7 @@ namespace AdForLinux.Security.AccessControl
                 if (_securityDescriptor.MutationVersion != 0) throw new InvalidOperationException("A read context cannot replace pending edits.");
                 _readContext = new ReadContext(C.SecurityDescriptor.Parse(_securityDescriptor.MutationState.Descriptor.GetBinaryForm(), retrieved), 0, source.GetReadOrigin());
                 HasRawReadContext = true;
+                _securityDescriptor.RequireSectionScopedStorage(_readContext.Original);
                 identityAttachment++;
                 return true;
                 }
@@ -71,6 +72,7 @@ namespace AdForLinux.Security.AccessControl
             {
                 _readContext = destination._readContext;
                 HasRawReadContext = destination.HasRawReadContext;
+                if (HasRawReadContext) _securityDescriptor.RequireSectionScopedStorage(_readContext!.Original);
                 _ownerModified = destination._ownerModified; _groupModified = destination._groupModified;
                 _daclModified = destination._daclModified; _saclModified = destination._saclModified;
             }
