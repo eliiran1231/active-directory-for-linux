@@ -68,11 +68,11 @@ internal static class SddlNativeLayers
         }
     }
 
-    internal static void Write(string path, int index)
+    internal static void Write(string path, int index, bool aceSize = false)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
         if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
-        var input = Inputs().ElementAt(index);
+        var input = (aceSize ? SddlAceSizeInputs.Create() : Inputs()).ElementAt(index);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         using var output = new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
         Emit(new { Kind = "Attempt", Case = index, input.Label, input.Family, InputCodeUnits = input.Text.Length,

@@ -14,14 +14,14 @@ if (!OperatingSystem.IsWindows())
 }
 
 // Separate opt-in boundary batches leave the normal 4,308-row closure recorder unchanged.
-if (args.Length == 1 && args[0] == "--sddl-layer-count")
+if (args.Length == 1 && args[0] is "--sddl-layer-count" or "--sddl-ace-size-count")
 {
-    Console.WriteLine(SddlNativeLayers.Inputs().Count());
+    Console.WriteLine((args[0] == "--sddl-ace-size-count" ? SddlAceSizeInputs.Create() : SddlNativeLayers.Inputs()).Count());
     return 0;
 }
-if (args.Length == 3 && args[0] == "--sddl-layer-jsonl")
+if (args.Length == 3 && args[0] is "--sddl-layer-jsonl" or "--sddl-ace-size-jsonl")
 {
-    SddlNativeLayers.Write(args[1], int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture));
+    SddlNativeLayers.Write(args[1], int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture), args[0] == "--sddl-ace-size-jsonl");
     return 0;
 }
 if (args.Length > 0 && args[0] is "--sddl-boundary-jsonl" or "--sddl-size-followup-jsonl")

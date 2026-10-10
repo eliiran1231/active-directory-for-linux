@@ -1,16 +1,19 @@
-param([Parameter(Mandatory = $true)][ValidateSet('net8.0', 'net10.0')][string] $Framework)
+param([Parameter(Mandatory = $true)][ValidateSet('net8.0', 'net10.0')][string] $Framework,
+    [ValidateSet('layers', 'ace-size')][string] $Mode = 'layers')
 $ErrorActionPreference = 'Stop'
-$directory = "artifacts/layers/$Framework"
+$directory = "artifacts/$Mode/$Framework"
 New-Item -ItemType Directory -Force $directory | Out-Null
 $assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
-$total = [int] (& dotnet $assembly --sddl-layer-count)
+$countArgument = if ($Mode -eq 'ace-size') { '--sddl-ace-size-count' } else { '--sddl-layer-count' }
+$jsonArgument = if ($Mode -eq 'ace-size') { '--sddl-ace-size-jsonl' } else { '--sddl-layer-jsonl' }
+$total = [int] (& dotnet $assembly $countArgument)
 if ($LASTEXITCODE -ne 0 -or $total -lt 1 -or $total -gt 1000) { throw 'Invalid layer manifest.' }
 $env:DOTNET_GCHeapHardLimit = '0x10000000'
 $env:DOTNET_PROCESSOR_COUNT = '2'
 $failures = 0
 for ($index = 0; $index -lt $total; $index++) {
     $stem = "$directory/layer-$('{0:D3}' -f $index)"
-    $process = Start-Process dotnet -ArgumentList @($assembly, '--sddl-layer-jsonl', "$stem.jsonl", $index) -PassThru -NoNewWindow -RedirectStandardOutput "$stem.stdout.log" -RedirectStandardError "$stem.stderr.log"
+    $process = Start-Process dotnet -ArgumentList @($assembly, $jsonArgument, "$stem.jsonl", $index) -PassThru -NoNewWindow -RedirectStandardOutput "$stem.stdout.log" -RedirectStandardError "$stem.stderr.log"
     $finished = $process.WaitForExit(15000)
     if (!$finished) { $process.Kill($true) }
     $process.WaitForExit()
@@ -20,7 +23,7 @@ for ($index = 0; $index -lt $total; $index++) {
         $memory = [System.IO.MemoryStream]::new()
         $gzip = [System.IO.Compression.GZipStream]::new($memory, [System.IO.Compression.CompressionLevel]::Optimal, $true)
         $gzip.Write($bytes, 0, $bytes.Length); $gzip.Dispose()
-        $record = @{ Case = $index; Framework = $Framework; Total = $total; Sha256 = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)); GzipBase64 = [Convert]::ToBase64String($memory.ToArray()) }
+        $record = @{ Mode = $Mode; Case = $index; Framework = $Framework; Total = $total; Sha256 = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)); GzipBase64 = [Convert]::ToBase64String($memory.ToArray()) }
         $memory.Dispose()
         Write-Output ('SDDL_LAYER_GZIP=' + ($record | ConvertTo-Json -Compress))
         try {
