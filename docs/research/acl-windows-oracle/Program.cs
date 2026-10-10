@@ -13,6 +13,12 @@ if (!OperatingSystem.IsWindows())
     return 2;
 }
 
+if (args.Length == 3 && args[0] == "--sddl-partition-jsonl")
+{
+    SddlAssemblyProbe.WritePartition(args[1], int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture));
+    return 0;
+}
+
 if (args.Length == 3 && args[0] == "--sddl-assembly-jsonl")
 {
     SddlAssemblyProbe.Write(args[1], int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture));

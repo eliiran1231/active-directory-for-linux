@@ -90,3 +90,22 @@ its temporary allocation plan, prove its internal API calls, or justify recreati
 from a threshold. No production SDDL change or further probe expansion follows this result.
 The 25/243/overlapping 623 portability gaps remain unresolved; a testable model of the
 whole-converter allocation/order behavior is still required before implementing parity.
+
+## One fixed-total token-partition experiment (results pending)
+
+Six new inputs keep the XA token sequence and 32,703 total decoded UTF-16 units
+fixed: attribute/literal splits (1,32702), (16351,16352), (32702,1), each alone and
+with the existing 20-byte ordinary follower. Attribute text is `A` followed by
+`x`; the literal contains only `x`. For each follower choice source length and
+concatenated decoded characters stay identical across the three partitions.
+
+Before interpreting whole-converter results, each case independently compiles
+through AddConditionalAce at capacity 65,532 and checks the actual 65,444-byte
+ACE, exact `artx`/attribute/string/equality token structure, four-byte length
+fields, decoded bytes and padding. Failed controls are explicitly inconclusive.
+The same guard, 15-second process and memory bounds apply; no ACL is installed.
+
+Partition-dependent outcomes would disprove ordered final ACE sizes alone as
+a sufficient model. Unchanged outcomes establish no formula and end this
+experiment family. The first push records actual native evidence; it does not
+invent a baseline or change any production threshold or preservation policy.

@@ -5,7 +5,7 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
 // Eight isolated witnesses plus six directed capacity variants. No ACL is applied to an object or token.
-internal static class SddlAssemblyProbe
+internal static partial class SddlAssemblyProbe
 {
     internal const int Count = 14;
     private const int MaximumCapacity = 65532; // largest DWORD-aligned value representable by AclSize
@@ -57,7 +57,7 @@ internal static class SddlAssemblyProbe
             throw new InvalidOperationException("The short control failed; inspect the API invocation before interpreting large inputs.");
     }
 
-    private static object[] Assemble(bool compile, Witness input, string condition, byte[] large, byte[] ordinary, byte[] follower)
+    private static object[] Assemble(bool compile, Witness input, string condition, byte[]? large, byte[] ordinary, byte[] follower)
     {
         var capacity = input.Capacity;
         if (capacity < 8 || capacity > MaximumCapacity || capacity % 4 != 0)
@@ -91,7 +91,7 @@ internal static class SddlAssemblyProbe
                 steps.Add(new { Step=name, Success=success, LastError=error,
                     RawReturnLength=ace is null ? (uint?)returned : null,
                     ReturnLengthMeaningful=ace is null && (success || error == 122), Pre=pre, Post=post,
-                    MatchesNativeLargeAce=bytes is null ? (bool?)null : bytes.AsSpan().SequenceEqual(large),
+                    MatchesNativeLargeAce=bytes is null || large is null ? (bool?)null : bytes.AsSpan().SequenceEqual(large),
                     SourceAceUnchanged=ace is null ? (bool?)null : ace.AsSpan().SequenceEqual(sourceCopy) });
                 return success;
             }
