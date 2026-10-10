@@ -8,6 +8,32 @@ permissions:
   contents: read
 
 jobs:
+  native-layers:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Build detached oracle
+        run: dotnet build docs/research/acl-windows-oracle/AclWindowsOracle.csproj -c Release
+      - name: Isolate native conversion and managed binary parsing
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}'
+      - name: Upload layer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sddl-layers-${{ matrix.framework }}-${{ github.sha }}
+          path: artifacts/layers/
+          if-no-files-found: error
   offline-acl:
     runs-on: windows-2025
     timeout-minutes: 20

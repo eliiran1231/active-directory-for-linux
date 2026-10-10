@@ -14,6 +14,16 @@ if (!OperatingSystem.IsWindows())
 }
 
 // Separate opt-in boundary batches leave the normal 4,308-row closure recorder unchanged.
+if (args.Length == 1 && args[0] == "--sddl-layer-count")
+{
+    Console.WriteLine(SddlNativeLayers.Inputs().Count());
+    return 0;
+}
+if (args.Length == 3 && args[0] == "--sddl-layer-jsonl")
+{
+    SddlNativeLayers.Write(args[1], int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture));
+    return 0;
+}
 if (args.Length > 0 && args[0] is "--sddl-boundary-jsonl" or "--sddl-size-followup-jsonl")
 {
     if (args.Length is not (2 or 4)) throw new ArgumentException("Usage: --sddl-boundary-jsonl PATH [START COUNT]");
