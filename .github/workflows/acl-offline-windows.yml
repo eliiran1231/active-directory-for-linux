@@ -27,6 +27,9 @@ jobs:
       - name: Record ordinary-sized mixed section operations
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode mixed
+      - name: Record absent NULL empty and retained integer replacement states
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement-states
       - name: Record selected ACL replacement and shared-alias scenarios
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement
@@ -77,6 +80,7 @@ jobs:
             artifacts/composition/
             artifacts/raw-contract/
             artifacts/alarm/
+            artifacts/replacement-states/
             artifacts/replacement/
           if-no-files-found: error
   offline-acl:

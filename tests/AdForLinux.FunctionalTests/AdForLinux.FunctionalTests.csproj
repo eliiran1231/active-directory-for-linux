@@ -25,6 +25,7 @@
     <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlCompositionContracts.cs" Link="SddlCompositionContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlReplacementStates.cs" Link="SddlReplacementStates.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlReplacementContracts.cs" Link="SddlReplacementContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlAlarmContracts.cs" Link="SddlAlarmContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlRawContractContracts.cs" Link="SddlRawContractContracts.cs" />

@@ -32,6 +32,7 @@ public partial class PortableSecurityFoundationTests
             var wrappers = new[] {context.Main,context.Peer,context.Alias}.Where(w => w is not null).Cast<FacadeContracts.Wrapper>().ToArray();
             if (starting)
             {
+                if (before is null) Assert.Equal(context.Input.Source(),context.Main.Descriptor.MutationState.Descriptor.GetBinaryForm());
                 before = wrappers.Select(w => new ReplacementState(w,w.Descriptor,w.Descriptor.DiscretionaryAcl!,w.Descriptor.SystemAcl!,
                     w.CaptureInteropSnapshot(),w.Descriptor.MutationState.Descriptor.GetBinaryForm(),w.Descriptor.MutationState.OriginalDescriptor.GetBinaryForm(),
                     w.GetSecurityDescriptorBinaryForm(),w.Descriptor.MutationState.WriteIntent,w.Descriptor.MutationVersion,w.ReadVersion,w.Flags(),w.Descriptor.MutationState,
@@ -86,6 +87,7 @@ public partial class PortableSecurityFoundationTests
                 }
                 Assert.Equal(previous.Intent | changed,descriptor.MutationState.WriteIntent);
                 Assert.True(descriptor.MutationVersion >= previous.Version);
+                if (step.Name == "identical-all") Assert.Equal(previous.Snapshot.Generation,current.Generation);
                 if (changed != SecurityMasks.None) Assert.True(descriptor.MutationVersion > previous.Version);
                 if ((permitted & AccessControlSections.Access) == 0) Assert.Same(previous.Dacl,descriptor.DiscretionaryAcl);
                 if ((permitted & AccessControlSections.Audit) == 0) Assert.Same(previous.Sacl,descriptor.SystemAcl);
