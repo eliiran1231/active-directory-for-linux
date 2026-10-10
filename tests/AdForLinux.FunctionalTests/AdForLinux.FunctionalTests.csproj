@@ -34,6 +34,7 @@
     <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedInputs.cs" Link="SddlMixedInputs.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedContracts.cs" Link="SddlMixedContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlAceSizeInputs.cs" Link="SddlAceSizeInputs.cs" />
+    <Compile Include="../Shared/LayoutRelocationCases.cs" Link="LayoutRelocationCases.cs" />
     <Compile Include="../Shared/IdenticalAssignmentCases.cs" Link="IdenticalAssignmentCases.cs" />
     <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
   </ItemGroup>

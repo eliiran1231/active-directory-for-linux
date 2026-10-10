@@ -19,10 +19,16 @@ For descriptors with leading/intercomponent/trailing bytes or orphan storage:
 
 - Same-size replacements keep component offsets and the original image length. Every byte
   outside changed components and requested header fields remains fixed.
-- A terminal component may grow or shrink at its original offset only when its original end
-  equals the image end. Removed bytes belong to that known component; original unexplained
-  bytes are neither consumed nor shifted. ACLs with their own unexplained trailing payload
-  refuse resizing in this mode.
+- A terminal component may grow or shrink at its original offset. An interior component
+  may now resize when its anchor and every following anchor form a contiguous referenced
+  suffix ending exactly at the image end. The first offset stays fixed; later components
+  move by the cumulative size delta. No gap or trailer is consumed, shifted or reclassified.
+  Source component copies are immutable, so shrinkage cannot overwrite later source data.
+  Multiple requested resizes use their final lengths and leave no new orphan storage.
+- A moved ACL must have revision 2/4, zero reserved header fields, no opaque ACE, ACE tail,
+  reserved ACE flag 0x20 or ACL tail. A resized ACL still refuses its own trailing payload.
+  Unchanged opaque storage outside the moving suffix stays fixed. This bounded relocation
+  does not infer semantics for unknown payloads.
 - A fully contained alias may move to new independent, four-byte-aligned storage when its
   original span is still covered by an outer referenced component. Equal spans prefer an
   unchanged anchor. This also permits adding a previously absent component at the end.
@@ -47,8 +53,9 @@ is an approved preservation operation, so the complete edit refuses atomically. 
 mask edit or protection-bit change on that descriptor succeeds while retaining the trailer.
 Zero-filled trailers receive the same protection; zero is not evidence of disposable slack.
 
-Interior resizing also refuses: it would need to move adjacent storage, consume unexplained
-gaps or introduce orphan component suffixes. Removing a referenced component entirely in a
+Interior resizing still refuses when a later gap/trailer interrupts the fully referenced
+suffix, or a shifted ACL contains unexplained fields/payload. The new contiguous-suffix
+case only moves independently understood storage; it introduces no orphan suffixes. Removing a referenced component entirely in a
 gapped image refuses rather than changing unknown-storage boundaries. Resizing an ACL with
 its own trailing payload in this mode, and crossing shared spans, remain bounded refusals.
 These do not prevent fixed-size or other independently safe edits.
@@ -103,3 +110,19 @@ byte-for-byte. There are now 12 candidate imports and 1,493 total observations.
 
 The [next detached-public proposal](issue-226-detached-public-next.md) enumerates the 45 rule
 constructors, mandatory protected hooks, compiling transition and actual facade decision.
+
+## Contiguous suffix follow-up
+
+The directed matrix has 32 cases: owner/group/DACL/SACL growth and shrinkage, three/four
+leading gap bytes, and zero/A5 gap contents. Independent fixture assembly defines the exact
+raw candidate. Public entry tests cover a shared descriptor, separate ACL aliases, original
+and caller buffers, no-op generation, exact section intent and captured ModifyRequest.
+Actual Windows tests import each independently assembled candidate and compare it with the
+corresponding native edit's observable result; no portable exporter or edit-back is used.
+Additional core cases retain contained SID aliases from immutable source bytes, handle two
+simultaneous resizes, and refuse eight unexplained-storage families with prior intent.
+Bound entry rollback tests retain state/provenance references and permit later safe writes.
+
+This does not permit arbitrary raw relocation, deletion from gapped images, consuming
+zero padding, moving trailers or speculative interpretation of opaque payloads. It changes
+no authority, credentials, transport settings, Microsoft conversion or Add policy.

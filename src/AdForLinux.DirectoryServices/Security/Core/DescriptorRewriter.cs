@@ -79,6 +79,8 @@ internal static class DescriptorRewriter
         }
         var trailing = !covered[^1];
         var baseLength = image.Length;
+        var destination = offsets.ToArray();
+        var resized = new List<int>();
         for (var i = 0; i < components.Length; i++)
         {
             if (originals[i] is null)
@@ -89,15 +91,35 @@ internal static class DescriptorRewriter
             if (components[i] is null)
                 throw new InvalidOperationException("Removing a referenced component would change unexplained storage boundaries.");
             if (relocated[i] || originals[i]!.Length == components[i]!.Length) continue;
-            if (offsets[i] + originals[i]!.Length != image.Length)
-                throw new InvalidOperationException("An interior component cannot resize across fixed unexplained storage or another referenced component.");
             if (i >= 2 && !Acl.Read(originals[i]!).Trailing.IsEmpty)
                 throw new InvalidOperationException("Resizing this layout would relocate unexplained ACL trailing data.");
-            baseLength = checked(offsets[i] + components[i]!.Length);
+            resized.Add(i);
         }
         if (trailing && relocated.Any(value => value))
             throw new InvalidOperationException("Appending independent storage would turn an unexplained descriptor trailer into an interior gap.");
-        var destination = offsets.ToArray();
+        if (resized.Count != 0)
+        {
+            // Only a contiguous, fully referenced suffix may change size. Its first
+            // offset remains fixed, so every original gap stays at its absolute offset.
+            // Build from immutable component copies: moving later bytes in-place would
+            // corrupt shrinking spans and contained SID aliases.
+            var start = resized.Min(i => offsets[i]);
+            var originalCursor = start;
+            var cursor = start;
+            foreach (var i in anchors.Where(i => offsets[i] >= start).OrderBy(i => offsets[i]))
+            {
+                if (offsets[i] != originalCursor)
+                    throw new InvalidOperationException("An interior component cannot resize across unexplained descriptor storage.");
+                if (cursor != offsets[i] && i >= 2)
+                    RequireMovableAcl(originals[i]!);
+                destination[i] = cursor;
+                originalCursor = checked(originalCursor + originals[i]!.Length);
+                cursor = checked(cursor + components[i]!.Length);
+            }
+            if (originalCursor != image.Length)
+                throw new InvalidOperationException("Resizing cannot move or reclassify an unexplained descriptor trailer.");
+            baseLength = cursor;
+        }
         var length = baseLength;
         for (var i = 0; i < components.Length; i++)
         {
@@ -123,6 +145,17 @@ internal static class DescriptorRewriter
         if (descriptor.HasOverlappingComponents)
             throw new InvalidOperationException("The candidate still contains shared component storage.");
         return descriptor;
+    }
+
+    private static void RequireMovableAcl(byte[] bytes)
+    {
+        var acl = Acl.Read(bytes);
+        // No relocation semantics are inferred for payloads or reserved fields. Even
+        // when byte-copying would preserve their contents, this slice leaves them at
+        // their original absolute positions or refuses the entire operation.
+        if (acl.AclRevision is not (Acl.Revision or Acl.RevisionDS) || acl.Sbz1 != 0 || acl.Sbz2 != 0
+            || !acl.Trailing.IsEmpty || acl.Aces.Any(ace => ace.Kind == AceKind.Opaque || ace.TrailingLength != 0 || (ace.AceFlags & 0x20) != 0))
+            throw new InvalidOperationException("Relocating an ACL with unexplained data is not supported.");
     }
 
     internal static byte[] EncodeAcl(Acl? baseline, IReadOnlyList<Ace> aces)

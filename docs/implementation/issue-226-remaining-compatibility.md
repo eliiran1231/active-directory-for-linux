@@ -1,6 +1,26 @@
 # PR 228 readiness and remaining compatibility
 
-## Public surface correction — readiness hold
+## Current selected scope and verified user-run evidence
+
+PR 228 remains open/draft at the verified starting head
+`d0999a643108e8d40d7c96f6d65c9f188b073cab`. The user's
+[manual differential run 38072859234](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38072859234)
+passed **1,363 cases on each of .NET 8/10, zero failures/skips** at that head.
+Actual job logs were checked. This supersedes the earlier statement that the differential
+suite had not run; the functional suite and separate explicit-Add validation matrix have
+not thereby been certified. No live workflow is launched by this implementation task.
+
+Current priorities are bounded safe raw-layout editing, identity completion, and causal
+investigation of large-SDDL allocation/order differences. Microsoft conversion is
+**export-only for required future scope**: existing approved import/edit-back code remains
+intact, with no expansion. Broader Add support is deferred. Approved preservation
+refusals are acceptable differences, not mandatory targets for unsafe parity.
+
+The proposed public identity helper is awaiting explicit approval. Until then no export is
+added. The [identity assessment](issue-226-identity-next.md) distinguishes existing public
+entry routes from helper, provider, topology and live-fixture decisions.
+
+## Completed public surface correction
 
 The user-run manual differential workflow at `b1681e4d8be3149b81f826109fe18ed445127621`
 reported 15 failures and 1,346 passes per runtime. All 15 failures reproduce in the
@@ -17,7 +37,8 @@ substitution. The 33 metadata-only tests now run in routine offline Windows CI.
 
 The former green offline workflow did not include these legacy differential surface checks.
 The separate user-run live evidence is limited evidence, not completion of the explicit-Add
-plan. Readiness stays on hold pending corrected-head validation and independent review.
+plan. Corrected-head offline validation subsequently passed in run 38071830859; the user-run
+differential result above is additional evidence. New changes still require exact-head validation and review.
 No full differential or directory-mutating suite is rerun for this correction.
 
 Linux .NET 8/10 pass all 33 corrected metadata checks using the pinned Microsoft
@@ -176,66 +197,49 @@ it can be disclosed in a deliberately limited release; it is not a claim of full
 | Untested SDDL inputs | The 2,400 SDDL observations cover selected syntax, errors and encodings, not all nested expressions, resource value/count/string boundaries, rights/flag/context combinations, malformed payloads, maximum lengths or runtime-specific exception details. | Evidence gap; directed native probes remain necessary. Linear rendering/allocation tests do not establish semantic completeness or bounds for every parser path. |
 | ACE/ACL projection and mutation | Known common/object access/audit ACEs have tested canonicalization, compaction and retained contributors. Unknown/wrong-kind ACEs, callback/opaque payloads, reserved fields and ACL tails do not gain general projection/mutation semantics from binary import support. Eight facade callback-clear cases refuse native data loss. | Intentional preservation boundary plus unimplemented semantics outside the understood subset. Raw copies preserve data; unrelated supported section edits may succeed. Do not label all ACE or ACL classes complete. |
 | Failed mutation behavior | 41 recorded facade outcomes roll back atomically where Microsoft leaves a partial failed mutation. | Intentional, pinned safety difference; no exact-native-parity claim and no reason to weaken atomicity. |
-| Raw descriptor layout | Fixed-offset edits, terminal resizing and contained aliases are supported under proof. Interior resizing across unexplained storage, trailer growth/allocation, deleting referenced components in gapped images, resizing ACLs with tails and crossing overlaps refuse. | Intentional preservation constraints; broader safe algorithms require new layout proofs. Microsoft observable repacking is never persistence data. See [layout policy](issue-226-layout-policy.md). |
+| Raw descriptor layout | Fixed-offset edits, contiguous fully referenced suffix resizing and contained aliases are supported under proof. Interior resizing across unexplained storage, trailer growth/allocation, deleting referenced components in gapped images, resizing ACLs with tails and crossing overlaps refuse. | Intentional preservation constraints; broader safe algorithms require new layout proofs. Microsoft observable repacking is never persistence data. See [layout policy](issue-226-layout-policy.md). |
 | Shared facades and operation combinations | Unbound ACL normalization may not reconcile when later attached. Unrecorded alias/sharing, nested callbacks, lock/reentrancy, mixed failure/success, inherited/GUID/mask and large-sequence combinations are not exhaustively characterized. | Offline evidence/implementation gap, not a known universally failing operation. Recorded invariants and races do not prove every accepted combination. |
 | Strict Microsoft copy conversion | Complete verified directory-container descriptors only; partial retrieval, unexplained storage, unsupported control/reserved bits, hidden ACL data and unverified payloads refuse. Rule conversion refuses unknown subclasses, subtype/field loss, constructor normalization and unrecreatable GUID-presence/inherited states. | Deliberately strict staged companion boundary. Full conversion coverage is unfinished; native Windows execution is required. No native dependency is added to the core/AccountManagement packages. |
-| Microsoft edit-back | Owner/group and proven unique-contributor mask edits/deletions plus independent non-merging explicit insertion compose atomically. Merged/duplicate/ambiguous replacements, splits, inherited edits, merging additions, reordering, control/revision/ACL-state changes and opaque edits refuse. | Concrete unfinished reconciliation, blocking a general native edit-back claim. Failed Apply retains the session but stale authority cannot be revived; successful Apply is one-use. No replacement fallback or authority transfer. |
+| Microsoft edit-back | Owner/group and proven unique-contributor mask edits/deletions plus independent non-merging explicit insertion compose atomically. Merged/duplicate/ambiguous replacements, splits, inherited edits, merging additions, reordering, control/revision/ACL-state changes and opaque edits refuse. | Existing approved bounded code remains intact; expansion is outside the newly selected export-only scope. Failed Apply retains the session but stale authority cannot be revived; successful Apply is one-use. No replacement fallback or authority transfer. |
 | Entry assignment and Modify | Retrieved-section/raw-origin checks, net section flags, ordinary-property batching, lifecycle checks and uncertain-write readback are implemented through controlled transport tests. Direct property-cache descriptor writes refuse without section intent. | Raw-safe staged implementation, not proof of ADSI/server parity. Local generation checks do not provide server compare-and-swap or detect all other writers/same-DN replacement. |
-| Explicit Add implementation | Omission leaves AD defaults. Explicit descriptors currently require all sections known, owner/group present, non-NULL DACL/SACL and both ACLs protected. Partial/omitted/NULL/inheriting explicit inputs are rejected. | Concrete full-goal blocker, not a permanent exclusion. Broader request planning and server evidence are distinct tasks. Uncertain Add stays quarantined: same-DN readback cannot prove which request created an object. |
+| Explicit Add implementation | Omission leaves AD defaults. Explicit descriptors currently require all sections known, owner/group present, non-NULL DACL/SACL and both ACLs protected. Partial/omitted/NULL/inheriting explicit inputs are rejected. | Broader Add support is deferred by the selected scope. Request planning and server evidence remain distinct tasks. Uncertain Add stays quarantined: same-DN readback cannot prove which request created an object. |
 | Real AD validation | Default descriptors, inherited access AND audit ACEs, protected/empty/NULL creation, privilege/owner constraints, server normalization, section readback, referrals/topology, move/rename, authenticated identity continuity, concurrent writers and accepted-then-timeout behavior lack current-PR end-to-end proof. | Live-only validation blocker for a production server-parity claim. The [15-cell Add plan](issue-226-add-validation-plan.md) remains unexecuted. Protected-empty DACL requires proven observer/GUID access and independent individual-delete authority before execution; ownership or admin membership alone is not proof. |
-| Whole-solution consumers | Current compilation includes all six solution projects. The full functional and differential suites include directory-mutating fixtures and were not executed unfiltered in this no-live-AD task. Other library families are not certified by the security manifest. | Broader integration evidence remains a release-readiness gap. No unrun suite is called passing. |
+| Whole-solution consumers | Current compilation includes all six solution projects. The user-run differential suite passes 1,363 cases per runtime at d0999a6. The full functional suite has not been run here. Both contain directory-mutating fixtures. Other library families are not certified by the security manifest. | Broader integration evidence remains a release-readiness gap. The separate Add plan and unrun functional suite are not covered by the differential pass. |
 
-## Exact validation scope
+## Current baseline validation scope
 
-The implementation head above passed [Windows run 37998412270](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270):
+At `d0999a643108e8d40d7c96f6d65c9f188b073cab`,
+[offline Windows run 38071830859](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38071830859)
+passed all four jobs: each runtime passed 12,990 core, 33 strict surface and 327 companion
+tests, zero failures/skips, full builds/package checks and native oracle freshness.
+Linux passed 12,990 core, 33 surface, 55 consumer, 34 registration and four applicable
+companion tests per runtime; 16 Windows-only companion groups skipped. The six-project
+Release build had zero errors and 14 existing xUnit2013 warnings. Linux surface checks
+used the package's Windows runtime assemblies rather than its reduced platform stubs.
 
-- .NET 8 and .NET 10 each: 11,119 core offline tests and 321 **unfiltered companion** tests;
-  zero failures/skips. Full solution builds and local package dependency/isolation checks passed.
-- Fresh native comparisons each: 1,845 mutation, 2,692 foundation and 3,589 closure observations;
-  exact surface comparison of 39 roots/55 types. Closure outcomes: 2,542 exact successes,
-  962 exact exceptions, 36 SDDL refusals, eight facade refusals and 41 atomic differences.
-- Artifacts: [net8 / 11648137304](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270/artifacts/11648137304)
-  and [net10 / 11648506227](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/37998412270/artifacts/11648506227).
-  Actual job logs were inspected; artifact ZIPs were not downloaded.
-- Existing Linux .NET 8/10 evidence: 11,119 core tests per runtime; companion four passed and
-  14 Windows-only groups skipped. Those skips are not native test executions.
+The separate user-run [manual differential workflow](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38072859234)
+passed all 1,363 tests on both runtimes at the same head. That includes the actual fixture
+setup/cleanup and tested live routes. It is legitimate bounded live evidence; it is not an
+unfiltered functional-suite pass or execution of the distinct 15-cell Add plan. This task
+runs only offline tests and does not initiate any further live workflow.
 
-This readiness pass additionally rebuilt **AdForLinux.sln**, Release, without incremental
-compilation: zero errors, 14 existing xUnit2013 warnings; all six projects/both TFMs built,
-including DifferentialTests. Dependency restoration succeeded. The shell initially lacked
-`dotnet` on PATH; using the already installed `/workspace/dotnet/dotnet` resolved it. A transient
-executor disconnection recovered without resetting the checkout.
+This follow-up adds contiguous referenced-suffix relocation, public entry identity-route
+coverage and eight native SDDL assembly witnesses. Its exact-head results and artifact
+links are published in PR 228 after the push-triggered offline workflow. Native freshness
+alone is not proof of portable parity, and Linux companion skips are not native execution.
 
-Additional Linux .NET 8/10 runs each passed 55 complete-class offline consumer cases
-(`AccountManagementPublicTypesTests`, `CollectionCompatibilityTests`,
-`PrincipalValueCollectionTests`, `DirectoryEntryLocalStateTests`) and 34
-`FixtureRegistrationTests` cases. The companion project was rerun **without any filter**:
-four passed, 14 Windows-only groups skipped per runtime. The consumer and fixture-registration
-runs are explicitly filtered; they are not a full unfiltered functional/differential pass.
-Local build/log/TRX evidence is in `/workspace/pr228-evidence/readiness-*`.
+## Current readiness and next work
 
-Unfiltered functional/differential execution is blocked by task scope: `TestSettings` defaults
-to a Samba endpoint, and `TestDataFixture` creates users/computers/groups and cleans them up.
-No authorized live fixture is available for this task. Network namespace isolation was also
-unavailable (`unshare`: read-only uid_map); no test was redirected to real AD or run on an
-assumption that missing configuration would skip it. Fixture registration is metadata-only,
-not server validation. The existing Windows workflow intentionally filters the six offline
-core classes; its green result cannot be promoted to unfiltered solution-test evidence.
+The selected implementation goals remain bounded: safe raw-layout editing, identity
+completion and a causal explanation of the large-SDDL mismatch family. The new suffix
+algorithm does not authorize moving unexplained bytes or relaxing atomic refusal.
+Public helper approval and explicit authority/topology/provider evidence remain distinct
+identity decisions. Existing preservation differences are acceptable under the selected
+scope. Microsoft conversion is export-only for required new work; approved import/edit-back
+code remains intact. Broader Add support is deferred.
 
-## Readiness decision and next work
-
-The complete implementation goal remains **open**: explicit identity authority/topology,
-SDDL codec coverage and loss-bearing export design, broader safe interop reconciliation,
-explicit Add variants, and the untested/server families above are concrete unfinished work.
-Preservation-driven differences and measured native base-method exceptions must remain
-separate from missing code. There is no remaining known declaration gap in the recorded
-security closure, but that fact closes none of these behavioral gaps.
-
-A clearly labeled staged PR could carry the current bounded implementation and intentional
-refusals, after normal review and explicit maintainer acceptance of the base-type/API migration.
-A staged release would also need an explicit supported-scope statement and release acceptance
-of the unrun live suites; this inventory does **not** certify production directory parity or
-approve publication. Neither a full compatibility release nor issue closure is justified.
-No merge, release, package publication, live AD, credentials/security change or new feature
-slice was performed in this readiness pass. The next slice should be chosen from this
-inventory, with its native evidence and acceptance boundary specified first.
+No new public helper is exported while its approval is pending. No GC/trust routing,
+credential forwarding, Basic fallback, ambient-mutation continuity assumption, merge,
+release or live operation is introduced by this follow-up. The separate live scenarios
+in the table still require specifically authorized fixtures; the existing user-run suite
+must not be generalized to server parity or untested object-creation variants.
