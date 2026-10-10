@@ -44,6 +44,28 @@ internal static class SddlNativeLayers
                 ("callback", "(XA;;RP;;;WD;(@User.B == 1))")
             }) yield return new($"suffix/{name}/{length}", "XA", "D:" + large + suffix);
         }
+        // The suffix observations are non-monotonic: e.g. two ordinary followers
+        // fail at 32690 but succeed at 32700. Challenge count/order/alignment;
+        // none of these inputs encodes an expected allocation formula.
+        foreach (var length in new[] { 32658, 32674, 32682, 32686, 32688, 32690, 32692, 32694,
+            32696, 32698, 32700, 32702, 32704, 32706, 32708, 32710 })
+        {
+            var large = $"(XA;;RP;;;WD;(@User.A == \"{new string('x', length)}\"))";
+            const string ordinary = "(A;;RP;;;WD)";
+            foreach (var (name, before, after) in new[]
+            {
+                ("alone", "", ""), ("after1", "", ordinary), ("after2", "", ordinary + ordinary),
+                ("after3", "", ordinary + ordinary + ordinary), ("after4", "", string.Concat(Enumerable.Repeat(ordinary, 4))),
+                ("before2", ordinary + ordinary, ""), ("before3", ordinary + ordinary + ordinary, ""),
+                ("before4", string.Concat(Enumerable.Repeat(ordinary, 4)), ""), ("around", ordinary, ordinary),
+                ("after-ba", "", "(A;;RP;;;BA)"), ("after-domain", "", "(A;;RP;;;S-1-5-21-1-2-3-1000)"),
+                ("after-max", "", "(A;;RP;;;S-1-5-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15)"),
+                ("after-object1", "", "(OA;;RP;11111111-2222-3333-4444-555555555555;;WD)"),
+                ("after-object2", "", "(OA;;RP;11111111-2222-3333-4444-555555555555;66666666-7777-8888-9999-aaaaaaaaaaaa;WD)"),
+                ("after-callback", "", "(XA;;RP;;;WD;(@User.B == 1))"),
+                ("before-callback", "(XA;;RP;;;WD;(@User.B == 1))", "")
+            }) yield return new($"accounting/{name}/{length}", "XA", "D:" + before + large + after);
+        }
     }
 
     internal static void Write(string path, int index)
