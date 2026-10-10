@@ -1,5 +1,17 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest alarm composition correction
+
+The [alarm export/reparse follow-up](issue-226-alarm-composition.md) records 96
+native observations across common/object and callback alarm families, SA/FA
+combinations, inactive and unselected controls. Native formatting of AL/OL succeeds
+but its own reparse rejects the text, including exact legacy strings 937/987.
+Raw export now refuses AL/OL for all audit-flag combinations under the existing
+reconstructibility policy. This deliberately sacrifices native formatting parity;
+it is not a newly discovered formatting mismatch or parser defect. Facade behavior
+is unchanged. The preceding 18 raw-contract fixes remain exact; that 80-row matrix
+still has 55 complete portable matches and 25 pinned refusal rows, not 80 matches.
+
 ## Latest raw formatting contract correction
 
 The [bounded raw contract follow-up](issue-226-raw-formatting-contract.md) closes

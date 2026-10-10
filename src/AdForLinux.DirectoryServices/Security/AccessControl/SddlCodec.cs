@@ -425,8 +425,11 @@ internal static class SddlCodec
         if (token is null) throw new InvalidOperationException($"ACE type {type} has no valid SDDL representation.");
         if (!system && type is 2 or 3 or 7 or 8 or 13)
             throw new InvalidOperationException("Audit and alarm ACEs cannot be formatted in a DACL.");
-        if (type is 3 or 8 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0)
-            throw new NotSupportedException("Native unaudited alarm text cannot reconstruct the ACE.");
+        // Native formats AL/OL for every audit-flag combination, but native
+        // reparsing rejects that text. Preserve the alarm identity by refusing
+        // composition; neither drop it nor substitute an audit ACE.
+        if (type is 3 or 8)
+            throw new NotSupportedException("Native alarm text cannot reconstruct the ACE.");
         if (type is 17 or 19 or 20)
         {
             if (!system) throw new InvalidOperationException("Label and policy ACEs cannot be formatted in a DACL.");

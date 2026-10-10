@@ -25,6 +25,7 @@
     <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlCompositionContracts.cs" Link="SddlCompositionContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlAlarmContracts.cs" Link="SddlAlarmContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlRawContractContracts.cs" Link="SddlRawContractContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlExportInputs.cs" Link="SddlExportInputs.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlExportContracts.cs" Link="SddlExportContracts.cs" />
@@ -42,10 +43,13 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net10.0.json.gz" LogicalName="AclOracle.RetainedExport.net10.json.gz" />
     <EmbeddedResource Include="SddlRetainedExportDifferences.json" LogicalName="AclOracle.RetainedExport.Differences.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net8.0.json.gz" LogicalName="AclOracle.Composition.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net8.0.json.gz" LogicalName="AclOracle.Alarm.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net8.0.json.gz" LogicalName="AclOracle.RawContract.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net10.0.json.gz" LogicalName="AclOracle.Composition.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net10.0.json.gz" LogicalName="AclOracle.Alarm.net10.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net10.0.json.gz" LogicalName="AclOracle.RawContract.net10.json.gz" />
     <EmbeddedResource Include="SddlCompositionRefusals.json" LogicalName="AclOracle.Composition.Refusals.json" />
+    <EmbeddedResource Include="SddlAlarmRefusals.json" LogicalName="AclOracle.Alarm.Refusals.json" />
     <EmbeddedResource Include="SddlRawContractRefusals.json" LogicalName="AclOracle.RawContract.Refusals.json" />
     <!-- Literal Windows observations; replay remains fully offline on every target. -->
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net8.json.gz" LogicalName="AclOracle.Boundary.net8.json.gz" />

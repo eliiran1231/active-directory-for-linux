@@ -1,0 +1,964 @@
+[
+  {
+    "Case": 0,
+    "Label": "alarm-composition/alarm-3-flags-0/export-selected",
+    "NativeObservationSha256": "9e47dba7c6e28f44013b46725a2de3f2e046ab12a437e457ca4ae4d5c0e65204",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 2,
+    "Label": "alarm-composition/alarm-3-flags-8/export-selected",
+    "NativeObservationSha256": "eb9e1f85986cd0196f9035aee54e35ebd56a21eca633eb84e33491abcb514919",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 4,
+    "Label": "alarm-composition/alarm-3-flags-64/export-selected",
+    "NativeObservationSha256": "760c7b21bc06db38e1d0b7911732dbf6bff651cb1eea0024fcab5a78a107dbd3",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 6,
+    "Label": "alarm-composition/alarm-3-flags-72/export-selected",
+    "NativeObservationSha256": "2a65c2efb3ed3d03c47adf8e4a69af9d2839edeb891896a3ccb32948f0a1595c",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 8,
+    "Label": "alarm-composition/alarm-3-flags-128/export-selected",
+    "NativeObservationSha256": "cd423fd396cd9751f4c92f5d297e38e24ffa4e9cc8e597cddc9674ff2ca8a9c5",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 10,
+    "Label": "alarm-composition/alarm-3-flags-136/export-selected",
+    "NativeObservationSha256": "ad8fff5a45a09ae04010f459bb3709d34d93c96962a5ed1cb3dd400b1c48ae7d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 12,
+    "Label": "alarm-composition/alarm-3-flags-192/export-selected",
+    "NativeObservationSha256": "78e879e45c44140a3a075588e73ee060a842467db8640d85225bf9017fc80f82",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 14,
+    "Label": "alarm-composition/alarm-3-flags-200/export-selected",
+    "NativeObservationSha256": "648b81725836c34039aadd70b1be6e5ddf0b626351446544659816a51aab8de8",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 16,
+    "Label": "alarm-composition/alarm-8-flags-0/export-selected",
+    "NativeObservationSha256": "482784d00966d30988fa49697144a933a9738551115e1238908674d9291ae9ac",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 18,
+    "Label": "alarm-composition/alarm-8-flags-8/export-selected",
+    "NativeObservationSha256": "fa3eb42af7d08f93becabdc603ba08b6b5cf3f244d7649e47c68588637de5fb9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 20,
+    "Label": "alarm-composition/alarm-8-flags-64/export-selected",
+    "NativeObservationSha256": "42dc9b031238c8469ab61fe63d7cb76b16f07dccc7f883b6666edf19b40c7595",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 22,
+    "Label": "alarm-composition/alarm-8-flags-72/export-selected",
+    "NativeObservationSha256": "f000884f3ae5c92df5e50a3e48d0197f5a032b127097b727748c1e64df77435d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 24,
+    "Label": "alarm-composition/alarm-8-flags-128/export-selected",
+    "NativeObservationSha256": "08c2ae7b8dc533be05829c40b78267505e740f4b3992b963b78425ffaa74b266",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 26,
+    "Label": "alarm-composition/alarm-8-flags-136/export-selected",
+    "NativeObservationSha256": "84a224a24d790d35171708d76050a88092cd70bd6aeca017a3ad01ccfe4b72bb",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 28,
+    "Label": "alarm-composition/alarm-8-flags-192/export-selected",
+    "NativeObservationSha256": "824485c76a222cba7aeaa77a6086c37aaccf1417feffb627a674d52623456cdd",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 30,
+    "Label": "alarm-composition/alarm-8-flags-200/export-selected",
+    "NativeObservationSha256": "811081bb739498b1f2932e14e12d4fdf98e28e00d10be28d7a50c9bc3707a80a",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 32,
+    "Label": "alarm-composition/alarm-14-flags-0/export-selected",
+    "NativeObservationSha256": "96c0501bdd6e06f3c90f3946cbb8e3ada1d3259bba0c9b03a0baabc34c7e1d2c",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 34,
+    "Label": "alarm-composition/alarm-14-flags-8/export-selected",
+    "NativeObservationSha256": "8dae188fe33fa5eef8a3daa8abd02e74f57987d6aa0c95d078498358f5bf263c",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 36,
+    "Label": "alarm-composition/alarm-14-flags-64/export-selected",
+    "NativeObservationSha256": "9e53bf0f48ea3c4f26a34c18f6eb2f2753cfdc883007265781d8ca5c310fe64e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 38,
+    "Label": "alarm-composition/alarm-14-flags-72/export-selected",
+    "NativeObservationSha256": "69e489e422c01e7eb8ac264fdc3bddc50a5ab2e76fe5804ee217e61ae741bba7",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 40,
+    "Label": "alarm-composition/alarm-14-flags-128/export-selected",
+    "NativeObservationSha256": "c2a678a1ce222d937c90e43333c9e2e5823739c6b64ef176ce1c7be5c11923be",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 42,
+    "Label": "alarm-composition/alarm-14-flags-136/export-selected",
+    "NativeObservationSha256": "9f2de26f52c67e180af641d17b3a507ca4ed165f5897169cdf5f095a2d780ea5",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 44,
+    "Label": "alarm-composition/alarm-14-flags-192/export-selected",
+    "NativeObservationSha256": "ef6ec2a4e180175575c0881be5ef200effc475caa224f2462101fc35ef7c708f",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 46,
+    "Label": "alarm-composition/alarm-14-flags-200/export-selected",
+    "NativeObservationSha256": "abe70aa123d9b6bdc79c78160b4e5ed95002c1e1654938c36780a40bd68fcd09",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 48,
+    "Label": "alarm-composition/alarm-16-flags-0/export-selected",
+    "NativeObservationSha256": "0dd9da76564c720aed2f1d0e9327a46e49f6d4ed90263a45b5b15086ae996459",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 50,
+    "Label": "alarm-composition/alarm-16-flags-8/export-selected",
+    "NativeObservationSha256": "5127d0b1b4b58428eb441088adb2fa868431fd77fb20fa0116b489918cc0beae",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 52,
+    "Label": "alarm-composition/alarm-16-flags-64/export-selected",
+    "NativeObservationSha256": "3b3412081f328700aecc496eae16565ba665145f979d5127f5f9a494ce4509ab",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 54,
+    "Label": "alarm-composition/alarm-16-flags-72/export-selected",
+    "NativeObservationSha256": "30ebd78664f77328643debb42ad65980032196d28bbacb73bacac0d3db9abc6b",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 56,
+    "Label": "alarm-composition/alarm-16-flags-128/export-selected",
+    "NativeObservationSha256": "4ce2c9fb8c5ceab972045eee62a55316580278f825277837ce87d1153d336fab",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 58,
+    "Label": "alarm-composition/alarm-16-flags-136/export-selected",
+    "NativeObservationSha256": "6ac5bd4f17fca3174a98bea9e4132c808c2c14aef6180abbb21292b9723b5b67",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 60,
+    "Label": "alarm-composition/alarm-16-flags-192/export-selected",
+    "NativeObservationSha256": "f78ad5773c490d7ec68d8ec74f99c0b8292016e02bae84360a64dd66a04a1caf",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 62,
+    "Label": "alarm-composition/alarm-16-flags-200/export-selected",
+    "NativeObservationSha256": "06cca0e6dd76f48fe1fd11fde88f084d9f668155278e831ad980a06032b050d8",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 72,
+    "Label": "alarm-composition/object-alarm-8-layout-0/export-selected",
+    "NativeObservationSha256": "22d397e85cf8d7c52559def25738d16db9ac390fc7f407b3e4afc6522676d6c3",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 74,
+    "Label": "alarm-composition/object-alarm-8-layout-2/export-selected",
+    "NativeObservationSha256": "23476d219166521b74f21189dbf0ad91a32b6dad36a23c2f2258d761000ac3e0",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 76,
+    "Label": "alarm-composition/object-alarm-8-layout-3/export-selected",
+    "NativeObservationSha256": "3cf7981d99253d71c3c13a4fc34273337f0c190b02dd5b6f608fa06c4ce80e7b",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 78,
+    "Label": "alarm-composition/object-alarm-16-layout-0/export-selected",
+    "NativeObservationSha256": "e04338aa98a9a725bc8d6775224033f099b6eb158b744695eec5c626d324938a",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 80,
+    "Label": "alarm-composition/object-alarm-16-layout-2/export-selected",
+    "NativeObservationSha256": "66da791a0c817fd4182c9cc2d3fb87991d4976b52a3deb84a79610033227966e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 82,
+    "Label": "alarm-composition/object-alarm-16-layout-3/export-selected",
+    "NativeObservationSha256": "f0723255c1dd7fff7eb7f5b1ea428a3f71dc676e3888098453947707d34f741c",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 84,
+    "Label": "alarm-composition/callback-alarm-14-valid-64/export-selected",
+    "NativeObservationSha256": "b23b7eae244e5eba3de0a4cd5b8f276a14caf05b9ce20ed582d517583c719185",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 86,
+    "Label": "alarm-composition/callback-alarm-14-valid-192/export-selected",
+    "NativeObservationSha256": "4f37fd8e4f019c595ac9a042109c6302af1ad9f13733c5cf2e2ab9150ccd7535",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 88,
+    "Label": "alarm-composition/callback-alarm-16-valid-64/export-selected",
+    "NativeObservationSha256": "6312e76c5ccde242219c4899b65faac98f3a6e6c61a30c3b37085e867c1a69d7",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 90,
+    "Label": "alarm-composition/callback-alarm-16-valid-192/export-selected",
+    "NativeObservationSha256": "1bea8fc52939b9b6d8d264c484d28212597fbc2ea366cb5dd1a3c207c2a1c1ff",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 92,
+    "Label": "alarm-composition/standalone-alarm-3/export-selected",
+    "NativeObservationSha256": "d5d535f9f1fd2a9c58065a3d314f704ef0e1a244c317d70cd4a0e1595f2dd939",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 94,
+    "Label": "alarm-composition/standalone-alarm-8/export-selected",
+    "NativeObservationSha256": "ebfa663f55ad6816746f5c9f543a552d20b10418d3c172e3324b9334b8eec419",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-alarm-nonroundtrippable-text",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "existing-facade-alarm-omission",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  }
+]

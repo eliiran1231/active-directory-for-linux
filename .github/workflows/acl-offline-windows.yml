@@ -30,6 +30,8 @@ jobs:
       - name: Record bounded alarm export-reparse compositions
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode alarm
+      - name: Verify exact alarm composition evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/alarm/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-alarm-${{ matrix.framework }}.json.gz
       - name: Record bounded raw formatting contracts
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode raw-contract
