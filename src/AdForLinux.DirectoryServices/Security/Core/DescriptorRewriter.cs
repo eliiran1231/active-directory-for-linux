@@ -110,8 +110,6 @@ internal static class DescriptorRewriter
             {
                 if (offsets[i] != originalCursor)
                     throw new InvalidOperationException("An interior component cannot resize across unexplained descriptor storage.");
-                if (cursor != offsets[i] && i >= 2)
-                    RequireMovableAcl(originals[i]!);
                 destination[i] = cursor;
                 originalCursor = checked(originalCursor + originals[i]!.Length);
                 cursor = checked(cursor + components[i]!.Length);
@@ -124,10 +122,19 @@ internal static class DescriptorRewriter
         for (var i = 0; i < components.Length; i++)
         {
             if (!relocated[i]) continue;
-            length = checked((length + 3) & ~3);
+            var alignedLength = checked((length + 3) & ~3);
+            if (resized.Count != 0 && alignedLength != length)
+                throw new InvalidOperationException("Resizing with alias storage would add unscoped alignment padding.");
+            length = alignedLength;
             destination[i] = length;
             length = checked(length + components[i]!.Length);
         }
+        // Validate all final ACL destinations, including contained and equal-span
+        // aliases. Checking only outer anchors misses unknown bytes in an alias
+        // appended to independent storage, even when no outer span changes size.
+        for (var i = 2; i < components.Length; i++)
+            if (originals[i] is not null && destination[i] != offsets[i])
+                RequireMovableAcl(originals[i]!);
         var result = new byte[length];
         image.AsSpan(0, Math.Min(image.Length, baseLength)).CopyTo(result);
         BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(2), control);

@@ -27,13 +27,17 @@ For descriptors with leading/intercomponent/trailing bytes or orphan storage:
   Multiple requested resizes use their final lengths and leave no new orphan storage.
 - A moved ACL must have revision 2/4, zero reserved header fields, no opaque ACE, ACE tail,
   reserved ACE flag 0x20 or ACL tail. A resized ACL still refuses its own trailing payload.
+  This check uses every original ACL whose final offset changes, including nested and
+  equal-span aliases appended to independent storage, not only outer suffix anchors.
   Unchanged opaque storage outside the moving suffix stays fixed. This bounded relocation
   does not infer semantics for unknown payloads.
 - A fully contained alias may move to new independent, four-byte-aligned storage when its
   original span is still covered by an outer referenced component. Equal spans prefer an
   unchanged anchor. This also permits adding a previously absent component at the end.
   Both cases require the original image to end in referenced storage, not an unexplained
-  trailer. Any newly needed alignment padding is added, never taken from an existing gap.
+  trailer. Alignment padding is never taken from an existing gap. Combining a suffix
+  resize with alias allocation that needs new alignment padding refuses before publication:
+  that new unreferenced byte cannot be attributed to the section-scoped change at commit.
 - Publication validates the whole descriptor, rejects remaining overlap and verifies every
   original unreferenced byte at its original absolute offset. Unknown bytes are not archived
   elsewhere to claim preservation. Raw operations retain existing no-op and intent behavior.
@@ -126,3 +130,23 @@ Bound entry rollback tests retain state/provenance references and permit later s
 This does not permit arbitrary raw relocation, deletion from gapped images, consuming
 zero padding, moving trailers or speculative interpretation of opaque payloads. It changes
 no authority, credentials, transport settings, Microsoft conversion or Add policy.
+
+## Contained-ACL relocation correction
+
+Review of `b95c2edca615374e95eb46baf505e385dbb91e56` found that the suffix-anchor check
+missed relocated ACL aliases. A valid 72-byte public input has a four-byte leading gap,
+owner at 24, group at 52, DACL at 64 and a SACL header at 32 inside the owner SID.
+Shrinking the owner to Everyone moved the SACL's reserved `A5` byte from 33 to 57.
+Checking every planned ACL destination now refuses this operation atomically, even when
+the outer component's replacement has the same size. The regression matrix covers ACLs
+inside owner SIDs, inside another ACL's ACE SID, and equal SACL/DACL spans, with both
+ACL slots, same-size/shrinking owners, reserved fields, tails, opaque ACEs and clean controls.
+Public entry tests verify shared-state/generation rollback, no descriptor write, preservation
+of unrelated pending properties, and successful exact-owner persistence for clean aliases.
+There are 68 new cases: 60 core matrix cases and eight public entry regressions/controls.
+
+A separate 203-byte contained-SID input with a three-byte prefix gap previously published
+a 224-byte mutation, then failed `CommitChanges` because suffix shrink introduced one
+unscoped alignment byte. It now refuses at mutation planning with state unchanged. The
+aligned contained-SID cases remain supported. Unknown-storage comparison is unchanged;
+neither correction weakens the existing preservation policy.

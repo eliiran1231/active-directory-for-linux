@@ -4,8 +4,10 @@ The existing public `DirectoryEntry.ObjectSecurity` path automatically binds a r
 entry context. `GetOwner`, `GetGroup`, access-rule and audit-rule reads can request
 `NTAccount`; owner/group/rule mutations accept names and resolve them before atomic
 publication. Numeric identity operations need no lookup. Sixteen additional public-route
-cases exercise this actual loader with fake sessions: ambient and explicit reads, explicit
-name mutations, ambient mutation refusal, disposal/rebinding lifetime and copy isolation.
+cases exercise this actual loader with fake sessions: eight reads across ambient and
+explicit contexts, and eight mutations covering explicit names and ambient refusal.
+These cases cover `Close` and binary-copy isolation; disposal, rebinding and cross-entry
+authority isolation are covered by the older lifetime suites.
 Fake sessions prove dispatch, bounded lookup, lifetime and rollback, not working OS auth.
 
 Standalone `IdentityReference.Translate(Type)` still has no authority; same-kind conversion
