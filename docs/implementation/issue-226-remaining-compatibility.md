@@ -1,5 +1,16 @@
 # PR 228 readiness and remaining compatibility
 
+## Identical reassignment write/interop integration
+
+The [controlled integration loop](issue-226-identical-write-integration.md) adds six
+public DirectoryEntry write cases and six actual Windows MicrosoftInterop cases
+for absent DACL and NULL SACL reassignment. It checks no added write mask, retained
+owner intent, a later target-only ACL write, shared-alias rollback, old-session
+invalidation after a real edit, and commit-acknowledgment attachment lifetime.
+No additional production defect or policy relaxation is claimed. Offline fake
+transport success does not establish real-server behavior; allocation gaps remain
+frozen and the broader compatibility limits below stay open.
+
 ## NULL/absent/empty replacement follow-up
 
 The [24-case state matrix](issue-226-replacement-states.md) records native NULL,
