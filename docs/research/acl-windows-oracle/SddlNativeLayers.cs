@@ -32,6 +32,18 @@ internal static class SddlNativeLayers
             if (variant == "spaces" && family.StartsWith("RA")) text += "        ";
             yield return new($"spelling/{family}/{variant}/{length}", type, text);
         }
+        foreach (var length in new[] { 32690, 32700, 32702, 32704, 32706, 32708 })
+        {
+            var large = $"(XA;;RP;;;WD;(@User.A == \"{new string('x', length)}\"))";
+            foreach (var (name, suffix) in new[]
+            {
+                ("one", "(A;;RP;;;WD)"), ("two", "(A;;RP;;;WD)(A;;WP;;;WD)"),
+                ("three", "(A;;RP;;;WD)(A;;WP;;;WD)(A;;LC;;;WD)"),
+                ("long-sid", "(A;;RP;;;S-1-5-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15)"),
+                ("object", "(OA;;RP;11111111-2222-3333-4444-555555555555;;WD)"),
+                ("callback", "(XA;;RP;;;WD;(@User.B == 1))")
+            }) yield return new($"suffix/{name}/{length}", "XA", "D:" + large + suffix);
+        }
     }
 
     internal static void Write(string path, int index)
