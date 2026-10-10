@@ -194,6 +194,7 @@ internal static class SddlCodec
         if (type >= 17)
         {
             var claim = type == 18 ? SddlResourceCodec.Parse(fields[6]) : Array.Empty<byte>();
+            ValidateEncodedAceLength(8 + sid.BinaryLength + claim.Length);
             var payload = new byte[4 + sid.BinaryLength + claim.Length]; BinaryPrimitives.WriteInt32LittleEndian(payload, mask); sid.GetBinaryForm(payload, 4);
             claim.CopyTo(payload, 4 + sid.BinaryLength);
             return new CustomAce((AceType)type, flags, payload);
@@ -211,6 +212,9 @@ internal static class SddlCodec
         // Native no-GUID ZA conversion collapses the ACE but retains four zero bytes
         // in its opaque payload. Preserve them; text export must not silently omit them.
         if (collapsedCallbackObject) Array.Resize(ref opaque, opaque!.Length + 4);
+        ValidateEncodedAceLength(8 + sid.BinaryLength + (opaque?.Length ?? 0)
+            + (isObject ? 4 + ((objectFlags & ObjectAceFlags.ObjectAceTypePresent) != 0 ? 16 : 0)
+                + ((objectFlags & ObjectAceFlags.InheritedObjectAceTypePresent) != 0 ? 16 : 0) : 0));
         return isObject ? new ObjectAce(flags, qualifier, mask, sid, objectFlags, objectType, inheritedType, callback, opaque)
             : new CommonAce(flags, qualifier, mask, sid, callback, opaque);
     }
@@ -250,10 +254,22 @@ internal static class SddlCodec
                     && BinaryPrimitives.ReadUInt32LittleEndian(sidBytes.AsSpan(12)) != 0)) throw Invalid();
         }
         var condition = SddlConditionCodec.Parse(fields[6]);
+        ValidateEncodedAceLength(8 + sidBytes.Length + condition.Length);
         var payload = new byte[4 + sidBytes.Length + condition.Length];
         BinaryPrimitives.WriteInt32LittleEndian(payload, mask);
         sidBytes.CopyTo(payload, 4); condition.CopyTo(payload, 4 + sidBytes.Length);
         return new CustomAce((AceType)21, (AceFlags)flags, payload);
+    }
+
+    private static void ValidateEncodedAceLength(int length)
+    {
+        // AceSize is a USHORT. The isolated Windows conversions reject an ACE
+        // that cannot fit that field as ArgumentException(sddlForm), before any
+        // managed ACE constructor sees it. Keep that import boundary separate
+        // from the public constructors' opaque-array argument validation.
+        // This is not an ACL capacity rule: representable ACEs have additional,
+        // context-sensitive native conversion limits still under investigation.
+        if (length > ushort.MaxValue) throw Invalid();
     }
 
     private static AceFlags ParseFlags(string text)

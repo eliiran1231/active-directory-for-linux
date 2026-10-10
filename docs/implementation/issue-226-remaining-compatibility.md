@@ -3,7 +3,7 @@
 ## Latest SDDL boundary evidence
 
 See [measured boundary findings](issue-226-sddl-boundary-findings.md): surrogate code-unit
-preservation is corrected, but 46 initial size mismatches and 274 directed follow-up
+preservation and unrepresentable ACE-size error mapping are corrected, but 25 initial size mismatches and 243 directed follow-up
 parse mismatches remain unresolved. These are distinct from deliberate loss refusals;
 successful test and native-freshness runs do not establish full size compatibility.
 

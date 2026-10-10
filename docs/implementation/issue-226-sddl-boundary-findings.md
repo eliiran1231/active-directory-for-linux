@@ -1,4 +1,4 @@
-# Measured SDDL boundaries: UTF-16 corrected, large-input compatibility incomplete
+# Measured SDDL boundaries: encoding limits corrected, native allocation compatibility incomplete
 
 The prepared local commits `9654676a` and `43d441a` were published in cumulative
 commit `4802c2fcfcb7d882c9f499090e32133015937ed5`, retaining their exact source
@@ -26,7 +26,7 @@ A directed follow-up recorded 260 size cases in run `38049289318` at
 again agreed across runtimes. `sddl-size-windows-net8.json.gz` and `...net10.json.gz`
 retain this complete later matrix and its provenance.
 
-These are 536 new distinct case definitions, each measured on both runtimes; repeated
+These are 536 case definitions with overlapping inputs, each measured on both runtimes; repeated
 runs are not additional coverage. They are separate from the unchanged 4,308 closure,
 2,692 foundation and 1,845 mutation recordings. No outcome is locally fabricated.
 The workflow now compares all 220 + 316 freshly recorded native rows with these
@@ -48,14 +48,14 @@ changes. Raw/write state remains separate from observable state and provenance.
 
 ## Preservation differences and unresolved compatibility
 
-The initial matrix after the UTF-16 fix contains:
+The initial matrix after the UTF-16 and encoded-ACE length corrections contains:
 
 | Classification | Cases |
 | --- | ---: |
-| Exact parse and format/exception outcomes | 110 |
+| Exact parse and format/exception outcomes | 131 |
 | Existing RA/FL ACE-omission export policy | 58 |
 | Literal-NUL import truncation refused | 6 |
-| Unresolved size acceptance/exception mismatch | 46 |
+| Unresolved size acceptance/exception mismatch | 25 |
 
 The 64 preservation rows are individually identified and fingerprinted in
 `SddlBoundaryPreservationRefusals.json`; they are not parity. Native omits complete
@@ -63,15 +63,17 @@ RA/FL ACEs during ordinary export and discards text following literal NUL during
 import. Portable behavior retains the established refusal rather than adopting loss.
 These counts describe this separate matrix, not additions to the old closure ledger.
 
-The 46 unresolved size rows are explicitly listed and fingerprinted in
+The 25 unresolved size rows are explicitly listed and fingerprinted in
 `SddlBoundaryKnownSizeGaps.json`. They are excluded from the parity replay count and
 are **not** labeled preservation exceptions or passing compatibility cases. The
-remaining 174 cases run as native replay/preservation tests; a separate inventory
+remaining 195 cases run as native replay/preservation tests; a separate inventory
 test checks all 220 inputs and the gap/refusal manifests.
 
-The 316-case follow-up has 16 exact complete outcomes, 26 existing RA/FL export
-refusals and **274 unresolved parse mismatches**. It remains research evidence,
-not a passing portable replay suite. The full native-versus-portable comparison is
+The 316-case follow-up has 47 exact complete outcomes, 26 existing RA/FL export
+refusals and **243 unresolved parse mismatches**. Its 73 supported/preservation rows
+now run as replay tests, with a separate inventory test. The 243 unresolved rows
+remain explicitly fingerprinted and excluded from parity in
+`SddlSizeReplayExceptions.json`; they are not labeled preservation refusals. The full native-versus-portable comparison is
 `results/sddl-boundary-portable-comparison.json`, including source-file hashes and
 separate native/portable exception data or binary hashes. Both portable runtimes were
 actually executed on all 536 inputs under bounded local process limits.
@@ -91,12 +93,83 @@ inspected in the [.NET source](https://github.com/dotnet/runtime/blob/v8.0.0/src
 but it does not establish the underlying Windows allocation algorithm. Full SDDL
 compatibility therefore remains incomplete; the next concrete gap is this size handling.
 
+## Encoded ACE size correction
+
+The `AceSize` field is 16 bits. Before constructing a portable ACE, SDDL import now
+checks the complete encoded length (header, actual SID, optional object fields and
+payload). An unrepresentable length produces `ArgumentException("sddlForm")`, as
+measured in the isolated native conversion, rather than leaking the public ACE
+constructor's `ArgumentOutOfRangeException("opaque")`. Those public constructors and
+their conservative opaque limits are unchanged. This is a representation bound, not
+an inferred native ACL allocation cutoff. Representable large ACEs remain unresolved.
+
+Actual replay on both runtimes corrects 21 initial and 31 directed observations.
+The case sets overlap in inputs; these are 52 corrected observations, not 52 unique
+inputs. All original native outcomes remain unchanged. The comparison report records
+every remaining mismatch, including the six separately pinned literal-NUL refusals.
+
+## Isolated Win32 layers
+
+At `d071213c684a3fb022adf45402fe981149d9e9aa`, run `38051153699` recorded 656
+cases per runtime in separate processes. Both runtimes had 146 native successes and
+510 native failures: 274 error 122, 72 error 1344, 96 error 1336 and 68 error 87.
+Every native success returned a buffer accepted by the managed binary constructor;
+its outcome equaled the managed string constructor's outcome, and input bytes stayed
+unchanged. All 656 complete native/managed observations agree across runtimes.
+
+The probes capture native return, immediate last error, returned size, LocalSize,
+exact bytes and guaranteed LocalFree on managed exits. They separately capture managed
+binary construction and string construction. Each worker has a time limit and bounded
+managed heap; a crashed/timed-out worker cannot consume the following cases. Successful
+buffers are copied only after the returned length fits the allocation and a 1 MiB bound.
+
+Native errors 87/1336 become managed ArgumentException(sddlForm), whereas 122/1344
+remain Win32Exception with their exact code. Thus the sampled failure layer is native
+conversion, not managed binary validation. Equivalent SID/right spellings, whitespace,
+and owner/group prefixes did not affect the tested outcomes. Successful final buffers
+have no unexplained ACL slack. The native temporary allocation algorithm is not known.
+
+Run `38051919801`, head `962a9e75500d1b17d925d534b20e981954cc3656`, added 36
+suffix cases: all 692 observations agree across runtimes (161 native successes;
+287 error 122, 76 error 1344, 96 error 1336, 72 error 87). They refute a monotonic
+maximum-size rule and the tentative arithmetic wrap formula: two ordinary followers
+fail with 1344 at XA string length 32690, but succeed at 32700. A maximum-length SID
+follower fails at 32700 but succeeds at 32702, producing a 65528-byte ACL. One ordinary
+follower at 32704 fails with 87, while two or three succeed. At 32706 all six tested
+suffix variants fail with 122. Run `38052425269`, head `9cb342e4f85c0dc348f32c587827bfb23b503e8d`, added 256
+count/order/SID/object/callback cases. All 948 native/managed observations agree across
+runtimes: 239 successes, 418 error 122, 110 error 1344, 96 error 1336 and 85 error 87.
+Every success again passes managed binary construction without input mutation.
+One ordinary follower fails at 32658 (122) but succeeds at 32674; two preceding ordinary
+ACEs fail with 122 across all 16 tested lengths. Thus neither string length nor final
+binary length alone accounts for native acceptance.
+
+`results/sddl-native-layers-net{8,10}.0.jsonl.gz` preserves all original JSONL bytes,
+including environment headers. `sddl-native-layers-provenance.json` records source head,
+run/jobs and every original file hash verified against the compressed Windows log
+record. The native-layer workflow streams and compares all exact input, native and
+managed outcome fields, excluding only environment metadata from equality. LocalSize,
+returned size, bytes, last error and LocalFree result are not normalized.
+
+Actual portable execution of all 948 cases on both runtimes after the narrow size fix
+has 325 exact parse outcomes and **623 unresolved parse differences**: 531 portable
+acceptances/native rejections and 92 differing rejections. No measured native success
+is rejected by portable import. These cases overlap the earlier matrices; do not add
+623 to 25/243 or call these unique inputs. The complete comparison is
+`results/sddl-native-layers-portable-comparison.json`. Native freshness is not portable
+parity, and no general native allocation algorithm has been established.
+
+The next correction requires explaining the non-monotonic allocation bands, including
+why following-ACE count/layout changes the bands while equivalent spellings do not.
+Additional rules must be demonstrated by exact native evidence before implementation;
+there is no guessed capacity cutoff in production.
+
 ## Verification and limits
 
-Linux .NET 8/10 each pass 12,044 offline core tests, 55 fixture-free consumer tests,
+Linux .NET 8/10 each pass 12,139 offline core tests, 55 fixture-free consumer tests,
 34 metadata-only fixture-registration tests, and four Linux-applicable companion
 tests with 14 Windows-only groups skipped. The full six-project Release build has
-zero errors and 14 existing xUnit2013 warnings. The bounded invariant pass is rerun
+zero errors; existing xUnit2013 warnings remain. The bounded invariant pass is rerun
 on both runtimes: five worker tests, 2,822 case iterations each, without a reproduced
 preservation or rollback failure. Full unfiltered functional/differential execution
 remains excluded because those fixtures perform live directory operations.

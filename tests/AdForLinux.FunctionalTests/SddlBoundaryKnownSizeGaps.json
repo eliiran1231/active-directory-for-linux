@@ -140,16 +140,6 @@
     "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
   },
   {
-    "Case": 30,
-    "Label": "size/ra-string/32741",
-    "NativeRowSha256": "8ff02a121ff6230caf7e1605623001a1629a6f40b5802fe3e977158e55079e4c",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
     "Case": 31,
     "Label": "size/ra-name/32741",
     "NativeRowSha256": "f4d0798e624797e8ead3a008e17bbc00e5976927bf295e1d31464ad49a1b78ca",
@@ -175,16 +165,6 @@
     "NativeRowSha256": "76a8c320ec81a08fe00124c504f7d1f3b271f91fb3d1ff6c1ae0fd714d1d11f4",
     "NativeException": "System.ComponentModel.Win32Exception",
     "NativeErrorCode": 122,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 34,
-    "Label": "size/ra-string/32742",
-    "NativeRowSha256": "e9f52a5b6320b9c301341b1f8cbc09d96988967f8b65cb76f84698e8ab2a83e4",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
     "PortableException": "System.ArgumentOutOfRangeException",
     "PortableParamName": "opaque",
     "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
@@ -220,16 +200,6 @@
     "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
   },
   {
-    "Case": 38,
-    "Label": "size/ra-string/32743",
-    "NativeRowSha256": "6c9625d5911a5fe9c78db13f56e1e4caa47fbfa3a57ec868d1c386c0a6f2d10f",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
     "Case": 39,
     "Label": "size/ra-name/32743",
     "NativeRowSha256": "8941cdc4f26300623baaaee72139e77b5df39076584089cf163c823f1d651f29",
@@ -260,26 +230,6 @@
     "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
   },
   {
-    "Case": 42,
-    "Label": "size/ra-string/32744",
-    "NativeRowSha256": "c6390134c8c24b3c0f4e8e691c729e65b0ef7114e69a85eb2cb6af8b7588a7e6",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 43,
-    "Label": "size/ra-name/32744",
-    "NativeRowSha256": "479ac9504bdcd1491721e204f15c8549da784e143df2a7d6330c4aeb9b19164d",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
     "Case": 44,
     "Label": "size/fl-string/32745",
     "NativeRowSha256": "96feebe5047c569833eba2a795c1357bdd88f3f48c5dd4813bea5e7146956d01",
@@ -295,166 +245,6 @@
     "NativeRowSha256": "b21f5756dd4809cabdb09e27bedebeb6b4859e7a66994ebeff9b6e7f1a61dac2",
     "NativeException": "System.ComponentModel.Win32Exception",
     "NativeErrorCode": 122,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 46,
-    "Label": "size/ra-string/32745",
-    "NativeRowSha256": "b3afbdd83f1885e9ffcf4412d7bf42e45e5a58a3feabb04a8bf03edd7583e6f0",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 47,
-    "Label": "size/ra-name/32745",
-    "NativeRowSha256": "951197166b9cb892926b813579356562cc67176f039d4373e1e460e60d3bca6d",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 48,
-    "Label": "size/fl-string/32748",
-    "NativeRowSha256": "6c534f152cd6c878bdc4bfaebeba3552d9f9973027963858c1baeefc59bae0c2",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 49,
-    "Label": "size/xa-string/32748",
-    "NativeRowSha256": "76524f276f47b5cc299c53ad9f8e8fac7c321ed841775a792e818c4d11569cb0",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 50,
-    "Label": "size/ra-string/32748",
-    "NativeRowSha256": "2548a609e8070548111876cc9e9b5a2071b02527d39ab5b69b53aff571f7e031",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 51,
-    "Label": "size/ra-name/32748",
-    "NativeRowSha256": "f3603e4d7ce064c522288643226c29a525f32927350c482ba373aea20499d08d",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 54,
-    "Label": "size/ra-string/32767",
-    "NativeRowSha256": "4e3b76746d069f4959c9e7cc742ca56a8628e96e28a5351460314a80eaeffc0a",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 55,
-    "Label": "size/ra-name/32767",
-    "NativeRowSha256": "16a78f2737ac1044d6cad980dc33badee41681a58b5439acfa4c2625247d242f",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 58,
-    "Label": "size/ra-string/32768",
-    "NativeRowSha256": "0dace69b38cb9e4980fdefc4114f85706d640b7313e6661ba40054207685191a",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 59,
-    "Label": "size/ra-name/32768",
-    "NativeRowSha256": "ba11a4b92d90ca23ae8ab1d538c0e04e7c8e342968dfacbf3eb8dea5a54debdd",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 62,
-    "Label": "size/ra-string/65535",
-    "NativeRowSha256": "d6482b82e2f215da9b54b43e5c6073b6362b44b2fc583862a21fec2c7903b169",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 63,
-    "Label": "size/ra-name/65535",
-    "NativeRowSha256": "afa95074ab49c4f330e16d41e24d0379b948ee8796bc9227ee092afb0c8a9c4e",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 66,
-    "Label": "size/ra-string/65536",
-    "NativeRowSha256": "5f890f495276d84ce27c1a607885e003a6208db01be2936398b84e42ab81dea0",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 67,
-    "Label": "size/ra-name/65536",
-    "NativeRowSha256": "1e2f9bddc095df573d3ecde4b4975a9d804155cb44f921881e5ce1175e21a658",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 74,
-    "Label": "size/ra-values/8191",
-    "NativeRowSha256": "71498879ce6a5e4d68b172f35e60c504ce4853ec9f5a46b93e064233cb408f60",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
-    "PortableException": "System.ArgumentOutOfRangeException",
-    "PortableParamName": "opaque",
-    "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."
-  },
-  {
-    "Case": 75,
-    "Label": "size/ra-values/8192",
-    "NativeRowSha256": "78c0d9ae4892de344d85e1430cf6d245a1fd77416467b79e23b7d5bae05b7f07",
-    "NativeException": "System.ArgumentException",
-    "NativeErrorCode": null,
     "PortableException": "System.ArgumentOutOfRangeException",
     "PortableParamName": "opaque",
     "Status": "Unresolved size compatibility; excluded from parity count, not a preservation exception."

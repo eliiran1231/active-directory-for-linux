@@ -33,6 +33,9 @@
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net10.json.gz" LogicalName="AclOracle.Boundary.net10.json.gz" />
     <EmbeddedResource Include="SddlBoundaryPreservationRefusals.json" LogicalName="AclOracle.Boundary.Refusals.json" />
     <EmbeddedResource Include="SddlBoundaryKnownSizeGaps.json" LogicalName="AclOracle.Boundary.SizeGaps.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net8.json.gz" LogicalName="AclOracle.Size.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net10.json.gz" LogicalName="AclOracle.Size.net10.json.gz" />
+    <EmbeddedResource Include="SddlSizeReplayExceptions.json" LogicalName="AclOracle.Size.Exceptions.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net8.json" LogicalName="AclOracle.Seeded.net8.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net10.json" LogicalName="AclOracle.Seeded.net10.json" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net8.json" LogicalName="AclOracle.Foundation.net8.json" />

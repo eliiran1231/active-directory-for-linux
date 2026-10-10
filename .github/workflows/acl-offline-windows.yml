@@ -27,6 +27,8 @@ jobs:
       - name: Isolate native conversion and managed binary parsing
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}'
+      - name: Verify exact native layer evidence
+        run: python tests/verify-sddl-native-layers.py artifacts/layers/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-native-layers-${{ matrix.framework }}.jsonl.gz
       - name: Upload layer evidence
         if: always()
         uses: actions/upload-artifact@v4

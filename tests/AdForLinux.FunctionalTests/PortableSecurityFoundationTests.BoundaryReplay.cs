@@ -31,7 +31,7 @@ public partial class PortableSecurityFoundationTests
         foreach (var row in document.RootElement.GetProperty("Observations").EnumerateArray())
         {
             // All 220 rows are retained and compared in the research report. The
-            // explicitly listed 46 size rows have unresolved native behavior;
+            // explicitly listed 25 size rows have unresolved native behavior;
             // do not count them as passing parity or preservation exceptions.
             if (BoundarySizeGaps.ContainsKey(row.GetProperty("Case").GetInt32())) continue;
             yield return new object[] { row.GetProperty("Case").GetInt32(), row.GetProperty("Label").GetString()!, row.GetRawText() };
@@ -44,7 +44,7 @@ public partial class PortableSecurityFoundationTests
         using var document = ReadBoundaryRecordings();
         var rows = document.RootElement.GetProperty("Observations").EnumerateArray().ToArray();
         Assert.Equal(Enumerable.Range(0, 220), rows.Select(x => x.GetProperty("Case").GetInt32()));
-        Assert.Equal(46, BoundarySizeGaps.Count);
+        Assert.Equal(25, BoundarySizeGaps.Count);
         Assert.Equal(64, BoundaryRefusals.Count);
         var inputs = SddlBoundaryInputs.Create().ToArray();
         foreach (var row in rows)
@@ -63,14 +63,16 @@ public partial class PortableSecurityFoundationTests
     [Theory]
     [MemberData(nameof(BoundaryRecordings))]
     public void Recorded_boundary_representation_preserves_bytes_or_refuses_measured_loss(int caseId, string label, string json)
+        => VerifyBoundaryObservation(caseId, label, json, SddlBoundaryInputs.Create().ElementAt(caseId), BoundaryRefusals.GetValueOrDefault(caseId));
+
+    private static void VerifyBoundaryObservation(int caseId, string label, string json,
+        SddlBoundaryInputs.Input input, (string Kind, string Hash) refusal)
     {
         using var document = JsonDocument.Parse(json);
         var row = document.RootElement;
         var text = A.SddlUtf16.Decode(Convert.FromHexString(row.GetProperty("InputUtf16Hex").GetString()!));
-        var input = SddlBoundaryInputs.Create().ElementAt(caseId);
         Assert.Equal(label, input.Label);
         Assert.Equal(input.Text, text);
-        var refusal = BoundaryRefusals.GetValueOrDefault(caseId);
         if (refusal.Kind is not null)
             Assert.Equal(refusal.Hash, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant());
         if (refusal.Kind == "literal-nul-import")
