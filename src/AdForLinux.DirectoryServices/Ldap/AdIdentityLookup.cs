@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.DirectoryServices.Protocols;
-using System.Text;
 using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 using AdForLinux.Security.Principal;
 
@@ -61,77 +60,42 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
 {
     internal const string DomainScopeControl = "1.2.840.113556.1.4.1339";
     private readonly Stopwatch elapsed = Stopwatch.StartNew();
-    private static readonly UTF8Encoding Utf8 = new(false, true);
-    private (string Domain, string Netbios, string Dns)? scope;
+    private AdIdentityDomainMetadata? scope;
     private string? verifiedEntryTarget;
     internal IdentityReference? Translate(IdentityReference identity)
     {
         var domain = scope ??= Discover();
-        string assertion;
-        if (identity is SecurityIdentifier sid)
-        {
-            var bytes = new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes, 0);
-            assertion = "(objectSid=" + Escape(bytes) + ")";
-        }
-        else
-        {
-            var name = identity.Value;
-            var slash = name.IndexOf('\\');
-            if (slash >= 0)
-            {
-                var qualifier = name[..slash]; name = name[(slash + 1)..];
-                if (name.Contains('\\') || name.Length == 0 ||
-                    (!qualifier.Equals(domain.Netbios, StringComparison.OrdinalIgnoreCase) && !qualifier.Equals(domain.Dns, StringComparison.OrdinalIgnoreCase)))
-                    throw new NotSupportedException("The account qualifier is outside the verified domain scope.");
-                assertion = "(sAMAccountName=" + EscapeText(name) + ")";
-            }
-            else assertion = "(" + (name.Contains('@') ? "userPrincipalName" : "sAMAccountName") + "=" + EscapeText(name) + ")";
-        }
-        var rows = Search(domain.Domain, "(&(objectClass=*)(" + assertion[1..^1] + "))", ProtocolScope.Subtree,
-            "objectSid", "sAMAccountName", "objectClass", "distinguishedName");
+        var plan = AdIdentityQueryPlan.Create(domain, identity);
+        var rows = Search(plan.NamingContext, plan.Filter, plan.Scope, plan.GetAttributes());
         if (rows.Count == 0) return null;
         if (rows.Count != 1) throw new InvalidOperationException("Identity lookup is ambiguous within the authorized domain.");
         var row = rows[0];
-        RequireDomainMember(row.DistinguishedName, domain.Domain);
+        RequireDomainMember(row.DistinguishedName, domain.NamingContext);
         if (row.Values("objectClass").OfType<string>().Any(c => c.Equals("foreignSecurityPrincipal", StringComparison.OrdinalIgnoreCase)))
             throw new NotSupportedException("Foreign security principals require an explicitly authorized issuing-domain context.");
         if (row.Values("objectSid") is not [byte[] binary] || row.Text("sAMAccountName") is not { Length: > 0 } sam) return null;
         var resolvedSid = new SecurityIdentifier(binary, 0);
         if (binary.Length != resolvedSid.BinaryLength) throw new InvalidOperationException("Identity lookup returned an invalid SID encoding.");
         if (identity is SecurityIdentifier input && !input.Equals(resolvedSid)) throw new InvalidOperationException("Identity lookup returned a different SID.");
-        return identity is SecurityIdentifier ? new NTAccount(domain.Netbios, sam) : resolvedSid;
+        return identity is SecurityIdentifier ? new NTAccount(domain.NetbiosName, sam) : resolvedSid;
     }
-    private (string, string, string) Discover()
+    private AdIdentityDomainMetadata Discover()
     {
-        var root = Unique(Search(string.Empty, "(objectClass=*)", ProtocolScope.Base,
+        var root = AdIdentityDomainMetadata.ValidateRoot(Search(string.Empty, "(objectClass=*)", ProtocolScope.Base,
             "defaultNamingContext", "configurationNamingContext", "namingContexts", "supportedControl"));
-        var domain = root.Text("defaultNamingContext"); var config = root.Text("configurationNamingContext");
-        if (string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(config)) throw new NotSupportedException("Domain scope metadata is unavailable.");
-        var contexts = root.Values("namingContexts");
-        if (contexts.Length == 0 || contexts.Any(v => v is not string text || string.IsNullOrWhiteSpace(text))
-            || !root.Values("supportedControl").Contains(DomainScopeControl))
-            throw new NotSupportedException("Complete naming-context metadata and critical domain-scope control support are required.");
-        var namingContexts = contexts.Cast<string>().ToArray();
-        if (!namingContexts.Contains(domain, StringComparer.OrdinalIgnoreCase)
-            || !namingContexts.Contains(config, StringComparer.OrdinalIgnoreCase)
-            || string.Equals(domain, config, StringComparison.OrdinalIgnoreCase))
-            throw new NotSupportedException("The default domain naming context is ambiguous.");
-        var crossRef = Unique(Search("CN=Partitions," + config, "(&(objectClass=crossRef)(nCName=" + EscapeText(domain) + "))",
-            ProtocolScope.OneLevel, "nCName", "nETBIOSName", "dnsRoot", "systemFlags"));
-        if (!int.TryParse(crossRef.Text("systemFlags"), out var flags) || (flags & 2) == 0
-            || !string.Equals(crossRef.Text("nCName"), domain, StringComparison.OrdinalIgnoreCase)
-            || crossRef.Text("nETBIOSName") is not { Length: > 0 } netbios || crossRef.Text("dnsRoot") is not { Length: > 0 } dns)
-            throw new NotSupportedException("Unambiguous domain qualification metadata is unavailable.");
-        var target = entryTarget ?? (useVerifiedDomainRoot ? domain : null);
-        RequireDomainMember(target, domain);
+        var domain = AdIdentityDomainMetadata.ValidateDomain(root.Domain,
+            Search("CN=Partitions," + root.Configuration, "(&(objectClass=crossRef)(nCName=" + EscapeText(root.Domain) + "))",
+                ProtocolScope.OneLevel, "nCName", "nETBIOSName", "dnsRoot", "systemFlags"));
+        var target = entryTarget ?? (useVerifiedDomainRoot ? domain.NamingContext : null);
+        RequireDomainMember(target, domain.NamingContext);
         verifiedEntryTarget = target;
-        return (domain, netbios, dns);
+        return domain;
     }
     internal void Complete()
     {
         // Recheck current membership after all mappings. This is not a directory
         // transaction or an object-identity pin across deletion/recreation.
-        if (scope is { } verified) RequireDomainMember(verifiedEntryTarget, verified.Domain);
+        if (scope is { } verified) RequireDomainMember(verifiedEntryTarget, verified.NamingContext);
     }
 
     private void RequireDomainMember(string? distinguishedName, string domain)
@@ -161,8 +125,5 @@ internal sealed class AdIdentityLookup(IIdentitySearchSession session, TimeSpan 
         if (elapsed.Elapsed >= timeout) throw new TimeoutException("The identity resolution deadline expired.");
         return result;
     }
-    private static IdentitySearchRow Unique(IReadOnlyList<IdentitySearchRow> rows) => rows.Count == 1 ? rows[0]
-        : throw new NotSupportedException("Unambiguous domain scope metadata is unavailable.");
-    internal static string EscapeText(string value) => Escape(Utf8.GetBytes(value));
-    private static string Escape(byte[] bytes) => string.Concat(bytes.Select(b => "\\" + b.ToString("x2")));
+    internal static string EscapeText(string value) => AdIdentityQueryPlan.EscapeText(value);
 }

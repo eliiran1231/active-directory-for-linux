@@ -23,10 +23,24 @@ These names/signatures are a **proposal awaiting user approval**, not exported b
 Descriptors and values never transfer credentials, connections or context authority through
 copies. Existing generation checks must cover both lookup and publication.
 
-Internal work can proceed without this decision: classify bounded unique results, verify
-per-domain naming contexts/crossRefs, retain generation/revocation tests, and model routing
-without enabling it. The GC port guard stays until a bounded, verified per-domain planner
-exists. Forest-wide GC scope and cross-domain routing need explicit authority decisions;
+The finite internal preparation now extracts the existing server metadata validator and
+single-domain account query planner into `AdIdentityDomainMetadata` and `AdIdentityQueryPlan`.
+Production `AdIdentityLookup` uses both. Immutable metadata contains only NC, NetBIOS and
+DNS strings; a plan contains only the NC/filter and fixed search shape. Neither stores
+credentials, connection options, an owner, lease or callback. Execution, deadline/generation
+checks, critical domain-scope controls and the three membership proofs remain in the
+existing checked session. Metadata does not confer routing authority.
+
+Thirty-eight directed cases pin exact SID, bare/qualified SAM and exact UPN requests,
+including alternate UPN suffixes and escaping. Successful single mappings still open one
+session and issue six requests to the same endpoint/NCs with the same attributes and
+controls. Extra discovered contexts cannot authorize a foreign qualifier or bare-SAM fanout;
+duplicate/conflicting crossRefs never select a first match. Incomplete metadata and
+application/configuration partitions yield no executable account plan. Existing GC-before-
+session, FSP, ambient-mutation, lifecycle and membership tests remain authoritative.
+
+This completes single-domain extraction, not GC or multi-domain routing. The GC port guard
+stays in place. Forest-wide GC scope and cross-domain routing need explicit authority decisions;
 no discovered host receives forwarded credentials. AccountManagement's foreign-principal
 resolver is not a substitute: one-result searches, fallback discovery and retained foreign
 contexts do not establish this resolver's uniqueness and borrowed-authority contract.

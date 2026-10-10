@@ -239,12 +239,25 @@ alone is not proof of portable parity, and Linux companion skips are not native 
 
 ## Current readiness and next work
 
+Current finite status:
+
+- The referenced-suffix layout expansion and contained-ACL/padding lifecycle corrections
+  are implemented; independent review cleared `beb416854494dd6830405198469a881e9634d38d`.
+- The current single-domain metadata validator and account query planner are extracted
+  and used by production. Request-capture tests retain the existing endpoint, NC, exact
+  assertions, attributes, membership proofs and request count. This adds no routing authority.
+- Public identity helper approval remains pending. No helper is exported; GC, foreign/FSP
+  and ambient-mutation gates remain unchanged.
+- The whole-SDDL conversion sizing/assembly model remains unresolved beyond the fourteen
+  bounded witnesses. No broader length sweep or speculative production threshold is added.
+
 Independent review found a blocking contained-ACL relocation hole in `b95c2ed`: appended
 aliases escaped the outer-anchor unknown-payload check. The correction checks every final
 ACL destination and rejects resize/alias padding before mutation publication. See the
 [concrete regressions and boundary](issue-226-layout-policy.md#contained-acl-relocation-correction).
-The earlier green workflow did not cover these cases. Readiness remains on hold for review
-of this correction; exact corrected-head validation is reported in PR 228 after publication.
+The earlier green workflow did not cover these cases. The two corrections were subsequently
+validated and independently reviewed at `beb41685`; exact current-head validation is reported
+in PR 228 after publication. Overall behavioral completeness is still not claimed.
 The correction adds 68 directed cases. Linux .NET 8/10 each pass 13,119 core, 33 surface,
 55 consumer, 34 registration and four applicable companion tests (17 Windows-only groups
 skip). The full solution builds without errors. These checks retain the original oracle
