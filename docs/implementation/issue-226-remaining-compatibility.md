@@ -1,5 +1,18 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest retained-export evidence
+
+The [retained contributor correction](issue-226-retained-sddl-export.md) replaces
+the narrow RA/FL guard with shared raw-format validation for both selected ACLs
+and byte/occurrence preservation for contributors outside reviewed normalization.
+ML/SP/TL, stripped audit flags, opaque/tail data and valid callback projection loss
+are covered. Ordinary known ordering, compaction and approved inactive controls
+remain supported. The 296 native rows agree across runtimes; 218 portable rows
+match completely, while 78 have individually pinned export-facet differences.
+Twelve unsupported-condition exception facets and six raw unaudited-ACE validation
+facets remain explicit compatibility differences, not successful parity or native
+information-loss observations. These counts overlap earlier evidence.
+
 ## Latest SDDL boundary evidence
 
 See [measured boundary findings](issue-226-sddl-boundary-findings.md): surrogate code-unit

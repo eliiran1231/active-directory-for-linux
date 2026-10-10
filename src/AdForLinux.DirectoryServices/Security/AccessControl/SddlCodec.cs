@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Security.AccessControl;
 using System.Text;
 using AdForLinux.Security.Principal;
+using C = AdForLinux.DirectoryServices.Security.Core;
 
 namespace AdForLinux.Security.AccessControl;
 
@@ -325,15 +326,23 @@ internal static class SddlCodec
     internal static string Format(GenericSecurityDescriptor descriptor, AccessControlSections sections)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        // Common ACL projection can hide RA/FL ACEs before AppendAce sees them.
-        // Apply the existing loss refusal to the selected retained SACL too; live
-        // ordering/compaction remains the observable output for supported ACEs.
-        if ((sections & AccessControlSections.Audit) != 0 && descriptor is CommonSecurityDescriptor common
-            && common.MutationState.Descriptor.Sacl is { } retainedSacl
-            && retainedSacl.Aces.Any(ace => ace.AceType is 18 or 21))
-            throw new NotSupportedException("Native SDDL export omits resource attributes or access filters; portable export refuses that information loss.");
+        // Validate selected retained contributors before projection can remove an
+        // ACE or strip its flags/payload. Use the raw formatter's complete checks,
+        // not a second list of special ACE types. The output remains observable.
+        if (descriptor is CommonSecurityDescriptor common)
+        {
+            if ((sections & AccessControlSections.Access) != 0) ValidateRetainedAcl(common.MutationState.Descriptor.Dacl, false);
+            if ((sections & AccessControlSections.Audit) != 0) ValidateRetainedAcl(common.MutationState.Descriptor.Sacl, true);
+        }
         var bytes = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(bytes, 0);
         var raw = new RawSecurityDescriptor(bytes, 0);
+        if (descriptor is CommonSecurityDescriptor projected)
+        {
+            if ((sections & AccessControlSections.Access) != 0)
+                ValidateObservableContributors(projected.MutationState.Descriptor.Dacl, raw.DiscretionaryAcl, false);
+            if ((sections & AccessControlSections.Audit) != 0)
+                ValidateObservableContributors(projected.MutationState.Descriptor.Sacl, raw.SystemAcl, true);
+        }
         var result = new StringBuilder();
         if ((sections & AccessControlSections.Owner) != 0 && raw.Owner is not null) result.Append("O:").Append(FormatSid(raw.Owner));
         if ((sections & AccessControlSections.Group) != 0 && raw.Group is not null) result.Append("G:").Append(FormatSid(raw.Group));
@@ -342,6 +351,46 @@ internal static class SddlCodec
         if ((sections & AccessControlSections.Audit) != 0 && (raw.ControlFlags & ControlFlags.SystemAclPresent) != 0)
             AppendAcl(result, raw.SystemAcl, true, raw.ControlFlags);
         return result.ToString();
+    }
+
+    private static void ValidateRetainedAcl(C.Acl? acl, bool system)
+    {
+        if (acl is null) return;
+        foreach (var retained in acl.Aces)
+        {
+            // D13 permits normalization of fully understood inactive contributors.
+            // This predicate excludes callbacks, opaque tails and unverified flags;
+            // zero masks or IO alone never authorize discarding unknown payloads.
+            if (C.MicrosoftObservableProjector.IsInactiveInheritOnly(retained, !system)) continue;
+            AppendAce(null, GenericAce.CreateFromBinaryForm(retained.RawBytes.ToArray(), 0), system);
+        }
+    }
+
+    private static void ValidateObservableContributors(C.Acl? retained, RawAcl? observable, bool system)
+    {
+        if (retained is null) return;
+        Dictionary<string, int>? occurrences = null;
+        foreach (var contributor in retained.Aces)
+        {
+            // Reviewed ordinary ACEs may reorder, compact or normalize inactive
+            // inheritance. No such approval covers opaque/callback contributors.
+            if (C.MicrosoftObservableProjector.IsUnderstoodAce(contributor, !system)) continue;
+            if (occurrences is null)
+            {
+                occurrences = new(StringComparer.Ordinal);
+                if (observable is not null)
+                    for (var i = 0; i < observable.Count; i++)
+                    {
+                        var ace = observable[i]; var bytes = new byte[ace.BinaryLength]; ace.GetBinaryForm(bytes, 0);
+                        var key = Convert.ToHexString(bytes);
+                        occurrences[key] = occurrences.GetValueOrDefault(key) + 1;
+                    }
+            }
+            var original = Convert.ToHexString(contributor.RawBytes);
+            if (!occurrences.TryGetValue(original, out var count) || count == 0)
+                throw new NotSupportedException("SDDL export cannot discard or alter retained ACE data outside the reviewed normalization subset.");
+            occurrences[original] = count - 1;
+        }
     }
 
     private static string FormatSid(SecurityIdentifier sid) => SecurityIdentifier.GetSddlAlias(sid) ?? sid.Value;
@@ -355,7 +404,7 @@ internal static class SddlCodec
         for (var i = 0; i < acl.Count; i++) AppendAce(result, acl[i], system);
     }
 
-    private static void AppendAce(StringBuilder result, GenericAce ace, bool system)
+    private static void AppendAce(StringBuilder? result, GenericAce ace, bool system)
     {
         var type = (byte)ace.AceType;
         if (type == 21)
@@ -405,6 +454,9 @@ internal static class SddlCodec
             if (payload.Length != 4 + sid.BinaryLength) throw new NotSupportedException("Unexplained label ACE trailing bytes cannot be omitted from SDDL.");
         }
         else throw new NotSupportedException("This ACE layout is not supported by SDDL.");
+        // A null output validates retained raw data without building a second
+        // ACE/ACL output buffer. All layout, flags and condition checks above are shared.
+        if (result is null) return;
         result.Append('(').Append(token).Append(';');
         foreach (var flag in AceFlagTokens) if (((byte)ace.AceFlags & flag.Bits) != 0) result.Append(flag.Token);
         result.Append(';').Append(FormatRights(unchecked((uint)mask), type)).Append(';').Append(objectType).Append(';').Append(inheritedType).Append(';').Append(FormatSid(sid));

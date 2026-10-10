@@ -30,6 +30,8 @@ jobs:
       - name: Record retained export refusal families
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode retained-export
+      - name: Verify exact retained export evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/retained-export/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-retained-export-${{ matrix.framework }}.json.gz
       - name: Verify exact mixed operation evidence
         run: python tests/verify-sddl-boundary-recordings.py artifacts/mixed/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-mixed-${{ matrix.framework }}.json.gz
       - name: Record bounded ACE-size error precedence

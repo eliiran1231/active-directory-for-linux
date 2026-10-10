@@ -1,5 +1,9 @@
 # Ordinary-sized mixed ACE and section operations
 
+The later [retained contributor follow-up](issue-226-retained-sddl-export.md)
+supersedes the RA/FL-only implementation guard described below. This document
+retains the original 64-case measurements and their scope.
+
 The 64-case follow-up uses eight fresh detached fixtures, each at most 2,048 UTF-16
 code units: ordinary access/audit ACEs mixed with XA, XD, ZA object-only, ZA
 inherited-only, ZA both-GUIDs, XU, four typed RA claims, or FL. Each fixture is

@@ -1,0 +1,1844 @@
+[
+  {
+    "Case": 3,
+    "Label": "retained-export/ML-SACL/export-audit",
+    "NativeObservationSha256": "39e44de5473bce8c0468d98e217bed0d2601ede6170606c26f898f199ec66e9c",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 4,
+    "Label": "retained-export/ML-SACL/export-all",
+    "NativeObservationSha256": "1cb4779288e665ccf1a29d571cf77b2062807b56e7ae8351d1eb198768890add",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 7,
+    "Label": "retained-export/ML-SACL/owner-then-export",
+    "NativeObservationSha256": "ecd93dbef1f0aedb3151f34df36c17adc142f8998e1807a4cdef6588323afe02",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 19,
+    "Label": "retained-export/RA-SACL/export-audit",
+    "NativeObservationSha256": "9cee8353c887a27f93dafabaf18dd7651b42c2a715632fd53d3c8b0e8b9e8f73",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 20,
+    "Label": "retained-export/RA-SACL/export-all",
+    "NativeObservationSha256": "5300385aef86ab57441510e1a936545c77786389c5c8a3ddc1776f85e38d34cb",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 23,
+    "Label": "retained-export/RA-SACL/owner-then-export",
+    "NativeObservationSha256": "d175eebd82c4905b8ababf513aca6d937551290f6a0755a9886d431f3ccd8dac",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 35,
+    "Label": "retained-export/SP-SACL/export-audit",
+    "NativeObservationSha256": "5b2a7c1d27d5c59e16b29647e991c165a5f972536e5bdc907eaa80bd10f25575",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 36,
+    "Label": "retained-export/SP-SACL/export-all",
+    "NativeObservationSha256": "d46488c01810af347dc4f14cf66babe9d4f22d20c5ae4a87d7dee1ebd5dd28e3",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 39,
+    "Label": "retained-export/SP-SACL/owner-then-export",
+    "NativeObservationSha256": "2d8663c1d944ea45a97b2e737a9c7efa9ea90e847b609de1881ac85d5b849f52",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 51,
+    "Label": "retained-export/TL-SACL/export-audit",
+    "NativeObservationSha256": "cd540ef8c5f16c51234788a839ae2121690080ad10eebbee457943378446a1d5",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 52,
+    "Label": "retained-export/TL-SACL/export-all",
+    "NativeObservationSha256": "2c9b009441e1c43131642869eaf7779207c688736212384b4e1406935a48c626",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 55,
+    "Label": "retained-export/TL-SACL/owner-then-export",
+    "NativeObservationSha256": "904622eaa080f3642c7650c2bed0fa934f356d957b6bfd2f469b2fee4d594584",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 67,
+    "Label": "retained-export/FL-SACL/export-audit",
+    "NativeObservationSha256": "52ed2004fe8533bfbea3d3aafea37124364e7fc9dabff1c7dd0e9da09c8b23d4",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 68,
+    "Label": "retained-export/FL-SACL/export-all",
+    "NativeObservationSha256": "48775700fa1298e2e21fda7eb0ec1b2f2d854fcde6a7409cd5de6b0f6e536e8e",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 71,
+    "Label": "retained-export/FL-SACL/owner-then-export",
+    "NativeObservationSha256": "982cfef60027259cad3e9f2c69db73cd81f3813992fe95dc44897ed8d9b5faf1",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 82,
+    "Label": "retained-export/access-audit-flags-0/export-access",
+    "NativeObservationSha256": "9234059815c88d23d29272e176e3a755a2162996d15bf3ed4f2ae60afaa66258",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 84,
+    "Label": "retained-export/access-audit-flags-0/export-all",
+    "NativeObservationSha256": "3f0daa446e890a0188a44f56a384ea6a5ac1dcc4a4f28df1b73ff3056bf88592",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 87,
+    "Label": "retained-export/access-audit-flags-0/owner-then-export",
+    "NativeObservationSha256": "593f9893fb900fed1a8de6dcb6905d9c25d9adb56b8036c7e20627b153aed1c2",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 90,
+    "Label": "retained-export/access-audit-flags-1/export-access",
+    "NativeObservationSha256": "47d6f7d610c9e0cf0688d4175210cfe95ed09f95a77c69450284ea2da25075de",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 92,
+    "Label": "retained-export/access-audit-flags-1/export-all",
+    "NativeObservationSha256": "8dcdb85aa05b95eb9dadcc4dddb8a5ee24fa44f64ecc5a0bf5c7053ff3420c59",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 95,
+    "Label": "retained-export/access-audit-flags-1/owner-then-export",
+    "NativeObservationSha256": "4fed725de4f94f4e546d3a54941e08caa29c4ea14646cb5af93c84f505d38cc2",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 98,
+    "Label": "retained-export/access-audit-flags-5/export-access",
+    "NativeObservationSha256": "87d6e91cfb3f513015705b51325f24ef765b1a7a178da8607e974acb3dbbcd62",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 100,
+    "Label": "retained-export/access-audit-flags-5/export-all",
+    "NativeObservationSha256": "73bb54289ded05316e761f3bf12aca309ef314f011ab2c1a18d2dbc2fcc2d3ae",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 103,
+    "Label": "retained-export/access-audit-flags-5/owner-then-export",
+    "NativeObservationSha256": "aaaf7b415291868a0f888ceb82a3e87c356c29194758e7103f7675d0cf2acd27",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 106,
+    "Label": "retained-export/access-audit-flags-6/export-access",
+    "NativeObservationSha256": "2057aad091431aeabf2792207638ff0ef76981a505d5cbb57deebdb8d4f89fd9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 108,
+    "Label": "retained-export/access-audit-flags-6/export-all",
+    "NativeObservationSha256": "1c96e82b90147665b39e7063016624d59612bf20b54b45b4f910a0a51364c4a9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 111,
+    "Label": "retained-export/access-audit-flags-6/owner-then-export",
+    "NativeObservationSha256": "b5656517fc0b6c2ec7db7a17a30fc2a27cfffe428a4064174ed9dc4863a9fdc9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 114,
+    "Label": "retained-export/access-audit-flags-9/export-access",
+    "NativeObservationSha256": "9d35775c281aa7c6ac8036896d5620846b675b0a367994a6e12febf7d6fd4cb2",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 116,
+    "Label": "retained-export/access-audit-flags-9/export-all",
+    "NativeObservationSha256": "facc70f2dba3cbf279e0092c2ba5585abce3b4ff9434ef5d9b3847c3cc883550",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 119,
+    "Label": "retained-export/access-audit-flags-9/owner-then-export",
+    "NativeObservationSha256": "8428f149221c8fc107a64e46ff0a70b8637dbb2b5d99cc8906d4cf97d8c3633b",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 122,
+    "Label": "retained-export/access-audit-flags-10/export-access",
+    "NativeObservationSha256": "ccbb395b3a7f36a7a2c0d3d85a1f09f304f2ad05d6b89c0f0f13e24f0d7edbe6",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 124,
+    "Label": "retained-export/access-audit-flags-10/export-all",
+    "NativeObservationSha256": "a124d1f2e98af281298c38ef90fdfde482381e5194a1df7326917c286cd7cff4",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 127,
+    "Label": "retained-export/access-audit-flags-10/owner-then-export",
+    "NativeObservationSha256": "f126947bf173bd9b54944b0eea2b18300f35639a0c3b40321323032717bb7730",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 130,
+    "Label": "retained-export/access-audit-flags-11/export-access",
+    "NativeObservationSha256": "f4bb697e588a8db6f4d8cba8535fd5b152f937c63c4676f545c52518346e9e87",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 132,
+    "Label": "retained-export/access-audit-flags-11/export-all",
+    "NativeObservationSha256": "84efd6f384688919b1681f265adedd40251fb8b249da6b3ea8097a8b15ca709c",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 135,
+    "Label": "retained-export/access-audit-flags-11/owner-then-export",
+    "NativeObservationSha256": "69b12d85f0f4251a6dd6b23ce6a6ba5d5977e8cabb7c4579af2c7f37bf144bd9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "native-nonroundtrippable-export-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 138,
+    "Label": "retained-export/opaque-common/export-access",
+    "NativeObservationSha256": "e96667730a830b634bee2252912708c8e6392685578c026631a9fa6f838c9b30",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 140,
+    "Label": "retained-export/opaque-common/export-all",
+    "NativeObservationSha256": "9c10552abab45a70c9a89eb4d52b7fb13623cc7ec169a47462be5b3fca84bb2c",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 143,
+    "Label": "retained-export/opaque-common/owner-then-export",
+    "NativeObservationSha256": "4bf73b01cbb7c82517999df2ad36008f9d09a1b41de6323f56e867183257f1ed",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 146,
+    "Label": "retained-export/opaque-zero-mask/export-access",
+    "NativeObservationSha256": "b76b6ba1a885bf143eeaa097dcc11540fabc6126adcc281e6a83e7415e1242ee",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 148,
+    "Label": "retained-export/opaque-zero-mask/export-all",
+    "NativeObservationSha256": "15783a6c52895a5feba632751d7d56da85d35d36792a4cc69652bbb2526ddadc",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 151,
+    "Label": "retained-export/opaque-zero-mask/owner-then-export",
+    "NativeObservationSha256": "ad9ba1af8f92f880e9fee45d5dff48be938595375cfd02cff5d8cea647213ef8",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 154,
+    "Label": "retained-export/opaque-object/export-access",
+    "NativeObservationSha256": "8ae2ac2c5f23109381ce92347f6de98ca7ecee3396e91d246dc3c8e7f55f5c3d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 156,
+    "Label": "retained-export/opaque-object/export-all",
+    "NativeObservationSha256": "ff5d72c6bfc513204332b77b2b5a2182638dc69283814927cccc822e7df5d59c",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 159,
+    "Label": "retained-export/opaque-object/owner-then-export",
+    "NativeObservationSha256": "03dd3f8f1d6f3493521f08126ecc77052973e8cd0acad9d6c3e8ba9c1985121a",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 162,
+    "Label": "retained-export/condition-unknown/export-access",
+    "NativeObservationSha256": "dacd7d37c769b111a1dd4286691e2a3207336311f038eca101b4cc61cabc2dc3",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 164,
+    "Label": "retained-export/condition-unknown/export-all",
+    "NativeObservationSha256": "39ccf041a7380fe302ed4b14d44a53b133886412b49908f8811658718e5df439",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 167,
+    "Label": "retained-export/condition-unknown/owner-then-export",
+    "NativeObservationSha256": "2c6ebd3dea532102bc1592c2cce68e04495fd135bcc5157b834281715f738251",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      }
+    ]
+  },
+  {
+    "Case": 170,
+    "Label": "retained-export/condition-zero-mask/export-access",
+    "NativeObservationSha256": "79d89b7d8836b42e07619ce3f2d0bc6813e1edf5badfa8a929209d17d62185e0",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 172,
+    "Label": "retained-export/condition-zero-mask/export-all",
+    "NativeObservationSha256": "49fcc8f7cfa5fa0179a11965d3fdd72caabd458ef4f66154734c371b0ade121e",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 175,
+    "Label": "retained-export/condition-zero-mask/owner-then-export",
+    "NativeObservationSha256": "2f8088de43e3bf01ed07fb85c30be96beef247f7530eb067c58c10c527bc1681",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "exception-contract-difference",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": "System.InvalidOperationException"
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 178,
+    "Label": "retained-export/unknown-object-flags/export-access",
+    "NativeObservationSha256": "880707831af4e130cff480ea1a3c8ad85077ca814f5e6d60936c3e39c71dc9ea",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 180,
+    "Label": "retained-export/unknown-object-flags/export-all",
+    "NativeObservationSha256": "82f5f78d6daa2b90cd259f31be9582f6e1722e0617e33f3730a3c02b547f687d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 183,
+    "Label": "retained-export/unknown-object-flags/owner-then-export",
+    "NativeObservationSha256": "ae34e17a446cb5ad5472b8335b375d90d366b33e4b8bc6a4b09bbdf02e8166c1",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 195,
+    "Label": "retained-export/unknown-SACL/export-audit",
+    "NativeObservationSha256": "975e2131b42f8be773b12e3252d164f8203bb03d883768defa886cdf3a97b61a",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 196,
+    "Label": "retained-export/unknown-SACL/export-all",
+    "NativeObservationSha256": "8bba867db03ef9a2c5d66adf9b2d6be4615278f2f7c3d12c19e049d796b2701d",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 199,
+    "Label": "retained-export/unknown-SACL/owner-then-export",
+    "NativeObservationSha256": "8001c0b29e63d2288bbe93f53e70c1303d49e2f81653c253cbfe6218134888ed",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 203,
+    "Label": "retained-export/inactive-audit/export-audit",
+    "NativeObservationSha256": "68c33ecf21f5eebe18fc6d47e6ca22cc459e99af0d4594932be970ac0f7cfba2",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 204,
+    "Label": "retained-export/inactive-audit/export-all",
+    "NativeObservationSha256": "274e51bdf6557c5155b4b2f9f144b35c3ac778d97f874c5088997229a5e4305b",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 207,
+    "Label": "retained-export/inactive-audit/owner-then-export",
+    "NativeObservationSha256": "b74e03d94fd95f6d8d5f27db7d36a0938bc4b6f9ead9dccc27e8c88668d99dba",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 243,
+    "Label": "retained-export/unaudited-active/export-audit",
+    "NativeObservationSha256": "107509499c469015658ff8c3ba3afb1630e4832b899a2d3b85251f68d5afdb7d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 244,
+    "Label": "retained-export/unaudited-active/export-all",
+    "NativeObservationSha256": "7b29193906f33a1b5b9a70d47cdc34f65cd1fcc1e6960d18d2758069d0ab4f26",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 247,
+    "Label": "retained-export/unaudited-active/owner-then-export",
+    "NativeObservationSha256": "8b0cf9d03cebaca272c349c0780a5769d8cda9aeccc37b5a8a7c1c44014bda11",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "existing-raw-validation-difference",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 251,
+    "Label": "retained-export/opaque-audit/export-audit",
+    "NativeObservationSha256": "c7561b251e09ea5cf421fb46beb27a880a2f1e3bd684d1ecd696f02b024bde94",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 252,
+    "Label": "retained-export/opaque-audit/export-all",
+    "NativeObservationSha256": "62f199e2c5c6a660d27bde43463b0eeb808096a5cf148d27ded5b1112aeff3db",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 255,
+    "Label": "retained-export/opaque-audit/owner-then-export",
+    "NativeObservationSha256": "ebbdf92cc91abe0ab89546c51453d8f3db824ae7548cd19e1f406cfd7539fee9",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 258,
+    "Label": "retained-export/ZA-inactive-tail/export-access",
+    "NativeObservationSha256": "400748d546219f30d3fa6197b1a86d6b3e410de6503cea90320d5b6e7d3bfde1",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 260,
+    "Label": "retained-export/ZA-inactive-tail/export-all",
+    "NativeObservationSha256": "f14a84a38aa75d5e7080ff4af4c188e0fea51eb43a1358f80fc2f532a2c483a2",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 263,
+    "Label": "retained-export/ZA-inactive-tail/owner-then-export",
+    "NativeObservationSha256": "9601cfdb072fe977429e1ce08e93be0fe5a9ed138ae7b5febfd0b3b86a978728",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 266,
+    "Label": "retained-export/condition-inactive-valid/export-access",
+    "NativeObservationSha256": "49391128aaacbbad0dc250f53f6c186eb15623d644e10349088ef9ba8b4d582b",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 268,
+    "Label": "retained-export/condition-inactive-valid/export-all",
+    "NativeObservationSha256": "adeb4e768e6a705c98c1ba146e8e816556685793a32bd3d6b276cfc7ad3e9b71",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 271,
+    "Label": "retained-export/condition-inactive-valid/owner-then-export",
+    "NativeObservationSha256": "7333afee277d357b9882945ef3597db84ae0f7c8f6801cf974ee43fa1f51cfe3",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 274,
+    "Label": "retained-export/condition-zero-valid/export-access",
+    "NativeObservationSha256": "52aa6335558edb9e1f73b46062af0abf3ab8888ca6eb020acd27984f4441b9b0",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 276,
+    "Label": "retained-export/condition-zero-valid/export-all",
+    "NativeObservationSha256": "716f75d4a028a96c789eabbcd41efe35159aecf8eeb5e455476581d663802c55",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 279,
+    "Label": "retained-export/condition-zero-valid/owner-then-export",
+    "NativeObservationSha256": "0c7018550ae7742ca3f5450f96dcd2a83914cede494c5f6900b74614b2f5df38",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 283,
+    "Label": "retained-export/audit-condition-zero-valid/export-audit",
+    "NativeObservationSha256": "89dc3d8cc888aa3da6c3b12e68ad0bce2526684f17b32aeeed36565ba5b8083e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 284,
+    "Label": "retained-export/audit-condition-zero-valid/export-all",
+    "NativeObservationSha256": "fcb4e60a7ff19f3b0534ffd70bb2e79e3e835379b3b5bdc5e46c0cd556e2d0c9",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 287,
+    "Label": "retained-export/audit-condition-zero-valid/owner-then-export",
+    "NativeObservationSha256": "4b42b2b5581415ef5b804782ca0c113aca1b081e0136bb47c5e4e28d768f9a3d",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-content-loss-refusal",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  }
+]
