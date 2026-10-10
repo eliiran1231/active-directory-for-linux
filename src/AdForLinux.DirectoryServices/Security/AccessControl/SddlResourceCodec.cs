@@ -29,7 +29,7 @@ internal static class SddlResourceCodec
         var flags = Number(fields[2]);
         if (flags > uint.MaxValue || (flags & 0x0000ffc0) != 0) throw Invalid();
         var values = fields.Skip(3).Select(value => Encode(type, value)).ToArray();
-        var nameBytes = Encoding.Unicode.GetBytes(name + '\0');
+        var nameBytes = SddlUtf16.Encode(name + '\0');
         var headerLength = 16 + 4 * values.Length;
         var length = headerLength + nameBytes.Length + values.Sum(value => value.Length);
         var bytes = new byte[(length + 3) & ~3];
@@ -49,7 +49,7 @@ internal static class SddlResourceCodec
 
     private static byte[] Encode(ushort type, string value)
     {
-        if (type == 3) return Encoding.Unicode.GetBytes(StringValue(value) + '\0');
+        if (type == 3) return SddlUtf16.Encode(StringValue(value) + '\0');
         if (type is 5 or 16)
         {
             byte[] data;

@@ -1,5 +1,12 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest SDDL boundary evidence
+
+See [measured boundary findings](issue-226-sddl-boundary-findings.md): surrogate code-unit
+preservation is corrected, but 46 initial size mismatches and 274 directed follow-up
+parse mismatches remain unresolved. These are distinct from deliberate loss refusals;
+successful test and native-freshness runs do not establish full size compatibility.
+
 This inventory assesses implementation head `2e4f6a2ca3aa54dc988f3c2468cfe5f79f318b03`
 (tree `7d01e15c6fec4fb384f238082b36e531964e3a22`). It supersedes historical staging
 statements in the linked slice documents, not their original measurements. It is an inventory

@@ -184,7 +184,7 @@ internal static class SddlConditionCodec
     private static string Unicode(byte[] bytes)
     {
         if (bytes.Length % 2 != 0) throw Unsupported();
-        return new UnicodeEncoding(false, false, true).GetString(bytes);
+        return SddlUtf16.Decode(bytes);
     }
     internal static string UnescapeName(string text, bool conditional = false)
     {
@@ -285,7 +285,7 @@ internal static class SddlConditionCodec
             {
                 var end = text.IndexOf('"', position); if (end < 0) throw Invalid();
                 var value = text[position..end]; position = end + 1;
-                if (value.Contains('\0')) throw Invalid(); return new Node(0x10, Encoding.Unicode.GetBytes(value), []);
+                if (value.Contains('\0')) throw Invalid(); return new Node(0x10, SddlUtf16.Encode(value), []);
             }
             if (Take("SID("))
             {
@@ -330,7 +330,7 @@ internal static class SddlConditionCodec
             }
             var value = text[start..position];
             if (value.Length == 0) throw Invalid();
-            return new Node(code, Encoding.Unicode.GetBytes(code == 0xf8 ? value : UnescapeName(value, conditional: true)), []);
+            return new Node(code, SddlUtf16.Encode(code == 0xf8 ? value : UnescapeName(value, conditional: true)), []);
         }
         private string Operator()
         {

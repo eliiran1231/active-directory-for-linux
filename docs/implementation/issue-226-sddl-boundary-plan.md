@@ -1,5 +1,9 @@
 # Local-only SDDL boundary investigation
 
+Latest measured status: [boundary findings](issue-226-sddl-boundary-findings.md).
+The local-only statements below describe the preparation checkpoint, not current
+publication status. Native recordings now exist; large-input compatibility remains open.
+
 Publication follow-up: the original local preparation below is retained as history.
 `Run-SddlBoundary.ps1` now schedules all 220 cases in 14 isolated batches per runtime
 from the push-triggered offline Windows workflow. Each batch has a 60-second timeout

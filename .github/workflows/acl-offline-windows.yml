@@ -99,6 +99,14 @@ jobs:
         timeout-minutes: 5
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode size
+      - name: Verify recorded boundary and size evidence
+        shell: pwsh
+        run: |
+          $recordingFramework = '${{ matrix.framework }}'.Replace('.0', '')
+          python tests/verify-sddl-boundary-recordings.py artifacts/boundary/${{ matrix.framework }} "docs/research/acl-windows-oracle/results/sddl-boundary-windows-$recordingFramework.json.gz"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/verify-sddl-boundary-recordings.py artifacts/size/${{ matrix.framework }} "docs/research/acl-windows-oracle/results/sddl-size-windows-$recordingFramework.json.gz"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4
