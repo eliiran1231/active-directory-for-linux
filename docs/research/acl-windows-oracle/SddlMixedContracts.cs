@@ -61,7 +61,7 @@ internal static class SddlMixedContracts
         facade.AreAccessRulesProtected, facade.AreAuditRulesProtected
     };
 
-    private static object Describe(A.RawSecurityDescriptor raw) => new
+    internal static object Describe(A.RawSecurityDescriptor raw) => new
     {
         Hex = Convert.ToHexString(Bytes(raw)), raw.BinaryLength, Control = (int)raw.ControlFlags,
         Owner = raw.Owner?.Value, Group = raw.Group?.Value,
@@ -72,9 +72,9 @@ internal static class SddlMixedContracts
         if (acl is null) return null;
         var bytes = new byte[acl.BinaryLength]; acl.GetBinaryForm(bytes, 0); return Convert.ToHexString(bytes);
     }
-    private static byte[] Bytes(A.RawSecurityDescriptor raw)
+    internal static byte[] Bytes(A.RawSecurityDescriptor raw)
     { var bytes = new byte[raw.BinaryLength]; raw.GetBinaryForm(bytes, 0); return bytes; }
-    private static object Capture(Func<object?> action)
+    internal static object Capture(Func<object?> action)
     {
         object? result = null; string? type = null, parameter = null; int? code = null;
         try { result = action(); }
