@@ -64,7 +64,7 @@ jobs:
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}' -Mode ace-size
       - name: Verify exact ACE-size precedence evidence
         run: python tests/verify-sddl-native-layers.py artifacts/ace-size/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-ace-size-${{ matrix.framework }}.jsonl.gz
-      - name: Localize eight native SDDL assembly witnesses
+      - name: Localize native SDDL assembly witnesses
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlAssemblyProbe.ps1 -Framework '${{ matrix.framework }}'
       - name: Isolate native conversion and managed binary parsing

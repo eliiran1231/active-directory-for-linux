@@ -4,16 +4,21 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
-// Eight directed, isolated witnesses. No ACL is applied to an object or token.
+// Eight isolated witnesses plus six directed capacity variants. No ACL is applied to an object or token.
 internal static class SddlAssemblyProbe
 {
-    internal const int Count = 8;
-    private const int Capacity = 65532; // largest DWORD-aligned value representable by AclSize
+    internal const int Count = 14;
+    private const int MaximumCapacity = 65532; // largest DWORD-aligned value representable by AclSize
     private const string Ordinary = "(A;;RP;;;WD)";
     private const string LongSid = "(A;;RP;;;S-1-5-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15)";
-    private sealed record Witness(int Length, int Before, int After, bool LongFollower = false);
+    private sealed record Witness(int Length, int Before, int After, bool LongFollower = false, int Capacity = MaximumCapacity);
     private static readonly Witness[] Cases = [new(32702,0,0), new(32702,0,1), new(32702,1,0),
-        new(32702,0,4), new(32702,0,1,true), new(32690,0,2), new(32700,0,2), new(8,0,1)];
+        new(32702,0,4), new(32702,0,1,true), new(32690,0,2), new(32700,0,2), new(8,0,1),
+        // Exactly six directed variants: equal free space with different ACE counts,
+        // four bytes below, at, and four bytes above the measured large-ACE fit.
+        new(32702,0,0,false,65448), new(32702,1,0,false,65468),
+        new(32702,0,0,false,65452), new(32702,1,0,false,65472),
+        new(32702,0,0,false,65456), new(32702,1,0,false,65476)];
 
     internal static void Write(string path, int index)
     {
@@ -28,7 +33,7 @@ internal static class SddlAssemblyProbe
         using var output = new StreamWriter(new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.Read)) { AutoFlush = true };
         void Emit(object value) => output.WriteLine(JsonSerializer.Serialize(value));
         Emit(new { Kind="Attempt", Case=index, input.Length, input.Before, input.After, input.LongFollower,
-            Capacity, InputUtf16Hex=SddlBoundaryInputs.Utf16Hex(text), Runtime=RuntimeInformation.FrameworkDescription,
+            input.Capacity, InputUtf16Hex=SddlBoundaryInputs.Utf16Hex(text), Runtime=RuntimeInformation.FrameworkDescription,
             OS=RuntimeInformation.OSDescription });
         var full = Convert(text);
         // Existing native evidence establishes this sibling succeeds at 32702. The
@@ -54,22 +59,25 @@ internal static class SddlAssemblyProbe
 
     private static object[] Assemble(bool compile, Witness input, string condition, byte[] large, byte[] ordinary, byte[] follower)
     {
-        var allocation = Marshal.AllocHGlobal(Capacity + 32);
+        var capacity = input.Capacity;
+        if (capacity < 8 || capacity > MaximumCapacity || capacity % 4 != 0)
+            throw new InvalidOperationException("Invalid advertised ACL capacity.");
+        var allocation = Marshal.AllocHGlobal(capacity + 32);
         try
         {
-            var initial = new byte[Capacity + 32];
-            initial.AsSpan(0,16).Fill(0xA5); initial.AsSpan(Capacity + 16,16).Fill(0xA5);
+            var initial = new byte[capacity + 32];
+            initial.AsSpan(0,16).Fill(0xA5); initial.AsSpan(capacity + 16,16).Fill(0xA5);
             Marshal.Copy(initial,0,allocation,initial.Length);
             var acl = IntPtr.Add(allocation,16);
             var steps = new List<object>();
             Marshal.SetLastPInvokeError(0);
-            var initialized = InitializeAcl(acl,Capacity,4);
+            var initialized = InitializeAcl(acl,(uint)capacity,4);
             var initializeError = Marshal.GetLastPInvokeError();
-            steps.Add(new { Step="InitializeAcl", Success=initialized, LastError=initializeError, Post=Inspect(acl,allocation) });
+            steps.Add(new { Step="InitializeAcl", Success=initialized, LastError=initializeError, Post=Inspect(acl,allocation,capacity) });
             if (!initialized) return steps.ToArray();
             bool Append(string name, byte[]? ace)
             {
-                var pre = Inspect(acl,allocation);
+                var pre = Inspect(acl,allocation,capacity);
                 var sid = System.Convert.FromHexString("010100000000000100000000");
                 var sourceCopy = ace?.ToArray();
                 uint returned = 0;
@@ -78,7 +86,7 @@ internal static class SddlAssemblyProbe
                     ? AddConditionalAce(acl,4,0,9,16,sid,condition,out returned)
                     : AddAce(acl,4,uint.MaxValue,ace,(uint)ace.Length);
                 var error = Marshal.GetLastPInvokeError(); // before any inspection/P/Invoke
-                var post = Inspect(acl,allocation);
+                var post = Inspect(acl,allocation,capacity);
                 var bytes = ExtractAclAce(post.Bytes,9);
                 steps.Add(new { Step=name, Success=success, LastError=error,
                     RawReturnLength=ace is null ? (uint?)returned : null,
@@ -100,19 +108,19 @@ internal static class SddlAssemblyProbe
     {
         [System.Text.Json.Serialization.JsonIgnore] internal byte[] Bytes => System.Convert.FromHexString(Hex);
     }
-    private static AclImage Inspect(IntPtr acl, IntPtr allocation)
+    private static AclImage Inspect(IntPtr acl, IntPtr allocation, int capacity)
     {
-        var bytes = new byte[Capacity]; Marshal.Copy(acl,bytes,0,bytes.Length);
+        var bytes = new byte[capacity]; Marshal.Copy(acl,bytes,0,bytes.Length);
         var guard = new byte[16]; Marshal.Copy(allocation,guard,0,16); var intact=guard.All(b=>b==0xA5);
-        Marshal.Copy(IntPtr.Add(acl,Capacity),guard,0,16); intact &= guard.All(b=>b==0xA5);
+        Marshal.Copy(IntPtr.Add(acl,capacity),guard,0,16); intact &= guard.All(b=>b==0xA5);
         if (!intact) throw new InvalidOperationException("Native API crossed the bounded caller allocation.");
         var size=BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(2));
-        var valid = size is >=8 and <=Capacity;
+        var valid = size >= 8 && size <= capacity;
         var info=new SizeInformation(); var ok=false; var error=0;
         if (valid)
         {
             Marshal.SetLastPInvokeError(0); ok=GetAclInformation(acl,out info,12,2); error=Marshal.GetLastPInvokeError();
-            if (ok && (info.BytesInUse > Capacity || info.BytesFree > Capacity || info.BytesInUse + info.BytesFree != size))
+            if (ok && (info.BytesInUse > capacity || info.BytesFree > capacity || info.BytesInUse + info.BytesFree != size))
                 throw new InvalidOperationException("Native ACL size accounting exceeds the declared allocation.");
         }
         return new(System.Convert.ToHexString(bytes.AsSpan(0,8)),ok?info.AceCount:null,ok?info.BytesInUse:null,

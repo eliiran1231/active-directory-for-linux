@@ -5,7 +5,7 @@ New-Item -ItemType Directory -Force $directory | Out-Null
 $assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
 $env:DOTNET_GCHeapHardLimit = '0x10000000'
 $env:DOTNET_PROCESSOR_COUNT = '2'
-for ($index = 0; $index -lt 8; $index++) {
+for ($index = 0; $index -lt 14; $index++) {
     $stem = "$directory/witness-$index"
     $process = Start-Process dotnet -ArgumentList @($assembly,'--sddl-assembly-jsonl',"$stem.jsonl",$index) -PassThru -NoNewWindow -RedirectStandardOutput "$stem.stdout.log" -RedirectStandardError "$stem.stderr.log"
     $finished = $process.WaitForExit(15000)
@@ -23,4 +23,4 @@ for ($index = 0; $index -lt 8; $index++) {
     Write-Output ('SDDL_ASSEMBLY_GZIP=' + ($record | ConvertTo-Json -Compress))
     $memory.Dispose()
 }
-Write-Output "Recorded eight isolated assembly witnesses on $Framework; localization evidence only."
+Write-Output "Recorded fourteen isolated assembly witnesses (eight initial and six directed capacity variants) on $Framework; localization evidence only."
