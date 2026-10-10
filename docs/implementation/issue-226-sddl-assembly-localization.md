@@ -1,4 +1,4 @@
-# Eight-witness native SDDL assembly localization
+# Native SDDL assembly localization: fourteen bounded witnesses
 
 The 25 initial, 243 directed and overlapping 623 expanded differences remain frozen.
 Existing observations disprove a monotonic string/final-size threshold: at length 32702,
@@ -62,3 +62,31 @@ length 32702: empty ACL capacities 65448/65452/65456 versus a 20-byte predecesso
 65468/65472/65476. These are four bytes below, exactly at and four bytes above the
 measured fit, always within the WORD/DWORD bound. Each uses fresh compile/replay buffers;
 no retry reuses a failed allocation. The result is not assumed in advance.
+
+
+## Actual capacity-pair results and preserved evidence
+
+At `c7125ad27e1809fa48a3c42ed77ed8de4550881d`,
+[run 38083602105](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38083602105)
+completed the six directed variants and repeated the original eight. All 56 rows agree
+across runtimes apart from environment; the first eight case files are byte-identical to
+the initial run. The committed `sddl-assembly-net{8,10}.0.jsonl.gz` recordings retain every
+original JSONL byte. `sddl-assembly-provenance.json` records source head/run/job IDs and
+both original-file and compressed-file hashes, verified against emitted Windows records.
+Routine offline CI compares every field and buffer, excluding only runtime/OS metadata.
+
+| Equal free bytes before large ACE | Empty / one-predecessor capacity | Compile and replay outcome |
+| ---: | --- | --- |
+| 65440 | 65448 / 65468 | Both fail with 122; complete pre/post buffers identical |
+| 65444 | 65452 / 65472 | Both succeed with zero free bytes; exact native ACE |
+| 65448 | 65456 / 65476 | Both succeed with four free bytes; exact native ACE |
+
+On insufficient space, AddConditionalAce reports required ACL sizes 65452 and 65472,
+respectively. Every guard and input ACE remains intact. These pairs show ordinary free-
+space behavior independent of predecessor count for the direct APIs in this bounded band.
+Whole SDDL conversion still fails for the equivalent alone/predecessor forms, strengthening
+the localization to that conversion path's sizing/assembly behavior. They do not reveal
+its temporary allocation plan, prove its internal API calls, or justify recreating errors
+from a threshold. No production SDDL change or further probe expansion follows this result.
+The 25/243/overlapping 623 portability gaps remain unresolved; a testable model of the
+whole-converter allocation/order behavior is still required before implementing parity.

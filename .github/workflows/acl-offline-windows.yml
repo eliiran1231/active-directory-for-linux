@@ -67,6 +67,8 @@ jobs:
       - name: Localize native SDDL assembly witnesses
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlAssemblyProbe.ps1 -Framework '${{ matrix.framework }}'
+      - name: Verify exact native assembly localization evidence
+        run: python tests/verify-sddl-assembly-probe.py artifacts/assembly/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-assembly-${{ matrix.framework }}.jsonl.gz
       - name: Isolate native conversion and managed binary parsing
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}'

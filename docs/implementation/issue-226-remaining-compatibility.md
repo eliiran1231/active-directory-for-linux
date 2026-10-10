@@ -223,8 +223,17 @@ setup/cleanup and tested live routes. It is legitimate bounded live evidence; it
 unfiltered functional-suite pass or execution of the distinct 15-cell Add plan. This task
 runs only offline tests and does not initiate any further live workflow.
 
+The implementation follow-up at `68bec3d8dc72fcb2c020df9b8d615078faf7332a` passed
+[all four Windows jobs](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/38083120604):
+13,051 core, 33 surface and 359 companion cases per runtime, zero failures/skips.
+Linux passes 13,051 core, 33 surface, 55 consumers, 34 registration and four applicable
+companion tests per runtime (17 Windows-only groups skip), plus five bounded invariant
+workers per runtime. The 32 new entry relocation cases all fail with the old rewriter.
+Six additional research-only capacity variants and their exact native recordings do not
+change production code. Full final-head freshness/artifacts are linked in PR 228.
+
 This follow-up adds contiguous referenced-suffix relocation, public entry identity-route
-coverage and eight native SDDL assembly witnesses. Its exact-head results and artifact
+coverage and fourteen bounded native SDDL assembly/capacity witnesses. Its exact-head results and artifact
 links are published in PR 228 after the push-triggered offline workflow. Native freshness
 alone is not proof of portable parity, and Linux companion skips are not native execution.
 
