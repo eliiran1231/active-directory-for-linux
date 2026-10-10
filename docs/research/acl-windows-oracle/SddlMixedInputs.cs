@@ -1,3 +1,4 @@
+#pragma warning disable CA1416 // Shared enum values; portable execution never calls Windows APIs.
 using System.Security.AccessControl;
 
 // Eight ordinary-sized fixtures crossed with eight independent operations.

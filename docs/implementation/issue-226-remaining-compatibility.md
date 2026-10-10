@@ -10,7 +10,10 @@ successful test and native-freshness runs do not establish full size compatibili
 The [bounded callback-size precedence follow-up](issue-226-sddl-ace-size-precedence.md)
 confirms the additional oversized XD/XU/ZA layouts and corrects ZA malformed-GUID
 error mapping. The allocation matrix is frozen pending a testable causal model; the
-recommended next slice is 64 ordinary-sized mixed-ACE/section-operation combinations.
+[64 ordinary-sized mixed-ACE/section-operation follow-up](issue-226-sddl-mixed-operations.md)
+is recorded. Sixty complete portable rows match; four selected RA/FL exports now refuse
+proven information loss. Original raw bytes remain separate from native normalization.
+The 25 initial, 243 directed and overlapping 623 expanded allocation gaps remain open.
 
 This inventory assesses implementation head `2e4f6a2ca3aa54dc988f3c2468cfe5f79f318b03`
 (tree `7d01e15c6fec4fb384f238082b36e531964e3a22`). It supersedes historical staging

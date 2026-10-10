@@ -325,6 +325,13 @@ internal static class SddlCodec
     internal static string Format(GenericSecurityDescriptor descriptor, AccessControlSections sections)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
+        // Common ACL projection can hide RA/FL ACEs before AppendAce sees them.
+        // Apply the existing loss refusal to the selected retained SACL too; live
+        // ordering/compaction remains the observable output for supported ACEs.
+        if ((sections & AccessControlSections.Audit) != 0 && descriptor is CommonSecurityDescriptor common
+            && common.MutationState.Descriptor.Sacl is { } retainedSacl
+            && retainedSacl.Aces.Any(ace => ace.AceType is 18 or 21))
+            throw new NotSupportedException("Native SDDL export omits resource attributes or access filters; portable export refuses that information loss.");
         var bytes = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(bytes, 0);
         var raw = new RawSecurityDescriptor(bytes, 0);
         var result = new StringBuilder();

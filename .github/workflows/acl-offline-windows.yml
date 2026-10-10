@@ -27,6 +27,8 @@ jobs:
       - name: Record ordinary-sized mixed section operations
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode mixed
+      - name: Verify exact mixed operation evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/mixed/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-mixed-${{ matrix.framework }}.json.gz
       - name: Record bounded ACE-size error precedence
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}' -Mode ace-size

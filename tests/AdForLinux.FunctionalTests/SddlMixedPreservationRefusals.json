@@ -1,0 +1,26 @@
+[
+  {
+    "Case": 51,
+    "Label": "mixed/RA/export-audit",
+    "NativeObservationSha256": "676802110b6a8390015b1343af2342c372917c678ae9295599cff3ca9d047393",
+    "Difference": "Result only: portable NotSupportedException; native success omits stored RA SACL ACEs. Original raw and observable states remain separately unchanged."
+  },
+  {
+    "Case": 52,
+    "Label": "mixed/RA/export-all",
+    "NativeObservationSha256": "5d578f69aab76e316e935af4e3f5214046f2fc623263e45c6b8a95b6604d235f",
+    "Difference": "Result only: portable NotSupportedException; native success omits stored RA SACL ACEs. Original raw and observable states remain separately unchanged."
+  },
+  {
+    "Case": 59,
+    "Label": "mixed/FL/export-audit",
+    "NativeObservationSha256": "2c983d3be6821d62476e48b60b1a85dfdef72fec2681d7ef262e13d40f756920",
+    "Difference": "Result only: portable NotSupportedException; native success omits stored FL SACL ACEs. Original raw and observable states remain separately unchanged."
+  },
+  {
+    "Case": 60,
+    "Label": "mixed/FL/export-all",
+    "NativeObservationSha256": "42ba8187dd96756f06dfd10cd16946a563c4a1be85857f3de93dc5678116567e",
+    "Difference": "Result only: portable NotSupportedException; native success omits stored FL SACL ACEs. Original raw and observable states remain separately unchanged."
+  }
+]

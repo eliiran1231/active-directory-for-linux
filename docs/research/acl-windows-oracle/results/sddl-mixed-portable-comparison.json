@@ -1,0 +1,26 @@
+{
+  "Scope": "All 64 observations, each operation has a fresh raw baseline. Full native rows match portable before the preservation guard; four silent-loss exports intentionally refuse afterward.",
+  "NativeRuntimeAgreement": true,
+  "NativeSuccesses": 56,
+  "NativeMalformedEditFailures": 8,
+  "ExactPortableRowsAfterFix": 60,
+  "PinnedLossRefusalCases": [
+    51,
+    52,
+    59,
+    60
+  ],
+  "NativePartialFailuresObserved": 0,
+  "RawAndLiveDifferFixtures": [
+    "XU (ordering only)",
+    "RA (four resource ACEs omitted from facade projection)",
+    "FL (one filter ACE omitted from facade projection)"
+  ],
+  "OwnerGroupEdits": 16,
+  "UnchangedRawReadOrFailureOperations": 48,
+  "FrozenAllocationGaps": {
+    "Initial": 25,
+    "Directed": 243,
+    "ExpandedOverlapping": 623
+  }
+}

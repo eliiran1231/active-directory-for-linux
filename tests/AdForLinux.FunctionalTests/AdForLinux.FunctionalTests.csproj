@@ -24,11 +24,16 @@
   <ItemGroup>
     <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedInputs.cs" Link="SddlMixedInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedContracts.cs" Link="SddlMixedContracts.cs" />
     <Compile Include="../../docs/research/acl-windows-oracle/SddlAceSizeInputs.cs" Link="SddlAceSizeInputs.cs" />
     <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-mixed-net8.0.json.gz" LogicalName="AclOracle.Mixed.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-mixed-net10.0.json.gz" LogicalName="AclOracle.Mixed.net10.json.gz" />
+    <EmbeddedResource Include="SddlMixedPreservationRefusals.json" LogicalName="AclOracle.Mixed.Refusals.json" />
     <!-- Literal Windows observations; replay remains fully offline on every target. -->
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net8.json.gz" LogicalName="AclOracle.Boundary.net8.json.gz" />
     <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net10.json.gz" LogicalName="AclOracle.Boundary.net10.json.gz" />
