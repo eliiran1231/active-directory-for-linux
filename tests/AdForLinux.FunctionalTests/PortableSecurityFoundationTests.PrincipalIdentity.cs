@@ -198,9 +198,9 @@ public partial class PortableSecurityFoundationTests
     }
 
     [Fact]
-    public void Principal_internal_adapter_does_not_add_public_surface_or_reverse_dependency()
+    public void Principal_public_resolver_factory_preserves_dependency_direction()
     {
-        Assert.Null(typeof(PrincipalContext).GetMethod("CreateIdentityResolver", BindingFlags.Public | BindingFlags.Instance));
+        Assert.Equal(typeof(DirectoryIdentityResolver), typeof(PrincipalContext).GetMethod("CreateIdentityResolver", BindingFlags.Public | BindingFlags.Instance)!.ReturnType);
         Assert.DoesNotContain(typeof(DirectoryIdentityResolver).Assembly.GetReferencedAssemblies(),
             assembly => assembly.Name == typeof(PrincipalContext).Assembly.GetName().Name);
         Assert.Equal(typeof(SecurityIdentifier), typeof(Principal).GetProperty("Sid")!.PropertyType);

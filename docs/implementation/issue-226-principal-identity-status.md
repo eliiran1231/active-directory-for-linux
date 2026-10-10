@@ -1,4 +1,4 @@
-# PrincipalContext identity adapter — internal dependency
+# PrincipalContext identity adapter and approved public helper
 
 Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
 AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
@@ -8,10 +8,11 @@ Historical counts are not the latest whole-PR validation or a claim of complete 
 This implements the ownership/layering dependency described by the approved
 [context resolver research](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/context-bound-identity-resolution.md#2-existing-api-experience-and-layering)
 and [D11](https://github.com/eliiran1231/active-directory-for-linux/blob/ea0786fc3e75658732e7ac15a94134d54e24bf6c/docs/design/acl-decisions.md#d11-identity-resolution-and-ambient-kerberos).
-The research's helper names were illustrative. `PrincipalContext.CreateIdentityResolver` is
-therefore **internal only** in this slice; it is not a new public API or a claim that public
-PrincipalContext/security integration has shipped. Public AD types, Principal.Sid, persistence
-and the 55-type required-surface target remain unchanged.
+The helper initially remained internal pending approval. Following explicit user approval,
+`PrincipalContext.CreateIdentityResolver()` and the entry factory/Translate methods are
+public. The adapter, resolver constructor and `Bind` remain nonpublic; no provider interface
+or credential-owning helper was added. This does not enable GC/trust routing or change
+Principal.Sid, persistence, authentication policy or the 55-type native surface inventory.
 
 ## Ownership and layering
 

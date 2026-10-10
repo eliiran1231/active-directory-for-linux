@@ -8,9 +8,10 @@ public partial class PrincipalContext
     internal Func<LdapConnectionOptions, IIdentitySearchSession> IdentitySessionFactory { get; set; }
         = static options => LdapExceptionTranslator.Execute(() => new LdapIdentitySearchSession(options));
 
-    // Staged dependency only. The approved design's public helper names remain
-    // illustrative; no new public API or transport/persistence behavior is enabled.
-    internal DirectoryIdentityResolver CreateIdentityResolver()
+    /// <summary>Creates a revocable identity resolver without connecting or performing a lookup.</summary>
+    /// <remarks>Keep this context alive. Disposal invalidates cross-kind translation;
+    /// returned identity values carry no credentials or resolver authority.</remarks>
+    public DirectoryIdentityResolver CreateIdentityResolver()
         => DirectoryIdentityResolver.ForBinding(new ContextIdentityResolverBinding(this));
 
     private sealed class ContextIdentityResolverBinding(PrincipalContext context) : IdentityResolverBinding

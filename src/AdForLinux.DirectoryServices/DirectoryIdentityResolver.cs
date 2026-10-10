@@ -9,7 +9,7 @@ namespace AdForLinux.DirectoryServices;
 /// <summary>Resolves portable identities in an entry's domain using its current, borrowed binding.</summary>
 /// <remarks>Keep the entry alive. Rebinding, closing, refreshing its descriptor or disposing
 /// the entry invalidates this resolver. Reacquire explicitly; no credentials are retained here.</remarks>
-internal sealed class DirectoryIdentityResolver
+public sealed class DirectoryIdentityResolver
 {
     private readonly IdentityResolverBinding binding;
     private readonly long generation;
@@ -23,7 +23,7 @@ internal sealed class DirectoryIdentityResolver
     internal static DirectoryIdentityResolver ForBinding(IdentityResolverBinding binding) => new(binding);
 
     /// <summary>Captures a revocable binding without connecting or performing a lookup.</summary>
-    internal static DirectoryIdentityResolver ForEntry(DirectoryEntry entry)
+    public static DirectoryIdentityResolver ForEntry(DirectoryEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
         return new(new EntryIdentityResolverBinding(entry));
@@ -37,7 +37,10 @@ internal sealed class DirectoryIdentityResolver
     }
 
     /// <summary>Translates one identity. Name-to-SID requires explicit authenticated credentials.</summary>
-    internal IdentityReference Translate(IdentityReference identity, Type targetType)
+    /// <remarks>Same-kind conversion is offline and remains available after owner revocation.
+    /// Cross-kind lookup borrows the current owner session and returns only an identity value.
+    /// An unmapped identity throws IdentityNotMappedException; transport failures propagate.</remarks>
+    public IdentityReference Translate(IdentityReference identity, Type targetType)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(targetType);
@@ -46,7 +49,10 @@ internal sealed class DirectoryIdentityResolver
     }
 
     /// <summary>Translates a snapshot of a collection, preserving order and unmapped values when requested.</summary>
-    internal IdentityReferenceCollection Translate(IdentityReferenceCollection identities, Type targetType, bool forceSuccess = false)
+    /// <remarks>With forceSuccess=false, unmapped inputs remain in their original positions.
+    /// With forceSuccess=true, IdentityNotMappedException contains the unmapped inputs.
+    /// Transport and lifetime failures are never converted into partial results.</remarks>
+    public IdentityReferenceCollection Translate(IdentityReferenceCollection identities, Type targetType, bool forceSuccess = false)
     {
         ArgumentNullException.ThrowIfNull(identities);
         ArgumentNullException.ThrowIfNull(targetType);

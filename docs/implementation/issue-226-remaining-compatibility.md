@@ -16,9 +16,9 @@ investigation of large-SDDL allocation/order differences. Microsoft conversion i
 intact, with no expansion. Broader Add support is deferred. Approved preservation
 refusals are acceptable differences, not mandatory targets for unsafe parity.
 
-The proposed public identity helper is awaiting explicit approval. Until then no export is
-added. The [identity assessment](issue-226-identity-next.md) distinguishes existing public
-entry routes from helper, provider, topology and live-fixture decisions.
+The minimal public identity helper is now explicitly approved and implemented. The
+[identity assessment](issue-226-identity-next.md) separates that completed API decision
+from outstanding provider, topology and live-fixture decisions.
 
 ## Completed public surface correction
 
@@ -28,12 +28,17 @@ reported 15 failures and 1,346 passes per runtime. All 15 failures reproduce in 
 comparers did not account for the approved portable identity/access-control substitutions;
 they also exposed a real extra public type, `DirectoryIdentityResolver`.
 
-The correction makes that unapproved helper internal, preserves automatic entry/context
+At that stage the correction made the unapproved helper internal, preserved automatic entry/context
 integration, and uses an exact 29-type substitution map in the existing comparisons.
 Extra/missing type and member detection and existing intentional-difference entries remain
 unchanged. Standalone translation errors no longer direct callers to an inaccessible helper.
 Two regressions check the closed exported security inventory and reject broad namespace
 substitution. The 33 metadata-only tests now run in routine offline Windows CI.
+
+The user subsequently approved the minimal public helper explicitly. Its restored export
+and the context factory now have narrow exact intentional-difference entries plus a full
+signature/modifier/default/nullability test. Constructors and binding remain nonpublic;
+the security substitution map and strict extra-member detection are unchanged.
 
 The former green offline workflow did not include these legacy differential surface checks.
 The separate user-run live evidence is limited evidence, not completion of the explicit-Add
@@ -189,7 +194,7 @@ it can be disclosed in a deliberately limited release; it is not a claim of full
 | --- | --- | --- |
 | Public/protected security surface | The exact recorded closure has 39 roots, 55 types and 702 declarations: 42 mapped implementations and 13 retained framework enums. No known missing declaration in that target. Compiler/nullable attributes and private implementation details are not binary-signature parity assertions. This is not a whole-library or future-runtime surface audit. | No known shape blocker within the pinned Microsoft 9 target. All behavioral rows below still apply. Consumers must rebuild for portable identity/base-type substitution. |
 | Base persistence and factories | Base ObjectSecurity name/handle Persist and DirectoryObjectSecurity GUID factories throw by measured native default behavior. Privilege-enabled detached persistence needs an explicit platform override. Concrete AD factories and raw entry persistence exist. | Native defaults are not missing implementations. Portable platform persistence/privilege behavior is not supplied; no implicit privilege adjustment is authorized. |
-| Identity values and collections | Numeric SID, well-known classification, pointer, collection and exception contracts are recorded. Standalone cross-kind Translate cannot acquire a resolver; same-type translation is available. | Explicit-context policy is intentional, not universal LSA parity. A public authority mechanism/helper for standalone cross-kind translation is still unresolved; it blocks claiming every required method supports every native use. Copies never transfer authority. |
+| Identity values and collections | Numeric SID, well-known classification, pointer, collection and exception contracts are recorded. Identity values remain context-free; the approved public entry/context helper supplies explicit standalone cross-kind translation. | Explicit-context policy is intentional, not universal LSA parity. Owner lifetime, verified single-domain scope and existing authentication gates apply. Copies never transfer authority; GC/trust routing and provider evidence remain separate. |
 | Resolver topology and authority | Entry and PrincipalContext bindings are implemented internally. Resolution is bounded to verified AD domain scope; GC, trust/cross-domain routing, foreign-security-principal display-name inference and ambient identity-pinned mutation are not implemented. LA/LG need explicit machine authority (also inside condition/resource SID values). | Full identity compatibility blocker. Scope refusals are deliberate safety boundaries. Provider/OS evidence is needed for ambient identity continuity; username labels are not proof. No public helper naming decision may be inferred from the companion approval. |
 | SDDL intentional export differences | 146 recorded native-success exports lose stored information: 118 FL omissions plus the previous 28 resource/label/opaque/flag/no-GUID-ZA omissions. Portable export refuses without changing binary data. | Intentional preservation difference; blocks exact native text behavior under the ordinary API. A separately designed loss-bearing representation/diagnostic contract would be needed, not a preservation relaxation. Exact IDs remain in [SDDL status](issue-226-sddl-progress.md). |
 | SDDL authority differences | Eight recorded LA/LG rows refuse instead of borrowing Windows machine identity. | Missing explicit authority support, distinct from the 28 loss refusals. Together with the 118 new FL omission cases, there are 154 pinned SDDL refusals, not successful parity. |
@@ -246,8 +251,9 @@ Current finite status:
 - The current single-domain metadata validator and account query planner are extracted
   and used by production. Request-capture tests retain the existing endpoint, NC, exact
   assertions, attributes, membership proofs and request count. This adds no routing authority.
-- Public identity helper approval remains pending. No helper is exported; GC, foreign/FSP
-  and ambient-mutation gates remain unchanged.
+- The minimal public identity helper is explicitly approved and implemented: entry/context
+  factories and the existing single/collection Translate methods. Constructor and Bind
+  remain nonpublic; GC, foreign/FSP and ambient-mutation gates remain unchanged.
 - The whole-SDDL conversion sizing/assembly model remains unresolved beyond the fourteen
   bounded witnesses. No broader length sweep or speculative production threshold is added.
 
@@ -272,12 +278,12 @@ corrected-head test counts and artifacts are reported in PR 228.
 The selected implementation goals remain bounded: safe raw-layout editing, identity
 completion and a causal explanation of the large-SDDL mismatch family. The new suffix
 algorithm does not authorize moving unexplained bytes or relaxing atomic refusal.
-Public helper approval and explicit authority/topology/provider evidence remain distinct
+The approved public helper and outstanding authority/topology/provider evidence remain distinct
 identity decisions. Existing preservation differences are acceptable under the selected
 scope. Microsoft conversion is export-only for required new work; approved import/edit-back
 code remains intact. Broader Add support is deferred.
 
-No new public helper is exported while its approval is pending. No GC/trust routing,
+Only the approved minimal public helper is exported. No GC/trust routing,
 credential forwarding, Basic fallback, ambient-mutation continuity assumption, merge,
 release or live operation is introduced by this follow-up. The separate live scenarios
 in the table still require specifically authorized fixtures; the existing user-run suite

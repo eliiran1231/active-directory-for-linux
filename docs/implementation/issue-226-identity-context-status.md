@@ -17,20 +17,19 @@ The existing BCL-rooted AD class/rule hierarchy and DirectoryEntry security pers
 remain unchanged. This is not the coordinated public cutover, live AD validation or an
 effective-access evaluator.
 
-Latest independent dependency: [the internal PrincipalContext adapter](issue-226-principal-identity-status.md)
-now shares the borrowed-owner resolver with entry bindings. It adds no public helper or transport cutover.
+The [PrincipalContext adapter](issue-226-principal-identity-status.md) shares the borrowed-owner
+resolver with entry bindings. The previously internal helper is now explicitly approved as
+public; transport, scope and owner-lifetime rules are unchanged.
 
-## Internal resolver and context lifetime
+## Explicit resolver and context lifetime
 
-`DirectoryIdentityResolver` and its factory/binding/translation operations are internal
-implementation details. Their earlier public exposure was unapproved and has been removed.
-Public `DirectoryEntry.ObjectSecurity` automatically binds its own context; standalone
-identity translation has no directory authority. Public context-helper naming/exposure
-remains undecided. The historical staging description below does not authorize callers
-to depend on the internal helper.
+`DirectoryIdentityResolver.ForEntry`, both `Translate` overloads and
+`PrincipalContext.CreateIdentityResolver` are the approved public standalone helper.
+Construction and `Bind` remain nonpublic. Public `DirectoryEntry.ObjectSecurity` still
+automatically binds its own context; ordinary identity values retain no directory authority.
 
-The internal `DirectoryIdentityResolver.ForEntry(entry)` captures a weak, revocable
-owner binding without connecting. Its internal translation operations use the library's
+`DirectoryIdentityResolver.ForEntry(entry)` captures a weak, revocable
+owner binding without connecting. Its translation operations use the library's
 AD resolver, and its binding operation attaches resolution to one wrapper.
 `DirectoryEntry.ObjectSecurity` automatically acquires this context when loading its
 raw descriptor. Ordinary standalone identity `Translate(Type)` remains context-free

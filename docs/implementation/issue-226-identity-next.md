@@ -11,7 +11,7 @@ authority isolation are covered by the older lifetime suites.
 Fake sessions prove dispatch, bounded lookup, lifetime and rollback, not working OS auth.
 
 Standalone `IdentityReference.Translate(Type)` still has no authority; same-kind conversion
-works and cross-kind conversion refuses. The minimum helper contract under review is:
+works and cross-kind conversion refuses. The explicitly approved public helper contract is:
 
 - `DirectoryIdentityResolver.ForEntry(DirectoryEntry)` returns a revocable borrowed context.
 - Its existing single and collection `Translate` methods provide explicit standalone mapping.
@@ -19,7 +19,9 @@ works and cross-kind conversion refuses. The minimum helper contract under revie
 - `Bind` remains internal. No provider interface, credential constructor, global/ambient
   authority registration or identity-attached resolver is proposed.
 
-These names/signatures are a **proposal awaiting user approval**, not exported by this slice.
+These methods are now public. The sealed resolver has no public constructor; `Bind` and the
+borrowed-owner adapter remain internal. See [usage and lifetime](../identity-resolution.md)
+and the [compiled consumer example](../examples/IdentityResolverUsage.cs).
 Descriptors and values never transfer credentials, connections or context authority through
 copies. Existing generation checks must cover both lookup and publication.
 

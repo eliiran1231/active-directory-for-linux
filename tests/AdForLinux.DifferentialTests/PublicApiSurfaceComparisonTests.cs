@@ -428,6 +428,10 @@ public class PublicApiSurfaceComparisonTests
     // absent because that namespace is outside the project's claimed scope.
     private static readonly HashSet<SurfaceDifference> IntentionalDifferences =
     [
+        // Explicitly approved standalone identity helper. Its complete declared
+        // contract is pinned separately by PortableSecurityContractTests.
+        new(DifferenceSide.AdForLinux, "DirectoryIdentityResolver", "type", "exported type"),
+        Ours("PrincipalContext", "method public static=False abstract=False virtual=False final=False newslot=False DirectoryServices.DirectoryIdentityResolver CreateIdentityResolver()"),
         // Linux/LDAP conveniences that have no Microsoft counterpart.
         Ours("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) System.String DistinguishedName[]"),
         Ours("DirectoryEntry", "property get=(public,static=False,abstract=False,virtual=False,final=False,newslot=False) set=(none) System.String DistinguishedName[] nullability NotNull/Unknown"),

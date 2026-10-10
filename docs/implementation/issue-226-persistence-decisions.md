@@ -37,6 +37,8 @@ identity-pinning behavior is established by this approval or by offline descript
 
 Live AD binds, lookups and writes remain outside the current task authorization. Public companion
 names/exposure and context-helper naming that genuinely remain undecided are not settled here.
+The later explicit helper approval and its current contract are recorded in
+[identity resolution](../identity-resolution.md); that approval does not expand live or routing scope.
 No merge, credential/security-policy change or standalone effective-access evaluator is authorized.
 
 ## Explicit creation descriptors: compatibility target and validation plan

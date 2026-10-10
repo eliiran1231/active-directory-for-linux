@@ -8,6 +8,9 @@ run on Linux against Active Directory.
 Same shape as Microsoft, new name (so it does not clash with the real DLL on
 Windows).
 
+For standalone portable SID/name translation, see the
+[explicit entry/context identity helper](docs/identity-resolution.md).
+
 ## Layers
 
 | Our namespace | Copies |
