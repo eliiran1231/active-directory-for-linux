@@ -24,6 +24,15 @@ internal static class SddlCompositionContracts
                 Ace(type, type == 13 ? (byte)64 : (byte)0, 16, objectFlags: type == 11 ? 1u : 0u, opaque: condition));
             foreach (var input in Selections(fixture)) yield return input;
         }
+        // Literal prior formatting inputs: now measure their exact text reparsing too.
+        foreach (var (id, hex) in new[]
+        {
+            (857, "010004800000000000000000000000001400000004001C00010000000900140010000000010100000000000100000000"),
+            (858, "010004800000000000000000000000001400000004001C00010000000A00140010000000010100000000000100000000"),
+            (859, "010004800000000000000000000000001400000004003000010000000B002800100000000100000011111111222233334444555555555555010100000000000100000000"),
+        })
+            yield return new(new Fixture($"closure-{id}", "composition-empty-callback", true, Convert.FromHexString(hex)),
+                "export-all", AccessControlSections.All, "callback-composition");
         static IEnumerable<Input> Selections(Fixture fixture)
         {
             yield return new(fixture, "export-selected", fixture.Dacl ? AccessControlSections.Access : AccessControlSections.Audit, "callback-composition");
@@ -42,7 +51,7 @@ internal static class SddlCompositionContracts
         using var output = new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
         Emit(new { Kind = "Header", Schema = "sddl-callback-composition-v1", Runtime = RuntimeInformation.FrameworkDescription,
             OS = RuntimeInformation.OSDescription, TotalCases = inputs.Length, Start = start, Count = end - start,
-            Scope = "45 detached callback export/reparse compositions. Binary input, formatting and native reparse are separately recorded. No lookup or persistence." });
+            Scope = "48 detached callback export/reparse compositions. Binary input, formatting and native reparse are separately recorded. No lookup or persistence." });
         for (var i = start; i < end; i++) Emit(SddlExportContracts.Observe(inputs[i], i));
         void Emit(object value) => output.WriteLine(JsonSerializer.Serialize(value));
     }
