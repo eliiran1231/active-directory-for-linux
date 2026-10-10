@@ -27,6 +27,9 @@ jobs:
       - name: Record ordinary-sized mixed section operations
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode mixed
+      - name: Record callback export-reparse compositions
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode composition
       - name: Record retained export refusal families
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode retained-export
@@ -54,6 +57,7 @@ jobs:
             artifacts/ace-size/
             artifacts/mixed/
             artifacts/retained-export/
+            artifacts/composition/
           if-no-files-found: error
   offline-acl:
     runs-on: windows-2025

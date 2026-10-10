@@ -6,8 +6,8 @@ using System.Security.AccessControl;
 internal static class SddlExportInputs
 {
     internal sealed record Fixture(string Name, string Family, bool Dacl, byte[] Bytes, string? Text = null);
-    internal sealed record Input(Fixture Fixture, string Operation, AccessControlSections Sections)
-    { internal string Label => $"retained-export/{Fixture.Name}/{Operation}"; }
+    internal sealed record Input(Fixture Fixture, string Operation, AccessControlSections Sections, string Prefix = "retained-export")
+    { internal string Label => $"{Prefix}/{Fixture.Name}/{Operation}"; }
 
     internal static IEnumerable<Input> Create()
     {
@@ -64,7 +64,7 @@ internal static class SddlExportInputs
         yield return Make("condition-active-valid", "retained-opaque-control", true, Ace(9, 0, 16, opaque: condition));
     }
 
-    private static Fixture Make(string name, string family, bool dacl, params byte[][] extras)
+    internal static Fixture Make(string name, string family, bool dacl, params byte[][] extras)
     {
         var access = new List<byte[]> { Ace(0, 0, 16) };
         var audit = new List<byte[]> { Ace(2, 64, 16) };
@@ -89,14 +89,21 @@ internal static class SddlExportInputs
         return bytes;
     }
 
-    private static byte[] Ace(byte type, byte flags, int mask, uint objectFlags = 0, byte[]? opaque = null, string sid = "010100000000000100000000")
+    internal static byte[] Ace(byte type, byte flags, int mask, uint objectFlags = 0, byte[]? opaque = null, string sid = "010100000000000100000000")
     {
-        var sidBytes = Convert.FromHexString(sid); var obj = type is 5 or 6 or 7 or 8 or 11;
-        var bytes = new byte[8 + (obj ? 4 : 0) + sidBytes.Length + (opaque?.Length ?? 0)];
+        var sidBytes = Convert.FromHexString(sid); var obj = type is 5 or 6 or 7 or 8 or 11 or 12 or 15 or 16;
+        var objectLength = obj ? 4 + ((objectFlags & 1) != 0 ? 16 : 0) + ((objectFlags & 2) != 0 ? 16 : 0) : 0;
+        var bytes = new byte[8 + objectLength + sidBytes.Length + (opaque?.Length ?? 0)];
         bytes[0] = type; bytes[1] = flags; BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(2), checked((ushort)bytes.Length));
         BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(4), mask);
-        if (obj) BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), objectFlags);
-        sidBytes.CopyTo(bytes, obj ? 12 : 8); opaque?.CopyTo(bytes, bytes.Length - opaque.Length);
+        if (obj)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), objectFlags);
+            var offset = 12;
+            if ((objectFlags & 1) != 0) { new Guid("11111111-2222-3333-4444-555555555555").ToByteArray().CopyTo(bytes, offset); offset += 16; }
+            if ((objectFlags & 2) != 0) new Guid("66666666-7777-8888-9999-aaaaaaaaaaaa").ToByteArray().CopyTo(bytes, offset);
+        }
+        sidBytes.CopyTo(bytes, 8 + objectLength); opaque?.CopyTo(bytes, bytes.Length - opaque.Length);
         return bytes;
     }
 }

@@ -15,8 +15,12 @@ internal static class SddlExportContracts
 {
     internal static object Observe(int index, Action<ExportProbe, A.CommonSecurityDescriptor, byte[]>? before = null,
         Action<ExportProbe, A.CommonSecurityDescriptor, byte[]>? after = null)
+        => Observe(SddlExportInputs.Create().ElementAt(index), index, before, after);
+
+    internal static object Observe(SddlExportInputs.Input input, int index,
+        Action<ExportProbe, A.CommonSecurityDescriptor, byte[]>? before = null,
+        Action<ExportProbe, A.CommonSecurityDescriptor, byte[]>? after = null)
     {
-        var input = SddlExportInputs.Create().ElementAt(index);
         A.RawSecurityDescriptor? raw = null; byte[]? bytes = null, original = null;
         var parsed = Capture(() =>
         {

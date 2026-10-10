@@ -2,16 +2,16 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('net8.0', 'net10.0')]
     [string] $Framework,
-    [ValidateSet('boundary', 'size', 'mixed', 'retained-export')]
+    [ValidateSet('boundary', 'size', 'mixed', 'retained-export', 'composition')]
     [string] $Mode = 'boundary'
 )
 $ErrorActionPreference = 'Stop'
 # The preceding ordinary oracle step builds this executable. Each native batch is
 # isolated and bounded; preserve partial JSONL/log output if a batch fails or hangs.
 $directory = "artifacts/$Mode/$Framework"
-$total = if ($Mode -eq 'retained-export') { 296 } elseif ($Mode -eq 'mixed') { 64 } elseif ($Mode -eq 'size') { 316 } else { 220 }
-$option = if ($Mode -eq 'retained-export') { '--sddl-retained-export-jsonl' } elseif ($Mode -eq 'mixed') { '--sddl-mixed-jsonl' } elseif ($Mode -eq 'size') { '--sddl-size-followup-jsonl' } else { '--sddl-boundary-jsonl' }
-if ($Mode -in @('mixed', 'retained-export')) { $env:DOTNET_GCHeapHardLimit = '0x10000000'; $env:DOTNET_PROCESSOR_COUNT = '2' }
+$total = if ($Mode -eq 'composition') { 45 } elseif ($Mode -eq 'retained-export') { 296 } elseif ($Mode -eq 'mixed') { 64 } elseif ($Mode -eq 'size') { 316 } else { 220 }
+$option = if ($Mode -eq 'composition') { '--sddl-composition-jsonl' } elseif ($Mode -eq 'retained-export') { '--sddl-retained-export-jsonl' } elseif ($Mode -eq 'mixed') { '--sddl-mixed-jsonl' } elseif ($Mode -eq 'size') { '--sddl-size-followup-jsonl' } else { '--sddl-boundary-jsonl' }
+if ($Mode -in @('mixed', 'retained-export', 'composition')) { $env:DOTNET_GCHeapHardLimit = '0x10000000'; $env:DOTNET_PROCESSOR_COUNT = '2' }
 New-Item -ItemType Directory -Force $directory | Out-Null
 $assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
 for ($start = 0; $start -lt $total; $start += 16) {
