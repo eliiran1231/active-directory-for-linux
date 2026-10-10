@@ -30,6 +30,13 @@ cases per runtime; 16 Windows-only companion groups skip. Full solution build ha
 zero errors and 14 existing xUnit2013 warnings. These are bounded checks, not a
 claim that the unfiltered differential suite is green.
 
+The first corrected-head Windows run (38071554110) passed all 33 surface checks and
+12,990 core cases per runtime, but exposed eight failures in the migrated companion
+fixture. Binding resets restore the default mask without SACL; credential resets retain
+the stale managed wrapper. The fixture now explicitly closes, requests all sections,
+and rereads before checking a fresh session. It still checks refusal against the old
+wrapper before reacquisition. This fixture correction changes no production behavior.
+
 ## Identical reassignment write/interop integration
 
 The [controlled integration loop](issue-226-identical-write-integration.md) adds six

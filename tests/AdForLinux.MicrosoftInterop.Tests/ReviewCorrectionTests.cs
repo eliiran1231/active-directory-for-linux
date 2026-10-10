@@ -74,6 +74,11 @@ public class ReviewCorrectionTests
         Assert.NotNull(session.Object); Assert.NotNull(session.Snapshot); // Failure did not consume/dispose it.
         if (change != "dispose")
         {
+            // Credential changes retain the stale managed wrapper, and every binding
+            // reset restores the default mask (without SACL). Explicitly reacquire a
+            // complete entry-owned descriptor through the public lifecycle.
+            entry.Close();
+            entry.Options.SecurityMasks = (D.SecurityMasks)15;
             var rebound = entry.ObjectSecurity;
             Assert.NotSame(source, rebound);
             Assert.Throws<InvalidOperationException>(() => session.ApplyTo(source)); // Old attachment stays stale.
