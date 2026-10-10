@@ -6,10 +6,10 @@ using System.Text.Json;
 // Uses detached Microsoft descriptors; never performs directory or access-check work.
 internal static class SddlBoundaryContracts
 {
-    internal static void Write(string path, int start, int count)
+    internal static void Write(string path, int start, int count, bool sizeFollowup = false)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
-        var inputs = SddlBoundaryInputs.Create().ToArray();
+        var inputs = (sizeFollowup ? SddlBoundaryInputs.CreateSizeFollowup() : SddlBoundaryInputs.Create()).ToArray();
         if (start < 0 || start >= inputs.Length) throw new ArgumentOutOfRangeException(nameof(start));
         if (count is < 1 or > 16) throw new ArgumentOutOfRangeException(nameof(count), "Use batches of at most 16 cases.");
         var end = Math.Min(inputs.Length, checked(start + count));

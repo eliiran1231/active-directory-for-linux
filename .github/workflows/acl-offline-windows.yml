@@ -95,6 +95,10 @@ jobs:
         timeout-minutes: 5
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}'
+      - name: Measure SDDL size transitions
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode size
       - name: Upload offline evidence
         if: always()
         uses: actions/upload-artifact@v4

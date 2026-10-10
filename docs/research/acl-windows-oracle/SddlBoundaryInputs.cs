@@ -74,6 +74,22 @@ internal static class SddlBoundaryInputs
         }
     }
 
+    internal static IEnumerable<Input> CreateSizeFollowup()
+    {
+        // Narrow the transitions seen in the first 220 actual Windows rows.
+        // These are questions, not predicted acceptance or exception thresholds.
+        foreach (var length in Enumerable.Range(32690, 61))
+        {
+            var value = new string('x', length);
+            yield return new($"transition/fl-string/{length}", "FL", $"S:(FL;;RP;;;WD;(@User.A == \"{value}\"))");
+            yield return new($"transition/xa-string/{length}", "XA", $"D:(XA;;RP;;;WD;(@User.A == \"{value}\"))");
+            yield return new($"transition/ra-string/{length}", "RA", $"S:(RA;;;;;WD;(\"Name\",TS,0,\"{value}\"))");
+            yield return new($"transition/ra-name/{length}", "RA", $"S:(RA;;;;;WD;(\"{value}\",TS,0,\"v\"))");
+        }
+        foreach (var count in Enumerable.Range(5450, 16))
+            yield return new($"transition/ra-values/{count}", "RA", $"S:(RA;;;;;WD;(\"N\",TU,0,{string.Join(",", Enumerable.Repeat("1", count))}))");
+    }
+
     // Encoding.Unicode and JSON text encoding can replace lone surrogates. Preserve
     // every input/output UTF-16 code unit explicitly, including NUL and invalid pairs.
     internal static string Utf16Hex(string value)
