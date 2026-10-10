@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 # The preceding ordinary oracle step builds this executable. Each native batch is
 # isolated and bounded; preserve partial JSONL/log output if a batch fails or hangs.
 $directory = "artifacts/$Mode/$Framework"
-$total = if ($Mode -eq 'size') { 260 } else { 220 }
+$total = if ($Mode -eq 'size') { 316 } else { 220 }
 $option = if ($Mode -eq 'size') { '--sddl-size-followup-jsonl' } else { '--sddl-boundary-jsonl' }
 New-Item -ItemType Directory -Force $directory | Out-Null
 $assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"

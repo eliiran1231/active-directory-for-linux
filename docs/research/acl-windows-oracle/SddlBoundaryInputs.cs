@@ -88,6 +88,17 @@ internal static class SddlBoundaryInputs
         }
         foreach (var count in Enumerable.Range(5450, 16))
             yield return new($"transition/ra-values/{count}", "RA", $"S:(RA;;;;;WD;(\"N\",TU,0,{string.Join(",", Enumerable.Repeat("1", count))}))");
+        foreach (var length in Enumerable.Range(32700, 8))
+        {
+            var value = new string('x', length);
+            var condition = $"(@User.A == \"{value}\")";
+            foreach (var sid in new[] { "BA", "S-1-5-21-1-2-3-1000", "S-1-5-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15" })
+                yield return new($"context/xa-sid/{sid}/{length}", "XA", $"D:(XA;;RP;;;{sid};{condition})");
+            yield return new($"context/fl-trust/{length}", "FL", $"S:(FL;TP;RP;;;S-1-19-512-4096;{condition})");
+            yield return new($"context/xa-attribute/{length}", "XA", $"D:(XA;;RP;;;WD;(@User.ABC == \"{value}\"))");
+            yield return new($"context/xa-before/{length}", "XA", $"D:(A;;RP;;;WD)(XA;;RP;;;WD;{condition})");
+            yield return new($"context/xa-after/{length}", "XA", $"D:(XA;;RP;;;WD;{condition})(A;;RP;;;WD)");
+        }
     }
 
     // Encoding.Unicode and JSON text encoding can replace lone surrogates. Preserve
