@@ -1,0 +1,109 @@
+{
+  "SourceHead": "e1762d3c4d81ad9ab2dc6d61cbcf44f6a6846865",
+  "RunId": 38065846066,
+  "InitialBinaryCompoundSource": "3584ffec3ceb2f1cc3196fa1515a79ca4217108b",
+  "InitialBinaryCompoundRun": 38065448333,
+  "UnchangedRowsFromInitialProbe": 56,
+  "Runtimes": {
+    "net8.0": {
+      "JobId": 114253211955,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "b6a1d4824ad47ffe298566cc109e807d5ced870e1ea64986c4d07943ca5d1cba"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "fe79c9814f0b48754cd05f6be1d0650db8daefa0393ac20552f4500e9aa2cca5"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "e1d1c07f8849018860d60a5d9e99f497d7fb33bea15f745beeafb68c1dbb8f1b"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "0f71b57d88fa45b743a487931147b7308b3b3cecc82fd7983742c9df9cdf595c"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "b23d94dac77ebde053b32767e9b628047b84baf3a5759b7ecdfada316feebc69"
+        }
+      ],
+      "OriginalGzipSha256": "fae3786a6e7aca61062f133144f5aa111c6a3e4f6341604b7276b62a91b3fe56",
+      "BaselineGzipSha256": "36f4f98c1adce11229510e9df43bcdaabc0c1cb66aa2d9b10916d4260ecdf937",
+      "ArtifactId": 11674473002,
+      "InitialProbeFileHashes": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "9be6df0c8bcf6f5970428d5f665f3497d462d6935495c98f5d341b2020aa555a"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "8a0e319220c1c3c4c0191c3c960d716fd3eb9c0be7e65acb6e58a0a5a8968c67"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "4a86b2a0aa77bb0d35e1675e473cea0d0d02c3509eee4cf58d2058ab2d6e4430"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "a96d78a6cd852653faf9d83c3fc5498243f5d3687f1e95233fc4244b93285002"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "b353a0235f95efc0ffa2e29533a379c866592a207f5642783e52055fca496fff"
+        }
+      ]
+    },
+    "net10.0": {
+      "JobId": 114253211778,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "67e60c69d3968fec22bd3067ba28cc3aca9a87dacc964d1bac62dedfdcf0d5d6"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "db05a32ef92dd4e5323ff30395921c209934fd1fa2ffe61265631c3fd730b849"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "480a78b18afa2a6bcf9565ae5abf560650bdccea66715df0ee7fc13cbcee6c25"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "769f47de10641574205094085ca8928245a7b28e66b748b764730aae2b391976"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "6cf6fc17d8bbc8d2cec3fa20b557f5f5c9983ffd4403816ffbd7925e658604e2"
+        }
+      ],
+      "OriginalGzipSha256": "988c24b23f19646ad5b3b0cc4e944c23d25ed97decb3f42613d2705e6f57dfbd",
+      "BaselineGzipSha256": "39163bf3e73f72665bd834b226ad43e89bca2f5ad02d30de04aadc0e92e9a4ac",
+      "ArtifactId": 11674383028,
+      "InitialProbeFileHashes": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "b1556a8dad67a2541f3426c532cc0952f36234d4a6fe964519d1e2eae45cf010"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "3951cfed8cd3a8eba9d9d50c7773e330645dcf29742f721b48f46865a86c4513"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "f3d7dc9372602a9fc27548eda98dff05c86d984f71b6db0587d64af59d78c24e"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "6ba363e1bc6aa2eefa12a24ee4d946e859dc48f8e1a50435871c42ff9d56ac1a"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "5c29915109758430c21be67d10d5f7cac76009524426030c868e9dddf524bd47"
+        }
+      ]
+    }
+  }
+}

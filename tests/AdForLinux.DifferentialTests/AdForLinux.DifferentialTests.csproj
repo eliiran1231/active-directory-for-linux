@@ -5,9 +5,11 @@
 
     These reference the REAL Microsoft System.DirectoryServices.AccountManagement
     (Windows-only) AND our Linux clone, run the same operations against the same
-    AD, and compare. They cannot build or run on Linux, so they are excluded from
-    the Linux/Docker build. Run them on a Windows machine joined to (or able to
-    reach) a Windows Server AD. See tests/AdForLinux.DifferentialTests/README.md.
+    AD, and compare. Behavioral tests require Windows and a reachable AD.
+    The explicit reflection-only surface/fixture-registration subsets can run on
+    Linux; surface checks must inspect the package's Windows runtime assemblies,
+    not its non-Windows stubs. Never run the unfiltered suite for offline validation.
+    See tests/AdForLinux.DifferentialTests/README.md.
   -->
   <PropertyGroup>
     <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>

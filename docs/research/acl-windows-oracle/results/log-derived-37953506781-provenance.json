@@ -1,0 +1,21 @@
+{
+  "run": 37953506781,
+  "head": "d7395389ba3760e1b0900aa713fc3a37672c0718",
+  "source": "Authorized decoded Windows job logs, CLOSURE_JSON records",
+  "rows": 3495,
+  "added_facade_rows": 227,
+  "jobs": {
+    "net8": 113898058685,
+    "net10": 113898058214
+  },
+  "files": {
+    "closure-windows-net8.json": {
+      "sha256": "183332c902ee4a214852a4dbd32f193d0a319b1e7a2bb0a8ed9a856b264f09ee",
+      "git_blob": "7c315451c23592b3e045fe12df58dfa38e8963dd"
+    },
+    "closure-windows-net10.json": {
+      "sha256": "e9ac18b07c29690f57806f2d9bb0b033a511f616780793eccbb942920de42cbf",
+      "git_blob": "898226e45ea3ce0ff9743982b21f37739712c68a"
+    }
+  }
+}

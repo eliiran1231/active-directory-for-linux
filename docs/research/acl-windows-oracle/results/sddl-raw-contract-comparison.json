@@ -1,0 +1,31 @@
+{
+  "NativeRowsPerRuntime": 80,
+  "NativeRuntimeAgreement": true,
+  "First64Unchanged": true,
+  "CompletePortableExactRows": 55,
+  "PinnedRefusalRows": 25,
+  "PinnedRefusalFacets": {
+    "retained-byte-loss": 52,
+    "nonroundtrippable-alarm": 4
+  },
+  "OriginalRetainedExportFacetsFixed": {
+    "exception-contract-difference": 12,
+    "existing-raw-validation-difference": 6
+  },
+  "OriginalRetainedExportExactRows": 224,
+  "OriginalRetainedExportRemainingPinnedRows": 72,
+  "OriginalRetainedExportRemainingFacets": {
+    "retained-content-loss-refusal": 171,
+    "native-nonroundtrippable-export-refusal": 27
+  },
+  "NegativeControl": {
+    "Failed": 32,
+    "Passed": 49,
+    "Total": 81
+  },
+  "FrozenAllocationGaps": [
+    25,
+    243,
+    623
+  ]
+}

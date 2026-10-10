@@ -1,0 +1,2683 @@
+{
+  "NativeSourceHead": "1a0f7e35423c72ae775362233a04fd029cb416db",
+  "NativeRun": 38055011172,
+  "Cases": 108,
+  "Scope": "Exact import outcome and successful binary preservation; no export parity or allocation-gap closure claim.",
+  "BeforePortableHead": "1a0f7e35423c72ae775362233a04fd029cb416db",
+  "BeforeCodecSha256": "f19cfcfe0d6068a471a45abe1b0b7abacb3484ff486f5026a4f10678a3deab7f",
+  "AfterCodecSha256": "5088b05d90324210acf3155387f659e004231b994e1d6a00813d4a862d5ea8db",
+  "NativeAndPortableRuntimeObservationsIdentical": true,
+  "Observations": [
+    {
+      "Case": 0,
+      "Label": "ace-size/XD/ordinary/none",
+      "InputUtf16HexSha256": "eb81380533f34fb47967d21c6c0fdbf773290bbaea013705eac000152b1bde9d",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000002004000010000000A0038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000002004000010000000A0038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000002004000010000000A0038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 1,
+      "Label": "ace-size/XD/ordinary/flags",
+      "InputUtf16HexSha256": "b471e1aa035ff968314ddef51d13ae6ad7a3a17eda41758e513db426112232f8",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 2,
+      "Label": "ace-size/XD/ordinary/rights",
+      "InputUtf16HexSha256": "5945b00b80082cc149b2c74a334d41a0853a9ca250a0b028e5ae531ad55a211a",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 3,
+      "Label": "ace-size/XD/ordinary/sid",
+      "InputUtf16HexSha256": "adde47ce0789b4ce026b2caffaa7b318006c7b85dbdca0f0e1163bc3af3827d6",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 4,
+      "Label": "ace-size/XD/ordinary/object-guid",
+      "InputUtf16HexSha256": "c4f42a60c47ef5195ae85f3f30fa65c7dec37e2c1d86ba21f25235054194c644",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 5,
+      "Label": "ace-size/XD/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "7311855267fec82b602f1860eb0d0c6ea1be082fc0f07eaae989adbff0eb763f",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 6,
+      "Label": "ace-size/XD/ordinary/condition",
+      "InputUtf16HexSha256": "91e05f25692d36ef20bec34e54762a39818333fd65168db8a12f88a63c599985",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 7,
+      "Label": "ace-size/XD/ordinary/section",
+      "InputUtf16HexSha256": "082645edfc35e7dbf63837d6159ae4ea406a21088e59ab1ecb14407ad3467507",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 8,
+      "Label": "ace-size/XD/ordinary/all",
+      "InputUtf16HexSha256": "4371d8bcf74f9a4acf75ab57e4cb074e3a47cad146ab5250f95780fc0275b2e1",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 9,
+      "Label": "ace-size/XD/oversize/none",
+      "InputUtf16HexSha256": "e00be106492d671ba57096af4ee50fc4ac0b4f9dbab7eecdd7ad49799236dca7",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 10,
+      "Label": "ace-size/XD/oversize/flags",
+      "InputUtf16HexSha256": "1554a7a783b7b840669691cba7e25057c9a14e4baa1f48c8da48a9c326e4a0d8",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 11,
+      "Label": "ace-size/XD/oversize/rights",
+      "InputUtf16HexSha256": "3402bdd2efbf7af0e01c5980bcf878071a9fce8623471bfe02a118cafc2bc96f",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 12,
+      "Label": "ace-size/XD/oversize/sid",
+      "InputUtf16HexSha256": "e792f31858e4d63946758eb87c324532f7562ee8e1157a66473ed52680435af6",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 13,
+      "Label": "ace-size/XD/oversize/object-guid",
+      "InputUtf16HexSha256": "b8b5ec4ad2528beecb3e6660c03166350fef49c7706d18c6e39052d0eae91f41",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 14,
+      "Label": "ace-size/XD/oversize/inherited-guid",
+      "InputUtf16HexSha256": "fbeb39986e717ff826bfca427d963eaa0d301373ffa3bc280bae707af2a04380",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 15,
+      "Label": "ace-size/XD/oversize/condition",
+      "InputUtf16HexSha256": "126edde42b2f2a36c9fa125b2d651fd0cdffc3feacd60549a32c88a87fd66ce3",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 16,
+      "Label": "ace-size/XD/oversize/section",
+      "InputUtf16HexSha256": "81b6aca8c72c86b49483bcaf32a882610dd476863819d97b0f6fbd06f6fca4ea",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 17,
+      "Label": "ace-size/XD/oversize/all",
+      "InputUtf16HexSha256": "1013598554f87cd8e4fe368072b976d842dcc08da247c070d393fd5f03887a77",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 18,
+      "Label": "ace-size/XU/ordinary/none",
+      "InputUtf16HexSha256": "3744842ef2bed28f18f46281bab8bb30b0fd7febe194da4267e2bbb3508a4970",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "010010800000000000000000140000000000000002004000010000000D4038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32784
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "010010800000000000000000140000000000000002004000010000000D4038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32784
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "010010800000000000000000140000000000000002004000010000000D4038001000000001010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 84,
+          "Control": 32784
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 19,
+      "Label": "ace-size/XU/ordinary/flags",
+      "InputUtf16HexSha256": "473e8917fd37b30677f57004327df8d036eb58bac3e378020315668a553ca350",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 20,
+      "Label": "ace-size/XU/ordinary/rights",
+      "InputUtf16HexSha256": "229c60ccd10b27c25aa339787999174c8755fe45732ca442420a0b226f9596fb",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 21,
+      "Label": "ace-size/XU/ordinary/sid",
+      "InputUtf16HexSha256": "4fb8afe9b63d40daf25dd8ceeba650e9a564de8793530410adad4f93b55f43b1",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 22,
+      "Label": "ace-size/XU/ordinary/object-guid",
+      "InputUtf16HexSha256": "f36ea900344a7199efe31a48d2237fcda36623b029aaf700f92183def08b186c",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 23,
+      "Label": "ace-size/XU/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "fd6f8115a1b8e63713fa69407b66b01b22567a9462c96e0b4029b31cf565afe8",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 24,
+      "Label": "ace-size/XU/ordinary/condition",
+      "InputUtf16HexSha256": "0a283d8e687cd3519b32d70ac95dc9e2c673f285e38cf258a6da49fd84026f0f",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 25,
+      "Label": "ace-size/XU/ordinary/section",
+      "InputUtf16HexSha256": "1d15ed95c8709c9588c124ea9e93fe1d251a2b326f852cc33d6058232ccd369f",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 26,
+      "Label": "ace-size/XU/ordinary/all",
+      "InputUtf16HexSha256": "83dee70a33f5ae7c936597835717b287ad027ef1a0d47a3d562e061087ed64b3",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 27,
+      "Label": "ace-size/XU/oversize/none",
+      "InputUtf16HexSha256": "42e5e253a121283952019ed8655becdfb759dc8e64d7ba0e61f8c0b59329d740",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 28,
+      "Label": "ace-size/XU/oversize/flags",
+      "InputUtf16HexSha256": "aaab5039811e70e02e760e536f96af543c88de5b7ef4ff2d36214a7ce0bc280c",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 29,
+      "Label": "ace-size/XU/oversize/rights",
+      "InputUtf16HexSha256": "f89afbe343bf93ec94d2db3013769e30fe26729706ebb72f9d5c3f16e14ee371",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 30,
+      "Label": "ace-size/XU/oversize/sid",
+      "InputUtf16HexSha256": "0c5dcf4bfcb68597ac515edc97fe8315381bbba1d7b0b4be492f98f523de2cf7",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 31,
+      "Label": "ace-size/XU/oversize/object-guid",
+      "InputUtf16HexSha256": "f669752e901bde3809bf6fb015953b556bd6a61fe90b938c143026d500715083",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 32,
+      "Label": "ace-size/XU/oversize/inherited-guid",
+      "InputUtf16HexSha256": "23a87a3070d3a57cbafb5d5b334762aecbdd89e69d5857e90232fb1734610361",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 33,
+      "Label": "ace-size/XU/oversize/condition",
+      "InputUtf16HexSha256": "c3f8be66c6c1b3a876bbc8989e8e64da593331ed515463f26d9076c4132f4d7d",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 34,
+      "Label": "ace-size/XU/oversize/section",
+      "InputUtf16HexSha256": "9bc8aa9302ef3b074ae72caa4f15e79b62f015a5bafb0b47dbf051eaedb61ad2",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 35,
+      "Label": "ace-size/XU/oversize/all",
+      "InputUtf16HexSha256": "2828a76e9be73d59b9c6c276a0a5c3114e815fdb34e4aedbf3155b44305713b0",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 36,
+      "Label": "ace-size/ZA0/ordinary/none",
+      "InputUtf16HexSha256": "b86700e3be65ed378215ab94e206310472150710a8e68299f9be0e3bb2f52c2a",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "0100048000000000000000000000000014000000040044000100000009003C001000000001010000000000010000000061727478F90200000041001010000000780078007800780078007800780078008000000000000000",
+          "BinaryLength": 88,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "0100048000000000000000000000000014000000040044000100000009003C001000000001010000000000010000000061727478F90200000041001010000000780078007800780078007800780078008000000000000000",
+          "BinaryLength": 88,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "0100048000000000000000000000000014000000040044000100000009003C001000000001010000000000010000000061727478F90200000041001010000000780078007800780078007800780078008000000000000000",
+          "BinaryLength": 88,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 37,
+      "Label": "ace-size/ZA0/ordinary/flags",
+      "InputUtf16HexSha256": "fe8de6161a5b3c27703c9b01a4a4c2f290adf1cf6a46bc041181754b69866f06",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 38,
+      "Label": "ace-size/ZA0/ordinary/rights",
+      "InputUtf16HexSha256": "b822529e7b50e7c8fb6f0d350cc8ba42876fc49de68723b3d0a4437f2af17c55",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 39,
+      "Label": "ace-size/ZA0/ordinary/sid",
+      "InputUtf16HexSha256": "c3afca9716d04f3d44777bdaf8be5a373003c7facb94eddb117c26f87531efde",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 40,
+      "Label": "ace-size/ZA0/ordinary/object-guid",
+      "InputUtf16HexSha256": "28c27d01030a6321fc277486e03eb1332de19d2ee89adba51bb0d7f9a9746c1b",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 41,
+      "Label": "ace-size/ZA0/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "f2ef19c2ecb818ab5f70a3f3ac97e4603a2295e19eb1929279f93bd5e2849c81",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 42,
+      "Label": "ace-size/ZA0/ordinary/condition",
+      "InputUtf16HexSha256": "bdbdfb6d3455b97b59d9dc1bb7594ba053e84a4505e3898f5376f0a7f36f25b0",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 43,
+      "Label": "ace-size/ZA0/ordinary/section",
+      "InputUtf16HexSha256": "66cfd49a05fd959eefe182b3b9e781f720e7bf1027eb0c716e4b9a2a264cf412",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 44,
+      "Label": "ace-size/ZA0/ordinary/all",
+      "InputUtf16HexSha256": "51723f3963547cde0196b7d5fcdbe29ee03407e39687fca6334a9a8ff2dc0f30",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 45,
+      "Label": "ace-size/ZA0/oversize/none",
+      "InputUtf16HexSha256": "5b360ad9e0217d153db8a812d4a10f548237141b15f0d460f215581c212b97d3",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 46,
+      "Label": "ace-size/ZA0/oversize/flags",
+      "InputUtf16HexSha256": "b536e22861929101e7a70fa765a445b362889acbcffd90b342c2a9272e0f0ad7",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 47,
+      "Label": "ace-size/ZA0/oversize/rights",
+      "InputUtf16HexSha256": "deae0bbd9de0a704cd467741166ba039b58ceec9a40262f5bb90a0fa9103a46c",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 48,
+      "Label": "ace-size/ZA0/oversize/sid",
+      "InputUtf16HexSha256": "521d1ddd113693c637eea2d57de1a0113ba7dda0edae2a7052a5ed5efd779f6f",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 49,
+      "Label": "ace-size/ZA0/oversize/object-guid",
+      "InputUtf16HexSha256": "015c9355348e0642ce91dc80b9338c0249ad6ec05a105b4a8a2a0d92b933aa1b",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 50,
+      "Label": "ace-size/ZA0/oversize/inherited-guid",
+      "InputUtf16HexSha256": "be4c284db2ab8fa2299a830410f22283a277da1602889b3329191bc34d2c9835",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 51,
+      "Label": "ace-size/ZA0/oversize/condition",
+      "InputUtf16HexSha256": "d0ccdde1a1f57f827ee2edf2d6b5fb565458f4f68df716a4786e0c8b290b3abe",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 52,
+      "Label": "ace-size/ZA0/oversize/section",
+      "InputUtf16HexSha256": "492c380eef2be68acbde5e1392c9c8bdf35820f28bf892597d54b25bec392977",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 53,
+      "Label": "ace-size/ZA0/oversize/all",
+      "InputUtf16HexSha256": "b881d4f989e9b4295af68ad4de2eda3f573cb2aa2de2901f8cb54866986db2a7",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 54,
+      "Label": "ace-size/ZA1/ordinary/none",
+      "InputUtf16HexSha256": "a7e82ccc85da00794927949203fef690eee46c907dabaf866328275a8569f367",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C0010000000010000001111111122223333444455555555555501010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C0010000000010000001111111122223333444455555555555501010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C0010000000010000001111111122223333444455555555555501010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 55,
+      "Label": "ace-size/ZA1/ordinary/flags",
+      "InputUtf16HexSha256": "ab49172405cb86b00aeeab9f8ae21413d11ce33043fa4f82757617be01bcd604",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 56,
+      "Label": "ace-size/ZA1/ordinary/rights",
+      "InputUtf16HexSha256": "0ad4f72e440e1ba893db33da6f203f857365190111ec1bc01c73469b5d1ae2c2",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 57,
+      "Label": "ace-size/ZA1/ordinary/sid",
+      "InputUtf16HexSha256": "161400bc9142f9744900cf147200009bf705dc383768e962581298974aabca4f",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 58,
+      "Label": "ace-size/ZA1/ordinary/object-guid",
+      "InputUtf16HexSha256": "28c27d01030a6321fc277486e03eb1332de19d2ee89adba51bb0d7f9a9746c1b",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 59,
+      "Label": "ace-size/ZA1/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "192bce4f6a2548c69d8ffd127ac08d2ab2794e35d6a2ef4b38e51f3afe380ff0",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 60,
+      "Label": "ace-size/ZA1/ordinary/condition",
+      "InputUtf16HexSha256": "eabd92173616b5d38fcedfb89466611778aa6f525bd19311c8ae8aa278c28fcb",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 61,
+      "Label": "ace-size/ZA1/ordinary/section",
+      "InputUtf16HexSha256": "73c6250527faa9e4146c09557931d65f710aa5593e7f8c7845a8146c7901bad4",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 62,
+      "Label": "ace-size/ZA1/ordinary/all",
+      "InputUtf16HexSha256": "51723f3963547cde0196b7d5fcdbe29ee03407e39687fca6334a9a8ff2dc0f30",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 63,
+      "Label": "ace-size/ZA1/oversize/none",
+      "InputUtf16HexSha256": "deb348522697d59a2e62301f8f833fefc030afd1d36d9847a0dafe9aeb58ce1c",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 64,
+      "Label": "ace-size/ZA1/oversize/flags",
+      "InputUtf16HexSha256": "dcb10aca39a671cf06dbbdf6795e1250aa98a444eae2af89cba94446dbf27b19",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 65,
+      "Label": "ace-size/ZA1/oversize/rights",
+      "InputUtf16HexSha256": "200bcb703f8c8004ff42ba80fefe96ac5d6b85c25d8e45175a225e660a6eb193",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 66,
+      "Label": "ace-size/ZA1/oversize/sid",
+      "InputUtf16HexSha256": "f01e43a4b34c53e003ef7a9f32e3aac0a8047c624d41f4959fcd477bbd4cd07e",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 67,
+      "Label": "ace-size/ZA1/oversize/object-guid",
+      "InputUtf16HexSha256": "a4c8fd3cb33ac886a8fb44a8d833c3042bccc5b2f230caa07d81876906e2ba1f",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 68,
+      "Label": "ace-size/ZA1/oversize/inherited-guid",
+      "InputUtf16HexSha256": "1120f78063e03fd9d64d9455b0d9792f1cc80e0e2aa05bb8c9d06e9f45c8cb7b",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 69,
+      "Label": "ace-size/ZA1/oversize/condition",
+      "InputUtf16HexSha256": "5d368a390eea5ef144c6b5c3184457e72d4f7e58f2538768953d296caebd6b94",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 70,
+      "Label": "ace-size/ZA1/oversize/section",
+      "InputUtf16HexSha256": "8c4d211dbd19354fb3979bad43696c262b3143a79b9e539f669968576a747b4e",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 71,
+      "Label": "ace-size/ZA1/oversize/all",
+      "InputUtf16HexSha256": "b499e1001840bd3c794c2a13bab73914168a1f1a310166e0dbd5cbd5a51ff03d",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 72,
+      "Label": "ace-size/ZA1Inherited/ordinary/none",
+      "InputUtf16HexSha256": "20b1bd6d74a278d77f0e946b72f5b055f700908427f041bcfa6b5d7db7eda21a",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C00100000000200000066666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C00100000000200000066666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004005400010000000B004C00100000000200000066666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 104,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 73,
+      "Label": "ace-size/ZA1Inherited/ordinary/flags",
+      "InputUtf16HexSha256": "69f429ad3d36fe6b400de44599fd128d69ff6541f94734a51b92de09fc156098",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 74,
+      "Label": "ace-size/ZA1Inherited/ordinary/rights",
+      "InputUtf16HexSha256": "b34ec45297cae3e575ff2743197128c8da3ac245c7cad25ae6c9f369575a6a0c",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 75,
+      "Label": "ace-size/ZA1Inherited/ordinary/sid",
+      "InputUtf16HexSha256": "67c881871fecd1e5fa373ab01957d7fc8d25bb19806bcd89bf1096de0f6569ad",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 76,
+      "Label": "ace-size/ZA1Inherited/ordinary/object-guid",
+      "InputUtf16HexSha256": "29482583128df7005c313fa7d286f50eada3645b3fb57541cd333cddf9fca9cd",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 77,
+      "Label": "ace-size/ZA1Inherited/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "f2ef19c2ecb818ab5f70a3f3ac97e4603a2295e19eb1929279f93bd5e2849c81",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 78,
+      "Label": "ace-size/ZA1Inherited/ordinary/condition",
+      "InputUtf16HexSha256": "0e28e2c5680f329c38a88c643c2b605c18c12993ef7bedfd9aedd6df5ed1a7c4",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 79,
+      "Label": "ace-size/ZA1Inherited/ordinary/section",
+      "InputUtf16HexSha256": "06a6d8b18837e368afc6008c91856b8f89af4a2893d6cf0498ee5026f4caa4d9",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 80,
+      "Label": "ace-size/ZA1Inherited/ordinary/all",
+      "InputUtf16HexSha256": "51723f3963547cde0196b7d5fcdbe29ee03407e39687fca6334a9a8ff2dc0f30",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 81,
+      "Label": "ace-size/ZA1Inherited/oversize/none",
+      "InputUtf16HexSha256": "6f74b468f6921bd6352571253196f1073a9163621910c28066227731ee0e8232",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 82,
+      "Label": "ace-size/ZA1Inherited/oversize/flags",
+      "InputUtf16HexSha256": "7d4470b1ce0d3e567d4583dfcbbede14dd34e12d225e6ac56b3de5f2e2260539",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 83,
+      "Label": "ace-size/ZA1Inherited/oversize/rights",
+      "InputUtf16HexSha256": "c623212ed3d07159a5adb50ce4b675bed64a0ff73d11d8505be94bd3245fc1a9",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 84,
+      "Label": "ace-size/ZA1Inherited/oversize/sid",
+      "InputUtf16HexSha256": "d08df42ee01ae2608162f36a7f2ca6d8a8fc5d6dda2c16c85e405e813f5728a2",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 85,
+      "Label": "ace-size/ZA1Inherited/oversize/object-guid",
+      "InputUtf16HexSha256": "2bf440173be5b4d52c5a725e9948b912fdcc0a6278b0dde1addc588b47631f92",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 86,
+      "Label": "ace-size/ZA1Inherited/oversize/inherited-guid",
+      "InputUtf16HexSha256": "c517cb3f5e8c0b7ceb16badef6f46cc80a56708bd441dfedcf9ded3bd0606f6d",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 87,
+      "Label": "ace-size/ZA1Inherited/oversize/condition",
+      "InputUtf16HexSha256": "55363580dbc18847e5d771045bad06eb962410fa9326ae898973c4aee6b45d66",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 88,
+      "Label": "ace-size/ZA1Inherited/oversize/section",
+      "InputUtf16HexSha256": "f63ca121b0c4678b953039f4092dffa33e0cfcaf9cf59fbca4cb019e780bfe6e",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 89,
+      "Label": "ace-size/ZA1Inherited/oversize/all",
+      "InputUtf16HexSha256": "b499e1001840bd3c794c2a13bab73914168a1f1a310166e0dbd5cbd5a51ff03d",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 90,
+      "Label": "ace-size/ZA2/ordinary/none",
+      "InputUtf16HexSha256": "67f2fbf105c19e03637739a85d28355f658f9d031d21e84e416429806f3cb1ca",
+      "NativeLastError": 0,
+      "NativeManaged": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004006400010000000B005C0010000000030000001111111122223333444455555555555566666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 120,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004006400010000000B005C0010000000030000001111111122223333444455555555555566666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 120,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": {
+          "Hex": "010004800000000000000000000000001400000004006400010000000B005C0010000000030000001111111122223333444455555555555566666666777788889999AAAAAAAAAAAA01010000000000010000000061727478F902000000410010100000007800780078007800780078007800780080000000",
+          "BinaryLength": 120,
+          "Control": 32772
+        },
+        "ExceptionType": null,
+        "ParamName": null,
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 91,
+      "Label": "ace-size/ZA2/ordinary/flags",
+      "InputUtf16HexSha256": "b621c47ebb7eb2dba0ae94b7468cf59e6e7e5e5f88605ed8edd21bcda59e8616",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 92,
+      "Label": "ace-size/ZA2/ordinary/rights",
+      "InputUtf16HexSha256": "7a74b5509fdb31a9d6802e57128ce7996dc3ae65f327ddaa97edc99265dd8b7e",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 93,
+      "Label": "ace-size/ZA2/ordinary/sid",
+      "InputUtf16HexSha256": "377fa97f29ab48b5465d966ea1773d7190472c3892e0db3ac125212074b7f3ab",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 94,
+      "Label": "ace-size/ZA2/ordinary/object-guid",
+      "InputUtf16HexSha256": "29482583128df7005c313fa7d286f50eada3645b3fb57541cd333cddf9fca9cd",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 95,
+      "Label": "ace-size/ZA2/ordinary/inherited-guid",
+      "InputUtf16HexSha256": "192bce4f6a2548c69d8ffd127ac08d2ab2794e35d6a2ef4b38e51f3afe380ff0",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 96,
+      "Label": "ace-size/ZA2/ordinary/condition",
+      "InputUtf16HexSha256": "c494932c459d6be1a01905854f8a4c7c63d0453dd8430aa57b78d2e487d3d288",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 97,
+      "Label": "ace-size/ZA2/ordinary/section",
+      "InputUtf16HexSha256": "b7b7a7a4ac4036b08f1d37b398a33da2559158b6e80f97374d9c7e6fbe1d278c",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 98,
+      "Label": "ace-size/ZA2/ordinary/all",
+      "InputUtf16HexSha256": "51723f3963547cde0196b7d5fcdbe29ee03407e39687fca6334a9a8ff2dc0f30",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 99,
+      "Label": "ace-size/ZA2/oversize/none",
+      "InputUtf16HexSha256": "4a25e5ff03ca8f94d0574c5c05b5354c6c0b1786927fd18c4de2e10815a289cd",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 100,
+      "Label": "ace-size/ZA2/oversize/flags",
+      "InputUtf16HexSha256": "6f5c94abab278a2f9eda4e974db580f406c60d6f19dbdcb29e6c4c956ffae663",
+      "NativeLastError": 1004,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1004
+      }
+    },
+    {
+      "Case": 101,
+      "Label": "ace-size/ZA2/oversize/rights",
+      "InputUtf16HexSha256": "fec7e7fdedb4e896484d03d96e7ebca6aa9644be5a6e32d6d4a4ea0475d79629",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 102,
+      "Label": "ace-size/ZA2/oversize/sid",
+      "InputUtf16HexSha256": "b35dfaaae9f6d1431bef3ebb079bfe08e87790ae64ccb4a50266be07028f75d9",
+      "NativeLastError": 1337,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 103,
+      "Label": "ace-size/ZA2/oversize/object-guid",
+      "InputUtf16HexSha256": "587ce3cc07013ac67c23039bb3512463b67b6d6e440b50307180809494afdbb9",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 104,
+      "Label": "ace-size/ZA2/oversize/inherited-guid",
+      "InputUtf16HexSha256": "2e5fb8e7796b8033fdf74d09772fcac685a32e1574f60a62174055029b8e3fb6",
+      "NativeLastError": 1705,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1705
+      }
+    },
+    {
+      "Case": 105,
+      "Label": "ace-size/ZA2/oversize/condition",
+      "InputUtf16HexSha256": "fd93ea50894f6385b28b7f8fed813d34eb11ba994e44b6e0091d3afb128755ba",
+      "NativeLastError": 1336,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ArgumentException",
+        "ParamName": "sddlForm",
+        "NativeErrorCode": null
+      }
+    },
+    {
+      "Case": 106,
+      "Label": "ace-size/ZA2/oversize/section",
+      "InputUtf16HexSha256": "6f810d34166f35b027abb6fd413ef24bf3df2dfa3532db495bfe64190d8856f9",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    },
+    {
+      "Case": 107,
+      "Label": "ace-size/ZA2/oversize/all",
+      "InputUtf16HexSha256": "52d9d9cbb654d5fbd873ced07c1229cb18a0c40e61918e5aa56ecf95d3cbef5e",
+      "NativeLastError": 1804,
+      "NativeManaged": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "BeforePortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      },
+      "AfterPortable": {
+        "Outcome": null,
+        "ExceptionType": "System.ComponentModel.Win32Exception",
+        "ParamName": null,
+        "NativeErrorCode": 1804
+      }
+    }
+  ],
+  "Counts": {
+    "BeforeExact": 92,
+    "AfterExact": 108,
+    "BeforeMismatch": 16
+  },
+  "BeforePortableEquivalentLocalCommit": "19d2e51d13c2cc27ca9ea4bfd5c3d01a221f0001",
+  "ClearedProductionHead": "790b141567f0e370f8809dbe82b721fe4fed6675"
+}

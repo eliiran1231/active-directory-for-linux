@@ -151,7 +151,7 @@ public class PrincipalSurfaceComparisonTests
 
         Assert.Equal(
             typeof(Ms.Principal).GetProperty(nameof(Ms.Principal.Sid))!.PropertyType,
-            typeof(Ours.Principal).GetProperty(nameof(Ours.Principal.Sid))!.PropertyType);
+            PortableSecurityContract.Map(typeof(Ours.Principal).GetProperty(nameof(Ours.Principal.Sid))!.PropertyType));
         Assert.Equal(
             typeof(Ms.Principal),
             typeof(Ms.Principal).GetMethod(nameof(object.Equals), new[] { typeof(object) })!.DeclaringType);

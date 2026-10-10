@@ -1,0 +1,81 @@
+{
+  "source_head": "296c9baa31160f26e0b4ba6b673d275f4db13b47",
+  "run_id": 38089527663,
+  "scope": "Six fixed-total token-partition witnesses only; original JSONL bytes and environment retained. All controls established; outcomes unchanged across partitions. No general allocation formula; experiment family closed.",
+  "frameworks": {
+    "net8.0": {
+      "job_id": 114322922316,
+      "file": "sddl-partition-net8.0.jsonl.gz",
+      "gzip_sha256": "f72900b232ef78579a3d3a68947a9996cf6d33c9b6ff98518ed85eb5b670a1b0",
+      "original_files": [
+        {
+          "case": 0,
+          "original_sha256": "6e8bcbe7d5124cc6f646b90ff48a6a1191ea3ce216a1ac3e169e27973f391f49",
+          "original_bytes": 920040
+        },
+        {
+          "case": 1,
+          "original_sha256": "a75030a9960fcb1ce4939c0d7037ef066b9e758a07e40d67f13e15dcf62c6a9f",
+          "original_bytes": 1313845
+        },
+        {
+          "case": 2,
+          "original_sha256": "936baf00fc448b32e04a795735bc84eef41a65a3522595791812b365aa30ee8e",
+          "original_bytes": 920048
+        },
+        {
+          "case": 3,
+          "original_sha256": "a568448a77b0481cf1d5f83ac440325c1dc361ecbe0640f8831ef2d36011dcbc",
+          "original_bytes": 1313853
+        },
+        {
+          "case": 4,
+          "original_sha256": "665a72a2c52d912055e4837098663e041d59f9a3582dc61c5d22cc083364251d",
+          "original_bytes": 920040
+        },
+        {
+          "case": 5,
+          "original_sha256": "e658fe21e6d8d18e1e657db80aa0a4da36c378514e39d8211537e5cd0f1d9a68",
+          "original_bytes": 1313845
+        }
+      ]
+    },
+    "net10.0": {
+      "job_id": 114322922320,
+      "file": "sddl-partition-net10.0.jsonl.gz",
+      "gzip_sha256": "80883436c9191072091bccab8df284f7d731d502e156272efe39a3a9209c4d6d",
+      "original_files": [
+        {
+          "case": 0,
+          "original_sha256": "ccb3732a7d20ee1037ed817a81f09229cad8c3cc59c3eba9a5e73d03a20da0ac",
+          "original_bytes": 920041
+        },
+        {
+          "case": 1,
+          "original_sha256": "1338a8f5f8841faf5ec7edf8c5ddc53140994d2032cc4ebc413e12a59b7c6649",
+          "original_bytes": 1313846
+        },
+        {
+          "case": 2,
+          "original_sha256": "5b167ad74b52e071b828affe9e7870f126c60281c8b5dbb06d0d11d65dd29b98",
+          "original_bytes": 920049
+        },
+        {
+          "case": 3,
+          "original_sha256": "364b60228e3207396903b4e395d201f701cfd7077512d43132d50d75e78c03f2",
+          "original_bytes": 1313854
+        },
+        {
+          "case": 4,
+          "original_sha256": "f9ee824e3de55808c80ad725c2d176fe71389e8626d46244e270f64327c70580",
+          "original_bytes": 920041
+        },
+        {
+          "case": 5,
+          "original_sha256": "8e1cdfcbd4bfa7fcea184953ed841a4fe61fe4c0a142fe521badfe5ed09ebcd7",
+          "original_bytes": 1313846
+        }
+      ]
+    }
+  }
+}

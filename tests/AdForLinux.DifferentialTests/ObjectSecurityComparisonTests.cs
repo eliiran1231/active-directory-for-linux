@@ -2,6 +2,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using Xunit;
 using Ms = System.DirectoryServices;
+using PortableSid = AdForLinux.Security.Principal.SecurityIdentifier;
 using Ours = AdForLinux.DirectoryServices;
 
 namespace AdForLinux.DifferentialTests;
@@ -114,7 +115,7 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
     }
 
     [Fact]
-    public void Failed_ObjectSecurity_commit_keeps_the_dirty_cached_descriptor()
+    public void Rebound_ObjectSecurity_commit_refuses_stale_authority_and_keeps_dirty_data()
     {
         var objectType = Guid.NewGuid();
         var identity = ReadOurObjectSid();
@@ -133,7 +134,8 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
         var error = Record.Exception(entry.CommitChanges);
 
         Assert.NotNull(error);
-        Assert.IsType<System.Runtime.InteropServices.COMException>(error);
+        // Rebinding cannot silently promote a descriptor read under the old identity.
+        Assert.IsType<InvalidOperationException>(error);
         Assert.Same(dirtySecurity, entry.ObjectSecurity);
     }
 
@@ -276,10 +278,10 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
         return new SecurityIdentifier((byte[])entry.Properties["objectSid"].Value!, 0);
     }
 
-    private SecurityIdentifier ReadOurObjectSid()
+    private PortableSid ReadOurObjectSid()
     {
         using var entry = OurEntry();
-        return new SecurityIdentifier((byte[])entry.Properties["objectSid"].Value!, 0);
+        return new PortableSid((byte[])entry.Properties["objectSid"].Value!, 0);
     }
 
     private bool MicrosoftContainsRule(SecurityIdentifier identity, Guid objectType)
@@ -292,7 +294,7 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
                 rule.AccessControlType, rule.ObjectType, identity, objectType));
     }
 
-    private bool OurContainsRule(SecurityIdentifier identity, Guid objectType)
+    private bool OurContainsRule(PortableSid identity, Guid objectType)
     {
         using var entry = OurEntry();
         entry.Options.SecurityMasks = Ours.SecurityMasks.Dacl;
@@ -301,12 +303,24 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
 
     private static bool ContainsOurRule(
         Ours.ActiveDirectorySecurity security,
-        SecurityIdentifier identity,
+        PortableSid identity,
         Guid objectType) =>
-        security.GetAccessRules(true, false, typeof(SecurityIdentifier))
+        security.GetAccessRules(true, false, typeof(PortableSid))
             .Cast<Ours.ActiveDirectoryAccessRule>()
             .Any(rule => RuleMatches(rule.IdentityReference, rule.ActiveDirectoryRights,
                 rule.AccessControlType, rule.ObjectType, identity, objectType));
+
+    private static bool RuleMatches(
+        AdForLinux.Security.Principal.IdentityReference actualIdentity,
+        object actualRights,
+        AccessControlType actualType,
+        Guid actualObjectType,
+        PortableSid expectedIdentity,
+        Guid expectedObjectType) =>
+        actualIdentity.Equals(expectedIdentity) &&
+        Convert.ToInt32(actualRights) == (int)Ours.ActiveDirectoryRights.ReadProperty &&
+        actualType == AccessControlType.Allow &&
+        actualObjectType == expectedObjectType;
 
     private static bool RuleMatches(
         IdentityReference actualIdentity,

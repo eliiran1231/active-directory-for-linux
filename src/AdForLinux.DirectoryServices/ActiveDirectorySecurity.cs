@@ -1,6 +1,12 @@
 using System.ComponentModel;
 using System.Security.AccessControl;
-using System.Security.Principal;
+using AdForLinux.Security.Principal;
+using DirectoryObjectSecurity = AdForLinux.Security.AccessControl.DirectoryObjectSecurity;
+using CommonSecurityDescriptor = AdForLinux.Security.AccessControl.CommonSecurityDescriptor;
+using AccessRule = AdForLinux.Security.AccessControl.AccessRule;
+using AuditRule = AdForLinux.Security.AccessControl.AuditRule;
+using ObjectAccessRule = AdForLinux.Security.AccessControl.ObjectAccessRule;
+using ObjectAuditRule = AdForLinux.Security.AccessControl.ObjectAuditRule;
 
 #pragma warning disable CA1416 // These APIs manipulate in-memory AD descriptors; no local OS ACL is accessed.
 
@@ -62,14 +68,39 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
         _retrievedMasks = retrievedMasks;
     }
 
+    internal ActiveDirectorySecurity(CommonSecurityDescriptor descriptor, SecurityMasks retrievedMasks)
+        : base(descriptor) { _retrievedMasks = retrievedMasks; }
+
     internal SecurityMasks RetrievedMasks => _retrievedMasks;
+
+    // Internal consumers share the entry-bound facade, freshness checks and raw
+    // commit planner. Planning is detached and never executes under security locks.
+    internal void EditRawDacl(Func<byte[], byte[]> edit)
+    {
+        RequireDacl();
+        var read = CaptureIdentityRead();
+        byte[] raw;
+        lock (AdForLinux.Security.AccessControl.FacadeMutation.Gate)
+            raw = _securityDescriptor.MutationState.Descriptor.GetBinaryForm();
+        var changed = edit(raw);
+        WriteLock();
+        try
+        {
+            ValidateIdentityRead(read, () =>
+            {
+                SetSecurityDescriptorBinaryForm(changed, AccessControlSections.Access);
+                return true;
+            });
+        }
+        finally { WriteUnlock(); }
+    }
 
     internal bool IsModified()
     {
         ReadLock();
         try
         {
-            return OwnerModified || GroupModified || AccessRulesModified || AuditRulesModified;
+            return PendingWriteSections != SecurityMasks.None;
         }
         finally
         {

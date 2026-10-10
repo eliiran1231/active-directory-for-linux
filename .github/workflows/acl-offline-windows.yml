@@ -1,0 +1,215 @@
+name: ACL offline Windows
+
+on:
+  push:
+    branches: [bro/issue-226-acl-mutation-engine]
+
+permissions:
+  contents: read
+
+jobs:
+  native-layers:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Build detached oracle
+        run: dotnet build docs/research/acl-windows-oracle/AclWindowsOracle.csproj -c Release
+      - name: Record ordinary-sized mixed section operations
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode mixed
+      - name: Record absent NULL empty and retained integer replacement states
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement-states
+      - name: Verify exact replacement state evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/replacement-states/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-replacement-states-${{ matrix.framework }}.json.gz
+      - name: Record selected ACL replacement and shared-alias scenarios
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement
+      - name: Verify exact selected replacement evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/replacement/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-replacement-${{ matrix.framework }}.json.gz
+      - name: Record bounded alarm export-reparse compositions
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode alarm
+      - name: Verify exact alarm composition evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/alarm/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-alarm-${{ matrix.framework }}.json.gz
+      - name: Record bounded raw formatting contracts
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode raw-contract
+      - name: Verify exact raw formatting contracts
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/raw-contract/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-raw-contract-${{ matrix.framework }}.json.gz
+      - name: Record callback export-reparse compositions
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode composition
+      - name: Verify exact callback composition evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/composition/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-composition-${{ matrix.framework }}.json.gz
+      - name: Record retained export refusal families
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode retained-export
+      - name: Verify exact retained export evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/retained-export/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-retained-export-${{ matrix.framework }}.json.gz
+      - name: Verify exact mixed operation evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/mixed/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-mixed-${{ matrix.framework }}.json.gz
+      - name: Record bounded ACE-size error precedence
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}' -Mode ace-size
+      - name: Verify exact ACE-size precedence evidence
+        run: python tests/verify-sddl-native-layers.py artifacts/ace-size/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-ace-size-${{ matrix.framework }}.jsonl.gz
+      - name: Localize native SDDL assembly witnesses
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlAssemblyProbe.ps1 -Framework '${{ matrix.framework }}'
+      - name: Verify exact native assembly localization evidence
+        run: python tests/verify-sddl-assembly-probe.py artifacts/assembly/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-assembly-${{ matrix.framework }}.jsonl.gz
+      - name: Record six fixed-total token partitions
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlPartitionProbe.ps1 -Framework '${{ matrix.framework }}'
+      - name: Verify exact token-partition evidence
+        run: python tests/verify-sddl-partition-probe.py artifacts/partition/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-partition-${{ matrix.framework }}.jsonl.gz
+      - name: Isolate native conversion and managed binary parsing
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlNativeLayers.ps1 -Framework '${{ matrix.framework }}'
+      - name: Verify exact native layer evidence
+        run: python tests/verify-sddl-native-layers.py artifacts/layers/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-native-layers-${{ matrix.framework }}.jsonl.gz
+      - name: Upload layer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sddl-layers-${{ matrix.framework }}-${{ github.sha }}
+          path: |
+            artifacts/assembly/
+            artifacts/partition/
+            artifacts/layers/
+            artifacts/ace-size/
+            artifacts/mixed/
+            artifacts/retained-export/
+            artifacts/composition/
+            artifacts/raw-contract/
+            artifacts/alarm/
+            artifacts/replacement-states/
+            artifacts/replacement/
+          if-no-files-found: error
+  offline-acl:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Full solution build
+        run: dotnet build AdForLinux.sln --configuration Release
+      # These classes use only handcrafted bytes and detached in-memory descriptors.
+      # Do not broaden this filter: other functional classes require Samba/AD fixtures.
+      - name: Portable codec, projection, mutation and recorded replay
+        shell: pwsh
+        run: >-
+          dotnet test tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj
+          --configuration Release --framework ${{ matrix.framework }}
+          --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests|FullyQualifiedName~AdForLinux.FunctionalTests.PortableSecurityFoundationTests"
+          --logger "trx;LogFileName=acl-offline-${{ matrix.framework }}.trx"
+          --results-directory artifacts/test-results
+      # Inspected classes contain reflection-only assertions, no AD fixtures or setup.
+      # Keep this filter explicit: the unfiltered differential suite mutates a directory.
+      - name: Public contract metadata without directory access
+        shell: pwsh
+        run: >-
+          dotnet test tests/AdForLinux.DifferentialTests/AdForLinux.DifferentialTests.csproj
+          --configuration Release --framework ${{ matrix.framework }}-windows --no-build --no-restore
+          --filter "FullyQualifiedName~LowLevelPublicSurfaceComparisonTests|FullyQualifiedName~PublicApiSurfaceComparisonTests|FullyQualifiedName~PublicTypeModifierComparisonTests|FullyQualifiedName~PrincipalSurfaceComparisonTests|FullyQualifiedName~PortableSecurityContractTests"
+          --logger "trx;LogFileName=public-surface-${{ matrix.framework }}.trx"
+          --results-directory artifacts/test-results
+      - name: Public Microsoft companion and compiled usage examples
+        shell: pwsh
+        run: >-
+          dotnet test tests/AdForLinux.MicrosoftInterop.Tests/AdForLinux.MicrosoftInterop.Tests.csproj
+          --configuration Release --framework ${{ matrix.framework }}-windows --no-build
+          --logger "trx;LogFileName=companion-${{ matrix.framework }}.trx"
+          --results-directory artifacts/test-results
+      - name: Verify optional companion packaging without publication
+        shell: pwsh
+        run: |
+          dotnet pack src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet pack src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet pack src/AdForLinux.DirectoryServices.MicrosoftInterop/AdForLinux.DirectoryServices.MicrosoftInterop.csproj -c Release --no-build -o artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/verify-companion-packages.py artifacts/packages
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record pinned Microsoft detached-object oracle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/oracle | Out-Null
+          dotnet run --project docs/research/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }} -- --sequence-json artifacts/oracle/seeded-${{ matrix.framework }}.json --foundation-json artifacts/oracle/foundation-${{ matrix.framework }}.json --surface-json artifacts/oracle/surface-${{ matrix.framework }}.json --closure-json artifacts/oracle/closure-${{ matrix.framework }}.json 2>&1 | Tee-Object -FilePath artifacts/oracle/windows-${{ matrix.framework }}.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $actual = Get-Content artifacts/oracle/seeded-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordingFramework = '${{ matrix.framework }}'.Replace('.0', '')
+          $expected = Get-Content "docs/research/acl-windows-oracle/results/seeded-windows-$recordingFramework.json" -Raw | ConvertFrom-Json
+          $actualObservations = ConvertTo-Json -InputObject $actual.Observations -Depth 20 -Compress
+          $expectedObservations = ConvertTo-Json -InputObject $expected.Observations -Depth 20 -Compress
+          if ($actualObservations -cne $expectedObservations) { throw 'Fresh Microsoft observations differ from the committed replay evidence.' }
+          Write-Output "Verified $($actual.Observations.Count) fresh Microsoft observations against committed replay evidence."
+          $foundationPath = "docs/research/acl-windows-oracle/results/foundation-windows-$recordingFramework.json"
+          if (!(Test-Path $foundationPath)) { throw 'Missing committed Microsoft foundation baseline.' }
+          $freshFoundation = Get-Content artifacts/oracle/foundation-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordedFoundation = Get-Content $foundationPath -Raw | ConvertFrom-Json
+          $freshRows = ConvertTo-Json -InputObject $freshFoundation.Observations -Depth 30 -Compress
+          $recordedRows = ConvertTo-Json -InputObject $recordedFoundation.Observations -Depth 30 -Compress
+          if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft foundation observations differ from committed evidence.' }
+          Write-Output "Verified $($freshFoundation.Observations.Count) fresh foundation observations."
+          $surfacePath = "docs/research/acl-windows-oracle/results/required-surface-windows-$recordingFramework.json"
+          if (!(Test-Path $surfacePath)) { throw 'Missing committed Microsoft required-surface baseline.' }
+          $freshSurface = Get-Content artifacts/oracle/surface-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordedSurface = Get-Content $surfacePath -Raw | ConvertFrom-Json
+          foreach ($field in @('Roots', 'Types', 'FrameworkBoundary')) {
+            $freshValue = ConvertTo-Json -InputObject $freshSurface.$field -Depth 50 -Compress
+            $recordedValue = ConvertTo-Json -InputObject $recordedSurface.$field -Depth 50 -Compress
+            if ($freshValue -cne $recordedValue) { throw "Fresh Microsoft required surface differs in $field." }
+          }
+          Write-Output "Verified required surface: $($freshSurface.Roots.Count) roots and $($freshSurface.Types.Count) types."
+          $closurePath = "docs/research/acl-windows-oracle/results/closure-windows-$recordingFramework.json"
+          if (!(Test-Path $closurePath)) { throw 'Missing committed Microsoft closure baseline.' }
+          $freshClosure = Get-Content artifacts/oracle/closure-${{ matrix.framework }}.json -Raw | ConvertFrom-Json
+          $recordedClosure = Get-Content $closurePath -Raw | ConvertFrom-Json
+          $freshRows = ConvertTo-Json -InputObject $freshClosure.Observations -Depth 50 -Compress
+          $recordedRows = ConvertTo-Json -InputObject $recordedClosure.Observations -Depth 50 -Compress
+          if ($freshRows -cne $recordedRows) { throw 'Fresh Microsoft closure observations differ from committed evidence.' }
+          Write-Output "Verified $($freshClosure.Observations.Count) fresh closure observations."
+      - name: Record bounded SDDL boundary observations
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}'
+      - name: Measure SDDL size transitions
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode size
+      - name: Verify recorded boundary and size evidence
+        shell: pwsh
+        run: |
+          $recordingFramework = '${{ matrix.framework }}'.Replace('.0', '')
+          python tests/verify-sddl-boundary-recordings.py artifacts/boundary/${{ matrix.framework }} "docs/research/acl-windows-oracle/results/sddl-boundary-windows-$recordingFramework.json.gz"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/verify-sddl-boundary-recordings.py artifacts/size/${{ matrix.framework }} "docs/research/acl-windows-oracle/results/sddl-size-windows-$recordingFramework.json.gz"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload offline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acl-offline-windows-${{ matrix.framework }}-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error

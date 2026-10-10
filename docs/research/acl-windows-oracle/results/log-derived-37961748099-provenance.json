@@ -1,0 +1,26 @@
+{
+  "source": "Exact CLOSURE_JSON lines from authorized decoded Windows job logs; no artifact ZIP download or fabricated outcomes",
+  "run": 37961748099,
+  "head": "e1275e8885281c9a16b8857e9439f5955294df0a",
+  "prior_observations_unchanged": 3517,
+  "added_observations": 72,
+  "probe_result": "Both full builds and 8978 offline tests passed; expected closure freshness check failed until baseline import",
+  "recordings": [
+    {
+      "framework": "net8.0",
+      "job": 113926034718,
+      "file": "closure-windows-net8.json",
+      "sha256": "09681fad0b2b34c042706c2e1cec1d8afed10196aacb8874e7bb29dc4afd53f0",
+      "bytes": 961296,
+      "observations": 3589
+    },
+    {
+      "framework": "net10.0",
+      "job": 113926034344,
+      "file": "closure-windows-net10.json",
+      "sha256": "533e291a748e154583adc3c4629d469866c884ffcb0f00624266e58abcbbbffc",
+      "bytes": 961221,
+      "observations": 3589
+    }
+  ]
+}

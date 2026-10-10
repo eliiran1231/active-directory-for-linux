@@ -1,0 +1,3916 @@
+[
+  {
+    "Case": 1,
+    "Label": "replacement-state/DACL/absent-null/int0",
+    "NativeObservationSha256": "7bfc9e7eebff4b0b2916110acf58bb3e2e548c7e07a6cbdbf5a27879a34e1c9f",
+    "RefusedSteps": [
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ]
+  },
+  {
+    "Case": 4,
+    "Label": "replacement-state/DACL/null-null/int0",
+    "NativeObservationSha256": "2514586a60b2c1a8c9f749b4afef25b224026f908f85dd65a55703023eb79fc1",
+    "RefusedSteps": [
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Hex",
+        "NativeValue": "01001080140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "01001090140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Control",
+        "NativeValue": 32784,
+        "PortableValue": 36880,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001080140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "01001090140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Control",
+        "NativeValue": 32784,
+        "PortableValue": 36880,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001080140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "01001090140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Control",
+        "NativeValue": 32784,
+        "PortableValue": 36880,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001080140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "01001090140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Control",
+        "NativeValue": 32784,
+        "PortableValue": 36880,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 6,
+    "Label": "replacement-state/DACL/empty-absent/int0",
+    "NativeObservationSha256": "ee03e3bbd2ae38b4a3cfb5c7842bed9d9e417e8aa4dc050495ae4a0f8b0a4005",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 7,
+    "Label": "replacement-state/DACL/empty-null/int0",
+    "NativeObservationSha256": "c8446e320cb50b0d0a184e291cf0e8746833587f7a4c8682145ccf0c7b92da16",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Hex",
+        "NativeValue": "01001081140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Control",
+        "NativeValue": 33040,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/DaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001081140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Control",
+        "NativeValue": 33040,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/DaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001081140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Control",
+        "NativeValue": 33040,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/DaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001081140000002000000030000000000000000101000000000005140000000102000000000005200000002002000004001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Control",
+        "NativeValue": 33040,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Hex",
+        "NativeValue": "010014911400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014951400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Control",
+        "NativeValue": 37140,
+        "PortableValue": 38164,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014911400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014951400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Control",
+        "NativeValue": 37140,
+        "PortableValue": 38164,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014911400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014951400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Control",
+        "NativeValue": 37140,
+        "PortableValue": 38164,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014911400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014951400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Control",
+        "NativeValue": 37140,
+        "PortableValue": 38164,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Hex",
+        "NativeValue": "010014811400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Control",
+        "NativeValue": 33044,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014811400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Control",
+        "NativeValue": 33044,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014811400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Control",
+        "NativeValue": 33044,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014811400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C0001000000024014001000000001010000000000010000000004001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "010014851400000020000000300000004C0000000101000000000005140000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 104,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Control",
+        "NativeValue": 33044,
+        "PortableValue": 34068,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C000100000000031400FFFFFFFF010100000000000100000000",
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 8,
+    "Label": "replacement-state/DACL/empty-empty/int0",
+    "NativeObservationSha256": "3077333818d9c72c32c4dfdf9b5c4cf7409324a885c909d0e19831eed8686fef",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 10,
+    "Label": "replacement-state/SACL/absent-null/int0",
+    "NativeObservationSha256": "2caa5abf56f724bff87b1abb9bbc9066064895f1d763db2e279e4d64c0862971",
+    "RefusedSteps": [
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Hex",
+        "NativeValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010004A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Control",
+        "NativeValue": 40980,
+        "PortableValue": 40964,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010004A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Control",
+        "NativeValue": 40980,
+        "PortableValue": 40964,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010004A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Control",
+        "NativeValue": 40980,
+        "PortableValue": 40964,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010004A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Control",
+        "NativeValue": 40980,
+        "PortableValue": 40964,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "01000480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 32772,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 13,
+    "Label": "replacement-state/SACL/null-null/int0",
+    "NativeObservationSha256": "2a481e129e87aba7222c5270150a15766ab0cad7fed5fc077d03aa9c9ea88e56",
+    "RefusedSteps": [
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 40980,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 40980,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 40980,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001480140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014A0140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 40980,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 15,
+    "Label": "replacement-state/SACL/empty-absent/int0",
+    "NativeObservationSha256": "7614a9f400e67320fc97eaaffe0f3f5142a3c2ee1d58d4d51726eeb88ef2e413",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 16,
+    "Label": "replacement-state/SACL/empty-null/int0",
+    "NativeObservationSha256": "8843234d01fb6a5fb3c9b6e02b37ed19059bc1cd43742842e77d7437a98201d2",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Step": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Hex",
+        "NativeValue": "010014A2140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014AA1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/Control",
+        "NativeValue": 41492,
+        "PortableValue": 43540,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014A2140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014AA1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/Control",
+        "NativeValue": 41492,
+        "PortableValue": 43540,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014A2140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014AA1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/Control",
+        "NativeValue": 41492,
+        "PortableValue": 43540,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014A2140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014AA1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/Control",
+        "NativeValue": 41492,
+        "PortableValue": 43540,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Hex",
+        "NativeValue": "01001482140000002000000000000000300000000101000000000005140000000102000000000005200000002002000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "0100148A1400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 76,
+        "PortableValue": 84,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/Control",
+        "NativeValue": 33300,
+        "PortableValue": 35348,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": null,
+        "PortableValue": "0400080000000000",
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 2,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 17,
+    "Label": "replacement-state/SACL/empty-empty/int0",
+    "NativeObservationSha256": "cf6759dbdb61a824e991553fc92cf568a55b55c82e33cff0d0ea9eabd997ff74",
+    "RefusedSteps": [
+      {
+        "Step": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "Steps/1/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/1/After/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "supplied-nonassignable-auto-inherit-request"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/Main/Flags/3",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/Before/References/MainSaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/2/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/3/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/4/After/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/1",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/Main/Flags/2",
+        "NativeValue": true,
+        "PortableValue": false,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/5/Before/References/MainDaclInitial",
+        "NativeValue": false,
+        "PortableValue": true,
+        "CauseStep": 1,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 18,
+    "Label": "replacement-state/DACL/inherited-empty/int1",
+    "NativeObservationSha256": "466f5a6a50d165bc04a4a696a4ebc7fb9b4eed20c021d9ab4e06f1d1e694932b",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(A;CIID;RP;;;WD)S:(XU;SA;WP;;;WD;(@USER.Level >= 2))",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00010200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 19,
+    "Label": "replacement-state/DACL/inherited-empty/int2",
+    "NativeObservationSha256": "e63ca8371a6ab50e8dd8f1f2071c084d26312c4242e1c7dfb951665f8cc85989",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(A;CIID;RP;;;WD)S:(XU;SA;WP;;;WD;(@USER.Level >= 2))",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00020200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 20,
+    "Label": "replacement-state/DACL/inherited-empty/int3",
+    "NativeObservationSha256": "a68f0ac52c0f13a4f682cbff7dd624e50c3b12b003c194a244fb1a503665e165",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(A;CIID;RP;;;WD)S:(XU;SA;WP;;;WD;(@USER.Level >= 2))",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000004C0000000101000000000005120000000102000000000005200000002002000004001C000100000002401400100000000101000000000001000000000400080000000000",
+        "PortableValue": "010014841400000020000000300000006C0000000101000000000005140000000102000000000005200000002002000004003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C00030200000000000000030285000400080000000000",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 33812,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/SaclHex",
+        "NativeValue": "04001C00010000000240140010000000010100000000000100000000",
+        "PortableValue": "04003C00010000000D4034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 21,
+    "Label": "replacement-state/SACL/inherited-empty/int1",
+    "NativeObservationSha256": "7e0ce9cdc3e747e259100413a063cdc1afc1d8f5ff89c3153adb2c6e80a81220",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(XA;;WP;;;WD;(@USER.Level >= 2))S:(AU;CIIDSA;RP;;;WD)",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0001020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 22,
+    "Label": "replacement-state/SACL/inherited-empty/int2",
+    "NativeObservationSha256": "b364fd22aa2e0aa9820de41306b25aba6710d1904fb8ca2cbdf7e960dadad1e6",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(XA;;WP;;;WD;(@USER.Level >= 2))S:(AU;CIIDSA;RP;;;WD)",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0002020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  },
+  {
+    "Case": 23,
+    "Label": "replacement-state/SACL/inherited-empty/int3",
+    "NativeObservationSha256": "20772ebd8721fed6e2ae3db8e483de77116dad1a5f1be2ac3ac77e5f95c26a01",
+    "RefusedSteps": [
+      {
+        "Step": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      }
+    ],
+    "Facets": [
+      {
+        "Path": "RawExport/Outcome",
+        "NativeValue": "O:SYG:BAD:(XA;;WP;;;WD;(@USER.Level >= 2))S:(AU;CIIDSA;RP;;;WD)",
+        "PortableValue": null,
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "RawExport/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.NotSupportedException",
+        "Reason": "retained-integer-encoding-outside-lossless-export-subset"
+      },
+      {
+        "Path": "Steps/5/Result/ExceptionType",
+        "NativeValue": null,
+        "PortableValue": "System.InvalidOperationException",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/5/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "unreviewed-retained-integer-replacement"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/Before/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Main/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Hex",
+        "NativeValue": "010014801400000020000000300000003800000001010000000000051200000001020000000000052000000020020000040008000000000004001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "010014881400000020000000300000003800000001010000000000051400000001020000000000052000000020020000040008000000000004003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/BinaryLength",
+        "NativeValue": 84,
+        "PortableValue": 116,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Control",
+        "NativeValue": 32788,
+        "PortableValue": 34836,
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/Owner",
+        "NativeValue": "S-1-5-18",
+        "PortableValue": "S-1-5-20",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      },
+      {
+        "Path": "Steps/6/After/Peer/Descriptor/DaclHex",
+        "NativeValue": "04001C00010000000000140010000000010100000000000100000000",
+        "PortableValue": "04003C0001000000090034002000000001010000000000010000000061727478F90A0000004C006500760065006C0003020000000000000003028500",
+        "CauseStep": 5,
+        "Reason": "state-carried-from-prior-refusal"
+      }
+    ]
+  }
+]

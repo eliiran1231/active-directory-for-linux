@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <AssemblyName>AdForLinux.DirectoryServices.MicrosoftInterop</AssemblyName>
+    <RootNamespace>AdForLinux.DirectoryServices.MicrosoftInterop</RootNamespace>
+    <PackageId>AdForLinux.DirectoryServices.MicrosoftInterop</PackageId>
+    <Description>Optional Windows-only strict copies and checked local edit-back for AdForLinux security objects.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj" />
+    <PackageReference Include="System.DirectoryServices" Version="[9.0.0]" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <!-- Internal ABI: NuGet must not substitute another core version. Verify the
+       generated nuspec in package tests on both supported SDK/runtime matrices. -->
+  <Target Name="PinCompanionCoreVersion" AfterTargets="_GetProjectReferenceVersions">
+    <Error Condition="'%(_ProjectReferencesWithVersions.ProjectVersion)' != '$(PackageVersion)'"
+           Text="The companion and core package versions must match exactly." />
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)">
+        <ProjectVersion>[%(ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+</Project>

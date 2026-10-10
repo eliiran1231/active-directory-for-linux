@@ -16,6 +16,10 @@ public class LowLevelPublicSurfaceComparisonTests
             .GetExportedTypes()
             .Where(type => type.Namespace == "AdForLinux.DirectoryServices")
             .ToDictionary(type => type.Name, StringComparer.Ordinal);
+        // One explicitly approved extension; its entire contract is pinned in
+        // PortableSecurityContractTests. Every other extra type still fails.
+        Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
+        Assert.Equal(typeof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), helper);
         var microsoft = microsoftTypes.Keys
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -112,7 +116,7 @@ public class LowLevelPublicSurfaceComparisonTests
     private static string Parameters(IEnumerable<ParameterInfo> parameters) =>
         string.Join(",", parameters.Select(parameter => Normalize(parameter.ParameterType)));
 
-    private static string Normalize(Type? type) => type?.FullName?
+    private static string Normalize(Type? type) => PortableSecurityContract.Map(type)?.FullName?
         .Replace("System.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)
         .Replace("AdForLinux.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)
         ?? string.Empty;

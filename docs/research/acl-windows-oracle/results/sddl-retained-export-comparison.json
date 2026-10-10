@@ -1,0 +1,36 @@
+{
+  "NativeCasesPerRuntime": 296,
+  "NativeRuntimeAgreement": true,
+  "Original264RowsUnchanged": true,
+  "ExactPortableRows": 218,
+  "PinnedRows": 78,
+  "PinnedFacets": {
+    "retained-content-loss-refusal": 171,
+    "native-nonroundtrippable-export-refusal": 27,
+    "exception-contract-difference": 12,
+    "existing-raw-validation-difference": 6
+  },
+  "RawExportDifferenceFacets": 66,
+  "CommonExportDifferenceFacets": 75,
+  "WrapperExportDifferenceFacets": 75,
+  "ExistingCompatibilityDifferencesRemainVisible": true,
+  "FrozenAllocationGaps": [
+    25,
+    243,
+    623
+  ],
+  "NegativeControls": {
+    "BeforeSharedValidation": {
+      "Failed": 46,
+      "Passed": 219,
+      "Total": 265
+    },
+    "WithoutContributorCheck": {
+      "Failed": 9,
+      "Passed": 289,
+      "Total": 298
+    }
+  },
+  "HistoricalHead": "1f05ca3354a5bc3568d6cbdd2ab91454f75cc4cb",
+  "CurrentRawContractFollowUp": "sddl-raw-contract-comparison.json"
+}

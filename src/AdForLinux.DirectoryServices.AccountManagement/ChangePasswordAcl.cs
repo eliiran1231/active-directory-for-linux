@@ -1,11 +1,12 @@
 using System.Buffers.Binary;
+using C = AdForLinux.DirectoryServices.Security.Core;
 
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
 /// Edits only the two explicit change-password ACEs used by Active Directory.
-/// This avoids the Windows-only ObjectSecurity API while preserving every
-/// unrelated byte in the self-relative security descriptor.
+/// Proposals are validated by the shared preservation-aware engine before any
+/// caller can publish them. Unsupported layouts refuse instead of losing data.
 /// </summary>
 internal static class ChangePasswordAcl
 {
@@ -28,12 +29,26 @@ internal static class ChangePasswordAcl
     internal static byte[] SetDenied(byte[] descriptor, bool denied)
     {
         var acl = ReadAcl(descriptor);
-        var retained = acl.Aces
-            .Where(ace => !IsTarget(ace, AccessAllowedObjectAceType, SelfSid)
+        C.SecurityDescriptor original;
+        try { original = C.SecurityDescriptor.Parse(descriptor, SecurityMasks.Dacl); }
+        catch (ArgumentException error) { throw new InvalidOperationException("The security descriptor is malformed.", error); }
+        if (original.Dacl is not { } rawAcl || rawAcl.AclRevision != 4
+            || !rawAcl.Trailing.IsEmpty || rawAcl.Sbz1 != 0 || rawAcl.Sbz2 != 0
+            || rawAcl.Aces.Any(ace => !C.MicrosoftObservableProjector.IsUnderstoodAce(ace, true)))
+            throw new InvalidOperationException("Change-password editing cannot discard unknown ACL storage or reinterpret opaque entries.");
+        var retained = new List<byte[]>();
+        foreach (var ace in acl.Aces)
+        {
+            if (!IsTarget(ace, AccessAllowedObjectAceType, SelfSid)
                 && !IsTarget(ace, AccessAllowedObjectAceType, WorldSid)
                 && !IsTarget(ace, AccessDeniedObjectAceType, SelfSid)
-                && !IsTarget(ace, AccessDeniedObjectAceType, WorldSid))
-            .ToList();
+                && !IsTarget(ace, AccessDeniedObjectAceType, WorldSid)) { retained.Add(ace); continue; }
+            var remaining = BinaryPrimitives.ReadUInt32LittleEndian(ace.AsSpan(4)) & ~ControlAccess;
+            if (remaining == 0) continue;
+            var preserved = (byte[])ace.Clone();
+            BinaryPrimitives.WriteUInt32LittleEndian(preserved.AsSpan(4), remaining);
+            retained.Add(preserved);
+        }
         var aceType = denied ? AccessDeniedObjectAceType : AccessAllowedObjectAceType;
         var replacementAces = new[] { BuildAce(aceType, SelfSid), BuildAce(aceType, WorldSid) };
 
@@ -60,7 +75,15 @@ internal static class ChangePasswordAcl
             cursor += ace.Length;
         }
 
-        return ReplaceAcl(descriptor, acl.Offset, acl.Size, newAcl);
+        // Validate through the same raw section replacement/layout policy as the
+        // public facade. Keep the legacy component order only when its proposal
+        // has exactly the engine-approved component and unexplained storage data.
+        var approved = new C.AclMutationEngine(original).ReplaceSections(
+            new Dictionary<SecurityMasks, byte[]?> { [SecurityMasks.Dacl] = newAcl }, 0, original.Control);
+        var proposal = ReplaceAcl(descriptor, acl.Offset, acl.Size, newAcl);
+        if (C.SecurityDescriptor.Parse(proposal, SecurityMasks.Dacl).NetChangedSections(approved.Descriptor) != SecurityMasks.None)
+            throw new InvalidOperationException("The change-password proposal differs from the preservation-aware plan.");
+        return proposal;
     }
 
     private static (int Offset, int Size, List<byte[]> Aces) ReadAcl(byte[] descriptor)
