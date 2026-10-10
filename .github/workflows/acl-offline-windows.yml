@@ -27,6 +27,9 @@ jobs:
       - name: Record ordinary-sized mixed section operations
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode mixed
+      - name: Record selected ACL replacement and shared-alias scenarios
+        shell: pwsh
+        run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement
       - name: Record bounded alarm export-reparse compositions
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode alarm
@@ -72,6 +75,7 @@ jobs:
             artifacts/composition/
             artifacts/raw-contract/
             artifacts/alarm/
+            artifacts/replacement/
           if-no-files-found: error
   offline-acl:
     runs-on: windows-2025
