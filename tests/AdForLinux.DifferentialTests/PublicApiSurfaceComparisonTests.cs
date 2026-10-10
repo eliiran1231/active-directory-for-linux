@@ -396,7 +396,7 @@ public class PublicApiSurfaceComparisonTests
         return NormalizeName(type.FullName ?? type.Name);
     }
 
-    private static string NormalizeName(string name) => name
+    private static string NormalizeName(string name) => PortableSecurityContract.NormalizeName(name)
         .Replace("System.DirectoryServices.AccountManagement.", "DirectoryServices.AccountManagement.", StringComparison.Ordinal)
         .Replace("AdForLinux.DirectoryServices.AccountManagement.", "DirectoryServices.AccountManagement.", StringComparison.Ordinal)
         .Replace("System.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)

@@ -1,5 +1,35 @@
 # PR 228 readiness and remaining compatibility
 
+## Public surface correction — readiness hold
+
+The user-run manual differential workflow at `b1681e4d8be3149b81f826109fe18ed445127621`
+reported 15 failures and 1,346 passes per runtime. All 15 failures reproduce in the
+31 reflection-only surface tests on Linux, without directory fixtures. The old
+comparers did not account for the approved portable identity/access-control substitutions;
+they also exposed a real extra public type, `DirectoryIdentityResolver`.
+
+The correction makes that unapproved helper internal, preserves automatic entry/context
+integration, and uses an exact 29-type substitution map in the existing comparisons.
+Extra/missing type and member detection and existing intentional-difference entries remain
+unchanged. Standalone translation errors no longer direct callers to an inaccessible helper.
+Two regressions check the closed exported security inventory and reject broad namespace
+substitution. The 33 metadata-only tests now run in routine offline Windows CI.
+
+The former green offline workflow did not include these legacy differential surface checks.
+The separate user-run live evidence is limited evidence, not completion of the explicit-Add
+plan. Readiness stays on hold pending corrected-head validation and independent review.
+No full differential or directory-mutating suite is rerun for this correction.
+
+Linux .NET 8/10 pass all 33 corrected metadata checks using the pinned Microsoft
+9.0.0 Windows runtime assemblies (net8.0/net9.0 assets respectively). The default
+non-Windows stubs omit eight Serializable attributes and Principal's DebuggerDisplay;
+those nine stub differences are not allowlisted or removed from the assertions.
+The actual Windows CI uses Windows runtime assets normally. Linux also passes
+12,990 core, 55 fixture-free consumers, 34 registration and four applicable companion
+cases per runtime; 16 Windows-only companion groups skip. Full solution build has
+zero errors and 14 existing xUnit2013 warnings. These are bounded checks, not a
+claim that the unfiltered differential suite is green.
+
 ## Identical reassignment write/interop integration
 
 The [controlled integration loop](issue-226-identical-write-integration.md) adds six

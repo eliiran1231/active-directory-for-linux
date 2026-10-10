@@ -20,15 +20,21 @@ effective-access evaluator.
 Latest independent dependency: [the internal PrincipalContext adapter](issue-226-principal-identity-status.md)
 now shares the borrowed-owner resolver with entry bindings. It adds no public helper or transport cutover.
 
-## Shipped resolver and context lifetime
+## Internal resolver and context lifetime
 
-`DirectoryIdentityResolver.ForEntry(entry)` captures a weak, revocable owner binding without
-connecting. `Translate(identity, targetType)` and the collection overload use the library's
-AD resolver; callers do not implement LDAP lookup. `Bind(portableObjectSecurity)` explicitly
-attaches resolution to that wrapper. Ordinary standalone identity `Translate(Type)` remains
-context-free/same-kind; no global, AsyncLocal or identity-attached resolver is introduced.
-The future portable `DirectoryEntry.ObjectSecurity` loader must attach its own resolver during
-the coordinated cutover. It does not do so on the current BCL-derived security object.
+`DirectoryIdentityResolver` and its factory/binding/translation operations are internal
+implementation details. Their earlier public exposure was unapproved and has been removed.
+Public `DirectoryEntry.ObjectSecurity` automatically binds its own context; standalone
+identity translation has no directory authority. Public context-helper naming/exposure
+remains undecided. The historical staging description below does not authorize callers
+to depend on the internal helper.
+
+The internal `DirectoryIdentityResolver.ForEntry(entry)` captures a weak, revocable
+owner binding without connecting. Its internal translation operations use the library's
+AD resolver, and its binding operation attaches resolution to one wrapper.
+`DirectoryEntry.ObjectSecurity` automatically acquires this context when loading its
+raw descriptor. Ordinary standalone identity `Translate(Type)` remains context-free
+and same-kind; no global, AsyncLocal or identity-attached resolver is introduced.
 
 The resolver retains only a weak entry reference and captured generation. Credentials and
 connection options are borrowed for an individual operation, never stored in descriptors or
@@ -42,7 +48,7 @@ the attachment generation. Failed refresh preserves it; a refresh of unrelated p
 not expire it. Move/rename paths inherit ResetBinding invalidation. Active independent reads may
 finish after revocation, but their results cannot publish. Disposal does not close a connection
 under an in-flight lookup; its bounded session disposes on completion. No instantaneous network
-cancellation is promised. Reacquisition is explicit through ForEntry/Bind, never automatic revival.
+cancellation is promised. Reacquisition occurs inside entry loading/assignment; stale wrappers never revive automatically.
 
 Ambient SID-to-name reads are allowed. Name-to-SID used by this resolver requires explicit
 nonempty credentials and Basic/Negotiate authentication, followed by a successful session bind.

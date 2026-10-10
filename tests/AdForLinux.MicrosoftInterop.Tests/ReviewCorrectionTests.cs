@@ -1,6 +1,7 @@
 using AdForLinux.DirectoryServices.MicrosoftInterop;
 using AdForLinux.Tests.Shared;
 using Xunit;
+using System.Reflection;
 using D = AdForLinux.DirectoryServices;
 using M = System.DirectoryServices;
 using MP = System.Security.Principal;
@@ -50,11 +51,12 @@ public class ReviewCorrectionTests
     [MemberData(nameof(RevocationCases))]
     public void Public_ApplyTo_checks_entry_revocation_without_lookup_or_persistence(string change, bool edited)
     {
-        // ForEntry/Bind borrow a revocable context without opening a connection.
+        // Public entry loading borrows a revocable context; the existing fake read hook prevents I/O.
         using var entry = new D.DirectoryEntry("LDAP://dc.example/CN=item,DC=example,DC=com");
-        var native = new M.ActiveDirectorySecurity(); native.SetSecurityDescriptorBinaryForm(DetachedCoverageCases.Baseline());
-        var source = native.ToPortableObject((D.SecurityMasks)15);
-        D.DirectoryIdentityResolver.ForEntry(entry).Bind(source);
+        entry.Options.SecurityMasks = (D.SecurityMasks)15;
+        typeof(D.DirectoryEntry).GetProperty("SecurityReadOverride", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(entry, (Func<D.SecurityMasks, byte[]>)(_ => DetachedCoverageCases.Baseline()));
+        var source = entry.ObjectSecurity;
         using var session = source.ExportForEdit();
         if (edited) session.Object.SetOwner(new MP.SecurityIdentifier("S-1-5-21-1-2-3-1002"));
         var before = source.CaptureSnapshot();
@@ -72,10 +74,12 @@ public class ReviewCorrectionTests
         Assert.NotNull(session.Object); Assert.NotNull(session.Snapshot); // Failure did not consume/dispose it.
         if (change != "dispose")
         {
-            D.DirectoryIdentityResolver.ForEntry(entry).Bind(source);
+            var rebound = entry.ObjectSecurity;
+            Assert.NotSame(source, rebound);
             Assert.Throws<InvalidOperationException>(() => session.ApplyTo(source)); // Old attachment stays stale.
-            using var fresh = source.ExportForEdit();
-            Assert.Equal(D.SecurityMasks.None, fresh.ApplyTo(source));
+            Assert.Throws<InvalidOperationException>(() => session.ApplyTo(rebound));
+            using var fresh = rebound.ExportForEdit();
+            Assert.Equal(D.SecurityMasks.None, fresh.ApplyTo(rebound));
         }
     }
 }

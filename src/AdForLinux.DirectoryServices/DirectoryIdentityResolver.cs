@@ -9,7 +9,7 @@ namespace AdForLinux.DirectoryServices;
 /// <summary>Resolves portable identities in an entry's domain using its current, borrowed binding.</summary>
 /// <remarks>Keep the entry alive. Rebinding, closing, refreshing its descriptor or disposing
 /// the entry invalidates this resolver. Reacquire explicitly; no credentials are retained here.</remarks>
-public sealed class DirectoryIdentityResolver
+internal sealed class DirectoryIdentityResolver
 {
     private readonly IdentityResolverBinding binding;
     private readonly long generation;
@@ -23,21 +23,21 @@ public sealed class DirectoryIdentityResolver
     internal static DirectoryIdentityResolver ForBinding(IdentityResolverBinding binding) => new(binding);
 
     /// <summary>Captures a revocable binding without connecting or performing a lookup.</summary>
-    public static DirectoryIdentityResolver ForEntry(DirectoryEntry entry)
+    internal static DirectoryIdentityResolver ForEntry(DirectoryEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
         return new(new EntryIdentityResolverBinding(entry));
     }
 
     /// <summary>Explicitly attaches this resolver to this wrapper only, without copying descriptor data.</summary>
-    public void Bind(PortableObjectSecurity security)
+    internal void Bind(PortableObjectSecurity security)
     {
         ArgumentNullException.ThrowIfNull(security);
         Checked(() => { security.BindIdentityResolver(this); return true; });
     }
 
     /// <summary>Translates one identity. Name-to-SID requires explicit authenticated credentials.</summary>
-    public IdentityReference Translate(IdentityReference identity, Type targetType)
+    internal IdentityReference Translate(IdentityReference identity, Type targetType)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(targetType);
@@ -46,7 +46,7 @@ public sealed class DirectoryIdentityResolver
     }
 
     /// <summary>Translates a snapshot of a collection, preserving order and unmapped values when requested.</summary>
-    public IdentityReferenceCollection Translate(IdentityReferenceCollection identities, Type targetType, bool forceSuccess = false)
+    internal IdentityReferenceCollection Translate(IdentityReferenceCollection identities, Type targetType, bool forceSuccess = false)
     {
         ArgumentNullException.ThrowIfNull(identities);
         ArgumentNullException.ThrowIfNull(targetType);

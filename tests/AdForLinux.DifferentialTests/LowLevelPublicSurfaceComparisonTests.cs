@@ -112,7 +112,7 @@ public class LowLevelPublicSurfaceComparisonTests
     private static string Parameters(IEnumerable<ParameterInfo> parameters) =>
         string.Join(",", parameters.Select(parameter => Normalize(parameter.ParameterType)));
 
-    private static string Normalize(Type? type) => type?.FullName?
+    private static string Normalize(Type? type) => PortableSecurityContract.Map(type)?.FullName?
         .Replace("System.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)
         .Replace("AdForLinux.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)
         ?? string.Empty;

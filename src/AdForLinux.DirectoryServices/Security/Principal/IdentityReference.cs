@@ -20,7 +20,7 @@ public abstract class IdentityReference
         if (!IsValidTargetType(targetType))
             throw new ArgumentException("The target must be a supported identity type.", nameof(targetType));
         if (targetType == GetType()) return this;
-        // Values never carry directory authority. Use DirectoryIdentityResolver explicitly.
-        throw new NotSupportedException("Cross-kind translation requires an explicit DirectoryIdentityResolver.");
+        // Values never carry directory authority. Entry-owned security objects obtain their context internally.
+        throw new NotSupportedException("Standalone cross-kind translation has no directory context and is not supported.");
     }
 }

@@ -58,9 +58,9 @@ public class IdentityReferenceCollection : ICollection<IdentityReference>
 
         // Empty/same-kind translation creates a new collection retaining element identity.
         // Values do not carry resolver authority. Explicit collection resolution is
-        // available through DirectoryIdentityResolver; forceSuccess here never invents it.
+        // available internally to entry-owned security objects; forceSuccess never invents it.
         if (_identities.Any(identity => identity.GetType() != targetType))
-            throw new NotSupportedException("Cross-kind translation requires an explicit DirectoryIdentityResolver.");
+            throw new NotSupportedException("Standalone cross-kind translation has no directory context and is not supported.");
 
         var result = new IdentityReferenceCollection(Count);
         foreach (var identity in _identities) result.Add(identity);
