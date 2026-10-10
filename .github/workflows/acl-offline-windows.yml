@@ -30,6 +30,8 @@ jobs:
       - name: Record selected ACL replacement and shared-alias scenarios
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode replacement
+      - name: Verify exact selected replacement evidence
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/replacement/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-replacement-${{ matrix.framework }}.json.gz
       - name: Record bounded alarm export-reparse compositions
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode alarm

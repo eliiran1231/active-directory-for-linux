@@ -1,5 +1,18 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest selected-ACL replacement evidence
+
+The [selected replacement matrix](issue-226-selected-replacement.md) measures 64
+scenarios plus eight shared-alias cases (136 operation steps). All 72 native rows
+agree across runtimes; 54 portable rows match completely and 18 pin deliberate
+atomic refusal of non-identical replacement of unreviewed ACL contents. Binary and
+SDDL setters, byte-identical reassignment, prior intent, malformed new unselected
+input and shared alias coherence are covered. No production defect was demonstrated;
+the replacement engine and its byte-identical exception remain unchanged.
+This bounds a specific family, not every selected-ACL combination: NULL/absent ACLs,
+protection/inheritance control transitions and partial retrieval/layout variants
+remain outside this matrix. The known allocation gaps stay frozen.
+
 ## Latest alarm composition correction
 
 The [alarm export/reparse follow-up](issue-226-alarm-composition.md) records 96

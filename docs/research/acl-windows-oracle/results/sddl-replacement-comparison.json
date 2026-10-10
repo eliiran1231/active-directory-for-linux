@@ -1,0 +1,21 @@
+{
+  "NativeCasesPerRuntime": 72,
+  "ReplacementScenarios": 64,
+  "SharedAliasCases": 8,
+  "OperationSteps": 136,
+  "NativeRuntimeAgreement": true,
+  "CompletePortableExactRows": 54,
+  "PinnedRefusalRows": 18,
+  "PinnedLeafFacets": 182,
+  "NativeSuccessfulSteps": 112,
+  "PortableSuccessfulSteps": 94,
+  "PortableMalformedInputFailures": 24,
+  "PortableUnreviewedReplacementRefusals": 18,
+  "DemonstratedProductionDefects": 0,
+  "ProductionChanges": false,
+  "FrozenAllocationGaps": [
+    25,
+    243,
+    623
+  ]
+}
