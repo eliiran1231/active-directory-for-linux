@@ -84,8 +84,9 @@ regressions pass unchanged. Full six-project Release rebuild: zero errors and
 ## Remaining limits
 
 The prior **12 unsupported-condition exception-type facets and six raw
-unaudited-ACE validation facets remain genuine compatibility gaps**, not loss
-evidence. Their pinned classifications and tests are unchanged. The frozen 25
+unaudited-ACE validation facets were genuine compatibility gaps**, not loss
+evidence. The subsequent [raw contract follow-up](issue-226-raw-formatting-contract.md)
+closes all 18 with exact replay; this composition measurement itself did not. The frozen 25
 initial, 243 directed and overlapping 623 expanded allocation gaps also remain.
 
 This measures exact native-produced text in the listed contexts, not every empty

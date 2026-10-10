@@ -1,5 +1,17 @@
 # PR 228 readiness and remaining compatibility
 
+## Latest raw formatting contract correction
+
+The [bounded raw contract follow-up](issue-226-raw-formatting-contract.md) closes
+all 12 malformed-condition exception facets and six raw unaudited-ACE validation
+facets from the retained-export matrix. They now require exact native equality;
+they were compatibility gaps, not loss evidence. Raw AU/OU/XU formatting preserves
+unaudited ACEs, while the existing retained-facade guard still rejects active
+unaudited projection loss. The 80 native observations agree across runtimes;
+55 portable rows match completely and 25 pin only demonstrated loss/refusal facets.
+The prior empty-callback correction deliberately sacrifices native formatting parity
+for reconstructibility; no new parser defect was found in that composition matrix.
+
 ## Latest callback composition evidence
 
 The [empty callback composition follow-up](issue-226-callback-composition.md)
@@ -8,7 +20,8 @@ matched native; both native and portable reparsing reject the missing condition.
 Selected empty-callback export now refuses under the existing reconstructibility
 policy. No condition or ordinary ACE replacement is synthesized. There is no new
 parser acceptance gap in this matrix. The 12 exception-type and six raw
-unaudited-ACE facets below remain genuine compatibility gaps, not loss evidence.
+unaudited-ACE facets were genuine compatibility gaps, not loss evidence; the raw
+contract follow-up above now closes them.
 
 ## Latest retained-export evidence
 
@@ -19,9 +32,10 @@ ML/SP/TL, stripped audit flags, opaque/tail data and valid callback projection l
 are covered. Ordinary known ordering, compaction and approved inactive controls
 remain supported. The 296 native rows agree across runtimes; 218 portable rows
 match completely, while 78 have individually pinned export-facet differences.
-Twelve unsupported-condition exception facets and six raw unaudited-ACE validation
-facets remain explicit compatibility differences, not successful parity or native
-information-loss observations. These counts overlap earlier evidence.
+At that head, twelve unsupported-condition exception facets and six raw unaudited-ACE
+validation facets were compatibility differences. The latest follow-up closes all
+18, leaving 224 exact rows and 72 pinned refusal rows in the same 296-row matrix.
+These counts overlap earlier evidence.
 
 ## Latest SDDL boundary evidence
 

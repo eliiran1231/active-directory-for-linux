@@ -30,6 +30,8 @@ jobs:
       - name: Record bounded raw formatting contracts
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode raw-contract
+      - name: Verify exact raw formatting contracts
+        run: python tests/verify-sddl-boundary-recordings.py artifacts/raw-contract/${{ matrix.framework }} docs/research/acl-windows-oracle/results/sddl-raw-contract-${{ matrix.framework }}.json.gz
       - name: Record callback export-reparse compositions
         shell: pwsh
         run: ./docs/research/acl-windows-oracle/Run-SddlBoundary.ps1 -Framework '${{ matrix.framework }}' -Mode composition

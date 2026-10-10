@@ -49,7 +49,9 @@ public partial class PortableSecurityFoundationTests
             var parsed = new A.RawSecurityDescriptor(text!);
             Assert.Equal(payload, ((A.QualifiedAce)parsed.DiscretionaryAcl![0]).GetOpaque());
         }
-        else Assert.IsType<NotSupportedException>(error);
+        // This mutation invariant checks preservation, not native parity for every
+        // mutated byte. Exact malformed-condition errors have separate native replay.
+        else Assert.True(error is NotSupportedException or InvalidOperationException, error.ToString());
         var after = new byte[descriptor.BinaryLength]; descriptor.GetBinaryForm(after, 0);
         Assert.Equal(before, after);
     }

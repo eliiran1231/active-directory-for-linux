@@ -1,0 +1,513 @@
+[
+  {
+    "Case": 2,
+    "Label": "raw-contract/unknown-XA-zero/export-selected",
+    "NativeObservationSha256": "548c0fccafc3fd719cb0cf74796df460d396ecc09b704890c444b87d8b73dd82",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 12,
+    "Label": "raw-contract/unknown-XU-unaudited/export-selected",
+    "NativeObservationSha256": "91c0656b41f0117f957cb285fcf9d6a1164f81a536139ff7cf98fc4257b0858f",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 14,
+    "Label": "raw-contract/unknown-XU-zero/export-selected",
+    "NativeObservationSha256": "942fd29712e51bd9aed504ae2c5c360f92d793d7096df74f8615bac4b2b2d0f3",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 16,
+    "Label": "raw-contract/unknown-XU-IO/export-selected",
+    "NativeObservationSha256": "ac4fe1be83ad0cd190bf946771fda087a47d56cca08b7243cb3c9fe2fdb15228",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 20,
+    "Label": "raw-contract/unaudited-2-0/export-selected",
+    "NativeObservationSha256": "dffcbb955ce89e74fdd404aa72e34414c17c576cf9f99b31805dc1fc4b4aab17",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 24,
+    "Label": "raw-contract/unaudited-3-0/export-selected",
+    "NativeObservationSha256": "d1bf8d7ad1065205196bc4fd4452dcfbd5a1dc7fec03034d1db8e84309353cb7",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-alarm",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 26,
+    "Label": "raw-contract/unaudited-3-8/export-selected",
+    "NativeObservationSha256": "9e7b83d1ff9bd7e78c41ca8fda63eefec8e0a0e23b411ae98bb06effc805a0c3",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-alarm",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 28,
+    "Label": "raw-contract/unaudited-7-0/export-selected",
+    "NativeObservationSha256": "e422214325f5892423152936256e83b92d7e6e0f9b83fd673a5b5aee0f588711",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 32,
+    "Label": "raw-contract/unaudited-8-0/export-selected",
+    "NativeObservationSha256": "95eec6bf54db2f9fef631dbc262641e9d27abef0576debb30ff63f272c628a1d",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-alarm",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 34,
+    "Label": "raw-contract/unaudited-8-8/export-selected",
+    "NativeObservationSha256": "12a7276ee96d4fffe13627cb5d8cc4656e3f1f36006c378fb8a4d0aa1a190782",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "nonroundtrippable-alarm",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 36,
+    "Label": "raw-contract/unaudited-AU-zero/export-selected",
+    "NativeObservationSha256": "c64fa5c881fb4e9055f57bd692405a9cfa517fdae63d85ac048555e8d67d96cd",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 38,
+    "Label": "raw-contract/unaudited-OU-zero/export-selected",
+    "NativeObservationSha256": "569b06108c948050928e1e00631dbce2044f7c754b161b50933846a2a79a9c90",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 40,
+    "Label": "raw-contract/unaudited-AU-DACL/export-selected",
+    "NativeObservationSha256": "1fc9706847e2876646401191c30dc1f1024c91b3bfbbb4c02e02af30de47cb10",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 42,
+    "Label": "raw-contract/valid-XU-unaudited/export-selected",
+    "NativeObservationSha256": "23c4dbb2358b76bd38979cb1d04f1a303cd2b458dd343b3a57c98538f8821c8f",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 44,
+    "Label": "raw-contract/valid-XU-unaudited-zero/export-selected",
+    "NativeObservationSha256": "c29686b07af94112a42c8a28a13e5ccf472f390705fb8c757affa2fd38ef56b7",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 50,
+    "Label": "raw-contract/extra-padding-XA/export-selected",
+    "NativeObservationSha256": "b899618ae3742ea3ddf18ec40a868edfc1f988631c9e2b2416098d3b3b86b170",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 62,
+    "Label": "raw-contract/opaque-unaudited-AU/export-selected",
+    "NativeObservationSha256": "1a546447d139cffc9c4173ba4ef508c60e906769ad803631639019f73e0c95cb",
+    "Facets": [
+      {
+        "Facet": "RawExport",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.NotSupportedException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 64,
+    "Label": "raw-contract/unaudited-2-0-single/export-selected",
+    "NativeObservationSha256": "8abf707a8b48447bfcf525b7851e7c9ed5a423ef08fb5cd75257916a65325b0e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 66,
+    "Label": "raw-contract/unaudited-2-0-leading/export-selected",
+    "NativeObservationSha256": "cb7d3948417404e407bc4bdd86cd55c701fb11102f33769fd35baf6ed75bb59e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 68,
+    "Label": "raw-contract/unaudited-7-0-single/export-selected",
+    "NativeObservationSha256": "92e6169407f807f22029bfed8fa30fca0c2612ca558248bb77bae7a54a986ca6",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 70,
+    "Label": "raw-contract/unaudited-7-0-leading/export-selected",
+    "NativeObservationSha256": "7cc9b1aee85f8b2b192474e00ec597f58cbd10c458ecc9b5391d23e10a2353a2",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 72,
+    "Label": "raw-contract/valid-XU-unaudited-single/export-selected",
+    "NativeObservationSha256": "c7985fa2aa53fa7b7b701b1c352c3188fc6d769dfa1458c44474118d4d693769",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 74,
+    "Label": "raw-contract/valid-XU-unaudited-leading/export-selected",
+    "NativeObservationSha256": "235042397007d9db83c5727ca7c00a0442d615b6b1def7077ceca14ab5bb02c6",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 76,
+    "Label": "raw-contract/unknown-XU-unaudited-single/export-selected",
+    "NativeObservationSha256": "71e2728bbafd49c04e36142caa72bf5e646505761d4221096ca88647cb314799",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  },
+  {
+    "Case": 78,
+    "Label": "raw-contract/unknown-XU-unaudited-leading/export-selected",
+    "NativeObservationSha256": "4a942ef96f7045ce1b71eb9fc5dc36888a6500293bfa00138c6dba8ef93e030e",
+    "Facets": [
+      {
+        "Facet": "Result",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      },
+      {
+        "Facet": "CommonResult",
+        "Classification": "retained-byte-loss",
+        "PortableExceptionType": "System.InvalidOperationException",
+        "NativeExceptionType": null
+      }
+    ]
+  }
+]

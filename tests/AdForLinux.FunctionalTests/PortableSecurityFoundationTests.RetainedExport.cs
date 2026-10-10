@@ -91,7 +91,7 @@ public partial class PortableSecurityFoundationTests
         var selectsFixture = (input.Sections & (input.Fixture.Dacl ? AccessControlSections.Access : AccessControlSections.Audit)) != 0;
         var family = input.Fixture.Family;
         string? expectedException = !selectsFixture || editing || (family.StartsWith("reviewed-", StringComparison.Ordinal) || family == "retained-opaque-control") ? null
-            : family is "wrong-section-special-ace" or "no-sddl-token-layout" or "missing-audit-flags"
+            : family is "wrong-section-special-ace" or "no-sddl-token-layout" or "missing-audit-flags" or "unrepresentable-condition"
                 ? "System.InvalidOperationException" : "System.NotSupportedException";
         foreach (var field in new[] { "Result", "CommonResult" })
         {
@@ -101,8 +101,7 @@ public partial class PortableSecurityFoundationTests
         }
         if (!editing)
         {
-            var expectedRaw = family == "projected-opaque-contributor" ? null
-                : selectsFixture && input.Fixture.Name == "inactive-audit" ? "System.InvalidOperationException" : expectedException;
+            var expectedRaw = family is "projected-opaque-contributor" or "missing-audit-flags" ? null : expectedException;
             Assert.Equal(expectedRaw, actual["RawExport"]!["ExceptionType"]?.GetValue<string>());
         }
         Assert.True(actual["CallerInputUnchanged"]!.GetValue<bool>());
@@ -149,13 +148,13 @@ public partial class PortableSecurityFoundationTests
             Assert.Equal(input.Fixture.Text is null ? Convert.ToHexString(input.Fixture.Bytes) : null, row["InputHex"]?.GetValue<string>());
             Assert.Equal(input.Fixture.Text is null ? null : SddlBoundaryInputs.Utf16Hex(input.Fixture.Text), row["InputUtf16Hex"]?.GetValue<string>());
         }
-        Assert.Equal(78, RetainedDifferences.Value.Count);
-        Assert.Equal(78, RetainedDifferences.Value.Select(p => p!["Case"]!.GetValue<int>()).Distinct().Count());
+        Assert.Equal(72, RetainedDifferences.Value.Count);
+        Assert.Equal(72, RetainedDifferences.Value.Select(p => p!["Case"]!.GetValue<int>()).Distinct().Count());
         var facets = RetainedDifferences.Value.SelectMany(p => p!["Facets"]!.AsArray()).ToArray();
         Assert.Equal(171, facets.Count(p => p!["Classification"]!.GetValue<string>() == "retained-content-loss-refusal"));
         Assert.Equal(27, facets.Count(p => p!["Classification"]!.GetValue<string>() == "native-nonroundtrippable-export-refusal"));
-        Assert.Equal(12, facets.Count(p => p!["Classification"]!.GetValue<string>() == "exception-contract-difference"));
-        Assert.Equal(6, facets.Count(p => p!["Classification"]!.GetValue<string>() == "existing-raw-validation-difference"));
+        Assert.Equal(0, facets.Count(p => p!["Classification"]!.GetValue<string>() == "exception-contract-difference"));
+        Assert.Equal(0, facets.Count(p => p!["Classification"]!.GetValue<string>() == "existing-raw-validation-difference"));
     }
 
     private static void VerifyRetainedNative(int id, JsonNode actual)
@@ -176,14 +175,7 @@ public partial class PortableSecurityFoundationTests
                 Assert.Null(actual[field]!["Outcome"]); Assert.Null(actual[field]!["ParamName"]); Assert.Null(actual[field]!["NativeErrorCode"]);
                 Assert.Equal(facet["NativeExceptionType"]?.GetValue<string>(), expected[field]!["ExceptionType"]?.GetValue<string>());
                 var classification = facet["Classification"]!.GetValue<string>();
-                if (classification == "exception-contract-difference")
-                {
-                    // Existing unsupported-condition exception mapping is a compatibility
-                    // difference, not a successful parity or native-loss observation.
-                    Assert.Equal("unrepresentable-condition", input.Fixture.Family);
-                    Assert.Equal("System.InvalidOperationException", expected[field]!["ExceptionType"]!.GetValue<string>());
-                }
-                else if (classification == "native-nonroundtrippable-export-refusal")
+                if (classification == "native-nonroundtrippable-export-refusal")
                 {
                     Assert.Equal("non-audit-ace-audit-flags", input.Fixture.Family);
                     Assert.Null(expected[field]!["ExceptionType"]);
@@ -207,21 +199,9 @@ public partial class PortableSecurityFoundationTests
                     var reparse = new A.RawSecurityDescriptor(Convert.FromHexString(expected[field]!["Outcome"]!["Reparse"]!["Outcome"]!["Hex"]!.GetValue<string>()), 0);
                     var sourceAcl = input.Fixture.Dacl ? original.DiscretionaryAcl! : original.SystemAcl!;
                     var exportedAcl = input.Fixture.Dacl ? reparse.DiscretionaryAcl! : reparse.SystemAcl!;
-                    if (classification == "existing-raw-validation-difference")
-                    {
-                        // Native raw export retains these ordinary unaudited ACEs. Do
-                        // not mislabel the pre-existing strict raw validation as loss.
-                        Assert.Equal("RawExport", field);
-                        Assert.Contains(input.Fixture.Name, new[] { "inactive-audit", "unaudited-active" });
-                        Assert.Equal(sourceAcl.Count, exportedAcl.Count);
-                        for (var i = 0; i < sourceAcl.Count; i++) Assert.Equal(AceBytes(sourceAcl[i]), AceBytes(exportedAcl[i]));
-                    }
-                    else
-                    {
-                        Assert.Equal("retained-content-loss-refusal", classification);
-                        var contributor = AceBytes(sourceAcl[sourceAcl.Count - 1]);
-                        Assert.DoesNotContain(exportedAcl.Cast<A.GenericAce>(), ace => AceBytes(ace).AsSpan().SequenceEqual(contributor));
-                    }
+                    Assert.Equal("retained-content-loss-refusal", classification);
+                    var contributor = AceBytes(sourceAcl[sourceAcl.Count - 1]);
+                    Assert.DoesNotContain(exportedAcl.Cast<A.GenericAce>(), ace => AceBytes(ace).AsSpan().SequenceEqual(contributor));
                 }
                 actual[field] = expected[field]!.DeepClone(); // Only this exact, hashed facet may differ.
             }

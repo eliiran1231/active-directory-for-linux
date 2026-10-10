@@ -64,6 +64,7 @@ public partial class PortableSecurityFoundationTests
             var parsed = new A.RawSecurityDescriptor(result!);
             Assert.Equal(payload, ((A.QualifiedAce)parsed.DiscretionaryAcl![0]).GetOpaque());
         }
+        else if (invalidLength) Assert.IsType<InvalidOperationException>(error);
         else Assert.IsType<NotSupportedException>(error);
         Assert.Equal(before, AccessFilterImage(raw));
         Assert.Equal(before, AccessFilterImage(new A.RawSecurityDescriptor(before, 0)));

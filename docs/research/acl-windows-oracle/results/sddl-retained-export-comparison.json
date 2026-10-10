@@ -30,5 +30,7 @@
       "Passed": 289,
       "Total": 298
     }
-  }
+  },
+  "HistoricalHead": "1f05ca3354a5bc3568d6cbdd2ab91454f75cc4cb",
+  "CurrentRawContractFollowUp": "sddl-raw-contract-comparison.json"
 }

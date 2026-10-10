@@ -59,7 +59,7 @@ internal static class SddlConditionCodec
     {
         // An arbitrary callback payload is not evidence of a condition. Never export it
         // as a conditionless ACE, or discard trailing/unknown bytes of a known signature.
-        if (data.Length < 4 || !data.AsSpan(0, 4).SequenceEqual("artx"u8)) throw Unsupported();
+        if (data.Length < 4 || !data.AsSpan(0, 4).SequenceEqual("artx"u8)) throw Malformed();
         try
         {
             var stack = new Stack<Node>(); var position = 4;
@@ -69,13 +69,14 @@ internal static class SddlConditionCodec
                 if (Operators.ContainsValue(code))
                 {
                     var count = Unary(code) ? 1 : 2;
-                    if (stack.Count < count) throw Unsupported();
+                    if (stack.Count < count) throw Malformed();
                     var children = new Node[count]; for (var i = count - 1; i >= 0; i--) children[i] = stack.Pop();
                     stack.Push(new Node(code, [], children));
                 }
                 else stack.Push(ReadLiteral(data, ref position, code, 0));
             }
-            if (stack.Count != 1 || data.Length - position > 3 || data.AsSpan(position).ContainsAnyExcept((byte)0)) throw Unsupported();
+            if (stack.Count != 1) throw Malformed();
+            if (data.Length - position > 3 || data.AsSpan(position).ContainsAnyExcept((byte)0)) throw Unsupported();
             var node = stack.Pop(); var text = Render(node);
             if (node.Code >= 0xf8) text = "(" + text + ")";
             // Text export must reproduce the entire condition payload, not just an
@@ -83,21 +84,25 @@ internal static class SddlConditionCodec
             if (!Parse(text).AsSpan().SequenceEqual(data)) throw Unsupported();
             return text;
         }
-        catch (Exception e) when (e is ArgumentException or InvalidOperationException or OverflowException) { throw Unsupported(); }
+        catch (Exception e) when (e is ArgumentException or OverflowException) { throw Unsupported(); }
     }
     private static Node ReadLiteral(byte[] bytes, ref int position, byte code, int depth)
     {
         if (depth > 128) throw Unsupported();
         if (code == 4)
         {
-            if (bytes.Length - position < 10) throw Unsupported();
+            if (bytes.Length - position < 10) throw Malformed();
             var data = bytes.AsSpan(position, 10).ToArray(); position += 10;
             if (data[8] is < 1 or > 3 || data[9] is < 1 or > 3) throw Unsupported();
             return new Node(code, data, []);
         }
-        if (code is not (0x10 or 0x18 or 0x50 or 0x51 or >= 0xf8 and <= 0xfb) || bytes.Length - position < 4) throw Unsupported();
+        // Int8/16/32 encodings are known token families outside this codec's
+        // lossless subset. Do not confuse those with malformed/reserved opcodes.
+        if (code is >= 1 and <= 3) throw Unsupported();
+        if (code is not (0x10 or 0x18 or 0x50 or 0x51 or >= 0xf8 and <= 0xfb)) throw Malformed();
+        if (bytes.Length - position < 4) throw Malformed();
         var length = BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(position)); position += 4;
-        if (length < 0 || length > bytes.Length - position) throw Unsupported();
+        if (length < 0 || length > bytes.Length - position) throw Malformed();
         var payload = bytes.AsSpan(position, length).ToArray(); position += length;
         if (code != 0x50) return new Node(code, payload, []);
         var children = new List<Node>(); var offset = 0;
@@ -348,5 +353,6 @@ internal static class SddlConditionCodec
         private bool Take(string value) { Space(); if (!text.AsSpan(position).StartsWith(value, StringComparison.OrdinalIgnoreCase)) return false; position += value.Length; return true; }
     }
     private static ArgumentException Invalid() => new("The SDDL condition is invalid.", "sddlForm");
+    private static InvalidOperationException Malformed() => new("The conditional ACE payload is not a valid native condition encoding.");
     private static NotSupportedException Unsupported() => new("The conditional ACE encoding cannot be exported losslessly by this codec.");
 }

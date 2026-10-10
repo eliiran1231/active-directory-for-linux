@@ -169,8 +169,6 @@ internal static class SddlCodec
         if ((system && type is 9 or 10 or 11) || (!system && type is 13 or 18)) throw NativeInvalid(1804);
         var flags = ParseFlags(fields[1]);
         if (type is 9 or 10 or 11 or 13 or 18 && fields.Length != 7) throw Invalid();
-        if (type is 2 or 3 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0) throw Invalid();
-        if (type is 7 or 8 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0) throw NativeInvalid(1804);
         if (type is 0 or 1 or 5 or 6 or 9 or 10 or 11 or 18 && (flags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0) throw NativeInvalid(1004);
         var mask = ParseRights(fields[2], type);
         var objectFlags = ObjectAceFlags.None;
@@ -362,7 +360,14 @@ internal static class SddlCodec
             // This predicate excludes callbacks, opaque tails and unverified flags;
             // zero masks or IO alone never authorize discarding unknown payloads.
             if (C.MicrosoftObservableProjector.IsInactiveInheritOnly(retained, !system)) continue;
-            AppendAce(null, GenericAce.CreateFromBinaryForm(retained.RawBytes.ToArray(), 0), system);
+            var ace = GenericAce.CreateFromBinaryForm(retained.RawBytes.ToArray(), 0);
+            // Native raw text retains unaudited ACEs, but facade normalization drops
+            // active ones. Keep this stricter retained-state boundary independent of
+            // raw formatting; the reviewed inactive ordinary subset above is separate.
+            if ((byte)ace.AceType is 2 or 3 or 7 or 8 or 13
+                && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0)
+                throw new InvalidOperationException("Unaudited retained ACEs cannot be discarded by SDDL projection.");
+            AppendAce(null, ace, system);
         }
     }
 
@@ -418,15 +423,15 @@ internal static class SddlCodec
         if (type == 18) throw new NotSupportedException("Native SDDL export omits resource attributes; portable export refuses that information loss.");
         var token = AceTypes.FirstOrDefault(pair => pair.Value == type).Key;
         if (token is null) throw new InvalidOperationException($"ACE type {type} has no valid SDDL representation.");
-        if (type is 2 or 3 or 7 or 8 or 13 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0)
-            throw new InvalidOperationException("An audit/alarm ACE requires audit flags for SDDL output.");
+        if (!system && type is 2 or 3 or 7 or 8 or 13)
+            throw new InvalidOperationException("Audit and alarm ACEs cannot be formatted in a DACL.");
+        if (type is 3 or 8 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) == 0)
+            throw new NotSupportedException("Native unaudited alarm text cannot reconstruct the ACE.");
         if (type is 17 or 19 or 20)
         {
             if (!system) throw new InvalidOperationException("Label and policy ACEs cannot be formatted in a DACL.");
             throw new NotSupportedException("Native SDDL output omits label/policy ACEs; portable export refuses that information loss.");
         }
-        if (type is 0 or 1 or 5 or 6 or 9 or 10 or 11 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0)
-            throw new NotSupportedException("Native SDDL output omits non-audit ACE audit flags; portable export refuses that information loss.");
         string? condition = null;
         int mask; SecurityIdentifier sid; var objectType = ""; var inheritedType = "";
         if (ace is QualifiedAce qualified)
@@ -459,6 +464,8 @@ internal static class SddlCodec
             if (payload.Length != 4 + sid.BinaryLength) throw new NotSupportedException("Unexplained label ACE trailing bytes cannot be omitted from SDDL.");
         }
         else throw new NotSupportedException("This ACE layout is not supported by SDDL.");
+        if (type is 0 or 1 or 5 or 6 or 9 or 10 or 11 && (ace.AceFlags & (AceFlags.SuccessfulAccess | AceFlags.FailedAccess)) != 0)
+            throw new NotSupportedException("Native SDDL output omits non-audit ACE audit flags; portable export refuses that information loss.");
         // A null output validates retained raw data without building a second
         // ACE/ACL output buffer. All layout, flags and condition checks above are shared.
         if (result is null) return;

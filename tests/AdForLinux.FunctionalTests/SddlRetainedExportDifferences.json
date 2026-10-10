@@ -1125,101 +1125,20 @@
     ]
   },
   {
-    "Case": 162,
-    "Label": "retained-export/condition-unknown/export-access",
-    "NativeObservationSha256": "dacd7d37c769b111a1dd4286691e2a3207336311f038eca101b4cc61cabc2dc3",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "Result",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "CommonResult",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      }
-    ]
-  },
-  {
-    "Case": 164,
-    "Label": "retained-export/condition-unknown/export-all",
-    "NativeObservationSha256": "39ccf041a7380fe302ed4b14d44a53b133886412b49908f8811658718e5df439",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "Result",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "CommonResult",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      }
-    ]
-  },
-  {
-    "Case": 167,
-    "Label": "retained-export/condition-unknown/owner-then-export",
-    "NativeObservationSha256": "2c6ebd3dea532102bc1592c2cce68e04495fd135bcc5157b834281715f738251",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "Result",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
-        "Facet": "CommonResult",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      }
-    ]
-  },
-  {
     "Case": 170,
     "Label": "retained-export/condition-zero-mask/export-access",
     "NativeObservationSha256": "79d89b7d8836b42e07619ce3f2d0bc6813e1edf5badfa8a929209d17d62185e0",
     "Facets": [
       {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       },
       {
         "Facet": "CommonResult",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       }
     ]
@@ -1230,21 +1149,15 @@
     "NativeObservationSha256": "49fcc8f7cfa5fa0179a11965d3fdd72caabd458ef4f66154734c371b0ade121e",
     "Facets": [
       {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       },
       {
         "Facet": "CommonResult",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       }
     ]
@@ -1255,21 +1168,15 @@
     "NativeObservationSha256": "2f8088de43e3bf01ed07fb85c30be96beef247f7530eb067c58c10c527bc1681",
     "Facets": [
       {
-        "Facet": "RawExport",
-        "Classification": "exception-contract-difference",
-        "PortableExceptionType": "System.NotSupportedException",
-        "NativeExceptionType": "System.InvalidOperationException"
-      },
-      {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       },
       {
         "Facet": "CommonResult",
         "Classification": "retained-content-loss-refusal",
-        "PortableExceptionType": "System.NotSupportedException",
+        "PortableExceptionType": "System.InvalidOperationException",
         "NativeExceptionType": null
       }
     ]
@@ -1407,55 +1314,10 @@
     ]
   },
   {
-    "Case": 203,
-    "Label": "retained-export/inactive-audit/export-audit",
-    "NativeObservationSha256": "68c33ecf21f5eebe18fc6d47e6ca22cc459e99af0d4594932be970ac0f7cfba2",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      }
-    ]
-  },
-  {
-    "Case": 204,
-    "Label": "retained-export/inactive-audit/export-all",
-    "NativeObservationSha256": "274e51bdf6557c5155b4b2f9f144b35c3ac778d97f874c5088997229a5e4305b",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      }
-    ]
-  },
-  {
-    "Case": 207,
-    "Label": "retained-export/inactive-audit/owner-then-export",
-    "NativeObservationSha256": "b74e03d94fd95f6d8d5f27db7d36a0938bc4b6f9ead9dccc27e8c88668d99dba",
-    "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      }
-    ]
-  },
-  {
     "Case": 243,
     "Label": "retained-export/unaudited-active/export-audit",
     "NativeObservationSha256": "107509499c469015658ff8c3ba3afb1630e4832b899a2d3b85251f68d5afdb7d",
     "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      },
       {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
@@ -1476,12 +1338,6 @@
     "NativeObservationSha256": "7b29193906f33a1b5b9a70d47cdc34f65cd1fcc1e6960d18d2758069d0ab4f26",
     "Facets": [
       {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      },
-      {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
         "PortableExceptionType": "System.InvalidOperationException",
@@ -1500,12 +1356,6 @@
     "Label": "retained-export/unaudited-active/owner-then-export",
     "NativeObservationSha256": "8b0cf9d03cebaca272c349c0780a5769d8cda9aeccc37b5a8a7c1c44014bda11",
     "Facets": [
-      {
-        "Facet": "RawExport",
-        "Classification": "existing-raw-validation-difference",
-        "PortableExceptionType": "System.InvalidOperationException",
-        "NativeExceptionType": null
-      },
       {
         "Facet": "Result",
         "Classification": "retained-content-loss-refusal",
