@@ -18,7 +18,6 @@ for ($start = 0; $start -lt 220; $start += 16) {
         throw "Boundary batch $start timed out; partial evidence retained."
     }
     $process.WaitForExit()
-    Get-Content "$stem.stdout.log"
     Get-Content "$stem.stderr.log"
     if ($process.ExitCode -ne 0) { throw "Boundary batch $start exited $($process.ExitCode)." }
     $rows = @(Get-Content "$stem.jsonl" | ForEach-Object { ConvertFrom-Json $_ })
@@ -31,5 +30,16 @@ for ($start = 0; $start -lt 220; $start += 16) {
             throw "Unexpected boundary case sequence in batch $start."
         }
     }
+    # The full UTF-16 inputs/hex outcomes remain in artifacts. Emit the exact JSONL
+    # bytes compressed as well: expanded size cases exceed connector log transport
+    # limits. Hash the uncompressed bytes so recovery verifies the original file.
+    $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path "$stem.jsonl"))
+    $memory = [System.IO.MemoryStream]::new()
+    $gzip = [System.IO.Compression.GZipStream]::new($memory, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+    $gzip.Write($bytes, 0, $bytes.Length)
+    $gzip.Dispose()
+    $record = @{ Start = $start; Framework = $Framework; Sha256 = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)); GzipBase64 = [Convert]::ToBase64String($memory.ToArray()) }
+    $memory.Dispose()
+    Write-Output ('SDDL_BOUNDARY_GZIP=' + ($record | ConvertTo-Json -Compress))
 }
 Write-Output "Verified 220 complete native boundary observations on $Framework; no portable parity claim."
