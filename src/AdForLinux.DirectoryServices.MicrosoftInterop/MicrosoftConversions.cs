@@ -7,31 +7,21 @@ using MP = System.Security.Principal;
 
 namespace AdForLinux.DirectoryServices.MicrosoftInterop;
 
-/// <summary>Strict independent copies and optional checked edit-back at Microsoft API boundaries.</summary>
+/// <summary>Strict one-way exports to independent Microsoft objects.</summary>
 [SupportedOSPlatform("windows")]
 public static class MicrosoftConversions
 {
     public static MP.SecurityIdentifier ToMicrosoftObject(this P.SecurityIdentifier source)
         => (MP.SecurityIdentifier)ToMicrosoftObject((P.IdentityReference)source);
-    public static P.SecurityIdentifier ToPortableObject(this MP.SecurityIdentifier source)
-        => (P.SecurityIdentifier)ToPortableObject((MP.IdentityReference)source);
     public static MP.NTAccount ToMicrosoftObject(this P.NTAccount source)
         => (MP.NTAccount)ToMicrosoftObject((P.IdentityReference)source);
-    public static P.NTAccount ToPortableObject(this MP.NTAccount source)
-        => (P.NTAccount)ToPortableObject((MP.IdentityReference)source);
     public static MP.IdentityReference ToMicrosoftObject(this P.IdentityReference source)
         => A.InteropValueCodec.ToMicrosoftIdentity(source);
-    public static P.IdentityReference ToPortableObject(this MP.IdentityReference source)
-        => A.InteropValueCodec.FromMicrosoftIdentity(source);
 
     public static M.ActiveDirectoryAccessRule ToMicrosoftObject(this ActiveDirectoryAccessRule source)
         => (M.ActiveDirectoryAccessRule)ExportRule(source);
-    public static ActiveDirectoryAccessRule ToPortableObject(this M.ActiveDirectoryAccessRule source)
-        => (ActiveDirectoryAccessRule)ImportRule(source);
     public static M.ActiveDirectoryAuditRule ToMicrosoftObject(this ActiveDirectoryAuditRule source)
         => (M.ActiveDirectoryAuditRule)ExportRule(source);
-    public static ActiveDirectoryAuditRule ToPortableObject(this M.ActiveDirectoryAuditRule source)
-        => (ActiveDirectoryAuditRule)ImportRule(source);
 
     public static IReadOnlyList<MP.IdentityReference> ToMicrosoftObjects(this P.IdentityReferenceCollection source)
     {
@@ -39,22 +29,11 @@ public static class MicrosoftConversions
         var values = source.Select(A.InteropValueCodec.CaptureIdentity).ToArray();
         return Array.AsReadOnly(values.Select(value => value.ToPortable().ToMicrosoftObject()).ToArray());
     }
-    public static IReadOnlyList<P.IdentityReference> ToPortableObjects(this MP.IdentityReferenceCollection source)
-    {
-        ArgumentNullException.ThrowIfNull(source); RequireWindows();
-        return Array.AsReadOnly(source.Select(A.InteropValueCodec.FromMicrosoftIdentity).ToArray());
-    }
     public static IReadOnlyList<MA.AuthorizationRule> ToMicrosoftObjects(this A.AuthorizationRuleCollection source)
     {
         ArgumentNullException.ThrowIfNull(source); RequireWindows();
         var values = source.Cast<A.AuthorizationRule>().Select(A.InteropAdRuleCodec.CaptureCurrentRule).ToArray();
         return Array.AsReadOnly(values.Select(value => A.InteropAdRuleCodec.Export(value, ConstructRule, InspectRule)).ToArray());
-    }
-    public static IReadOnlyList<A.AuthorizationRule> ToPortableObjects(this MA.AuthorizationRuleCollection source)
-    {
-        ArgumentNullException.ThrowIfNull(source); RequireWindows();
-        var values = source.Cast<MA.AuthorizationRule>().Select(rule => A.InteropAdRuleCodec.Import(rule, InspectRule)).ToArray();
-        return Array.AsReadOnly(values.Select(A.InteropAdRuleCodec.CreateCurrentRule).ToArray());
     }
 
     /// <summary>Copies the observable descriptor without linking subsequent edits or directory authority.</summary>
@@ -64,29 +43,10 @@ public static class MicrosoftConversions
         return source.ExportDetachedInterop(ConstructSecurity, value => value.GetSecurityDescriptorBinaryForm());
     }
 
-    /// <summary>Imports detached data with explicit coverage; does not transfer pending intent or a connection.</summary>
-    public static ActiveDirectorySecurity ToPortableObject(this M.ActiveDirectorySecurity source, SecurityMasks retrievedSections)
-    {
-        ArgumentNullException.ThrowIfNull(source); RequireWindows();
-        const SecurityMasks all = SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
-        if ((retrievedSections & ~all) != 0) throw new ArgumentOutOfRangeException(nameof(retrievedSections));
-        var bytes = source.GetSecurityDescriptorBinaryForm();
-        var result = new ActiveDirectorySecurity(bytes, retrievedSections);
-        A.ObjectSecurity.ValidateInteropImport(bytes, result.GetSecurityDescriptorBinaryForm());
-        return result;
-    }
-
     public static SecurityDescriptorSnapshot CaptureSnapshot(this ActiveDirectorySecurity source)
     {
         ArgumentNullException.ThrowIfNull(source);
         return new(source.CaptureInteropSnapshot());
-    }
-
-    public static MicrosoftSecurityEdit ExportForEdit(this ActiveDirectorySecurity source)
-    {
-        ArgumentNullException.ThrowIfNull(source); RequireWindows();
-        var export = source.ExportInterop(ConstructSecurity, value => value.GetSecurityDescriptorBinaryForm());
-        return new(export.Value, export.Provenance);
     }
 
     internal static void RequireWindows()
@@ -108,11 +68,6 @@ public static class MicrosoftConversions
         ArgumentNullException.ThrowIfNull(source); RequireWindows();
         return A.InteropAdRuleCodec.Export(A.InteropAdRuleCodec.CaptureCurrentRule(source), ConstructRule, InspectRule);
     }
-    private static A.AuthorizationRule ImportRule(MA.AuthorizationRule source)
-    {
-        ArgumentNullException.ThrowIfNull(source); RequireWindows();
-        return A.InteropAdRuleCodec.CreateCurrentRule(A.InteropAdRuleCodec.Import(source, InspectRule));
-    }
 
     private static A.InteropAdRuleValue InspectRule(MA.AuthorizationRule source)
     {
@@ -130,7 +85,7 @@ public static class MicrosoftConversions
             : throw new NotSupportedException("Unknown Microsoft AD rule subclasses cannot be converted implicitly.");
         var access = source as M.ActiveDirectoryAccessRule;
         var audit = source as M.ActiveDirectoryAuditRule;
-        var fields = new A.InteropRuleValue(A.InteropValueCodec.CaptureIdentity(source.IdentityReference.ToPortableObject()),
+        var fields = new A.InteropRuleValue(A.InteropValueCodec.CaptureMicrosoftIdentity(source.IdentityReference),
             (int)(access?.ActiveDirectoryRights ?? audit!.ActiveDirectoryRights), source.IsInherited,
             source.InheritanceFlags, source.PropagationFlags, audit is not null, true,
             access?.AccessControlType ?? MA.AccessControlType.Allow, audit?.AuditFlags ?? MA.AuditFlags.None,

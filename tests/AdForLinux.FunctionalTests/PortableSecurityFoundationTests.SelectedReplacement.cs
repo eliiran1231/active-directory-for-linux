@@ -49,7 +49,6 @@ public partial class PortableSecurityFoundationTests
                 var current = wrapper.CaptureInteropSnapshot(); var raw = descriptor.MutationState.Descriptor.GetBinaryForm();
                 Assert.Same(previous.Descriptor,descriptor);
                 Assert.Equal(previous.Original,descriptor.MutationState.OriginalDescriptor.GetBinaryForm());
-                Assert.Equal(previous.Snapshot.Source,current.Source); Assert.Equal(previous.Snapshot.Attachment,current.Attachment);
                 Assert.Equal(previous.Snapshot.Retrieved,current.Retrieved); Assert.Equal(previous.ReadVersion,wrapper.ReadVersion);
                 Assert.False(wrapper.HasRawReadContext);
                 if (!success)

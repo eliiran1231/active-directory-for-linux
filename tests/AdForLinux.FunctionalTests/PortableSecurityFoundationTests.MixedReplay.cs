@@ -84,8 +84,6 @@ public partial class PortableSecurityFoundationTests
             }))!;
         var expected = JsonNode.Parse(json)!;
         Assert.NotNull(before); Assert.NotNull(after);
-        Assert.Equal(before.Source, after.Source);
-        Assert.Equal(before.Attachment, after.Attachment);
         Assert.Equal(before.Retrieved, after.Retrieved);
         Assert.Equal((SecurityMasks)15, after.Retrieved);
         Assert.Equal(before.IsContainer, after.IsContainer);

@@ -34,8 +34,6 @@ public partial class PortableSecurityFoundationTests
         Assert.True(after.Generation > before.Generation);
         Assert.Equal(LayoutRelocationCases.Mask(section), after.Pending);
         Assert.Equal(peer.GetSecurityDescriptorBinaryForm(), source.GetSecurityDescriptorBinaryForm());
-        Assert.Equal(before.Source, after.Source);
-        Assert.Equal(before.Attachment, after.Attachment);
         // ACL aliases observe the shared ACL mutation while retaining their own
         // original provenance; identity-only edits do not propagate to this wrapper.
         var permitted = section == "dacl" ? AccessControlSections.Access

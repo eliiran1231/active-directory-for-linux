@@ -24,6 +24,6 @@ public sealed class SecurityDescriptorSnapshot
     {
         MicrosoftConversions.RequireWindows();
         return A.ObjectSecurity.ExportInteropSnapshot(snapshot, MicrosoftConversions.ConstructSecurity,
-            value => value.GetSecurityDescriptorBinaryForm()).Value;
+            value => value.GetSecurityDescriptorBinaryForm());
     }
 }

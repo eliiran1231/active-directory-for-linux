@@ -1,5 +1,10 @@
 # Identical NULL/absent reassignment through entry writes and Microsoft edits
 
+> Contract update (2026-10-11): Microsoft interoperability is now export only.
+> Import/edit-back APIs and their session/diff machinery were removed at the user's
+> request. Related results below are historical; current export behavior and migrated
+> preservation coverage are described in the [supported contract](issue-226-microsoft-companion-proposal.md).
+
 This slice closes a controlled integration loop for the correction independently
 reviewed at `99b3bd7dd1a4b68af1980060d817f68156e87d9d`. It adds six core integration
 cases and six Windows companion cases. No additional production defect has been

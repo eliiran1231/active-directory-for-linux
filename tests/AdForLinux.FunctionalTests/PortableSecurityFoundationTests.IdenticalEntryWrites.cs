@@ -98,7 +98,6 @@ public partial class PortableSecurityFoundationTests
         Assert.Same(before.SaclProvenance,descriptor.SystemAcl?.RetainedMutation);
         Assert.Equal(before.Snapshot.Raw,now.Raw);Assert.Equal(before.Snapshot.Observable,now.Observable);
         Assert.Equal(before.Snapshot.Original,now.Original);Assert.Equal(before.Snapshot.Generation,now.Generation);
-        Assert.Equal(before.Snapshot.Source,now.Source);Assert.Equal(before.Snapshot.Attachment,now.Attachment);
         Assert.Equal(before.Snapshot.Retrieved,now.Retrieved);Assert.Equal(before.ReadVersion,source.ReadVersion);
         Assert.Equal(before.Intent,descriptor.MutationState.WriteIntent);Assert.Equal(before.Snapshot.Pending,now.Pending);
         Assert.Equal(before.Assignment,source.AssignmentSections);

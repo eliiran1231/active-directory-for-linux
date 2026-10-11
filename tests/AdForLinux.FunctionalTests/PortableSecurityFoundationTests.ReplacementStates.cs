@@ -33,7 +33,6 @@ public partial class PortableSecurityFoundationTests
         {
             var now = Wrapper.CaptureInteropSnapshot();var d = Wrapper._securityDescriptor;
             Assert.Same(Descriptor,d);Assert.Equal(Snapshot.Original,now.Original);
-            Assert.Equal(Snapshot.Source,now.Source);Assert.Equal(Snapshot.Attachment,now.Attachment);
             Assert.Equal(Snapshot.Retrieved,now.Retrieved);Assert.Equal(ReadVersion,Wrapper.ReadVersion);
             Assert.False(Wrapper.HasRawReadContext);Assert.Null(Wrapper.CaptureIdentityRead().Resolver);
             if (!success)

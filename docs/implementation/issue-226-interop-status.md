@@ -1,5 +1,10 @@
 # Microsoft descriptor snapshot and optional companion boundary
 
+> Contract update (2026-10-11): Microsoft interoperability is now export only.
+> Import/edit-back APIs and their session/diff machinery were removed at the user's
+> request. Related results below are historical; current export behavior and migrated
+> preservation coverage are described in the [supported contract](issue-226-microsoft-companion-proposal.md).
+
 The internal, tested D1/D2/D8 boundary now backs the approved optional public
 `AdForLinux.DirectoryServices.MicrosoftInterop` companion. The main DLL acquires no Microsoft DirectoryServices
 dependency. The later [coherent AD/entry integration](issue-226-entry-persistence-status.md)

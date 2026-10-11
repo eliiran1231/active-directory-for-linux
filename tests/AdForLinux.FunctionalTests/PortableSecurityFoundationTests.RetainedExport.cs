@@ -85,7 +85,6 @@ public partial class PortableSecurityFoundationTests
                 }
             }))!;
         Assert.NotNull(before); Assert.NotNull(after);
-        Assert.Equal(before.Source, after.Source); Assert.Equal(before.Attachment, after.Attachment);
         Assert.Equal((SecurityMasks)15, before.Retrieved); Assert.Equal(before.Retrieved, after.Retrieved);
         var editing = input.Operation is "edit-owner" or "edit-group";
         var selectsFixture = (input.Sections & (input.Fixture.Dacl ? AccessControlSections.Access : AccessControlSections.Audit)) != 0;

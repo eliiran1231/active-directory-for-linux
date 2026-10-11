@@ -80,8 +80,8 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(raw, snapshot.Raw);
         var called = false;
         byte[] Construct(byte[] bytes, bool container, bool directory) { called = true; return bytes; }
-        if (mask == 15) source.ExportInterop(Construct, bytes => bytes);
-        else Assert.Throws<NotSupportedException>(() => source.ExportInterop(Construct, bytes => bytes));
+        if (mask == 15) source.ExportDetachedInterop(Construct, bytes => bytes);
+        else Assert.Throws<NotSupportedException>(() => source.ExportDetachedInterop(Construct, bytes => bytes));
         Assert.Equal(mask == 15, called);
         Assert.False(source.HasRawReadContext);
         Assert.Null(source.CaptureIdentityRead().Resolver);

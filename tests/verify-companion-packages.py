@@ -22,12 +22,18 @@ def manifest(name):
         # Strip NuGet's namespace for stable cross-SDK inspection.
         for element in xml.iter():
             element.tag = element.tag.rsplit("}", 1)[-1]
+        if name == companion:
+            guide = archive.read("README.md").decode()
+            assert "**export-only**" in guide
+            assert "There are no Microsoft-to-portable import APIs" in guide
+            assert "ExportForEdit" not in guide and "ApplyTo" not in guide
         return xml.find("metadata"), names
 
 
 core_meta, _ = manifest(core)
 bridge_meta, bridge_files = manifest(companion)
 assert bridge_meta.findtext("id") == companion
+assert "one-way exports" in bridge_meta.findtext("description")
 assert bridge_meta.findtext("version") == core_meta.findtext("version")
 groups = bridge_meta.findall("dependencies/group")
 assert {g.attrib["targetFramework"] for g in groups} == frameworks

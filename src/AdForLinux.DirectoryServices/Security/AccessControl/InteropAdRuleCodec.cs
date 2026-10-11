@@ -23,7 +23,7 @@ internal static class InteropAdRuleCodec
         ArgumentNullException.ThrowIfNull(value); ArgumentNullException.ThrowIfNull(value.Fields);
         if (!Enum.IsDefined(value.Kind)) throw new NotSupportedException("Unknown AD rule subtype.");
         var f = value.Fields;
-        _ = InteropValueCodec.ImportRule(f, fields => fields);
+        InteropValueCodec.ValidateRuleFields(f);
         if (!f.IsObject || f.IsAudit != (value.Kind == InteropAdRuleKind.Audit)
             || D.ActiveDirectoryInheritance.FromFlags(f.Inheritance, f.Propagation) != value.InheritanceType)
             throw new NotSupportedException("AD rule family or inheritance metadata is inconsistent.");
@@ -56,12 +56,6 @@ internal static class InteropAdRuleCodec
         return result;
     }
 
-    internal static InteropAdRuleValue Import<T>(T source, Func<T, InteropAdRuleValue> inspect)
-    {
-        ArgumentNullException.ThrowIfNull(inspect); RequireOutsideGate();
-        var result = inspect(source); Validate(result); return result;
-    }
-
     internal static InteropAdRuleValue CaptureCurrentRule(B.AuthorizationRule source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -84,31 +78,6 @@ internal static class InteropAdRuleCodec
             access?.ObjectFlags ?? audit!.ObjectFlags);
         var result = new InteropAdRuleValue(kind, fields, access?.InheritanceType ?? audit!.InheritanceType);
         Validate(result); return result;
-    }
-
-    internal static B.AuthorizationRule CreateCurrentRule(InteropAdRuleValue value)
-    {
-        Validate(value);
-        var f = value.Fields; var id = f.Identity.ToPortable();
-        var inheritance = value.InheritanceType; var type = f.AccessType;
-        var property = f.Mask == 16 ? D.PropertyAccess.Read : D.PropertyAccess.Write;
-        B.AuthorizationRule result = value.Kind switch
-        {
-            InteropAdRuleKind.Access => new D.ActiveDirectoryAccessRule(id, f.Mask, type, f.ObjectType,
-                f.IsInherited, f.Inheritance, f.Propagation, f.InheritedObjectType),
-            InteropAdRuleKind.Audit => new D.ActiveDirectoryAuditRule(id, f.Mask, f.Audit, f.ObjectType,
-                f.IsInherited, f.Inheritance, f.Propagation, f.InheritedObjectType),
-            InteropAdRuleKind.ListChildren => new D.ListChildrenAccessRule(id, type, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.CreateChild => new D.CreateChildAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.DeleteChild => new D.DeleteChildAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.Property => new D.PropertyAccessRule(id, type, property, f.ObjectType, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.PropertySet => new D.PropertySetAccessRule(id, type, property, f.ObjectType, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.ExtendedRight => new D.ExtendedRightAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
-            InteropAdRuleKind.DeleteTree => new D.DeleteTreeAccessRule(id, type, inheritance, f.InheritedObjectType),
-            _ => throw new NotSupportedException("Unknown AD rule subtype.")
-        };
-        if (!value.Same(CaptureCurrentRule(result))) throw new NotSupportedException("Current AD construction lost fields.");
-        return result;
     }
 
     private static void RequireOutsideGate()

@@ -1,5 +1,10 @@
 # PrincipalContext identity adapter and approved public helper
 
+> Contract update (2026-10-11): Microsoft interoperability is now export only.
+> Import/edit-back APIs and their session/diff machinery were removed at the user's
+> request. Related results below are historical; current export behavior and migrated
+> preservation coverage are described in the [supported contract](issue-226-microsoft-companion-proposal.md).
+
 Current readiness: [end-to-end inventory](issue-226-remaining-compatibility.md). The portable
 AD/entry cutover and public MicrosoftInterop companion are implemented. Descriptions below
 of them as future work are historical slice boundaries, not current missing dependencies.

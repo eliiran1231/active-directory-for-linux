@@ -42,7 +42,7 @@ public partial class PortableSecurityFoundationTests
 
     [Theory]
     [MemberData(nameof(AdRuleConstructorMatrix))]
-    public void InteropAdRules_AllConstructorsRoundTripExactSubtypeAndFields(int kind, int constructor, int variant)
+    public void InteropAdRules_AllConstructorsExportExactSubtypeAndFields(int kind, int constructor, int variant)
     {
         var ctor = AdConstructors(CurrentAdRuleTypes[kind])[constructor];
         var expected = ExpectedAdRule(kind, ctor, variant);
@@ -50,21 +50,19 @@ public partial class PortableSecurityFoundationTests
         var current = (A.AuthorizationRule)ctor.Invoke(AdArguments(ctor, variant));
         var fromCurrent = A.InteropAdRuleCodec.CaptureCurrentRule(current);
         Assert.True(expected.Same(fromCurrent));
-        var portableBack = A.InteropAdRuleCodec.CreateCurrentRule(fromCurrent);
+        var portableBack = CreatePortableAdRuleFixture(fromCurrent);
         Assert.Equal(current.GetType(), portableBack.GetType());
         Assert.True(fromCurrent.Same(A.InteropAdRuleCodec.CaptureCurrentRule(portableBack)));
         if (!OperatingSystem.IsWindows()) return;
         var nativeCtor = AdConstructors(NativeAdRuleTypes[kind])[constructor];
         var native = (AuthorizationRule)nativeCtor.Invoke(AdArguments(nativeCtor, variant));
-        var fromNative = A.InteropAdRuleCodec.Import(native, CaptureNativeAdRule);
+        var fromNative = CaptureNativeAdRule(native);
         Assert.True(expected.Same(fromCurrent));
         Assert.True(expected.Same(fromNative));
         var exported = A.InteropAdRuleCodec.Export(fromCurrent, CreateNativeAdRule, CaptureNativeAdRule);
         Assert.Equal(native.GetType(), exported.GetType());
         Assert.NotSame(native, exported);
-        var back = A.InteropAdRuleCodec.CreateCurrentRule(A.InteropAdRuleCodec.Import(exported, CaptureNativeAdRule));
-        Assert.Equal(current.GetType(), back.GetType());
-        Assert.True(fromCurrent.Same(A.InteropAdRuleCodec.CaptureCurrentRule(back)));
+        Assert.True(fromCurrent.Same(CaptureNativeAdRule(exported)));
     }
 
     private static int AdMask(int kind, int variant) => kind switch
@@ -151,7 +149,7 @@ public partial class PortableSecurityFoundationTests
         var index = Array.IndexOf(NativeAdRuleTypes, source.GetType());
         if (index < 0) throw new NotSupportedException("Unknown Microsoft AD rule subclass.");
         var access = source as N.ActiveDirectoryAccessRule; var audit = source as N.ActiveDirectoryAuditRule;
-        var fields = new A.InteropRuleValue(A.InteropValueCodec.CaptureIdentity(A.InteropValueCodec.FromMicrosoftIdentity(source.IdentityReference)),
+        var fields = new A.InteropRuleValue(A.InteropValueCodec.CaptureMicrosoftIdentity(source.IdentityReference),
             (int)(access?.ActiveDirectoryRights ?? audit!.ActiveDirectoryRights), source.IsInherited, source.InheritanceFlags, source.PropagationFlags,
             audit is not null, true, access?.AccessControlType ?? AccessControlType.Allow, audit?.AuditFlags ?? AuditFlags.None,
             access?.ObjectType ?? audit!.ObjectType, access?.InheritedObjectType ?? audit!.InheritedObjectType,
@@ -189,12 +187,11 @@ public partial class PortableSecurityFoundationTests
         var value = ExpectedAdRule(kind, AdConstructors(CurrentAdRuleTypes[kind]).Last(), 4);
         value = value with { Fields = value.Fields with { IsInherited = true } };
         A.InteropAdRuleCodec.Validate(value);
-        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(A.InteropAdRuleCodec.CreateCurrentRule(value))));
+        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(CreatePortableAdRuleFixture(value))));
         if (!OperatingSystem.IsWindows()) return;
         var native = A.InteropAdRuleCodec.Export(value, CreateNativeAdRule, CaptureNativeAdRule);
         Assert.True(native.IsInherited);
-        var current = A.InteropAdRuleCodec.CreateCurrentRule(CaptureNativeAdRule(native));
-        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(current)));
+        Assert.True(value.Same(CaptureNativeAdRule(native)));
     }
 
     [Theory]
@@ -219,7 +216,7 @@ public partial class PortableSecurityFoundationTests
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Validate(value with { Kind = (A.InteropAdRuleKind)99 }));
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.CaptureCurrentRule(new UnknownCurrentAdRule(new P.SecurityIdentifier(U1, 0))));
         if (!OperatingSystem.IsWindows()) return;
-        Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Import(new UnknownNativeAdRule(new M.SecurityIdentifier(U1, 0)), CaptureNativeAdRule));
+        Assert.Throws<NotSupportedException>(() => CaptureNativeAdRule(new UnknownNativeAdRule(new M.SecurityIdentifier(U1, 0))));
     }
     private sealed class UnknownCurrentAdRule(P.IdentityReference id) : D.ActiveDirectoryAccessRule(id, D.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
     private sealed class UnknownNativeAdRule(M.IdentityReference id) : N.ActiveDirectoryAccessRule(id, N.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
@@ -235,7 +232,7 @@ public partial class PortableSecurityFoundationTests
 
     [Theory]
     [MemberData(nameof(AdRuleFactoryMatrix))]
-    public void InteropAdRules_FactoryFlagCombinationsRoundTrip(bool audit, int inheritance, int propagation, bool inherited)
+    public void InteropAdRules_FactoryFlagCombinationsExportExactly(bool audit, int inheritance, int propagation, bool inherited)
     {
         var inf = (InheritanceFlags)inheritance;
         var prop = inheritance == 0 ? PropagationFlags.None : (PropagationFlags)propagation;
@@ -246,11 +243,10 @@ public partial class PortableSecurityFoundationTests
         var value = new A.InteropAdRuleValue(audit ? A.InteropAdRuleKind.Audit : A.InteropAdRuleKind.Access,
             fields, D.ActiveDirectoryInheritance.FromFlags(inf, prop));
         A.InteropAdRuleCodec.Validate(value);
-        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(A.InteropAdRuleCodec.CreateCurrentRule(value))));
+        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(CreatePortableAdRuleFixture(value))));
         if (!OperatingSystem.IsWindows()) return;
         var native = A.InteropAdRuleCodec.Export(value, CreateNativeAdRule, CaptureNativeAdRule);
-        var current = A.InteropAdRuleCodec.CreateCurrentRule(CaptureNativeAdRule(native));
-        Assert.True(value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(current)));
+        Assert.True(value.Same(CaptureNativeAdRule(native)));
     }
 
     [Fact]
@@ -259,21 +255,21 @@ public partial class PortableSecurityFoundationTests
         using var fixture = new IdentityFixture();
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
         fixture.Resolver.Bind(wrapper);
-        var exported = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
+        var exported = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
         var state = wrapper.Descriptor.MutationState;
         var value = ExpectedAdRule(3, AdConstructors(CurrentAdRuleTypes[3]).Last(), 4);
         if (OperatingSystem.IsWindows())
         {
             var native = A.InteropAdRuleCodec.Export(value, CreateNativeAdRule, CaptureNativeAdRule);
-            Assert.True(value.Same(A.InteropAdRuleCodec.Import(native, CaptureNativeAdRule)));
+            Assert.True(value.Same(CaptureNativeAdRule(native)));
         }
         else A.InteropAdRuleCodec.Export(value, v => v, v => v);
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Export(value,
             v => v with { Fields = v.Fields with { Mask = 2 } }, v => v));
         Assert.Same(state, wrapper.Descriptor.MutationState);
-        Assert.Equal(D.SecurityMasks.None, wrapper.ReconcileInterop(exported.Provenance, exported.Value));
+        Assert.Equal(D.SecurityMasks.None, wrapper.PendingWriteSections);
         wrapper.SetOwner(new P.SecurityIdentifier(U2, 0));
-        Assert.Throws<InvalidOperationException>(() => wrapper.ReconcileInterop(exported.Provenance, exported.Value));
+        Assert.Equal(D.SecurityMasks.Owner, wrapper.PendingWriteSections);
         Assert.Equal(0, fixture.Opened);
     }
 
@@ -293,4 +289,28 @@ public partial class PortableSecurityFoundationTests
         Assert.Throws<NotSupportedException>(() => A.InteropAdRuleCodec.Export(value, v => { called = true; return v; }, v => v));
         Assert.False(called);
     }
+    private static A.AuthorizationRule CreatePortableAdRuleFixture(A.InteropAdRuleValue value)
+    {
+        var f = value.Fields; var id = f.Identity.ToPortable();
+        var inheritance = value.InheritanceType; var type = f.AccessType;
+        var property = f.Mask == 16 ? D.PropertyAccess.Read : D.PropertyAccess.Write;
+        A.AuthorizationRule result = value.Kind switch
+        {
+            A.InteropAdRuleKind.Access => new D.ActiveDirectoryAccessRule(id, f.Mask, type, f.ObjectType,
+                f.IsInherited, f.Inheritance, f.Propagation, f.InheritedObjectType),
+            A.InteropAdRuleKind.Audit => new D.ActiveDirectoryAuditRule(id, f.Mask, f.Audit, f.ObjectType,
+                f.IsInherited, f.Inheritance, f.Propagation, f.InheritedObjectType),
+            A.InteropAdRuleKind.ListChildren => new D.ListChildrenAccessRule(id, type, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.CreateChild => new D.CreateChildAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.DeleteChild => new D.DeleteChildAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.Property => new D.PropertyAccessRule(id, type, property, f.ObjectType, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.PropertySet => new D.PropertySetAccessRule(id, type, property, f.ObjectType, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.ExtendedRight => new D.ExtendedRightAccessRule(id, type, f.ObjectType, inheritance, f.InheritedObjectType),
+            A.InteropAdRuleKind.DeleteTree => new D.DeleteTreeAccessRule(id, type, inheritance, f.InheritedObjectType),
+            _ => throw new NotSupportedException("Unknown AD rule subtype.")
+        };
+        if (!value.Same(A.InteropAdRuleCodec.CaptureCurrentRule(result))) throw new NotSupportedException("Current AD construction lost fields.");
+        return result;
+    }
+
 }

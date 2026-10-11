@@ -49,30 +49,28 @@ internal static class InteropValueCodec
         var snapshot = CaptureIdentity(source);
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Microsoft identity objects require Windows.");
         M.IdentityReference result = snapshot.Sid is { } sid ? new M.SecurityIdentifier(sid, 0) : new M.NTAccount(snapshot.Name!);
-        if (!snapshot.Same(CaptureIdentity(FromMicrosoftIdentity(result))))
+        if (!snapshot.Same(CaptureMicrosoftIdentity(result)))
             throw new NotSupportedException("Microsoft identity conversion changed the value.");
         return result;
     }
 
     [SupportedOSPlatform("windows")]
-    internal static P.IdentityReference FromMicrosoftIdentity(M.IdentityReference source)
+    internal static InteropIdentityValue CaptureMicrosoftIdentity(M.IdentityReference source)
     {
         ArgumentNullException.ThrowIfNull(source);
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Microsoft identity objects require Windows.");
         return source switch
         {
-            M.SecurityIdentifier sid => new P.SecurityIdentifier(SidBytes(sid), 0),
-            M.NTAccount name => new P.NTAccount(name.Value),
+            M.SecurityIdentifier sid => new(SidBytes(sid)),
+            M.NTAccount name => new(name.Value),
             _ => throw new NotSupportedException("Unknown Microsoft identity subtypes are unsupported.")
         };
     }
 
-    // Concrete AD types are not portable yet. Unknown consumer subclasses require an
-    // explicit field-only opt-in; their behavior/state is never claimed to be cloned.
-    internal static InteropRuleValue CaptureRule(AuthorizationRule source, bool allowFieldOnlySubclass = false)
+    private static InteropRuleValue CaptureRule(AuthorizationRule source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (!allowFieldOnlySubclass && source is not ImportedAccess and not ImportedAudit and not ImportedObjectAccess and not ImportedObjectAudit)
+        if (source is not ValidationAccess and not ValidationAudit and not ValidationObjectAccess and not ValidationObjectAudit)
             throw new NotSupportedException("This rule subtype needs an explicit field-only conversion policy.");
         var identity = CaptureIdentity(source.IdentityReference);
         var audit = source is AuditRule;
@@ -86,74 +84,31 @@ internal static class InteropValueCodec
             source is AuditRule auditRule ? auditRule.AuditFlags : AuditFlags.None, objectType, inheritedType, objectFlags);
     }
 
-    internal static T ExportRule<T>(AuthorizationRule source, Func<InteropRuleValue, T> construct,
-        Func<T, InteropRuleValue> inspect, bool allowFieldOnlySubclass = false)
-        => ExportValue(CaptureRule(source, allowFieldOnlySubclass), construct, inspect);
-
-    internal static AuthorizationRule ImportRule<T>(T source, Func<T, InteropRuleValue> inspect)
-    {
-        ArgumentNullException.ThrowIfNull(inspect);
-        RequireOutsideGate();
-        return Materialize(inspect(source));
-    }
-
-    internal static T[] ExportRules<T>(AuthorizationRuleCollection source, Func<InteropRuleValue, T> construct,
-        Func<T, InteropRuleValue> inspect, bool allowFieldOnlySubclass = false)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        // Validate all inputs before invoking any target factory. Preserve order and
-        // multiplicity, return only a complete independently allocated collection.
-        var values = Enumerable.Range(0, source.Count).Select(i => CaptureRule(source[i]!, allowFieldOnlySubclass)).ToArray();
-        return values.Select(value => ExportValue(value, construct, inspect)).ToArray();
-    }
-
-    internal static AuthorizationRuleCollection ImportRules<T>(IEnumerable<T> source, Func<T, InteropRuleValue> inspect)
-    {
-        ArgumentNullException.ThrowIfNull(source); ArgumentNullException.ThrowIfNull(inspect);
-        RequireOutsideGate();
-        var rules = source.Select(value => Materialize(inspect(value))).ToArray();
-        var result = new AuthorizationRuleCollection();
-        foreach (var rule in rules) result.AddRule(rule);
-        return result;
-    }
-
-    private static T ExportValue<T>(InteropRuleValue value, Func<InteropRuleValue, T> construct, Func<T, InteropRuleValue> inspect)
-    {
-        ArgumentNullException.ThrowIfNull(construct); ArgumentNullException.ThrowIfNull(inspect);
-        RequireOutsideGate();
-        _ = Materialize(value); // exact flags/GUID presence must survive the portable constructor too
-        var target = construct(value);
-        if (!value.Same(inspect(target))) throw new NotSupportedException("The target rule lost or changed a field.");
-        return target;
-    }
+    internal static void ValidateRuleFields(InteropRuleValue value) => _ = Materialize(value);
 
     private static AuthorizationRule Materialize(InteropRuleValue value)
     {
         ArgumentNullException.ThrowIfNull(value); ArgumentNullException.ThrowIfNull(value.Identity);
         var identity = value.Identity.ToPortable();
         AuthorizationRule result = value.IsObject
-            ? value.IsAudit ? new ImportedObjectAudit(identity, value) : new ImportedObjectAccess(identity, value)
-            : value.IsAudit ? new ImportedAudit(identity, value) : new ImportedAccess(identity, value);
+            ? value.IsAudit ? new ValidationObjectAudit(identity, value) : new ValidationObjectAccess(identity, value)
+            : value.IsAudit ? new ValidationAudit(identity, value) : new ValidationAccess(identity, value);
         if (!value.Same(CaptureRule(result)))
             throw new NotSupportedException("The rule fields cannot be represented exactly, including GUID presence and normalized flags.");
         return result;
     }
 
-    private static void RequireOutsideGate()
-    {
-        if (Monitor.IsEntered(FacadeMutation.Gate)) throw new InvalidOperationException("External converters cannot execute inside the portable mutation gate.");
-    }
     private static byte[] SidBytes(P.SecurityIdentifier sid)
     { var bytes = new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes, 0); return bytes; }
     private static byte[] SidBytes(M.SecurityIdentifier sid)
     { var bytes = new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes, 0); return bytes; }
 
-    private sealed class ImportedAccess(P.IdentityReference id, InteropRuleValue v)
+    private sealed class ValidationAccess(P.IdentityReference id, InteropRuleValue v)
         : AccessRule(id, v.Mask, v.IsInherited, v.Inheritance, v.Propagation, v.AccessType);
-    private sealed class ImportedAudit(P.IdentityReference id, InteropRuleValue v)
+    private sealed class ValidationAudit(P.IdentityReference id, InteropRuleValue v)
         : AuditRule(id, v.Mask, v.IsInherited, v.Inheritance, v.Propagation, v.Audit);
-    private sealed class ImportedObjectAccess(P.IdentityReference id, InteropRuleValue v)
+    private sealed class ValidationObjectAccess(P.IdentityReference id, InteropRuleValue v)
         : ObjectAccessRule(id, v.Mask, v.IsInherited, v.Inheritance, v.Propagation, v.ObjectType, v.InheritedObjectType, v.AccessType);
-    private sealed class ImportedObjectAudit(P.IdentityReference id, InteropRuleValue v)
+    private sealed class ValidationObjectAudit(P.IdentityReference id, InteropRuleValue v)
         : ObjectAuditRule(id, v.Mask, v.IsInherited, v.Inheritance, v.Propagation, v.ObjectType, v.InheritedObjectType, v.Audit);
 }

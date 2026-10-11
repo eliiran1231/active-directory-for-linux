@@ -24,7 +24,7 @@ public class RuleConversionTests
 
     [WindowsTheory]
     [MemberData(nameof(KnownRules))]
-    public void Every_known_AD_rule_subtype_roundtrips_exact_fields(int kind, int inheritanceValue, int variant)
+    public void Every_known_AD_rule_subtype_exports_exact_fields(int kind, int inheritanceValue, int variant)
     {
         P.IdentityReference identity = (variant & 1) == 0 ? new P.SecurityIdentifier("S-1-5-21-1-2-3-1001") : new P.NTAccount("UNRESOLVED\\literal-user");
         var inheritance = (D.ActiveDirectorySecurityInheritance)inheritanceValue;
@@ -45,26 +45,22 @@ public class RuleConversionTests
             _ => new D.DeleteTreeAccessRule(identity, type, inheritance, inheritedGuid)
         };
         AuthorizationRule native = source is D.ActiveDirectoryAuditRule audit ? audit.ToMicrosoftObject() : ((D.ActiveDirectoryAccessRule)source).ToMicrosoftObject();
-        A.AuthorizationRule back = native is M.ActiveDirectoryAuditRule nativeAudit ? nativeAudit.ToPortableObject() : ((M.ActiveDirectoryAccessRule)native).ToPortableObject();
         Assert.Equal(source.GetType().Name, native.GetType().Name);
-        Assert.Equal(source.GetType(), back.GetType());
         Assert.Equal(Fields(source), Fields(native));
-        Assert.Equal(Fields(source), Fields(back));
-        Assert.NotSame(source, back);
-        Assert.NotSame(identity, back.IdentityReference);
+        Assert.NotSame(source.IdentityReference,native.IdentityReference);
     }
 
     [WindowsTheory]
     [InlineData(false)] [InlineData(true)]
     public void Inherited_base_rules_use_factories_and_preserve_inherited_state(bool audit)
     {
-        var native = new M.ActiveDirectorySecurity();
-        var identity = new MP.SecurityIdentifier("S-1-5-21-1-2-3-1001");
-        AuthorizationRule original = audit
-            ? native.AuditRuleFactory(identity, 16, true, InheritanceFlags.ContainerInherit, PropagationFlags.InheritOnly, AuditFlags.Success, ObjectType, InheritedType)
-            : native.AccessRuleFactory(identity, 16, true, InheritanceFlags.ContainerInherit, PropagationFlags.InheritOnly, AccessControlType.Allow, ObjectType, InheritedType);
-        AuthorizationRule copy = audit ? ((M.ActiveDirectoryAuditRule)original).ToPortableObject().ToMicrosoftObject()
-            : ((M.ActiveDirectoryAccessRule)original).ToPortableObject().ToMicrosoftObject();
+        var portable = new D.ActiveDirectorySecurity();
+        var identity = new P.SecurityIdentifier("S-1-5-21-1-2-3-1001");
+        A.AuthorizationRule original = audit
+            ? portable.AuditRuleFactory(identity, 16, true, InheritanceFlags.ContainerInherit, PropagationFlags.InheritOnly, AuditFlags.Success, ObjectType, InheritedType)
+            : portable.AccessRuleFactory(identity, 16, true, InheritanceFlags.ContainerInherit, PropagationFlags.InheritOnly, AccessControlType.Allow, ObjectType, InheritedType);
+        AuthorizationRule copy = audit ? ((D.ActiveDirectoryAuditRule)original).ToMicrosoftObject()
+            : ((D.ActiveDirectoryAccessRule)original).ToMicrosoftObject();
         Assert.True(copy.IsInherited); Assert.Equal(Fields(original), Fields(copy));
     }
 
@@ -73,17 +69,12 @@ public class RuleConversionTests
     {
         var sid = new P.SecurityIdentifier("S-1-5-21-1-2-3-1001");
         var account = new P.NTAccount("Unresolved\\Exact-Spelling");
-        Assert.Equal(sid, sid.ToMicrosoftObject().ToPortableObject());
-        Assert.Equal(account.Value, account.ToMicrosoftObject().ToPortableObject().Value);
+        Assert.Equal(sid.Value, sid.ToMicrosoftObject().Value);
+        Assert.Equal(account.Value, account.ToMicrosoftObject().Value);
         var ids = new P.IdentityReferenceCollection { sid, account, sid };
         var converted = ids.ToMicrosoftObjects(); ids.Clear();
         Assert.Equal(new[] { sid.Value, account.Value, sid.Value }, converted.Select(i => i.Value));
         Assert.Throws<NotSupportedException>(() => ((IList<MP.IdentityReference>)converted).Clear());
-        var nativeIds = new MP.IdentityReferenceCollection { converted[0], converted[1], converted[0] };
-        var back = nativeIds.ToPortableObjects(); nativeIds.Clear();
-        Assert.Equal(converted.Select(i => i.Value), back.Select(i => i.Value));
-        Assert.Throws<NotSupportedException>(() => ((IList<P.IdentityReference>)back).Clear());
-
         var rule = new D.CreateChildAccessRule(sid, AccessControlType.Allow, ObjectType);
         var rules = new A.AuthorizationRuleCollection(); rules.AddRule(rule); rules.AddRule(rule);
         var nativeRules = rules.ToMicrosoftObjects();
@@ -91,21 +82,10 @@ public class RuleConversionTests
         Assert.All(nativeRules, r => Assert.IsType<M.CreateChildAccessRule>(r));
         Assert.Throws<NotSupportedException>(() => ((IList<AuthorizationRule>)nativeRules).Clear());
 
-        var nativeCollection = new AuthorizationRuleCollection();
-        nativeCollection.AddRule(nativeRules[0]); nativeCollection.AddRule(nativeRules[0]);
-        var duplicateCopies = nativeCollection.ToPortableObjects();
-        Assert.Equal(2, duplicateCopies.Count);
-        Assert.All(duplicateCopies, r => Assert.IsType<D.CreateChildAccessRule>(r));
-        Assert.NotSame(duplicateCopies[0], duplicateCopies[1]);
-        Assert.Equal(Fields(rule), Fields(duplicateCopies[0]));
-        nativeCollection.AddRule(null);
-        Assert.Throws<ArgumentNullException>(() => nativeCollection.ToPortableObjects());
-        Assert.Equal(2, duplicateCopies.Count); // Previously returned collection stays independent.
-
-        var sd = new M.ActiveDirectorySecurity(); sd.AddAccessRule((M.ActiveDirectoryAccessRule)nativeRules[0]);
-        var portableRules = sd.GetAccessRules(true, false, typeof(MP.SecurityIdentifier)).ToPortableObjects();
-        Assert.IsType<D.ActiveDirectoryAccessRule>(Assert.Single(portableRules));
-        Assert.Throws<NotSupportedException>(() => ((IList<A.AuthorizationRule>)portableRules).Clear());
+        rules.AddRule(null);
+        Assert.Throws<ArgumentNullException>(() => rules.ToMicrosoftObjects());
+        Assert.Equal(2,nativeRules.Count);
+        Assert.Equal(Fields(rule),Fields(nativeRules[0]));
     }
 
     [WindowsFact]
@@ -119,14 +99,10 @@ public class RuleConversionTests
         collection.AddRule(unsupported);
         Assert.Throws<NotSupportedException>(() => collection.ToMicrosoftObjects());
         Assert.Equal(2, collection.Count);
-        Assert.Throws<NotSupportedException>(() => new NativeCustomRule(sid.ToMicrosoftObject()).ToPortableObject());
-        var file = new FileSecurity();
-        file.AddAccessRule(new FileSystemAccessRule(sid.ToMicrosoftObject(), FileSystemRights.Read, AccessControlType.Allow));
-        Assert.Throws<NotSupportedException>(() => file.GetAccessRules(true, false, typeof(MP.SecurityIdentifier)).ToPortableObjects());
+
     }
 
     private sealed class CustomRule(P.IdentityReference identity) : D.ActiveDirectoryAccessRule(identity, D.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
-    private sealed class NativeCustomRule(MP.IdentityReference identity) : M.ActiveDirectoryAccessRule(identity, M.ActiveDirectoryRights.ReadProperty, AccessControlType.Allow);
 
     // Inspect public fields independently of the production codec. No native private reflection.
     private static object?[] Fields(object rule)

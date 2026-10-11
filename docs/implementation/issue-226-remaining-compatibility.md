@@ -12,8 +12,8 @@ not thereby been certified. No live workflow is launched by this implementation 
 
 Current priorities are bounded safe raw-layout editing, identity completion, and causal
 investigation of large-SDDL allocation/order differences. Microsoft conversion is
-**export-only for required future scope**: existing approved import/edit-back code remains
-intact, with no expansion. Broader Add support is deferred. Approved preservation
+**export-only**: Microsoft import/edit-back APIs and their unused implementation were removed
+at the user's explicit request on 2026-10-11. Broader Add support is deferred. Approved preservation
 refusals are acceptable differences, not mandatory targets for unsafe parity.
 
 The minimal public identity helper is now explicitly approved and implemented. The
@@ -205,7 +205,7 @@ it can be disclosed in a deliberately limited release; it is not a claim of full
 | Raw descriptor layout | Fixed-offset edits, contiguous fully referenced suffix resizing and contained aliases are supported under proof. Interior resizing across unexplained storage, trailer growth/allocation, deleting referenced components in gapped images, resizing ACLs with tails and crossing overlaps refuse. | Intentional preservation constraints; broader safe algorithms require new layout proofs. Microsoft observable repacking is never persistence data. See [layout policy](issue-226-layout-policy.md). |
 | Shared facades and operation combinations | Unbound ACL normalization may not reconcile when later attached. Unrecorded alias/sharing, nested callbacks, lock/reentrancy, mixed failure/success, inherited/GUID/mask and large-sequence combinations are not exhaustively characterized. | Offline evidence/implementation gap, not a known universally failing operation. Recorded invariants and races do not prove every accepted combination. |
 | Strict Microsoft copy conversion | Complete verified directory-container descriptors only; partial retrieval, unexplained storage, unsupported control/reserved bits, hidden ACL data and unverified payloads refuse. Rule conversion refuses unknown subclasses, subtype/field loss, constructor normalization and unrecreatable GUID-presence/inherited states. | Deliberately strict staged companion boundary. Full conversion coverage is unfinished; native Windows execution is required. No native dependency is added to the core/AccountManagement packages. |
-| Microsoft edit-back | Owner/group and proven unique-contributor mask edits/deletions plus independent non-merging explicit insertion compose atomically. Merged/duplicate/ambiguous replacements, splits, inherited edits, merging additions, reordering, control/revision/ACL-state changes and opaque edits refuse. | Existing approved bounded code remains intact; expansion is outside the newly selected export-only scope. Failed Apply retains the session but stale authority cannot be revived; successful Apply is one-use. No replacement fallback or authority transfer. |
+| Microsoft import/edit-back | Removed by the user's explicit export-only decision: no ToPortableObject(s), ExportForEdit, MicrosoftSecurityEdit/ApplyTo or value-diff reconciliation. | Not a remaining feature target. Strict one-way exports and data-only snapshots remain; ordinary portable mutation/persistence safeguards are unchanged. |
 | Entry assignment and Modify | Retrieved-section/raw-origin checks, net section flags, ordinary-property batching, lifecycle checks and uncertain-write readback are implemented through controlled transport tests. Direct property-cache descriptor writes refuse without section intent. | Raw-safe staged implementation, not proof of ADSI/server parity. Local generation checks do not provide server compare-and-swap or detect all other writers/same-DN replacement. |
 | Explicit Add implementation | Omission leaves AD defaults. Explicit descriptors currently require all sections known, owner/group present, non-NULL DACL/SACL and both ACLs protected. Partial/omitted/NULL/inheriting explicit inputs are rejected. | Broader Add support is deferred by the selected scope. Request planning and server evidence remain distinct tasks. Uncertain Add stays quarantined: same-DN readback cannot prove which request created an object. |
 | Real AD validation | Default descriptors, inherited access AND audit ACEs, protected/empty/NULL creation, privilege/owner constraints, server normalization, section readback, referrals/topology, move/rename, authenticated identity continuity, concurrent writers and accepted-then-timeout behavior lack current-PR end-to-end proof. | Live-only validation blocker for a production server-parity claim. The [15-cell Add plan](issue-226-add-validation-plan.md) remains unexecuted. Protected-empty DACL requires proven observer/GUID access and independent individual-delete authority before execution; ownership or admin membership alone is not proof. |
@@ -280,8 +280,8 @@ completion and a causal explanation of the large-SDDL mismatch family. The new s
 algorithm does not authorize moving unexplained bytes or relaxing atomic refusal.
 The approved public helper and outstanding authority/topology/provider evidence remain distinct
 identity decisions. Existing preservation differences are acceptable under the selected
-scope. Microsoft conversion is export-only for required new work; approved import/edit-back
-code remains intact. Broader Add support is deferred.
+scope. Microsoft conversion is export-only; import/edit-back code has been removed.
+Broader Add support is deferred.
 
 Only the approved minimal public helper is exported. No GC/trust routing,
 credential forwarding, Basic fallback, ambient-mutation continuity assumption, merge,

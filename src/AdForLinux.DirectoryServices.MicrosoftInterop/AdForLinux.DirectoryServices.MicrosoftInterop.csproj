@@ -4,7 +4,7 @@
     <AssemblyName>AdForLinux.DirectoryServices.MicrosoftInterop</AssemblyName>
     <RootNamespace>AdForLinux.DirectoryServices.MicrosoftInterop</RootNamespace>
     <PackageId>AdForLinux.DirectoryServices.MicrosoftInterop</PackageId>
-    <Description>Optional Windows-only strict copies and checked local edit-back for AdForLinux security objects.</Description>
+    <Description>Optional Windows-only strict one-way exports of AdForLinux security objects to Microsoft objects.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>

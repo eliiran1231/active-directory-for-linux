@@ -24,7 +24,7 @@ methods = [
     'Recorded_raw_mutations_roundtrip_or_refuse_without_changing_buffers',
     'Recorded_text_mutations_preserve_successful_binary_and_failed_exports',
     'Conditional_payload_mutations_never_silently_lose_bytes',
-    'Generated_edit_back_keeps_snapshots_and_rolls_back_every_failed_publication',
+    'Generated_export_keeps_snapshots_and_source_state_for_every_target',
     'Deep_and_malformed_expressions_stay_inside_local_allocation_budget',
 ]
 

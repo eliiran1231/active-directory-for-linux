@@ -47,7 +47,6 @@ public partial class PortableSecurityFoundationTests
             }))!;
         Assert.NotNull(before); Assert.NotNull(after);
         Assert.Equal(before.Observable, after.Observable); Assert.Equal(before.Generation, after.Generation);
-        Assert.Equal(before.Source, after.Source); Assert.Equal(before.Attachment, after.Attachment);
         Assert.Equal(before.Retrieved, after.Retrieved); Assert.Equal(SecurityMasks.None, after.Pending);
         Assert.True(actual["CallerInputUnchanged"]!.GetValue<bool>());
         Assert.True(actual["RawObjectUnchanged"]!.GetValue<bool>());

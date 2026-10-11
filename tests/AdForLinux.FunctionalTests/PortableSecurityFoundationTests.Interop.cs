@@ -57,25 +57,25 @@ public partial class PortableSecurityFoundationTests
         var original = Build(U1, U1, dacl, Acl(4, Ace(2, 0x48, 16, U1), Ace(2, 0x40, 32, U2)), nullDacl: variant == 1);
         var wrapper = InteropWrapper(original);
         var before = wrapper.Descriptor.MutationState;
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, export.Value));
+        var snapshot = wrapper.CaptureInteropSnapshot();
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
         Assert.Same(before, wrapper.Descriptor.MutationState);
         Assert.Equal(original, wrapper.Descriptor.MutationState.Descriptor.GetBinaryForm());
         Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
-        Assert.Equal(original, export.Provenance.Snapshot.Raw);
+        Assert.Equal(original, snapshot.Raw);
     }
 
     [Theory]
     [InlineData(false)] [InlineData(true)]
-    public void Interop_OwnerEditPreservesRawAclContributorsAndSharedDescriptor(bool nullDacl)
+    public void Portable_OwnerEditPreservesRawAclContributorsAndSharedDescriptor(bool nullDacl)
     {
         var original = Build(U1, U1, nullDacl ? null : Acl(4, Ace(0, 8, 16, U1), Ace(0, 0, 16, U1), Ace(0, 0, 32, U1)),
             Acl(4, Ace(2, 0x48, 16, U1), Ace(2, 0xC0, 32, U2)), nullDacl: nullDacl);
         var wrapper = InteropWrapper(original);
         var shared = new FacadeContracts.Wrapper(wrapper.Descriptor);
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        Assert.Equal(SecurityMasks.Owner, wrapper.ReconcileInterop(export.Provenance, InteropOwner(export.Value, U2)));
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
+        wrapper.SetOwner(new SecurityIdentifier(U2, 0));
         Assert.Equal(new SecurityIdentifier(U2, 0), shared.GetOwner(typeof(SecurityIdentifier)));
         var expected = C.DescriptorRewriter.Rewrite(C.SecurityDescriptor.Parse(original, (SecurityMasks)15),
             C.SecurityDescriptor.Parse(original, (SecurityMasks)15).Control, new Dictionary<SecurityMasks, byte[]?> { [SecurityMasks.Owner] = U2 });
@@ -83,7 +83,7 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(SecurityMasks.Owner, wrapper.PendingWriteSections);
         Assert.Equal(new[] { true, false, false, false }, wrapper.Flags());
         Assert.Equal(new[] { false, false, false, false }, shared.Flags());
-        Assert.Throws<InvalidOperationException>(() => wrapper.ReconcileInterop(export.Provenance, export.Value));
+        Assert.Equal(new SecurityIdentifier(U1, 0), new A.RawSecurityDescriptor(export, 0).Owner);
     }
 
     [Fact]
@@ -93,32 +93,12 @@ public partial class PortableSecurityFoundationTests
         var plain = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
         _ = InteropOwner(plain, U2);
         Assert.Equal(new SecurityIdentifier(U1, 0), wrapper.GetOwner(typeof(SecurityIdentifier)));
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        var reverted = InteropOwner(InteropOwner(export.Value, U2), U1);
-        Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, reverted));
+        var snapshot = wrapper.CaptureInteropSnapshot();
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
+        var reverted = InteropOwner(InteropOwner(export, U2), U1);
+        Assert.Equal(export, reverted);
+        Assert.Equal(snapshot.Raw, wrapper.CaptureInteropSnapshot().Raw);
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
-    }
-
-    [Theory]
-    [InlineData(false)] [InlineData(true)]
-    public void Interop_RejectsForeignAndSharedWrapperProvenance(bool shared)
-    {
-        var source = InteropWrapper(Build(U1, U1, Acl(4)));
-        var target = shared ? new FacadeContracts.Wrapper(source.Descriptor) : InteropWrapper(Build(U1, U1, Acl(4)));
-        var export = source.ExportInterop(InteropRoundTrip, bytes => bytes);
-        Assert.Throws<InvalidOperationException>(() => target.ReconcileInterop(export.Provenance, export.Value));
-        Assert.Equal(SecurityMasks.None, target.PendingWriteSections);
-    }
-
-    [Fact]
-    public void Interop_SharedMutationInvalidatesEvenUnchangedExport()
-    {
-        var source = InteropWrapper(Build(U1, U1, Acl(4)));
-        var shared = new FacadeContracts.Wrapper(source.Descriptor);
-        var export = source.ExportInterop(InteropRoundTrip, bytes => bytes);
-        shared.SetGroup(new SecurityIdentifier(U2, 0));
-        Assert.Throws<InvalidOperationException>(() => source.ReconcileInterop(export.Provenance, export.Value));
-        Assert.Equal(SecurityMasks.Group, source.PendingWriteSections);
     }
 
     [Theory]
@@ -131,22 +111,25 @@ public partial class PortableSecurityFoundationTests
         var snapshot = wrapper.CaptureInteropSnapshot();
         Assert.Equal((SecurityMasks)retrieved, snapshot.Retrieved);
         var called = false;
-        Assert.Throws<NotSupportedException>(() => wrapper.ExportInterop((bytes, _, _) => { called = true; return bytes; }, bytes => bytes));
+        Assert.Throws<NotSupportedException>(() => wrapper.ExportDetachedInterop((bytes, _, _) => { called = true; return bytes; }, bytes => bytes));
         Assert.False(called);
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
     }
 
     [Fact]
-    public void Interop_SnapshotCopiesContainNoCapabilitiesAndCannotModifyBaseline()
+    public void Interop_SnapshotCopiesContainNoCapabilitiesAndCannotModifySource()
     {
         using var fixture = new IdentityFixture();
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
         fixture.Resolver.Bind(wrapper);
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        foreach (var bytes in new[] { export.Provenance.Binary, export.Provenance.Snapshot.Raw,
-            export.Provenance.Snapshot.Original, export.Provenance.Snapshot.Observable }) Array.Fill(bytes, (byte)0);
-        Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, export.Value));
-        foreach (var type in new[] { typeof(A.InteropSnapshot), typeof(A.InteropBaseline) })
+        var snapshot = wrapper.CaptureInteropSnapshot();
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
+        var savedRaw = snapshot.Raw; var savedOriginal = snapshot.Original; var savedObservable = snapshot.Observable;
+        foreach (var bytes in new[] { snapshot.Raw,
+            snapshot.Original, snapshot.Observable }) Array.Fill(bytes, (byte)0);
+        Assert.Equal(savedRaw,snapshot.Raw); Assert.Equal(savedOriginal,snapshot.Original); Assert.Equal(savedObservable,snapshot.Observable);
+        Assert.Equal(savedRaw,wrapper.CaptureInteropSnapshot().Raw);
+        foreach (var type in new[] { typeof(A.InteropSnapshot) })
             foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
                 Assert.True(field.FieldType.IsValueType || field.FieldType == typeof(byte[]) || field.FieldType == typeof(A.InteropSnapshot), field.ToString());
         Assert.Equal(0, fixture.Opened);
@@ -156,32 +139,13 @@ public partial class PortableSecurityFoundationTests
     public void Interop_ExternalConstructionRunsOutsidePortableLocks()
     {
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
-        var export = wrapper.ExportInterop((bytes, container, directory) =>
+        var export = wrapper.ExportDetachedInterop((bytes, container, directory) =>
         {
             var completed = Task.Run(() => wrapper.SetGroup(new SecurityIdentifier(U2, 0))).Wait(TimeSpan.FromSeconds(5));
             Assert.True(completed);
             return InteropRoundTrip(bytes, container, directory);
         }, bytes => bytes);
-        Assert.Throws<InvalidOperationException>(() => wrapper.ReconcileInterop(export.Provenance, export.Value));
-    }
-
-    [Theory]
-    [InlineData(0)] [InlineData(1)] [InlineData(2)]
-    public void Interop_UnsupportedEditsRefuseAtomically(int variant)
-    {
-        var wrapper = InteropWrapper(Build(U1, U1, Acl(4), Acl(4, Ace(2, 0x40, 16, U1))));
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        var edited = variant switch
-        {
-            0 => Build(U2, U1, Acl(4, Ace(0, 0x10, 16, U1)), Acl(4, Ace(2, 0x40, 16, U1))),
-            // Unique deletion to an empty ACL is supported; a NULL state transition is not.
-            1 => Build(U2, U1, Acl(4), null, extraControl: SaclPresent),
-            _ => Build(U2, U1, Acl(4), Acl(4, Ace(2, 0x40, 16, U1)), extraControl: 0x1000)
-        };
-        var before = wrapper.Descriptor.MutationState;
-        Assert.Throws<NotSupportedException>(() => wrapper.ReconcileInterop(export.Provenance, edited));
-        Assert.Same(before, wrapper.Descriptor.MutationState);
-        Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
+        Assert.Equal(new SecurityIdentifier(U1, 0), new A.RawSecurityDescriptor(export, 0).Owner);
     }
 
     [Fact]
@@ -189,7 +153,7 @@ public partial class PortableSecurityFoundationTests
     {
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4), Acl(4, Ace(2, 0x40, 16, U1))));
         var before = wrapper.Descriptor.MutationState;
-        Assert.Throws<NotSupportedException>(() => wrapper.ExportInterop((_, _, _) => Build(U1, U1, Acl(4)), bytes => bytes));
+        Assert.Throws<NotSupportedException>(() => wrapper.ExportDetachedInterop((_, _, _) => Build(U1, U1, Acl(4)), bytes => bytes));
         Assert.Same(before, wrapper.Descriptor.MutationState);
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
     }
@@ -210,7 +174,7 @@ public partial class PortableSecurityFoundationTests
         var wrapper = InteropWrapper(raw);
         var before = wrapper.Descriptor.MutationState;
         var called = false;
-        var exception = Record.Exception(() => wrapper.ExportInterop((bytes, _, _) => { called = true; return bytes; }, bytes => bytes));
+        var exception = Record.Exception(() => wrapper.ExportDetachedInterop((bytes, _, _) => { called = true; return bytes; }, bytes => bytes));
         Assert.True(exception is InvalidOperationException or NotSupportedException);
         Assert.False(called);
         Assert.Same(before, wrapper.Descriptor.MutationState);
@@ -222,11 +186,11 @@ public partial class PortableSecurityFoundationTests
     public void Interop_RepackedComponentsAreEquivalentButUnknownPaddingIsNot()
     {
         var wrapper = InteropWrapper(Build(U1, U2, Acl(4), Acl(4)));
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
         var reordered = Build(U1, U2, Acl(4), Acl(4), order: new[] { Part.Dacl, Part.Sacl, Part.Group, Part.Owner });
-        Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, reordered));
+        Assert.Equal(reordered, wrapper.ExportDetachedInterop((_, _, _) => reordered, bytes => bytes));
         var padded = Build(U1, U2, Acl(4), Acl(4), gapBefore: 4);
-        Assert.Throws<NotSupportedException>(() => wrapper.ReconcileInterop(export.Provenance, padded));
+        Assert.Throws<NotSupportedException>(() => wrapper.ExportDetachedInterop((_, _, _) => padded, bytes => bytes));
     }
 
     [Fact]
@@ -235,28 +199,16 @@ public partial class PortableSecurityFoundationTests
         var original = Build(U1, U1, Acl(4));
         var wrapper = InteropWrapper(original);
         wrapper.SetGroup(new SecurityIdentifier(U2, 0));
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        Assert.Equal(original, export.Provenance.Snapshot.Original);
-        Assert.Equal(SecurityMasks.Group, export.Provenance.Snapshot.Pending);
-        Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, export.Value));
+        var snapshot = wrapper.CaptureInteropSnapshot();
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
+        Assert.Equal(original, snapshot.Original);
+        Assert.Equal(SecurityMasks.Group, snapshot.Pending);
         Assert.Equal(SecurityMasks.Group, wrapper.PendingWriteSections);
         Assert.Equal(new[] { false, true, false, false }, wrapper.Flags());
     }
 
     [Fact]
-    public void Interop_RebindingInvalidatesPriorProvenanceWithoutCopyingAuthority()
-    {
-        using var first = new IdentityFixture(); using var second = new IdentityFixture();
-        var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
-        first.Resolver.Bind(wrapper);
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        second.Resolver.Bind(wrapper);
-        Assert.Throws<InvalidOperationException>(() => wrapper.ReconcileInterop(export.Provenance, export.Value));
-        Assert.Equal(0, first.Opened); Assert.Equal(0, second.Opened);
-    }
-
-    [Fact]
-    public void Interop_ActualMicrosoftObjectIsDetachedAndExplicitEditBackIsRequired()
+    public void Interop_ActualMicrosoftObjectEditsNeverFlowBack()
     {
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
         static System.Security.AccessControl.CommonSecurityDescriptor Construct(byte[] bytes, bool container, bool directory)
@@ -265,18 +217,18 @@ public partial class PortableSecurityFoundationTests
         { var bytes = new byte[native.BinaryLength]; native.GetBinaryForm(bytes, 0); return bytes; }
         if (!OperatingSystem.IsWindows())
         {
-            Assert.Throws<PlatformNotSupportedException>(() => wrapper.ExportInterop(Construct, Serialize));
+            Assert.Throws<PlatformNotSupportedException>(() => wrapper.ExportDetachedInterop(Construct, Serialize));
             Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
             return;
         }
         var plain = wrapper.ExportDetachedInterop(Construct, Serialize);
         plain.Owner = new System.Security.Principal.SecurityIdentifier(U2, 0);
         Assert.Equal(new SecurityIdentifier(U1, 0), wrapper.GetOwner(typeof(SecurityIdentifier)));
-        var export = wrapper.ExportInterop(Construct, Serialize);
-        export.Value.Owner = new System.Security.Principal.SecurityIdentifier(U2, 0);
+        var export = wrapper.ExportDetachedInterop(Construct, Serialize);
+        export.Owner = new System.Security.Principal.SecurityIdentifier(U2, 0);
         Assert.Equal(new SecurityIdentifier(U1, 0), wrapper.GetOwner(typeof(SecurityIdentifier)));
-        Assert.Equal(SecurityMasks.Owner, wrapper.ReconcileInterop(export.Provenance, Serialize(export.Value)));
-        export.Value.Group = new System.Security.Principal.SecurityIdentifier(U2, 0);
+        Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
+        export.Group = new System.Security.Principal.SecurityIdentifier(U2, 0);
         Assert.Equal(new SecurityIdentifier(U1, 0), wrapper.GetGroup(typeof(SecurityIdentifier)));
     }
 
@@ -288,22 +240,22 @@ public partial class PortableSecurityFoundationTests
         if (write) wrapper.EnterWrite(); else wrapper.EnterRead();
         try
         {
-            Assert.Throws<InvalidOperationException>(() => wrapper.ExportInterop(InteropRoundTrip, bytes => bytes));
+            Assert.Throws<InvalidOperationException>(() => wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes));
         }
         finally { if (write) wrapper.ExitWrite(); else wrapper.ExitRead(); }
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
     }
 
     [Fact]
-    public void Interop_GroupEditAndOwnerRemovalPreserveAclState()
+    public void Portable_GroupEditAndOwnerRemovalPreserveAclState()
     {
         var wrapper = InteropWrapper(Build(U1, U1, Acl(4)));
-        var export = wrapper.ExportInterop(InteropRoundTrip, bytes => bytes);
-        var changed = InteropRoundTrip(Build(null, U2, Acl(4)), true, true);
-        Assert.Equal(SecurityMasks.Owner | SecurityMasks.Group, wrapper.ReconcileInterop(export.Provenance, changed));
+        var export = wrapper.ExportDetachedInterop(InteropRoundTrip, bytes => bytes);
+        wrapper.Descriptor.Owner = null;
+        wrapper.SetGroup(new SecurityIdentifier(U2, 0));
         Assert.Null(wrapper.GetOwner(typeof(SecurityIdentifier)));
         Assert.Equal(new SecurityIdentifier(U2, 0), wrapper.GetGroup(typeof(SecurityIdentifier)));
-        Assert.Equal(new[] { true, true, false, false }, wrapper.Flags());
+        Assert.Equal(new[] { false, true, false, false }, wrapper.Flags());
         Assert.Equal(SecurityMasks.Owner | SecurityMasks.Group, wrapper.PendingWriteSections);
     }
 }

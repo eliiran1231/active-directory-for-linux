@@ -1,5 +1,10 @@
 # Bounded local invariant investigation
 
+> Contract update (2026-10-11): Microsoft interoperability is now export only.
+> Import/edit-back APIs and their session/diff machinery were removed at the user's
+> request. Related results below are historical; current export behavior and migrated
+> preservation coverage are described in the [supported contract](issue-226-microsoft-companion-proposal.md).
+
 This local-only follow-up starts at `9654676a417e3287ad6e0f4037702889e94e024d`.
 It adds no Microsoft recordings or production behavior changes. The earlier 220-case
 Windows boundary manifest remains prepared but unmeasured; this investigation does

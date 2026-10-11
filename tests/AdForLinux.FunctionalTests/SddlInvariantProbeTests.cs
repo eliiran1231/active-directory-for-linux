@@ -129,7 +129,7 @@ public sealed class SddlInvariantProbeTests(ITestOutputHelper output)
     }
 
     [BoundedInvariantFact]
-    public void Generated_edit_back_keeps_snapshots_and_rolls_back_every_failed_publication()
+    public void Generated_export_keeps_snapshots_and_source_state_for_every_target()
     {
         var random = new Random(Seed + 3); var accepted = 0; var refused = 0;
         for (var i = 0; i < 256; i++)
@@ -138,40 +138,34 @@ public sealed class SddlInvariantProbeTests(ITestOutputHelper output)
             var descriptor = new A.CommonSecurityDescriptor(true, true, source, 0);
             var wrapper = new FacadeContracts.Wrapper(descriptor); var peer = new FacadeContracts.Wrapper(descriptor);
             wrapper.SetOwner(new P.SecurityIdentifier(U2, 0)); // Preserve pre-existing intent through failures.
-            var export = wrapper.ExportInterop((bytes, container, ds) => A.FacadeMutation.Bytes(new A.CommonSecurityDescriptor(container, ds, bytes, 0)), bytes => bytes);
-            var snapshot = export.Provenance.Snapshot;
-            var savedRaw = snapshot.Raw; var savedOriginal = snapshot.Original; var savedLive = snapshot.Observable; var savedBaseline = export.Provenance.Binary;
+            var export = wrapper.ExportDetachedInterop((bytes, container, ds) => A.FacadeMutation.Bytes(new A.CommonSecurityDescriptor(container, ds, bytes, 0)), bytes => bytes);
+            var snapshot = wrapper.CaptureInteropSnapshot();
+            var savedRaw = snapshot.Raw; var savedOriginal = snapshot.Original; var savedLive = snapshot.Observable;
             var state = descriptor.MutationState; var version = descriptor.MutationVersion; var flags = wrapper.Flags(); var peerFlags = peer.Flags();
             var pending = wrapper.PendingWriteSections; var before = wrapper.GetSecurityDescriptorBinaryForm();
             byte[] candidate;
-            if (i % 4 == 0) candidate = Mutate(export.Value, random, i / 4);
+            if (i % 4 == 0) candidate = (byte[])export.Clone();
+            else if (i % 4 == 1) candidate = Mutate(export, random, i / 4);
             else
             {
-                var raw = new A.RawSecurityDescriptor(export.Value, 0);
+                var raw = new A.RawSecurityDescriptor(export, 0);
                 ((A.KnownAce)raw.SystemAcl![0]).AccessMask = 1 << random.Next(1, 16);
                 if (i % 4 == 2) raw.Owner = new P.SecurityIdentifier(U1, 0);
                 if (i % 4 == 3) raw.DiscretionaryAcl![0] = new A.CustomAce((AceType)21, AceFlags.None, new byte[16]);
                 candidate = Bytes(raw);
             }
-            var input = (byte[])candidate.Clone(); var error = Record.Exception(() => wrapper.ReconcileInterop(export.Provenance, candidate));
+            var input = (byte[])candidate.Clone();
+            var error = Record.Exception(() => wrapper.ExportDetachedInterop((_, _, _) => candidate, bytes => bytes));
             Assert.Equal(input, candidate);
-            if (error is not null)
-            {
-                ManagedRefusal(error, $"edit-back {i}"); refused++;
-                Assert.Same(state, descriptor.MutationState); Assert.Equal(version, descriptor.MutationVersion);
-                Assert.Equal(flags, wrapper.Flags()); Assert.Equal(peerFlags, peer.Flags()); Assert.Equal(pending, wrapper.PendingWriteSections);
-                Assert.Equal(before, wrapper.GetSecurityDescriptorBinaryForm()); Assert.Equal(before, peer.GetSecurityDescriptorBinaryForm());
-                Assert.Equal(SecurityMasks.None, wrapper.ReconcileInterop(export.Provenance, export.Value));
-            }
-            else
-            {
-                accepted++; Assert.Equal(Bytes(new A.RawSecurityDescriptor(candidate, 0)), wrapper.GetSecurityDescriptorBinaryForm());
-                Assert.Equal(wrapper.GetSecurityDescriptorBinaryForm(), peer.GetSecurityDescriptorBinaryForm());
-            }
-            Array.Fill(snapshot.Raw, (byte)0); Array.Fill(snapshot.Original, (byte)0); Array.Fill(snapshot.Observable, (byte)0); Array.Fill(export.Provenance.Binary, (byte)0);
-            Assert.Equal(savedRaw, snapshot.Raw); Assert.Equal(savedOriginal, snapshot.Original); Assert.Equal(savedLive, snapshot.Observable); Assert.Equal(savedBaseline, export.Provenance.Binary);
+            if (error is not null) { ManagedRefusal(error, $"export {i}"); refused++; }
+            else accepted++;
+            Assert.Same(state, descriptor.MutationState); Assert.Equal(version, descriptor.MutationVersion);
+            Assert.Equal(flags, wrapper.Flags()); Assert.Equal(peerFlags, peer.Flags()); Assert.Equal(pending, wrapper.PendingWriteSections);
+            Assert.Equal(before, wrapper.GetSecurityDescriptorBinaryForm()); Assert.Equal(before, peer.GetSecurityDescriptorBinaryForm());
+            Array.Fill(snapshot.Raw, (byte)0); Array.Fill(snapshot.Original, (byte)0); Array.Fill(snapshot.Observable, (byte)0);
+            Assert.Equal(savedRaw, snapshot.Raw); Assert.Equal(savedOriginal, snapshot.Original); Assert.Equal(savedLive, snapshot.Observable);
         }
-        Assert.True(accepted > 0 && refused > 0); Report("edit-back", new { Iterations = 256, accepted, refused });
+        Assert.True(accepted > 0 && refused > 0); Report("export", new { Iterations = 256, accepted, refused });
     }
 
     [BoundedInvariantFact]

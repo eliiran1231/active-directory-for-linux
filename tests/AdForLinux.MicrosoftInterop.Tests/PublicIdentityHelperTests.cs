@@ -38,9 +38,8 @@ public class PublicIdentityHelperTests
         entry.Dispose();
         Assert.Equal(sid.Value, native.Value);
         var bytes = new byte[native.BinaryLength]; native.GetBinaryForm(bytes, 0); Assert.Equal(U1, bytes);
-        var copy = native.ToPortableObject(); Assert.NotSame(sid, copy);
-        Assert.Throws<NotSupportedException>(() => copy.Translate(typeof(P.NTAccount)));
-        Assert.Throws<ObjectDisposedException>(() => helper.Translate(copy, typeof(P.NTAccount)));
+        Assert.Throws<NotSupportedException>(() => sid.Translate(typeof(P.NTAccount)));
+        Assert.Throws<ObjectDisposedException>(() => helper.Translate(sid, typeof(P.NTAccount)));
     }
 
     [WindowsFact]
@@ -57,9 +56,8 @@ public class PublicIdentityHelperTests
         var native = source.ToMicrosoftObject();
         entry.Dispose();
         Assert.Equal(owner.Value, native.GetOwner(typeof(MP.SecurityIdentifier))!.Value);
-        var copy = native.ToPortableObject((D.SecurityMasks)15);
-        Assert.Equal(owner, copy.GetOwner(typeof(P.SecurityIdentifier)));
-        Assert.Throws<NotSupportedException>(() => copy.GetOwner(typeof(P.NTAccount)));
+        native.SetOwner(new MP.SecurityIdentifier(Everyone,0));
+        Assert.Equal(owner, source.GetOwner(typeof(P.SecurityIdentifier)));
         Assert.Throws<ObjectDisposedException>(() => helper.Translate(owner, typeof(P.NTAccount)));
     }
 }

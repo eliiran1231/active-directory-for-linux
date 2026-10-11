@@ -84,3 +84,12 @@ ToMicrosoftObject copies and optional checked ExportForEdit/ApplyTo with managed
 The public package/assembly/namespace is AdForLinux.DirectoryServices.MicrosoftInterop. This
 settles that exposure choice only; persistence decisions, live AD authorization, public
 identity-context helpers and server-validation prerequisites remain separate.
+
+
+## Export-only decision supersedes companion edit-back approval
+
+On 2026-10-11 the user explicitly requested removal of Microsoft imports and edit-back.
+The [supported companion contract](issue-226-microsoft-companion-proposal.md) now contains
+only one-way exports and data-only snapshots. The earlier optional edit-back approval
+above is historical and no longer describes supported APIs. Portable mutations, raw-safe
+persistence, identity context and ordinary contributor provenance remain unchanged.

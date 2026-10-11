@@ -12,15 +12,17 @@ public class ReviewCorrectionTests
 {
     public static IEnumerable<object[]> CoverageCases() => DetachedCoverageCases.Matrix();
 
-    [WindowsTheory]
+    [Theory]
     [MemberData(nameof(CoverageCases))]
-    public void Public_import_snapshot_reports_all_accepted_intent_without_promoting_coverage(int mask, string operation, int required)
+    public void Public_entry_snapshot_reports_all_accepted_intent_without_promoting_coverage(int mask, string operation, int required)
     {
-        var native = new M.ActiveDirectorySecurity();
-        native.SetSecurityDescriptorBinaryForm(DetachedCoverageCases.Baseline());
-        var source = native.ToPortableObject((D.SecurityMasks)mask);
+        using var entry = ReadEntry(DetachedCoverageCases.Baseline(), (D.SecurityMasks)mask);
+        var source = entry.ObjectSecurity;
+        // DirectoryEntry interprets None as its ordinary owner/group/DACL default.
+        if (mask == 0) mask = (int)(D.SecurityMasks.Owner | D.SecurityMasks.Group | D.SecurityMasks.Dacl);
         var before = source.CaptureSnapshot();
-        if ((operation.StartsWith("typed-add-") || operation.StartsWith("modify-")) && (required & ~mask) != 0)
+        // Entry-owned descriptors enforce retrieved coverage for every mutation route.
+        if ((required & ~mask) != 0)
         {
             Assert.Throws<InvalidOperationException>(() => DetachedCoverageCases.Apply(source, operation));
             Assert.Equal(before.GetRawBinaryForm(), source.CaptureSnapshot().GetRawBinaryForm());
@@ -34,10 +36,10 @@ public class ReviewCorrectionTests
         Assert.Equal((D.SecurityMasks)mask, source.CaptureSnapshot().RetrievedSections);
         Assert.Equal(D.SecurityMasks.None, before.PendingWriteSections);
         Assert.Equal(before.GetOriginalBinaryForm(), source.CaptureSnapshot().GetOriginalBinaryForm());
-        if (mask != 15)
+        if (mask != 15 && OperatingSystem.IsWindows())
         {
             Assert.Throws<NotSupportedException>(() => source.CaptureSnapshot().ToMicrosoftObject());
-            Assert.Throws<NotSupportedException>(() => source.ExportForEdit());
+            Assert.Throws<NotSupportedException>(() => source.ToMicrosoftObject());
         }
     }
 
@@ -49,7 +51,7 @@ public class ReviewCorrectionTests
 
     [WindowsTheory]
     [MemberData(nameof(RevocationCases))]
-    public void Public_ApplyTo_checks_entry_revocation_without_lookup_or_persistence(string change, bool edited)
+    public void Exported_data_stays_independent_after_entry_revocation(string change, bool edited)
     {
         // Public entry loading borrows a revocable context; the existing fake read hook prevents I/O.
         using var entry = new D.DirectoryEntry("LDAP://dc.example/CN=item,DC=example,DC=com");
@@ -57,8 +59,9 @@ public class ReviewCorrectionTests
         typeof(D.DirectoryEntry).GetProperty("SecurityReadOverride", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(entry, (Func<D.SecurityMasks, byte[]>)(_ => DetachedCoverageCases.Baseline()));
         var source = entry.ObjectSecurity;
-        using var session = source.ExportForEdit();
-        if (edited) session.Object.SetOwner(new MP.SecurityIdentifier("S-1-5-21-1-2-3-1002"));
+        var exported = source.ToMicrosoftObject();
+        var snapshot = source.CaptureSnapshot();
+        if (edited) exported.SetOwner(new MP.SecurityIdentifier("S-1-5-21-1-2-3-1002"));
         var before = source.CaptureSnapshot();
         switch (change)
         {
@@ -68,23 +71,19 @@ public class ReviewCorrectionTests
             case "username": entry.Username = "EXAMPLE\\other"; break;
             default: entry.Password = "changed-test-only"; break;
         }
-        Assert.ThrowsAny<InvalidOperationException>(() => session.ApplyTo(source));
         Assert.Equal(before.GetRawBinaryForm(), source.CaptureSnapshot().GetRawBinaryForm());
         Assert.Equal(before.PendingWriteSections, source.CaptureSnapshot().PendingWriteSections);
-        Assert.NotNull(session.Object); Assert.NotNull(session.Snapshot); // Failure did not consume/dispose it.
-        if (change != "dispose")
-        {
-            // Credential changes retain the stale managed wrapper, and every binding
-            // reset restores the default mask (without SACL). Explicitly reacquire a
-            // complete entry-owned descriptor through the public lifecycle.
-            entry.Close();
-            entry.Options.SecurityMasks = (D.SecurityMasks)15;
-            var rebound = entry.ObjectSecurity;
-            Assert.NotSame(source, rebound);
-            Assert.Throws<InvalidOperationException>(() => session.ApplyTo(source)); // Old attachment stays stale.
-            Assert.Throws<InvalidOperationException>(() => session.ApplyTo(rebound));
-            using var fresh = rebound.ExportForEdit();
-            Assert.Equal(D.SecurityMasks.None, fresh.ApplyTo(rebound));
-        }
+        Assert.NotEmpty(exported.GetSecurityDescriptorBinaryForm());
+        Assert.NotEmpty(snapshot.ToMicrosoftObject().GetSecurityDescriptorBinaryForm());
+        exported.SetGroup(new MP.SecurityIdentifier("S-1-1-0"));
+        Assert.Equal(before.GetRawBinaryForm(), source.CaptureSnapshot().GetRawBinaryForm());
+    }
+    internal static D.DirectoryEntry ReadEntry(byte[] raw, D.SecurityMasks mask)
+    {
+        var entry = new D.DirectoryEntry("LDAP://unused.example/DC=example,DC=com");
+        entry.Options.SecurityMasks = mask;
+        typeof(D.DirectoryEntry).GetProperty("SecurityReadOverride", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(entry, (Func<D.SecurityMasks,byte[]>)(_ => (byte[])raw.Clone()));
+        return entry;
     }
 }

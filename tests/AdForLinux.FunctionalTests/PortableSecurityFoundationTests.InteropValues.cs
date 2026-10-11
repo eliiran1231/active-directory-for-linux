@@ -33,9 +33,7 @@ public partial class PortableSecurityFoundationTests
         }
         var native = A.InteropValueCodec.ToMicrosoftIdentity(identity);
         Assert.Equal(identity.Value, native.Value);
-        var imported = A.InteropValueCodec.FromMicrosoftIdentity(native);
-        Assert.NotSame(identity, imported);
-        Assert.True(snapshot.Same(A.InteropValueCodec.CaptureIdentity(imported)));
+        Assert.True(snapshot.Same(A.InteropValueCodec.CaptureMicrosoftIdentity(native)));
     }
 
     public static IEnumerable<object[]> InteropRuleMatrix()
@@ -63,47 +61,11 @@ public partial class PortableSecurityFoundationTests
     public void InteropValues_RulesPreserveEveryField(bool audit, bool objectRule, bool inherited, bool name, int mask)
     {
         var fields = InteropRuleFields(audit, objectRule, inherited, name, mask);
-        var portable = A.InteropValueCodec.ImportRule(fields, value => value);
-        Assert.True(fields.Same(A.InteropValueCodec.CaptureRule(portable)));
+        A.InteropValueCodec.ValidateRuleFields(fields);
         if (OperatingSystem.IsWindows())
-        {
-            var native = A.InteropValueCodec.ExportRule(portable, ConstructNativeInteropRule, InspectNativeInteropRule);
-            Assert.True(fields.Same(InspectNativeInteropRule(native)));
-            var back = A.InteropValueCodec.ImportRule(native, InspectNativeInteropRule);
-            Assert.True(fields.Same(A.InteropValueCodec.CaptureRule(back)));
-        }
-        else
-        {
-            var exported = A.InteropValueCodec.ExportRule(portable, value => A.InteropValueCodec.ImportRule(value, x => x), value => A.InteropValueCodec.CaptureRule(value));
-            Assert.NotSame(portable, exported);
-            Assert.True(fields.Same(A.InteropValueCodec.CaptureRule(exported)));
-        }
+            Assert.True(fields.Same(InspectNativeInteropRule(ConstructNativeInteropRule(fields))));
     }
 
-    [Fact]
-    public void InteropValues_CollectionsAreDetachedOrderedAndPreserveDuplicates()
-    {
-        var first = A.InteropValueCodec.ImportRule(InteropRuleFields(), value => value);
-        var second = A.InteropValueCodec.ImportRule(InteropRuleFields(audit: true, name: true), value => value);
-        var source = new A.AuthorizationRuleCollection(); source.AddRule(first); source.AddRule(second); source.AddRule(first);
-        if (OperatingSystem.IsWindows())
-        {
-            var native = A.InteropValueCodec.ExportRules(source, ConstructNativeInteropRule, InspectNativeInteropRule);
-            Assert.Equal(3, native.Length);
-            Assert.NotSame(native[0], native[2]);
-            var imported = A.InteropValueCodec.ImportRules(native, InspectNativeInteropRule);
-            for (var i = 0; i < 3; i++) Assert.True(A.InteropValueCodec.CaptureRule(source[i]!).Same(A.InteropValueCodec.CaptureRule(imported[i]!)));
-            native[0] = native[1];
-            Assert.False(A.InteropValueCodec.CaptureRule(imported[0]!).IsAudit);
-        }
-        else
-        {
-            var copies = A.InteropValueCodec.ExportRules(source, value => A.InteropValueCodec.ImportRule(value, x => x), value => A.InteropValueCodec.CaptureRule(value));
-            Assert.Equal(3, copies.Length); Assert.NotSame(copies[0], copies[2]);
-        }
-        source.AddRule(second);
-        Assert.Equal(4, source.Count);
-    }
 
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)]
@@ -119,47 +81,12 @@ public partial class PortableSecurityFoundationTests
             4 => fields with { Mask = 0 },
             _ => fields with { Audit = AuditFlags.Success }
         };
-        var error = Record.Exception(() => A.InteropValueCodec.ImportRule(fields, value => value));
+        var error = Record.Exception(() => A.InteropValueCodec.ValidateRuleFields(fields));
         Assert.True(error is NotSupportedException or ArgumentException);
     }
 
-    [Fact]
-    public void InteropValues_UnknownSubclassesRequireExplicitFieldOnlyOptIn()
-    {
-        var source = new FacadeContracts.AR(new P.SecurityIdentifier(U1, 0), 16, true, InheritanceFlags.ContainerInherit,
-            PropagationFlags.InheritOnly, AccessControlType.Allow, G1, G2);
-        Assert.Throws<NotSupportedException>(() => A.InteropValueCodec.CaptureRule(source));
-        var fields = A.InteropValueCodec.CaptureRule(source, allowFieldOnlySubclass: true);
-        var copy = A.InteropValueCodec.ExportRule(source, value => A.InteropValueCodec.ImportRule(value, x => x),
-            value => A.InteropValueCodec.CaptureRule(value), allowFieldOnlySubclass: true);
-        Assert.NotEqual(source.GetType(), copy.GetType());
-        Assert.True(fields.Same(A.InteropValueCodec.CaptureRule(copy)));
-    }
 
-    [Fact]
-    public void InteropValues_CollectionValidationAndTargetLossNeverReturnPartialResults()
-    {
-        var valid = A.InteropValueCodec.ImportRule(InteropRuleFields(), value => value);
-        var source = new A.AuthorizationRuleCollection(); source.AddRule(valid); source.AddRule(null);
-        var calls = 0;
-        Assert.Throws<ArgumentNullException>(() => A.InteropValueCodec.ExportRules(source,
-            value => { calls++; return value; }, value => value));
-        Assert.Equal(0, calls);
-        Assert.Throws<NotSupportedException>(() => A.InteropValueCodec.ExportRule(valid,
-            value => value with { IsInherited = false }, value => value));
-        Assert.True(A.InteropValueCodec.CaptureRule(valid).IsInherited);
-    }
 
-    [Fact]
-    public void InteropValues_ExternalFactoriesCannotRunInsideMutationGate()
-    {
-        var rule = A.InteropValueCodec.ImportRule(InteropRuleFields(), value => value);
-        var called = false;
-        lock (A.FacadeMutation.Gate)
-            Assert.Throws<InvalidOperationException>(() => A.InteropValueCodec.ExportRule(rule,
-                value => { called = true; return value; }, value => value));
-        Assert.False(called);
-    }
 
     private static AuthorizationRule ConstructNativeInteropRule(A.InteropRuleValue v)
     {
@@ -172,7 +99,7 @@ public partial class PortableSecurityFoundationTests
     {
         var mask = rule switch { NativeInteropAccess a => a.Mask, NativeInteropAudit a => a.Mask,
             NativeInteropObjectAccess a => a.Mask, NativeInteropObjectAudit a => a.Mask, _ => throw new NotSupportedException() };
-        return new(A.InteropValueCodec.CaptureIdentity(A.InteropValueCodec.FromMicrosoftIdentity(rule.IdentityReference)),
+        return new(A.InteropValueCodec.CaptureMicrosoftIdentity(rule.IdentityReference),
             mask, rule.IsInherited, rule.InheritanceFlags, rule.PropagationFlags,
             rule is AuditRule, rule is ObjectAccessRule or ObjectAuditRule,
             rule is AccessRule access ? access.AccessControlType : AccessControlType.Allow,

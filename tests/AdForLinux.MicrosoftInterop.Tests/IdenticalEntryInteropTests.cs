@@ -15,57 +15,49 @@ public class IdenticalEntryInteropTests
     [WindowsTheory]
     [InlineData(false,false)] [InlineData(false,true)]
     [InlineData(true,false)] [InlineData(true,true)]
-    public void Public_entry_identical_assignment_keeps_sessions_current_until_real_ACL_edit(bool audit,bool priorOwner)
+    public void Public_entry_identical_assignment_preserves_raw_data_and_export_isolation_until_portable_ACL_edit(bool audit,bool priorOwner)
     {
         using var fixture = new OfflineEntry(audit);
         var source = fixture.Entry.ObjectSecurity;Assert.Equal(fixture.Raw,source.CaptureSnapshot().GetRawBinaryForm());
         if (priorOwner) source.SetOwner(new P.SecurityIdentifier(U2,0));
         var before = source.CaptureSnapshot();
-        using var noOp = source.ExportForEdit();
-        using var failed = source.ExportForEdit();
-        using var stale = source.ExportForEdit();
+        var exported = source.ToMicrosoftObject();
         var supplied = before.GetRawBinaryForm();var saved = (byte[])supplied.Clone();
         source.SetSecurityDescriptorBinaryForm(supplied,AccessControlSections.All);
         Assert.Equal(saved,supplied);
         Assert.Equal(before.GetRawBinaryForm(),source.CaptureSnapshot().GetRawBinaryForm());
         Assert.Equal(priorOwner ? D.SecurityMasks.Owner : D.SecurityMasks.None,source.CaptureSnapshot().PendingWriteSections);
-        Assert.Equal(D.SecurityMasks.None,noOp.ApplyTo(source));
-        Assert.Throws<InvalidOperationException>(() => noOp.ApplyTo(source));
-
-        var nativeBefore = failed.Object.GetSecurityDescriptorBinaryForm();
-        failed.Object.SetAuditRuleProtection(!failed.Object.AreAuditRulesProtected,true);
+        exported.SetAuditRuleProtection(!exported.AreAuditRulesProtected,true);
         var beforeFailure = source.CaptureSnapshot();
-        Assert.Throws<NotSupportedException>(() => failed.ApplyTo(source));
-        AssertSnapshot(beforeFailure,source.CaptureSnapshot());Assert.NotNull(failed.Object);Assert.NotNull(failed.Snapshot);
-        failed.Object.SetSecurityDescriptorBinaryForm(nativeBefore);
-        Assert.Equal(D.SecurityMasks.None,failed.ApplyTo(source)); // Failed application neither consumed nor invalidated it.
+        AssertSnapshot(before, beforeFailure);
+        Assert.Empty(fixture.Writes);
 
         IdenticalAssignmentCases.EditAcl(source,audit);
         var after = source.CaptureSnapshot();
         Assert.NotEqual(beforeFailure.GetRawBinaryForm(),after.GetRawBinaryForm());
         var expected = IdenticalAssignmentCases.Target(audit) | (priorOwner ? D.SecurityMasks.Owner : D.SecurityMasks.None);
         Assert.Equal(expected,after.PendingWriteSections);
-        Assert.Throws<InvalidOperationException>(() => stale.ApplyTo(source));
-        AssertSnapshot(after,source.CaptureSnapshot());Assert.NotNull(stale.Object);Assert.NotNull(stale.Snapshot);
+        exported.SetOwner(new System.Security.Principal.SecurityIdentifier(Everyone,0));
+        AssertSnapshot(after,source.CaptureSnapshot());
         fixture.Entry.CommitChanges();
         AssertWrite(Assert.Single(fixture.Writes),expected,after.GetRawBinaryForm());
     }
 
     [WindowsTheory]
     [InlineData(false)] [InlineData(true)]
-    public void Public_entry_noop_commit_after_identical_assignment_revokes_old_edit_attachment(bool audit)
+    public void Public_entry_noop_commit_after_identical_assignment_keeps_exported_data_independent(bool audit)
     {
         using var fixture = new OfflineEntry(audit);var source = fixture.Entry.ObjectSecurity;
-        using var edit = source.ExportForEdit();var before = source.CaptureSnapshot();
+        var exported = source.ToMicrosoftObject();var before = source.CaptureSnapshot();
         source.SetSecurityDescriptorBinaryForm(before.GetRawBinaryForm(),AccessControlSections.All);
         Assert.Equal(D.SecurityMasks.None,source.CaptureSnapshot().PendingWriteSections);
         fixture.Entry.CommitChanges();Assert.Empty(fixture.Writes);
         var after = source.CaptureSnapshot();
-        Assert.ThrowsAny<InvalidOperationException>(() => edit.ApplyTo(source));
-        AssertSnapshot(after,source.CaptureSnapshot());Assert.NotNull(edit.Object);
+        exported.SetOwner(new System.Security.Principal.SecurityIdentifier(Everyone,0));
+        AssertSnapshot(after,source.CaptureSnapshot());
         var fresh = fixture.Entry.ObjectSecurity;Assert.NotSame(source,fresh);
         Assert.Equal(before.GetRawBinaryForm(),fresh.CaptureSnapshot().GetRawBinaryForm());
-        using var current = fresh.ExportForEdit();Assert.Equal(D.SecurityMasks.None,current.ApplyTo(fresh));
+        Assert.NotEmpty(fresh.ToMicrosoftObject().GetSecurityDescriptorBinaryForm());
         Assert.Empty(fixture.Writes);
     }
 
