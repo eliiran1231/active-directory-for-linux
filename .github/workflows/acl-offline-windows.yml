@@ -99,6 +99,8 @@ jobs:
           if-no-files-found: error
   offline-acl:
     runs-on: windows-2025
+    env:
+      ADFL_OFFLINE_TESTS: "1"
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -113,32 +115,26 @@ jobs:
             10.0.x
       - name: Full solution build
         run: dotnet build AdForLinux.sln --configuration Release
+      - name: Check offline runner admission
+        run: python tests/test_offline_runner.py
       # These classes use only handcrafted bytes and detached in-memory descriptors.
       # Do not broaden this filter: other functional classes require Samba/AD fixtures.
       - name: Portable codec, projection, mutation and recorded replay
         shell: pwsh
         run: >-
-          dotnet test tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj
-          --configuration Release --framework ${{ matrix.framework }}
-          --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests|FullyQualifiedName~AdForLinux.FunctionalTests.PortableSecurityFoundationTests|FullyQualifiedName~AdForLinux.FunctionalTests.V1PrincipalAuditTests|FullyQualifiedName~AdForLinux.FunctionalTests.Issue216RegressionTests|FullyQualifiedName~AdForLinux.FunctionalTests.AccountManagementPublicTypesTests|FullyQualifiedName~AdForLinux.FunctionalTests.PrincipalValueCollectionTests"
-          --logger "trx;LogFileName=acl-offline-${{ matrix.framework }}.trx"
+          python tests/run-offline-tests.py functional --framework '${{ matrix.framework }}'
           --results-directory artifacts/test-results
       # Inspected classes contain reflection-only assertions, no AD fixtures or setup.
       # Keep this filter explicit: the unfiltered differential suite mutates a directory.
       - name: Public contract metadata without directory access
         shell: pwsh
         run: >-
-          dotnet test tests/AdForLinux.DifferentialTests/AdForLinux.DifferentialTests.csproj
-          --configuration Release --framework ${{ matrix.framework }}-windows --no-build --no-restore
-          --filter "FullyQualifiedName~LowLevelPublicSurfaceComparisonTests|FullyQualifiedName~PublicApiSurfaceComparisonTests|FullyQualifiedName~PublicTypeModifierComparisonTests|FullyQualifiedName~PrincipalSurfaceComparisonTests|FullyQualifiedName~PortableSecurityContractTests|FullyQualifiedName~V1ServiceNameTrackingComparisonTests"
-          --logger "trx;LogFileName=public-surface-${{ matrix.framework }}.trx"
+          python tests/run-offline-tests.py surface --framework '${{ matrix.framework }}'
           --results-directory artifacts/test-results
       - name: Public Microsoft companion and compiled usage examples
         shell: pwsh
         run: >-
-          dotnet test tests/AdForLinux.MicrosoftInterop.Tests/AdForLinux.MicrosoftInterop.Tests.csproj
-          --configuration Release --framework ${{ matrix.framework }}-windows --no-build
-          --logger "trx;LogFileName=companion-${{ matrix.framework }}.trx"
+          python tests/run-offline-tests.py companion --framework '${{ matrix.framework }}'
           --results-directory artifacts/test-results
       - name: Verify optional companion packaging without publication
         shell: pwsh

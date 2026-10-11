@@ -1,8 +1,11 @@
 # v1 principal audit: items 1–5
 
 Scope: AccountManagement candidates assigned for this audit. Release/setup,
-licensing, broader CI scope and pooling are outside it. No directory mutations were executed; controlled tests do not establish live
-AD compatibility. Items 1–4 are implemented here; item 5 remains open.
+licensing, broader CI scope and pooling are outside it. Controlled tests do not
+establish live AD compatibility. An earlier aborted read-test invocation has
+unverified connection/authentication effects; see the
+[offline safeguards and evidence limits](../../tests/OFFLINE-TESTING.md).
+Items 1–4 are implemented here; item 5 remains open.
 
 ## Confirmed and fixed
 
