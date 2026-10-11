@@ -2,7 +2,7 @@ name: ACL offline Windows
 
 on:
   push:
-    branches: [bro/issue-226-acl-mutation-engine]
+    branches: [bro/issue-226-acl-mutation-engine, bro/v1-audit-1-5]
 
 permissions:
   contents: read
@@ -120,7 +120,7 @@ jobs:
         run: >-
           dotnet test tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj
           --configuration Release --framework ${{ matrix.framework }}
-          --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests|FullyQualifiedName~AdForLinux.FunctionalTests.PortableSecurityFoundationTests"
+          --filter "FullyQualifiedName~AdForLinux.FunctionalTests.CoreSidTests|FullyQualifiedName~AdForLinux.FunctionalTests.SecurityDescriptorCodecTests|FullyQualifiedName~AdForLinux.FunctionalTests.MicrosoftObservableProjectorTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationEngineTests|FullyQualifiedName~AdForLinux.FunctionalTests.AclMutationReplayTests|FullyQualifiedName~AdForLinux.FunctionalTests.PortableSecurityFoundationTests|FullyQualifiedName~AdForLinux.FunctionalTests.V1PrincipalAuditTests|FullyQualifiedName~AdForLinux.FunctionalTests.Issue216RegressionTests|FullyQualifiedName~AdForLinux.FunctionalTests.AccountManagementPublicTypesTests|FullyQualifiedName~AdForLinux.FunctionalTests.PrincipalValueCollectionTests"
           --logger "trx;LogFileName=acl-offline-${{ matrix.framework }}.trx"
           --results-directory artifacts/test-results
       # Inspected classes contain reflection-only assertions, no AD fixtures or setup.

@@ -356,7 +356,8 @@ public abstract class Principal : IDisposable
                 "(objectClass=*)",
                 new[] { "tokenGroups" },
                 SearchScope.Base);
-            var tokenResult = tokenSearcher.FindOne();
+            using var tokenResults = ContextRef.SearchAuthorizationEntries(tokenSearcher);
+            var tokenResult = tokenResults.Cast<SearchResult>().FirstOrDefault();
             var tokenSids = tokenResult?.Properties["tokenGroups"]
                 .Cast<object>()
                 .OfType<byte[]>()
@@ -364,16 +365,20 @@ public abstract class Principal : IDisposable
 
             if (tokenSids.Count == 0)
             {
-                // Some LDAP servers do not expose tokenGroups. Keep the normal
-                // transitive membership behavior, but explicitly include the
-                // principal's primary group so it is never silently omitted.
+                // Authorization is domain-wide even when the context's ordinary
+                // principal queries are scoped to an OU. Distribution groups must
+                // never enter this result, including through the primary-group arm.
                 var memberFilter =
                     $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(distinguishedName)})";
                 var primaryGroupSid = TryGetPrimaryGroupSid();
-                return FindGroups(
-                    ContextRef,
-                    memberFilter,
-                    primaryGroupSid);
+                var membership = primaryGroupSid is null ? memberFilter
+                    : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
+                var groups = new List<Principal>();
+                SearchAuthorizationGroups(ContextRef,
+                    ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext),
+                    AuthorizationGroupFilter(membership), groups,
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                return new PrincipalSearchResult<Principal>(groups);
             }
 
             var objectSid = Entry?.Properties["objectSid"].Value as byte[]
@@ -479,8 +484,8 @@ public abstract class Principal : IDisposable
         byte[] principalSid,
         string principalDn)
     {
-        var filter = $"(&(objectCategory=group)(|{string.Concat(tokenSids.Select(
-            sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"))}))";
+        var filter = AuthorizationGroupFilter($"(|{string.Concat(tokenSids.Select(
+            sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"))})");
         var groups = new List<Principal>();
         var returnedSids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -515,7 +520,7 @@ public abstract class Principal : IDisposable
             var memberFilter = string.Concat(memberDns.Select(dn =>
                 $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(dn)})"));
             SearchAuthorizationGroups(context, context.CreateGlobalCatalogEntry(forestRoot),
-                $"(&(objectCategory=group)(|{memberFilter}))", groups, returnedSids);
+                AuthorizationGroupFilter($"(|{memberFilter})"), groups, returnedSids);
         }
         catch (Exception exception) when (
             exception is LdapException or DirectoryOperationException)
@@ -527,6 +532,9 @@ public abstract class Principal : IDisposable
 
         return new PrincipalSearchResult<Principal>(groups);
     }
+
+    private static string AuthorizationGroupFilter(string membership) =>
+        $"(&(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648){membership})";
 
     private static HashSet<string> FindForestPrincipalDns(
         PrincipalContext context,
@@ -542,7 +550,7 @@ public abstract class Principal : IDisposable
         {
             PageSize = 500,
         };
-        using var results = searcher.FindAll();
+        using var results = context.SearchAuthorizationEntries(searcher);
         return results.Cast<SearchResult>()
             .Select(result => result.Properties["distinguishedName"].Count > 0
                 ? result.Properties["distinguishedName"][0]?.ToString()
@@ -561,7 +569,7 @@ public abstract class Principal : IDisposable
     {
         using (root)
         using (var searcher = new DirectorySearcher(root, filter) { PageSize = 500 })
-        using (var results = searcher.FindAll())
+        using (var results = context.SearchAuthorizationEntries(searcher))
         {
             foreach (var result in results.Cast<SearchResult>())
             {
