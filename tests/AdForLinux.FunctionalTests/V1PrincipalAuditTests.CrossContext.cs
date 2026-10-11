@@ -46,7 +46,7 @@ public partial class V1PrincipalAuditTests
         if (references)
         {
             var reference = (SearchResultReference)Activator.CreateInstance(typeof(SearchResultReference), flags, null,
-                new object[] { new[] { new Uri("ldap://never-follow.invalid/") }, Array.Empty<DirectoryControl>() }, null)!;
+                new object[] { new[] { new Uri("ldap://never-follow.invalid/") } }, null)!;
             typeof(SearchResultReferenceCollection).GetMethod("Add", flags)!.Invoke(response.References, [reference]);
         }
         return response;
@@ -262,7 +262,10 @@ public partial class V1PrincipalAuditTests
         f.User.SetExtension("pending extension");
         f.Entry.Properties["displayName"].Value = "pending entry";
         var generation = f.Entry.IdentityLifetime.Capture(f.Entry.ThrowIfDisposed);
-        Assert.ThrowsAny<Exception>(() => f.User.Save(f.Destination));
+        if (fault == "throw-partial")
+            Assert.Throws<DirectoryOperationException>(() => f.User.Save(f.Destination));
+        else
+            Assert.Throws<InvalidOperationException>(() => f.User.Save(f.Destination));
         Assert.Same(f.Source, f.User.Context); Assert.Same(f.Entry, f.User.GetUnderlyingObject());
         Assert.Equal(CrossContextFixture.ItemDn, f.Entry.IdentityTarget);
         Assert.Equal("pending rename", f.User.Name); Assert.Equal("pending scalar", f.User.Description);
@@ -287,7 +290,10 @@ public partial class V1PrincipalAuditTests
     public void Cross_context_missing_metadata_never_produces_a_plan(int read, string attribute)
     {
         using var f = new CrossContextFixture { CorruptRead = read, Omit = attribute };
-        Assert.ThrowsAny<Exception>(() => f.User.Save(f.Destination));
+        if (read <= 2)
+            Assert.Throws<NotSupportedException>(() => f.User.Save(f.Destination));
+        else
+            Assert.Throws<InvalidOperationException>(() => f.User.Save(f.Destination));
         Assert.Equal(0, f.Writes); Assert.Equal(2, f.Closes);
         Assert.Same(f.Source, f.User.Context); Assert.Same(f.Entry, f.User.GetUnderlyingObject());
     }
