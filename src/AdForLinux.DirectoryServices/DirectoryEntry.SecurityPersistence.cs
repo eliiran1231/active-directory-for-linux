@@ -37,7 +37,8 @@ public partial class DirectoryEntry
         var readMasks = EffectiveSecurityMasks();
         var requested = full && uncertainty is not null
             ? names.Concat(uncertainty.Attributes).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() : names;
-        var refreshed = ReadProperties(requested.Length == 0 ? new[] { "1.1" } : requested, full, readMasks, uncertainty is not null);
+        var refreshed = ReadProperties(requested.Length == 0 ? new[] { "1.1" } : requested, full, readMasks,
+            uncertainty is not null, uncertainty?.ServiceNames is not null);
         if (uncertainty is { Creating: true })
             throw new InvalidOperationException("The Add outcome is uncertain. A same-DN object, even with matching attributes, does not prove creation identity. Verify it separately and explicitly acquire an existing-entry handle; this creation handle cannot replay Add.");
         // Requesting a descriptor is not evidence that LDAP returned it. Validate

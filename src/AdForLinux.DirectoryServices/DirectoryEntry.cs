@@ -758,7 +758,8 @@ public partial class DirectoryEntry : Component
 
     private PropertyCollection ReadProperties(
         string[] requestedProperties,
-        bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false)
+        bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false,
+        bool requireCompleteServiceNames = false)
     {
         ThrowIfDisposed();
         var generation = IdentityLifetime.Capture(ThrowIfDisposed);
@@ -782,8 +783,10 @@ public partial class DirectoryEntry : Component
         }
 
         var response = (SearchResponse)connection.SendRequestCompatible(request);
-        if (requireObject && response.Entries.Count != 1)
+        if (requireObject && (response.ResultCode != ResultCode.Success || response.Entries.Count != 1
+            || response.References.Count != 0 || response.Referral.Length != 0))
             throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
+        if (requireCompleteServiceNames) ValidateCompleteServiceNameReadback(response.Entries[0]);
         var properties = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
 
         if (response.Entries.Count > 0)
@@ -795,6 +798,28 @@ public partial class DirectoryEntry : Component
             if (response.Entries.Count > 0) _boundDistinguishedName = response.Entries[0].DistinguishedName;
             return properties;
         });
+    }
+
+    private static void ValidateCompleteServiceNameReadback(SearchResultEntry entry)
+    {
+        // Validate the wire names before LoadEntry normalizes range options.
+        // A range ending at N cannot prove absence; even N-* lacks the prefix
+        // unless N is zero. Do not assemble ranges across mutable snapshots.
+        DirectoryAttribute? bare = null;
+        DirectoryAttribute? terminal = null;
+        foreach (string name in entry.Attributes.AttributeNames)
+        {
+            var parts = name.Split(';');
+            if (!parts[0].Equals(PrincipalServiceNameWrite.Attribute, StringComparison.OrdinalIgnoreCase)) continue;
+            if (parts.Length == 1) bare = entry.Attributes[name];
+            else if (parts.Length == 2 && parts[1].Equals("range=0-*", StringComparison.OrdinalIgnoreCase) && terminal is null)
+                terminal = entry.Attributes[name];
+            else throw new InvalidOperationException("Service-name reconciliation requires complete, unambiguous attribute values; ranged or malformed readback was refused.");
+        }
+        // AD can return an empty bare companion with its ranged value attribute.
+        // Nonempty bare plus ranged data is ambiguous and cannot be merged here.
+        if (terminal is not null && bare is { Count: > 0 })
+            throw new InvalidOperationException("Service-name readback contains conflicting bare and ranged values.");
     }
 
     private static bool HasRangeSpecifier(string propertyName) =>

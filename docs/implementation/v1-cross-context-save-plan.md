@@ -3,6 +3,14 @@
 Status: read-only preflight and refusal boundary implemented; cross-controller
 execution remains disabled. No live AD operation has been run for this change.
 
+The current preflight is advisory and insufficient to enable execution. Its
+generic DirectorySearcher path can hide references or accept partial results;
+parsed DN ancestry is not server-attested naming-context membership. Cached NC
+discovery, separately reopened reads and absence of an operation-wide generation
+check do not establish one stable endpoint/session proof. The unconditional
+cross-context refusal must remain until the dedicated response-aware transport
+below replaces these assumptions. Do not promote a returned plan to authority.
+
 ## Current bounded behavior
 
 Before a persisted principal switches to a different connection context, read
@@ -31,6 +39,11 @@ not establish safe automatic compensation after an uncertain move or write.
 1. Freeze/check the retained principal identity, entry lifetime/generation,
    pending scalar/extension/SPN edits, property ledger versions and security raw
    intent/provenance. Fresh preflight evidence is not a durable authorization.
+   A bounded operation session must use each endpoint's own authority, retain
+   the exact connections and owner generations, reject non-success/partial or
+   referred responses, discover the NC freshly and obtain domain-scope server
+   evidence for membership. Check the captured generations again before every
+   request and publication. This dedicated transport is not yet implemented.
 2. Verify destination write targeting against DN reuse. Measure GUID-addressed
    ModifyDN (object and parent) and Modify, or establish an equivalent supported
    atomic identity assertion. A preceding search is not sufficient. Use only the

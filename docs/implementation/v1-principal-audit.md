@@ -80,6 +80,16 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    supplemental operation was guarded away and the request only wrote another
    attribute. An unrequested/missing SPN key is not evidence of server absence.
 
+   Recovery validates raw LDAP response completeness before range-name
+   normalization or cache publication. Nonterminal, nonzero-start, malformed and
+   conflicting SPN ranges refuse atomically. A single `range=0-*` is accepted,
+   including AD's optional empty bare-attribute companion; genuinely absent
+   values in a successful singleton response remain a valid deletion result.
+   Non-success, missing/duplicate entries and either referral form refuse.
+   Raw SearchResponse tests run through the actual loader and recovery path,
+   rather than a preassembled property dictionary. No range walk or multi-read
+   assembly is used because successive ranges may change during retrieval.
+
    The earlier set-difference proposal was rejected in review: failed Save →
    cancel edit → retry could publish its stale entry ledger. This implementation
    avoids cache staging and rollback altogether. Tests cover rejection/cancel,
