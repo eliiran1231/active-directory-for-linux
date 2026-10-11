@@ -16,18 +16,18 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     private readonly Action<PropertyValueCollection>? _onChanged;
     private readonly Action? _validateOwner;
     private volatile bool _revoked, _crossContextReserved;
-    internal void ReserveCrossContext() { lock (ChangeGate) _crossContextReserved = true; }
-    internal void ReleaseCrossContext() { lock (ChangeGate) _crossContextReserved = false; }
-    internal void Revoke() { lock (ChangeGate) { _revoked = true; _crossContextReserved = false; } }
+    private object?[]? _crossContextFrozenValues;
+    internal void ReserveCrossContext()
+    { lock (ChangeGate) { _crossContextFrozenValues = InnerList.ToArray(); _crossContextReserved = true; } }
+    internal void ReleaseCrossContext()
+    { lock (ChangeGate) { _crossContextReserved = false; _crossContextFrozenValues = null; } }
+    internal void Revoke()
+    { lock (ChangeGate) { _revoked = true; _crossContextReserved = false; _crossContextFrozenValues = null; } }
     private void CheckCrossContextMutation()
     {
         if (_revoked || _crossContextReserved)
             throw new InvalidOperationException("This property wrapper is reserved or belongs to a revoked binding.");
     }
-    protected override void OnInsert(int index, object? value) => CheckCrossContextMutation();
-    protected override void OnRemove(int index, object? value) => CheckCrossContextMutation();
-    protected override void OnSet(int index, object? oldValue, object? newValue) => CheckCrossContextMutation();
-    protected override void OnClear() => CheckCrossContextMutation();
     private void ValidateOwner()
     {
         if (_revoked) throw new InvalidOperationException("This property wrapper belongs to a revoked entry binding.");
@@ -64,7 +64,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     public object? this[int index]
     {
         get => List[index]!;
-        set => List[index] = value;
+        set { CheckCrossContextMutation(); List[index] = value; }
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
 
     /// <summary>Adds one value. Returns its index.</summary>
     public int Add(object? value)
-        => List.Add(value);
+    { CheckCrossContextMutation(); return List.Add(value); }
 
     /// <summary>Adds several values.</summary>
     public void AddRange(IEnumerable<object?> values)
@@ -152,6 +152,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     /// <summary>Removes one value.</summary>
     public void Remove(object? value)
     {
+        CheckCrossContextMutation();
         var index = List.IndexOf(value);
         if (index >= 0)
         {
@@ -180,6 +181,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     /// <summary>Inserts a value at the specified index.</summary>
     public void Insert(int index, object? value)
     {
+        CheckCrossContextMutation();
         List.Insert(index, value);
     }
 
@@ -202,8 +204,20 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         }
     }
 
-    protected override void OnClearComplete() =>
+    protected override void OnClearComplete()
+    {
+        lock (ChangeGate)
+        {
+            // Clear is inherited. Keep its existing protected surface and restore
+            // the reserved snapshot before rejecting the completed local clear.
+            if (_crossContextReserved)
+            {
+                InnerList.AddRange(_crossContextFrozenValues!);
+                throw new InvalidOperationException("This property wrapper is reserved by a cross-context operation.");
+            }
+        }
         RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
+    }
 
     private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)
     {

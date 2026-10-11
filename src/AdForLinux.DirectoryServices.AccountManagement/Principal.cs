@@ -1192,15 +1192,16 @@ public abstract partial class Principal : IDisposable
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
     protected void ExtensionSet(string attribute, object? value)
     {
+        if (attribute is null)
+        {
+            throw new ArgumentException("The attribute cannot be null.");
+        }
+        // Validation may inspect caller-owned ICollection implementations. Keep
+        // that work outside the short frozen-state publication gate.
+        ValidateExtensionValue(value);
         lock (_crossContextGate)
         {
             if (_crossContextOperation is not null) throw new InvalidOperationException("Principal edits are frozen by a cross-context operation.");
-            if (attribute is null)
-            {
-                throw new ArgumentException("The attribute cannot be null.");
-            }
-
-            ValidateExtensionValue(value);
             // Microsoft shares the supplied array (or the scalar wrapper) with
             // callers. Queries and saves must consume these same current values.
             _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
