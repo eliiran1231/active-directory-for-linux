@@ -13,7 +13,7 @@ public partial class DirectoryEntry
     private int _commitRunning;
     private sealed record UncertainWrite(bool Creating, long Generation, string[] Attributes,
         SecurityMasks SecuritySections, PropertyValueCollection[] Properties, long[] Versions,
-        ActiveDirectorySecurity? Security, long SecurityVersion);
+        ActiveDirectorySecurity? Security, long SecurityVersion, PrincipalServiceNameWrite? ServiceNames);
     private UncertainWrite? _uncertainWrite;
     // Controlled seams execute the same production planner/publication paths. They
     // replace transport or pause scheduling, and never become public callbacks or copied authority.
@@ -130,6 +130,12 @@ public partial class DirectoryEntry
                     if (recovery)
                     {
                         foreach (var property in ledgers) property.ResetChanged();
+                        if (uncertainty!.ServiceNames is { } namesWrite)
+                        {
+                            namesWrite.ReconciledIntentMatches = namesWrite.MatchesReadback(
+                                refreshed[PrincipalServiceNameWrite.Attribute]);
+                            namesWrite.State = PrincipalServiceNameWrite.Outcome.Reconciled;
+                        }
                         _uncertainWrite = null;
                     }
                     else if (uncertainty is not null)
@@ -217,7 +223,9 @@ public partial class DirectoryEntry
         | ((mask & SecurityMasks.Dacl) != 0 ? AccessControlSections.Access : 0)
         | ((mask & SecurityMasks.Sacl) != 0 ? AccessControlSections.Audit : 0);
 
-    private void CommitPortableChanges()
+    internal void CommitPrincipalServiceNames(PrincipalServiceNameWrite write) => CommitPortableChanges(write);
+
+    private void CommitPortableChanges(PrincipalServiceNameWrite? serviceNames = null)
     {
         if (_disposed) return; // retained clean/disposed SetInfo compatibility
         if (Interlocked.CompareExchange(ref _commitRunning, 1, 0) != 0)
@@ -227,16 +235,28 @@ public partial class DirectoryEntry
             ThrowIfDisposed();
             if (_uncertainWrite is not null) throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
             var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+            long serviceNameReadVersion;
+            lock (_entryWriteGate) serviceNameReadVersion = _entryChangeVersion;
+            // Loading does not stage values. Keep this cache's ledger/version in
+            // the same checked request as ordinary entry edits, even if clean.
+            var serviceNameProperty = serviceNames is null ? null : Properties[PrincipalServiceNameWrite.Attribute];
             ActiveDirectorySecurity? security; PropertyValueCollection[] properties; long version; bool creating;
             lock (A.FacadeMutation.Gate)
             lock (_entryWriteGate)
             {
+                if (serviceNames is not null && _entryChangeVersion != serviceNameReadVersion)
+                    throw new InvalidOperationException("Entry state changed while service names were being loaded.");
                 security = _objectSecurity; creating = _isNew;
-                if (!creating && _pendingPropertyChanges.Count == 0 && security is null && _connection is null) return;
+                if (!creating && _pendingPropertyChanges.Count == 0 && security is null && _connection is null && serviceNames is null) return;
                 version = _entryChangeVersion;
                 properties = creating ? Array.Empty<PropertyValueCollection>() : _pendingPropertyChanges.ToArray();
             }
             if (creating) properties = ((IEnumerable<PropertyValueCollection>)Properties).ToArray();
+            if (serviceNameProperty is not null)
+            {
+                if (creating) throw new InvalidOperationException("Supplemental service names require a persisted entry.");
+                properties = properties.Append(serviceNameProperty).Distinct().ToArray();
+            }
             var propertyVersions = properties.Select(p => p.ChangeVersion).ToArray();
             if (properties.Any(p => p.PropertyName.Equals("nTSecurityDescriptor", StringComparison.OrdinalIgnoreCase) && p.Changed))
                 throw new InvalidOperationException("Security descriptor writes require ObjectSecurity's raw section-intent planner.");
@@ -254,6 +274,7 @@ public partial class DirectoryEntry
             {
                 var modify = new ModifyRequest(_path.DistinguishedName);
                 foreach (var property in properties) if (property.Changed) AddModifications(modify, property);
+                serviceNames?.AppendTo(modify, serviceNameProperty!);
                 if (security is not null)
                 {
                     plan = A.RawSecurityWritePreparation.PrepareModify(security, security.PendingWriteSections);
@@ -296,7 +317,7 @@ public partial class DirectoryEntry
             var uncertain = new UncertainWrite(creating, generation,
                 request is AddRequest addRequest ? addRequest.Attributes.Cast<DirectoryAttribute>().Select(a => a.Name).ToArray()
                     : ((ModifyRequest)request).Modifications.Cast<DirectoryAttributeModification>().Select(a => a.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
-                plan?.Sections ?? SecurityMasks.None, properties, propertyVersions, security, securityRead?.Version ?? 0);
+                plan?.Sections ?? SecurityMasks.None, properties, propertyVersions, security, securityRead?.Version ?? 0, serviceNames);
             if (hasRequest)
             {
                 ResultCode result;
@@ -312,7 +333,11 @@ public partial class DirectoryEntry
                 {
                     // A missing response cannot prove the server rejected the write.
                     // Retain intent but require readback before sending it a second time.
-                    lock (_entryWriteGate) _uncertainWrite = uncertain;
+                    lock (_entryWriteGate)
+                    {
+                        _uncertainWrite = uncertain;
+                        if (serviceNames is not null) serviceNames.State = PrincipalServiceNameWrite.Outcome.Uncertain;
+                    }
                     if (LdapExceptionTranslator.IsProtocolFailure(error)) throw LdapExceptionTranslator.Translate(error);
                     throw;
                 }
@@ -327,12 +352,17 @@ public partial class DirectoryEntry
                     _objectSecurity = null;
                     _isNew = false; _entryChangeVersion++;
                     IdentityLifetime.Invalidate();
+                    if (serviceNames is not null) serviceNames.State = PrincipalServiceNameWrite.Outcome.Acknowledged;
                     return true;
                 });
             }
             catch
             {
-                if (hasRequest) lock (_entryWriteGate) _uncertainWrite = uncertain;
+                if (hasRequest) lock (_entryWriteGate)
+                {
+                    _uncertainWrite = uncertain;
+                    if (serviceNames is not null) serviceNames.State = PrincipalServiceNameWrite.Outcome.Uncertain;
+                }
                 throw;
             }
         }

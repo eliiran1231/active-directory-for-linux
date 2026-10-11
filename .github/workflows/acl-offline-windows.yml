@@ -130,7 +130,7 @@ jobs:
         run: >-
           dotnet test tests/AdForLinux.DifferentialTests/AdForLinux.DifferentialTests.csproj
           --configuration Release --framework ${{ matrix.framework }}-windows --no-build --no-restore
-          --filter "FullyQualifiedName~LowLevelPublicSurfaceComparisonTests|FullyQualifiedName~PublicApiSurfaceComparisonTests|FullyQualifiedName~PublicTypeModifierComparisonTests|FullyQualifiedName~PrincipalSurfaceComparisonTests|FullyQualifiedName~PortableSecurityContractTests"
+          --filter "FullyQualifiedName~LowLevelPublicSurfaceComparisonTests|FullyQualifiedName~PublicApiSurfaceComparisonTests|FullyQualifiedName~PublicTypeModifierComparisonTests|FullyQualifiedName~PrincipalSurfaceComparisonTests|FullyQualifiedName~PortableSecurityContractTests|FullyQualifiedName~V1ServiceNameTrackingComparisonTests"
           --logger "trx;LogFileName=public-surface-${{ matrix.framework }}.trx"
           --results-directory artifacts/test-results
       - name: Public Microsoft companion and compiled usage examples

@@ -8,15 +8,59 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     private readonly List<T> _values;
     private readonly Action<IReadOnlyList<T>>? _onChanged;
     private int _version;
+    private T[] _baseline;
+    private readonly bool _trackChanges;
+    private readonly List<(int Kind, int Index, T Value)> _edits = [];
+    private int _acknowledgement;
+
+    internal sealed record ChangeSet(int Acknowledgement, int EditCount, T[] Values,
+        T[] Removed, (T Original, T Current)[] Changed, T[] Inserted);
+
+    internal ChangeSet CaptureChanges()
+    {
+        var slots = _baseline.Select(value => (Inserted: false, Original: value, Current: value)).ToList();
+        var removed = new List<T>();
+        foreach (var (kind, index, value) in _edits)
+        {
+            switch (kind)
+            {
+                case 0: slots.Insert(index, (true, default!, value)); break;
+                case 1: slots[index] = (slots[index].Inserted, slots[index].Original, value); break;
+                case 2:
+                    if (!slots[index].Inserted) removed.Add(slots[index].Original);
+                    slots.RemoveAt(index); break;
+                case 3:
+                    removed.AddRange(slots.Where(slot => !slot.Inserted).Select(slot => slot.Original));
+                    slots.Clear(); break;
+            }
+        }
+        return new(_acknowledgement, _edits.Count, _values.ToArray(), removed.ToArray(),
+            slots.Where(slot => !slot.Inserted && !object.Equals(slot.Original, slot.Current))
+                .Select(slot => (slot.Original, slot.Current)).ToArray(),
+            slots.Where(slot => slot.Inserted).Select(slot => slot.Current).ToArray());
+    }
+
+    internal void Acknowledge(ChangeSet captured)
+    {
+        if (captured.Acknowledgement != _acknowledgement || captured.EditCount > _edits.Count)
+            throw new InvalidOperationException("The collection acknowledgement is stale.");
+        // Preserve edits made after the request snapshot. Their indices refer to
+        // the captured value sequence, which becomes the next baseline.
+        _baseline = captured.Values;
+        _edits.RemoveRange(0, captured.EditCount);
+        _acknowledgement++;
+    }
 
     internal PrincipalValueCollection()
         : this(Array.Empty<T>(), null)
     {
     }
 
-    internal PrincipalValueCollection(IEnumerable<T> values, Action<IReadOnlyList<T>>? onChanged)
+    internal PrincipalValueCollection(IEnumerable<T> values, Action<IReadOnlyList<T>>? onChanged, bool trackChanges = false)
     {
         _values = new List<T>(values);
+        _trackChanges = trackChanges;
+        _baseline = trackChanges ? _values.ToArray() : [];
         _onChanged = onChanged;
     }
 
@@ -39,6 +83,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
             _ = _values[index];
             ThrowIfNull(value);
             _values[index] = value;
+            if (_trackChanges) _edits.Add((1, index, value));
             Changed();
         }
     }
@@ -47,6 +92,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     {
         ThrowIfNull(value);
         _version++;
+        if (_trackChanges) _edits.Add((0, _values.Count, value));
         _values.Add(value);
         Changed();
     }
@@ -55,6 +101,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     {
         _version++;
         _values.Clear();
+        if (_trackChanges) _edits.Add((3, 0, default!));
         Changed();
     }
 
@@ -82,6 +129,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         _version++;
         ThrowIfNull(value);
         _values.Insert(index, value);
+        if (_trackChanges) _edits.Add((0, index, value));
         Changed();
     }
 
@@ -93,6 +141,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         if (index >= 0)
         {
             _values.RemoveAt(index);
+            if (_trackChanges) _edits.Add((2, index, default!));
             Changed();
         }
 
@@ -103,6 +152,7 @@ public class PrincipalValueCollection<T> : IList<T>, IList
     {
         _version++;
         _values.RemoveAt(index);
+        if (_trackChanges) _edits.Add((2, index, default!));
         Changed();
     }
 

@@ -12,6 +12,15 @@ public class V1PrincipalAuditTests
     {
         public void SetExtension(string value) => ExtensionSet("extensionAttribute1", value);
     }
+    private sealed class PostSaveComputer(PrincipalContext context) : ComputerPrincipal(context)
+    {
+        internal bool FailAfterCommit;
+        private protected override void OnAfterSave()
+        {
+            if (FailAfterCommit) throw new InvalidOperationException("post-save failure");
+            base.OnAfterSave();
+        }
+    }
 
     private sealed class Fixture : IDisposable
     {
@@ -29,6 +38,9 @@ public class V1PrincipalAuditTests
         internal readonly List<ModifyRequest> Writes = [];
         internal readonly List<string[]> Reads = [];
         internal bool Fail;
+        internal int Attempts;
+        internal Action? BeforeWrite;
+        internal Action? AfterWrite;
         internal Fixture()
         {
             Entry.PropertyReadOverride = (names, _) =>
@@ -42,7 +54,9 @@ public class V1PrincipalAuditTests
             };
             Entry.WriteRequestOverride = request =>
             {
+                Attempts++;
                 if (Fail) return ResultCode.UnwillingToPerform;
+                BeforeWrite?.Invoke();
                 var modify = Assert.IsType<ModifyRequest>(request);
                 Writes.Add(modify);
                 foreach (DirectoryAttributeModification m in modify.Modifications)
@@ -54,6 +68,7 @@ public class V1PrincipalAuditTests
                     else foreach (var value in m.Cast<object>()) values.Remove(value);
                     Server[m.Name] = values.ToArray();
                 }
+                AfterWrite?.Invoke();
                 return ResultCode.Success;
             };
         }
@@ -139,7 +154,7 @@ public class V1PrincipalAuditTests
         Assert.Equal("retry", Assert.Single(f.Server["extensionAttribute1"]));
     }
 
-    [Theory(Skip = "Confirmed item 4: principal SPN intent is lost on entry refresh; safe retry accounting and native failure validation remain open.")]
+    [Theory]
     [InlineData(false)] [InlineData(true)]
     public void Service_names_preserve_edit_intent_across_entry_refresh(bool remove)
     {
@@ -152,7 +167,7 @@ public class V1PrincipalAuditTests
         Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(), m => m.Name == "servicePrincipalName");
     }
 
-    [Theory(Skip = "Confirmed item 4: principal SPN intent is lost on entry refresh; safe retry accounting and native failure validation remain open.")]
+    [Theory]
     [InlineData(false)] [InlineData(true)]
     public void Service_names_retry_preserves_unrelated_refreshed_values(bool remove)
     {
@@ -181,5 +196,133 @@ public class V1PrincipalAuditTests
         user.Save();
         Assert.Equal("pending", Assert.Single(f.Server["description"]));
         Assert.Contains(f.Reads, names => names.Contains("msDS-User-Account-Control-Computed") && names.Contains("lockoutTime"));
+    }
+
+    [Fact]
+    public void Lockout_after_entry_close_keeps_unrelated_attributes_available()
+    {
+        using var f = new Fixture(); using var user = f.Attach(new UserPrincipal(f.Context));
+        f.Server["displayName"] = ["retained"];
+        f.Entry.Close();
+        Assert.True(user.IsAccountLockedOut());
+        Assert.NotNull(user.Sid);
+        Assert.Equal("retained", f.Entry.Properties["displayName"].Value);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Rejected_service_name_write_can_be_cancelled_without_refresh(bool remove)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        var names = computer.ServicePrincipalNames;
+        if (remove) names.Remove("HOST/old"); else names.Add("HOST/new");
+        f.Fail = true; Assert.ThrowsAny<Exception>(() => computer.Save());
+        if (remove) names.Add("HOST/old"); else names.Remove("HOST/new");
+        f.Fail = false; computer.Save();
+        Assert.Equal(new object[] { "HOST/old" }, f.Server["servicePrincipalName"]);
+    }
+
+    [Theory]
+    [InlineData("clear")] [InlineData("replace")] [InlineData("duplicates")]
+    public void Service_name_deltas_preserve_external_and_direct_entry_edits(string edit)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        var names = computer.ServicePrincipalNames;
+        if (edit == "clear") names.Clear();
+        else if (edit == "replace") names[0] = "HOST/new";
+        else { names.Add("HOST/new"); names.Add("HOST/new"); }
+        f.Server["servicePrincipalName"] = ["HOST/old", "HOST/external"];
+        f.Entry.RefreshCache();
+        f.Entry.Properties["servicePrincipalName"].Add("HOST/direct");
+        computer.Save();
+        Assert.Contains("HOST/external", f.Server["servicePrincipalName"]);
+        Assert.Contains("HOST/direct", f.Server["servicePrincipalName"]);
+        Assert.Equal(edit == "duplicates", f.Server["servicePrincipalName"].Contains("HOST/old"));
+        Assert.Equal(edit == "clear" ? 0 : 1, f.Server["servicePrincipalName"].Count(v => Equals(v, "HOST/new")));
+        f.Server["servicePrincipalName"] = ["HOST/later"];
+        computer.Description = "unrelated"; computer.Save();
+        Assert.Equal(new object[] { "HOST/later" }, f.Server["servicePrincipalName"]);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Service_name_acknowledgement_preserves_edits_made_during_request(bool remove)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        var names = computer.ServicePrincipalNames;
+        if (remove) names.Remove("HOST/old"); else names.Add("HOST/new");
+        f.BeforeWrite = () => { f.BeforeWrite = null; if (remove) names.Add("HOST/old"); else names.Remove("HOST/new"); };
+        computer.Save(); computer.Save();
+        Assert.Equal(new object[] { "HOST/old" }, f.Server["servicePrincipalName"]);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Uncertain_service_name_write_requires_readback_and_does_not_replay(bool accepted)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        var names = computer.ServicePrincipalNames; names.Add("HOST/new");
+        if (accepted) f.AfterWrite = () => throw new TimeoutException();
+        else f.BeforeWrite = () => throw new TimeoutException();
+        Assert.ThrowsAny<Exception>(() => computer.Save());
+        names.Add("HOST/later");
+        Assert.Throws<InvalidOperationException>(() => computer.Save()); Assert.Equal(1, f.Attempts);
+        f.BeforeWrite = null; f.AfterWrite = null;
+        f.Entry.RefreshCache(new[] { "servicePrincipalName" });
+        if (!accepted)
+        {
+            Assert.Throws<InvalidOperationException>(() => computer.Save());
+            Assert.Equal(1, f.Attempts); return;
+        }
+        computer.Save();
+        Assert.Equal(new object[] { "HOST/old", "HOST/new", "HOST/later" }, f.Server["servicePrincipalName"]);
+        var final = f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>().ToArray();
+        Assert.Single(final); Assert.Equal("HOST/later", final[0][0]);
+    }
+
+    [Fact]
+    public void Acknowledged_service_names_are_not_replayed_after_post_save_failure()
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new PostSaveComputer(f.Context));
+        computer.ServicePrincipalNames.Add("HOST/new"); computer.FailAfterCommit = true;
+        Assert.Throws<InvalidOperationException>(() => computer.Save());
+        f.Server["servicePrincipalName"] = ["HOST/external"];
+        computer.FailAfterCommit = false; computer.Description = "later"; computer.Save();
+        Assert.Equal(new object[] { "HOST/external" }, f.Server["servicePrincipalName"]);
+        Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(), m => m.Name == "servicePrincipalName");
+    }
+
+    [Fact]
+    public void Service_name_cache_refresh_during_preparation_refuses_before_send()
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        computer.ServicePrincipalNames.Add("HOST/new");
+        f.Entry.Close();
+        var read = f.Entry.PropertyReadOverride!;
+        f.Entry.PropertyReadOverride = (names, full) =>
+        {
+            f.Entry.PropertyReadOverride = read;
+            f.Entry.RefreshCache(new[] { "servicePrincipalName" });
+            return read(names, full);
+        };
+        Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Equal(0, f.Attempts);
+        computer.Save(); Assert.Contains("HOST/new", f.Server["servicePrincipalName"]);
+    }
+
+    [Fact]
+    public void Partial_readback_cannot_acknowledge_uncertain_service_names()
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        computer.ServicePrincipalNames.Add("HOST/new"); computer.Description = "changed";
+        f.AfterWrite = () => throw new TimeoutException();
+        Assert.ThrowsAny<Exception>(() => computer.Save());
+        f.AfterWrite = null;
+        f.Entry.RefreshCache(new[] { "description" });
+        Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Equal(1, f.Attempts);
+        f.Entry.RefreshCache(new[] { "description", "servicePrincipalName" });
+        computer.Description = "next"; computer.Save();
+        Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(), m => m.Name == "servicePrincipalName");
     }
 }

@@ -831,6 +831,8 @@ public abstract class Principal : IDisposable
     {
     }
 
+    private protected virtual void CommitEntryChanges(DirectoryEntry entry) => entry.CommitChanges();
+
     /// <summary>Runs after a successful save, for extra work like membership.</summary>
     private protected virtual void OnAfterSave()
     {
@@ -860,7 +862,7 @@ public abstract class Principal : IDisposable
             OnBeforeSave();
             ApplyPendingScalars(Entry);
             ApplyExtensionChanges(Entry);
-            Entry.CommitChanges();
+            CommitEntryChanges(Entry);
             _pending.Clear();
             OnAfterSave();
             return;
@@ -1063,7 +1065,7 @@ public abstract class Principal : IDisposable
             OnBeforeSave();
             ApplyPendingScalars(originalEntry);
             ApplyExtensionChanges(originalEntry);
-            originalEntry.CommitChanges();
+            CommitEntryChanges(originalEntry);
             _pending.Clear();
             ContextRef = context;
             OnAfterSave();

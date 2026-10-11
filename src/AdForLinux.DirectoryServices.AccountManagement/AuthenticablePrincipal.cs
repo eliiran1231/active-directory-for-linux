@@ -364,6 +364,9 @@ public class AuthenticablePrincipal : Principal
     {
         CheckDisposedOrDeleted();
         if (Entry is null) return false;
+        // Establish the ordinary lazy cache after Close/rebind before a targeted
+        // refresh marks it loaded. This does not discard any staged properties.
+        _ = Entry.Properties["lockoutTime"];
         Entry.RefreshCache(new[] { "msDS-User-Account-Control-Computed", "lockoutTime" });
         var computed = Entry.Properties["msDS-User-Account-Control-Computed"];
         if (computed.Count != 0)
