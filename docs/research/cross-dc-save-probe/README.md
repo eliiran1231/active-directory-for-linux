@@ -70,3 +70,32 @@ Protocol references: [MS-ADTS Modify DN](https://learn.microsoft.com/en-us/opens
 defines old DN, new RDN and new parent as inputs; [extended-DN search control](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/57056773-932c-4e55-9491-e13f49ba580c)
 describes returned extended DNs. Neither returned extended-DN support nor equal
 naming-context text is treated here as measured GUID-addressed write support.
+
+## Fixture request for a separately authorized scalar experiment
+
+Provide two writable DC FQDNs in the same test domain, trusted LDAPS endpoints,
+and independently verified domain GUID/SID. Supply each endpoint's credentials
+through the approved secret channel: a source reader, a destination account
+allowed to move/rename and update description, and a destination account denied
+those changes. Do not change ACLs or forward source credentials for this test.
+Name exact existing source/destination test OU DNs and GUIDs and an existing
+disposable disabled user replicated to both DCs, with its GUID/SID and original
+parent GUID, RDN and description recorded. No production account is suitable.
+
+The first requested authorization should cover only RootDSE/domain/user/container
+reads on both named DCs, one GUID-addressed destination ModifyDN within the named
+OUs, one GUID-addressed description replacement, their destination-denied variants,
+and GUID-based readback on both DCs. Include an explicit test window and runtime/
+commit. Windows native Save(context) comparison needs separate disposable fixture
+objects and an explicit authorization for the same moves/updates. Lost-response
+injection, replica-lag manipulation and DN-reuse fixtures need additional scoped
+approval; they are not implied by permission for the first successful move.
+
+The fixture owner performs cleanup after reconciling the user by GUID on both
+DCs: restore the recorded parent GUID/RDN and original description using the
+approved destination authority, then confirm identity and state on both replicas.
+An uncertain result stops further mutation until GUID reads establish what was
+delivered. There is no automatic rollback, blind rerun, credential fallback,
+account/OU creation or deletion, permission change, or replication reconfiguration
+in this initial scope. Record any fixture left changed or quarantined for the
+owner. Preparing this request does not authorize executing the probe.

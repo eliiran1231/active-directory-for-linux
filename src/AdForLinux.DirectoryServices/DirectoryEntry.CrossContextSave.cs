@@ -107,7 +107,8 @@ public partial class DirectoryEntry
         }
     }
 
-    internal void PublishCrossContext(CrossContextLease lease, LdapConnectionOptions destination, string dn, Action publishPrincipal)
+    internal void PublishCrossContext(CrossContextLease lease, LdapConnectionOptions destination, string dn,
+        Action validatePublication, Action publishPrincipal)
     {
         var path = new LdapPath(destination.Host, destination.Port, dn);
         var options = destination.Clone();
@@ -122,8 +123,9 @@ public partial class DirectoryEntry
         if (options.Sealing) authentication |= AuthenticationTypes.Sealing;
         CheckedCrossContext(lease, () =>
         {
+            validatePublication();
             // Everything fallible is prepared first. No network or external callback
-            // runs here; publishPrincipal is the high layer's local field publication.
+            // runs here; both callbacks only check/publish the high layer's local state.
             Interlocked.Increment(ref _crossContextAuthorityEpoch);
             _properties?.Revoke(); _options?.Revoke();
             _properties = null; _options = null; _objectSecurity = null;

@@ -9,7 +9,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 // can drive this executor until the exact wire forms and lifecycle are reviewed.
 internal interface ICrossContextExecutorTransport : IDisposable
 {
-    DirectoryResponse Send(DirectoryRequest request);
+    DirectoryResponse Send(DirectoryRequest request, TimeSpan remaining);
 }
 
 public abstract partial class Principal
@@ -18,8 +18,8 @@ public abstract partial class Principal
     private volatile object? _crossContextOperation;
 
     internal CrossContextExecutor CreatePrivateCrossContextExecutor(PrincipalContext destination,
-        Func<LdapConnectionOptions, ICrossContextExecutorTransport> openDestination)
-        => new(this, destination, openDestination);
+        Func<LdapConnectionOptions, ICrossContextExecutorTransport> openDestination, TimeProvider? timeProvider = null)
+        => new(this, destination, openDestination, timeProvider);
 
     internal sealed class CrossContextExecutor : IDisposable
     {
@@ -36,13 +36,12 @@ public abstract partial class Principal
         private readonly CrossContextSavePlan plan;
         private readonly DirectoryEntry.CrossContextLease lease;
         private readonly LdapConnectionOptions destinationOptions;
-        private readonly long sourceGeneration, destinationGeneration;
+        private readonly CrossContextSaveOperation operation;
         private readonly string expectedDn, newRdn;
-        private ICrossContextExecutorTransport? transport;
         private bool moveAcknowledged, submitted, scalarSubmitted, disposed;
 
         internal CrossContextExecutor(Principal principal, PrincipalContext destination,
-            Func<LdapConnectionOptions, ICrossContextExecutorTransport> openDestination)
+            Func<LdapConnectionOptions, ICrossContextExecutorTransport> openDestination, TimeProvider? timeProvider)
         {
             this.principal = principal; this.destination = destination;
             lock (principal._crossContextGate)
@@ -63,22 +62,21 @@ public abstract partial class Principal
             DirectoryEntry.CrossContextLease? acquired = null;
             try
             {
-                sourceGeneration = source.IdentityLifetime.Capture(source.CheckDisposed);
-                destinationGeneration = destination.IdentityLifetime.Capture(destination.CheckDisposed);
-                plan = CrossContextSavePlan.Prepare(source, destination, entry, principal._storedGuid,
-                    destination.GetCreationContainer(principal.GetType()), frozen.GetValueOrDefault("cn"));
-                destinationOptions = destination.BuildOptions();
+                operation = new CrossContextSaveOperation(source, destination, entry, principal._storedGuid,
+                    timeProvider, ValidateFrozen, principal._crossContextGate);
+                acquired = lease = operation.ReserveEntry();
+                plan = operation.Prepare(destination.Container
+                    ?? throw new NotSupportedException("The private executor requires an explicit destination container."),
+                    frozen.GetValueOrDefault("cn"), openDestination);
+                destinationOptions = operation.DestinationOptions;
                 newRdn = plan.PendingName is { } name ? "CN=" + EscapeRdnValue(name) : plan.CurrentRdn;
                 expectedDn = newRdn + "," + plan.ContainerDn;
-                acquired = lease = entry.ReserveCrossContext(plan.ObjectGuid, plan.ObjectSid);
-                Validate();
-                transport = openDestination(destinationOptions.Clone());
                 Validate();
             }
             catch
             {
                 // Cleanup must not prevent release of a provably unsent reservation.
-                try { transport?.Dispose(); }
+                try { operation?.Dispose(); }
                 finally
                 {
                     if (acquired is not null) entry.ReleaseCrossContext(acquired);
@@ -88,36 +86,24 @@ public abstract partial class Principal
             }
         }
 
-        private T Checked<T>(Func<T> action)
+        private void ValidateFrozen()
         {
-            if (disposed) throw new ObjectDisposedException(nameof(CrossContextExecutor));
-            T OwnerChecked() => entry.CheckedCrossContext(lease, () =>
-            {
-                lock (principal._crossContextGate)
-                {
-                    if (principal._disposed || principal._deleted || !ReferenceEquals(principal._crossContextOperation, token)
-                        || !ReferenceEquals(principal.Entry, entry) || !ReferenceEquals(principal.ContextRef, source)
-                        || principal._pending.Count != frozen.Count
-                        || frozen.Any(p => !Equals(principal._pending.GetValueOrDefault(p.Key), p.Value))
-                        || principal._extensionCache.Values.Any(v => v.Changed)
-                        || ((UserPrincipal)principal).HasDeferredCrossContextEdits)
-                        throw new InvalidOperationException("Frozen principal state changed.");
-                    return action();
-                }
-            });
-            T Source() => source.IdentityLifetime.Checked(sourceGeneration, source.CheckDisposed, OwnerChecked);
-            T Destination() => destination.IdentityLifetime.Checked(destinationGeneration, destination.CheckDisposed, OwnerChecked);
-            return source.IdentityLifetime.Id.CompareTo(destination.IdentityLifetime.Id) < 0
-                ? source.IdentityLifetime.Checked(sourceGeneration, source.CheckDisposed, Destination)
-                : destination.IdentityLifetime.Checked(destinationGeneration, destination.CheckDisposed, Source);
+            if (principal._disposed || principal._deleted || !ReferenceEquals(principal._crossContextOperation, token)
+                || !ReferenceEquals(principal.Entry, entry) || !ReferenceEquals(principal.ContextRef, source)
+                || principal._pending.Count != frozen.Count
+                || frozen.Any(p => !Equals(principal._pending.GetValueOrDefault(p.Key), p.Value))
+                || principal._extensionCache.Values.Any(v => v.Changed)
+                || ((UserPrincipal)principal).HasDeferredCrossContextEdits)
+                throw new InvalidOperationException("Frozen principal state changed.");
         }
+        private T Checked<T>(Func<T> action) => operation.Checked(action);
         private void Validate() => Checked(() => true);
         private void Release()
         {
-            Checked(() =>
+            operation.Checked(() =>
             {
                 entry.ReleaseCrossContext(lease); principal._crossContextOperation = null; return true;
-            });
+            }, requireBudget: false);
         }
 
         internal void Execute()
@@ -148,7 +134,7 @@ public abstract partial class Principal
             }
             if (modify.Modifications.Count != 0)
             {
-                Validate(); scalarSubmitted = true;
+                Validate();
                 SendWrite(modify, Phase.ModifyAcknowledged);
             }
             ReconcileCore();
@@ -159,14 +145,21 @@ public abstract partial class Principal
             Validate();
             // No source authority is available to the transport, and no compensation
             // is attempted. A known post-move rejection remains quarantined too.
-            State = Phase.Uncertain; submitted = true;
             DirectoryResponse response;
-            try { response = transport!.Send(request); }
+            try
+            {
+                response = operation.SendWrite(request, () =>
+                {
+                    State = Phase.Uncertain; submitted = true;
+                    if (request is ModifyRequest) scalarSubmitted = true;
+                });
+            }
             catch (DirectoryOperationException error) when (error.Response is { ResultCode: not ResultCode.Success })
             { Reject(); throw; }
             if (response.ResultCode != ResultCode.Success) { Reject(); throw new DirectoryOperationException(response); }
             if (response.Referral.Length != 0) throw new InvalidOperationException("Referred write outcome is not a verified acknowledgement.");
             State = acknowledged;
+            Validate();
         }
         private void Reject()
         {
@@ -220,7 +213,7 @@ public abstract partial class Principal
             entry.CloseCrossContextSourceConnections(lease);
             Checked(() =>
             {
-                entry.PublishCrossContext(lease, destinationOptions, expectedDn, () =>
+                entry.PublishCrossContext(lease, destinationOptions, expectedDn, () => operation.Remaining(), () =>
                 {
                     principal.ContextRef = destination;
                     principal._pending.Clear(); principal._initialScalars = null; principal._loadedScalars.Clear();
@@ -230,21 +223,7 @@ public abstract partial class Principal
             });
         }
         private IdentitySearchRow Read(string dn, string filter, ProtocolScope scope, params string[] attributes)
-        {
-            Validate();
-            var request = new SearchRequest(dn, filter, scope, attributes)
-                { SizeLimit = 2, Aliases = System.DirectoryServices.Protocols.DereferenceAlias.Never };
-            if (scope == ProtocolScope.Subtree) request.Controls.Add(new DirectoryControl(AdIdentityLookup.DomainScopeControl, null, true, true));
-            var response = (SearchResponse)transport!.Send(request);
-            Validate();
-            if (response.ResultCode != ResultCode.Success || response.Referral.Length != 0 || response.References.Count != 0 || response.Entries.Count != 1)
-                throw new InvalidOperationException("Incomplete reconciliation response.");
-            var row = response.Entries[0]; var values = new Dictionary<string, object[]>(StringComparer.OrdinalIgnoreCase);
-            foreach (string name in row.Attributes.AttributeNames)
-                values[name] = row.Attributes[name].GetValues(name.Equals("objectGUID", StringComparison.OrdinalIgnoreCase)
-                    || name.Equals("objectSid", StringComparison.OrdinalIgnoreCase) ? typeof(byte[]) : typeof(string));
-            return new(values, row.DistinguishedName);
-        }
+            => operation.ReadDestination(dn, filter, scope, attributes);
         private static void RequireIdentity(IdentitySearchRow row, Guid guid, string sid)
         {
             if (row.Values("objectGUID") is not [byte[] { Length: 16 } bytes] || new Guid(bytes) != guid
@@ -276,7 +255,7 @@ public abstract partial class Principal
             {
                 if (!submitted && State == Phase.Prepared) { Release(); State = Phase.Abandoned; }
             }
-            finally { disposed = true; transport?.Dispose(); transport = null; }
+            finally { disposed = true; operation.Dispose(); }
             // Submitted-but-unpublished operations never release quarantine on disposal.
         }
     }

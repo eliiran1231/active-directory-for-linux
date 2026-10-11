@@ -120,7 +120,7 @@ public partial class V1PrincipalAuditTests
             AfterOpen?.Invoke(Opens);
             return new CrossContextSaveSession(SaveReadConnection.Create(request => Read(destination, Assert.IsType<SearchRequest>(request)), () => Closes++));
         }
-        private SearchResponse Read(bool destination, SearchRequest request)
+        internal SearchResponse Read(bool destination, SearchRequest request)
         {
             Assert.Equal(2, request.SizeLimit);
             Assert.Equal(System.DirectoryServices.Protocols.DereferenceAlias.Never, request.Aliases);

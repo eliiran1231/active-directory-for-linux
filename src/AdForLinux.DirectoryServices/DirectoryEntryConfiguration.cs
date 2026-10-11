@@ -25,7 +25,7 @@ public class DirectoryEntryConfiguration
 
     private volatile bool _revoked;
     internal void Revoke() => _revoked = true;
-    private void ValidateOwner()
+    internal void ValidateOwner()
     {
         if (_revoked) throw new InvalidOperationException("This configuration belongs to a revoked entry binding.");
         _entry.ThrowIfDisposed();
@@ -121,8 +121,7 @@ public class DirectoryEntryConfiguration
             ValidateOwner();
             if (_referral != value)
             {
-                _referral = value;
-                _entry.OnReferralChanged();
+                _entry.OnReferralChanged(this, () => _referral = value);
             }
         }
     }
@@ -152,7 +151,7 @@ public class DirectoryEntryConfiguration
     public string GetCurrentServerName()
     {
         ValidateOwner();
-        return Ldap.RootDse.GetConnectedServerName(_entry.GetConnection());
+        return Ldap.RootDse.GetConnectedServerName(_entry.GetConfigurationConnection(this));
     }
 
     /// <summary>
@@ -167,7 +166,7 @@ public class DirectoryEntryConfiguration
         ValidateOwner();
         // Bind first so this member cannot make an invalid configured endpoint
         // appear healthy merely because the protocol limitation is known.
-        _entry.GetConnection();
+        _entry.GetConfigurationConnection(this);
         throw new PlatformNotSupportedException(
             "System.DirectoryServices.Protocols does not expose whether the current LDAP bind negotiated mutual authentication.");
     }

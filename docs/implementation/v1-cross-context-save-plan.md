@@ -1,7 +1,8 @@
 # Bounded same-domain cross-controller Save(context)
 
-Status: read-only preflight and refusal boundary implemented; cross-controller
-execution remains disabled. No live AD operation has been run for this change.
+Status: response-aware preflight and an integrated private scalar executor are
+implemented. Public cross-controller execution remains disabled. Live AD
+execution proof is still absent.
 
 The production preflight now owns one source and one destination LDAP session for
 its entire read operation. A monotonic remaining budget admits each session open,
@@ -62,7 +63,25 @@ before sending. These refusals retain intent; unsupported edits are not projecte
 or silently acknowledged. This narrow scope is not the final compatibility scope.
 
 The executor freezes scalar values and owner generations, reserves the retained
-entry and its cached ledgers, and compares versions and copied binary cache values.
+entry and its cached ledgers before preflight, and compares versions and copied
+binary cache values. One short-lived operation owns the original source and
+destination sessions through preflight, writes, readback and publication. There
+is no second destination bind and no API to import a detached plan as authority.
+The private slice requires an explicit destination container; it does not open a
+separate well-known-container lookup. Source sessions remain read-only, and normal
+production sessions cannot dispatch writes. Only an explicitly supplied internal
+controlled transport has that capability.
+
+One monotonic deadline starts before owner capture. The remaining budget caps
+binds, every search and each controlled write; admission checks it under the same
+owner/frozen-state gates used by final publication. Expiry before submission keeps
+intent unsent and permits local abandonment. After possible delivery the entry
+stays quarantined; a returned success remains acknowledged even if its response
+arrived after the deadline. Reconciliation shares the original deadline, cannot
+renew it or rebind, and expiry at any read or after source cleanup prevents
+publication. Discarding an expired submitted operation closes both sessions but
+does not release quarantine. There is no unbounded polling or automatic recovery.
+
 Normal principal/entry mutations, rebinding, Close, refresh and writes refuse while
 reserved/quarantined. GUID-addressed ModifyDN and Modify requests are constructed
 for a transport supplied only the destination context's settings. No source
@@ -86,17 +105,23 @@ critical domain-scope GUID search. Wrong/missing/partial evidence retains quaran
 Publication closes source connections outside owner locks, then rechecks owners,
 ledgers and frozen intent before changing the same entry's endpoint/credentials and
 publishing ContextRef. Old property/configuration wrappers and identity resolvers
-are revoked. No replacement Principal.Entry or copied security authority is used.
+are revoked. Configuration connection admission rechecks its wrapper under the
+entry lifetime gate, lazy property loads pin their binding through schema reads,
+and delayed property registration rechecks the captured binding epoch. Tests
+overlap these retained-wrapper paths with publication. No replacement Principal.Entry or copied security authority is used.
 Source cleanup failure permanently blocks publication for that operation. Disposing
 an uncertain/partial executor never unquarantines its wrapper; separately scoped
 recovery/new-handle work is required if that executor is discarded.
 
 This is controlled executor evidence, not live AD execution readiness. Before any
-live adapter, integrate preflight and executor into one retained session/budget
-operation (the current prototype opens its controlled destination transport after
-the read-only preflight finishes), expand frozen intent for the unsupported families,
-prove concurrent mutation/publication behavior across all retained subordinate
-wrappers, and obtain independent review. No real wire transport may be connected to
+live adapter, obtain independent review of the integrated session/deadline and
+publication boundaries and separately authorize exact two-DC experiments. This
+slice proves the tested property/configuration boundaries, not every concurrent
+derived-handle operation. Retained Children/SchemaFilter collections and searchers
+that keep the mutable entry as their root still need an explicit authority policy
+and race tests before a live adapter; they must not silently borrow the published
+destination binding. Unsupported edit families remain separate follow-up work. A scalar
+live experiment is not approval to support those families or enable public Save. No real wire transport may be connected to
 public Save until that work and separately authorized live two-DC proof are complete.
 
 ## Remaining execution sequence and proof obligations

@@ -15,7 +15,12 @@ public partial class V1PrincipalAuditTests
         internal readonly CrossContextFixture Proof = new();
         internal readonly UserPrincipal User;
         internal string Fault = "", Dn = CrossContextFixture.ItemDn, Description = "before";
-        internal int Sends, Reads, TransportCloses;
+        internal int Sends, Reads, TransportCloses, TransportOpens;
+        internal readonly List<TimeSpan> RequestTimeouts = [];
+        internal Action<int>? AfterReconcileRead;
+        internal TimeSpan ControlledOpenTimeout;
+        internal Action? AfterControlledOpen;
+        internal bool FailClose;
         internal Action<int>? AfterSend;
         internal ExecutorFixture()
         {
@@ -23,14 +28,18 @@ public partial class V1PrincipalAuditTests
             typeof(Principal).GetMethod("AttachExisting", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(User, [Proof.Source, Proof.Entry]);
         }
-        internal Principal.CrossContextExecutor Create() => User.CreatePrivateCrossContextExecutor(Proof.Destination, options =>
+        internal Principal.CrossContextExecutor Create(TimeProvider? clock = null) => User.CreatePrivateCrossContextExecutor(Proof.Destination, options =>
         {
             Assert.Equal("destination.invalid", options.Host);
             Assert.Equal("destination-reader", options.BindDn); Assert.Equal("destination-test-value", options.BindPassword);
-            return this;
-        });
-        public DirectoryResponse Send(DirectoryRequest request)
+            TransportOpens++; ControlledOpenTimeout = options.Timeout; AfterControlledOpen?.Invoke(); return this;
+        }, clock);
+        public DirectoryResponse Send(DirectoryRequest request, TimeSpan remaining)
         {
+            Assert.True(remaining > TimeSpan.Zero);
+            RequestTimeouts.Add(remaining);
+            if (request is SearchRequest preflight && Proof.Reads.Count < 7)
+                return Proof.Read(true, preflight);
             if (request is ModifyDNRequest move)
             {
                 Sends++;
@@ -82,13 +91,19 @@ public partial class V1PrincipalAuditTests
                     ["distinguishedName"] = [rowDn],
                     ["description"] = [Description]
                 };
-                return SaveResponse(isRoot ? "" : rowDn, values,
+                var response = SaveResponse(isRoot ? "" : rowDn, values,
                     Fault == "missing" ? 0 : Fault == "multiple" ? 2 : 1,
                     Fault == "partial" ? ResultCode.SizeLimitExceeded : ResultCode.Success, false, Fault == "reference");
+                AfterReconcileRead?.Invoke(Reads);
+                return response;
             }
             return SaveResponse("", [], 0, ResultCode.Success, false, false);
         }
-        void IDisposable.Dispose() => TransportCloses++;
+        void IDisposable.Dispose()
+        {
+            TransportCloses++;
+            if (FailClose) throw new InvalidOperationException("controlled close failed");
+        }
         internal void Cleanup() { User.Dispose(); Proof.Dispose(); }
     }
 

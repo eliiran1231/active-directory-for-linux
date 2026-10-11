@@ -268,7 +268,8 @@ public partial class DirectoryEntry : Component
         "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
 
     /// <summary>Gets the LDAP provider options associated with this entry.</summary>
-    public DirectoryEntryConfiguration Options => _options ??= new DirectoryEntryConfiguration(this);
+    public DirectoryEntryConfiguration Options
+    { get { lock (_entryWriteGate) return _options ??= new DirectoryEntryConfiguration(this); } }
 
     /// <summary>Gets or sets this entry's Active Directory security descriptor.</summary>
     public ActiveDirectorySecurity ObjectSecurity
@@ -341,8 +342,7 @@ public partial class DirectoryEntry : Component
             // The wrapper itself does not bind, even after disposal. Loading
             // directory values still checks disposal through GetConnection().
             lock (_entryWriteGate)
-                return _properties ??= new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), CapturePropertyOwnerValidation());
+                return _properties ??= CreateLazyProperties();
         }
     }
 
@@ -763,18 +763,19 @@ public partial class DirectoryEntry : Component
     private PropertyCollection ReadProperties(
         string[] requestedProperties,
         bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false,
-        bool requireCompleteServiceNames = false)
+        bool requireCompleteServiceNames = false, Action? validateBinding = null)
     {
-        ThrowIfDisposed();
-        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        void ValidateBinding() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(ValidateBinding);
+        void ValidateRead() => IdentityLifetime.Checked(generation, ValidateBinding, () => true);
         if (PropertyReadOverride is { } read)
         {
             var controlled = read(requestedProperties, loadDefaultProperties);
-            return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => controlled);
+            return IdentityLifetime.Checked(generation, ValidateBinding, () => controlled);
         }
-        var connection = GetConnection();
+        var connection = GetOwnedConnection(false, ValidateRead);
         var request = new SearchRequest(
-            _path.DistinguishedName,
+            IdentityLifetime.Checked(generation, ValidateBinding, () => _path.DistinguishedName),
             "(objectClass=*)",
             ProtocolScope.Base,
             requestedProperties);
@@ -791,13 +792,14 @@ public partial class DirectoryEntry : Component
             || response.References.Count != 0 || response.Referral.Length != 0))
             throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
         if (requireCompleteServiceNames) ValidateCompleteServiceNameReadback(response.Entries[0]);
-        var properties = new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
+        var properties = IdentityLifetime.Checked(generation, ValidateBinding,
+            () => new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation()));
 
         if (response.Entries.Count > 0)
         {
-            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties);
+            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties, ValidateRead);
         }
-        return IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+        return IdentityLifetime.Checked(generation, ValidateBinding, () =>
         {
             if (response.Entries.Count > 0) _boundDistinguishedName = response.Entries[0].DistinguishedName;
             return properties;
@@ -853,13 +855,20 @@ public partial class DirectoryEntry : Component
         ? DirectoryEntryConfiguration.DefaultSecurityMasks
         : Options.SecurityMasks;
 
+    private PropertyCollection CreateLazyProperties()
+    {
+        var validate = CapturePropertyOwnerValidation();
+        return new PropertyCollection(OnPropertyChanged,
+            () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true, validateBinding: validate), validate);
+    }
+
     private void LoadEntry(
     SearchResultEntry entry,
     PropertyCollection properties,
     string[] requestedProperties,
-    bool normalizeRangedNames)
+    bool normalizeRangedNames, Action validateBinding)
     {
-        foreach (var (name, value) in SearchEntryReader.Read(entry, GetSchemaConnection()))
+        foreach (var (name, value) in SearchEntryReader.Read(entry, GetOwnedConnection(true, validateBinding)))
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
@@ -876,10 +885,18 @@ public partial class DirectoryEntry : Component
 
     internal LdapConnection GetSchemaConnection() => GetOwnedConnection(true);
 
-    private LdapConnection GetOwnedConnection(bool schema)
+    internal Action? BeforeConfigurationConnection { get; set; }
+    internal LdapConnection GetConfigurationConnection(DirectoryEntryConfiguration owner)
     {
-        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
-        var snapshot = IdentityLifetime.Checked(generation, ThrowIfDisposed,
+        BeforeConfigurationConnection?.Invoke();
+        return GetOwnedConnection(false, owner.ValidateOwner);
+    }
+
+    private LdapConnection GetOwnedConnection(bool schema, Action? validateBinding = null)
+    {
+        void ValidateBinding() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(ValidateBinding);
+        var snapshot = IdentityLifetime.Checked(generation, ValidateBinding,
             () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
         if (snapshot.Existing is not null) return snapshot.Existing;
         var created = LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(snapshot.Options));
@@ -887,7 +904,7 @@ public partial class DirectoryEntry : Component
         try
         {
             LdapConnectionFactory.ConfigureReferralChasing(created, snapshot.Referral);
-            selected = IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+            selected = IdentityLifetime.Checked(generation, ValidateBinding, () =>
             {
                 if (schema) return _schemaConnection ??= created;
                 return _connection ??= created;
@@ -897,7 +914,24 @@ public partial class DirectoryEntry : Component
         finally { if (!ReferenceEquals(selected, created)) created.Dispose(); }
     }
 
-    internal void OnReferralChanged() => ResetConnection();
+    internal void OnReferralChanged(DirectoryEntryConfiguration owner, Action update)
+    {
+        var generation = IdentityLifetime.Capture(owner.ValidateOwner);
+        var connections = IdentityLifetime.Checked(generation, owner.ValidateOwner, () =>
+        {
+            lock (_entryWriteGate)
+            {
+                update();
+                SchemaFilterNames = []; _boundDistinguishedName = null;
+                var detached = new[] { _connection, _schemaConnection }.Where(c => c is not null).Distinct().ToArray();
+                _connection = null; _schemaConnection = null;
+                IdentityLifetime.Invalidate();
+                return detached;
+            }
+        });
+        try { connections.FirstOrDefault()?.Dispose(); }
+        finally { if (connections.Length > 1) connections[1]!.Dispose(); }
+    }
 
     internal string? ServerHost => _path.Host;
 
@@ -1008,8 +1042,7 @@ public partial class DirectoryEntry : Component
             _pendingPropertyChanges.Add(property);
             _entryChangeVersion++;
             if (_properties is null && !_isNew)
-                reload = _properties = new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), CapturePropertyOwnerValidation());
+                reload = _properties = CreateLazyProperties();
             commit = !_usePropertyCache && !_isNew;
         }
         if (reload is not null)

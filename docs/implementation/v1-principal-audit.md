@@ -1,8 +1,8 @@
 # v1 principal audit: items 1–5
 
 Scope: AccountManagement candidates assigned for this audit. Release/setup,
-licensing, broader CI scope and pooling are outside it. No live directory was
-used or mutated. Items 1–4 are implemented here; item 5 remains open.
+licensing, broader CI scope and pooling are outside it. No directory mutations were executed; controlled tests do not establish live
+AD compatibility. Items 1–4 are implemented here; item 5 remains open.
 
 ## Confirmed and fixed
 
@@ -121,10 +121,12 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    [concrete execution plan](v1-cross-context-save-plan.md) and compiled,
    [opt-in two-DC probe](../research/cross-dc-save-probe/README.md).
 
-   Preflight bind admission now uses the remaining monotonic budget on each
-   session creation. A separate internal, controlled-transport scalar executor
-   exercises frozen intent, quarantine, GUID readback and same-wrapper rebinding.
-   It has no live/default transport and is not called by public Save. Unsupported
+   Preflight and the internal scalar executor now share one retained pair of
+   endpoint sessions, frozen intent/version checks and a monotonic deadline from
+   bind admission through write admission, GUID readback and same-wrapper
+   publication. Controlled tests cover expiry before/after possible delivery,
+   stale owners and overlapping retained property/configuration operations.
+   It has no live/default mutation transport and is not called by public Save. Unsupported
    extension/SPN/security/specialized intent refuses; the full implementation and
    live two-controller proof remain open. The plan documents the precise subset.
 
