@@ -27,14 +27,16 @@ public class IdenticalEntryInteropTests
         Assert.Equal(saved,supplied);
         Assert.Equal(before.GetRawBinaryForm(),source.CaptureSnapshot().GetRawBinaryForm());
         Assert.Equal(priorOwner ? D.SecurityMasks.Owner : D.SecurityMasks.None,source.CaptureSnapshot().PendingWriteSections);
+        // Identical NULL-SACL assignment preserves raw storage but has its own
+        // measured live-state effect. Isolate the subsequent detached export edit.
+        var beforeExportEdit = source.CaptureSnapshot();
         exported.SetAuditRuleProtection(!exported.AreAuditRulesProtected,true);
-        var beforeFailure = source.CaptureSnapshot();
-        AssertSnapshot(before, beforeFailure);
+        AssertSnapshot(beforeExportEdit, source.CaptureSnapshot());
         Assert.Empty(fixture.Writes);
 
         IdenticalAssignmentCases.EditAcl(source,audit);
         var after = source.CaptureSnapshot();
-        Assert.NotEqual(beforeFailure.GetRawBinaryForm(),after.GetRawBinaryForm());
+        Assert.NotEqual(beforeExportEdit.GetRawBinaryForm(),after.GetRawBinaryForm());
         var expected = IdenticalAssignmentCases.Target(audit) | (priorOwner ? D.SecurityMasks.Owner : D.SecurityMasks.None);
         Assert.Equal(expected,after.PendingWriteSections);
         exported.SetOwner(new System.Security.Principal.SecurityIdentifier(Everyone,0));
