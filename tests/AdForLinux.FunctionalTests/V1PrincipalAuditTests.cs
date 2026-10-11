@@ -325,4 +325,58 @@ public class V1PrincipalAuditTests
         computer.Description = "next"; computer.Save();
         Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(), m => m.Name == "servicePrincipalName");
     }
+
+    [Theory]
+    [InlineData(false, false)] [InlineData(true, false)]
+    [InlineData(false, true)] [InlineData(true, true)]
+    public void Uncertain_service_names_require_proof_when_entry_ledger_already_has_the_same_edit(bool accepted, bool remove)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        if (remove)
+        {
+            computer.ServicePrincipalNames.Remove("HOST/old");
+            f.Entry.Properties["servicePrincipalName"].Remove("HOST/old");
+        }
+        else
+        {
+            computer.ServicePrincipalNames.Add("HOST/new");
+            f.Entry.Properties["servicePrincipalName"].Add("HOST/new");
+        }
+        if (accepted) f.AfterWrite = () => throw new TimeoutException();
+        else f.BeforeWrite = () => throw new TimeoutException();
+        Assert.ThrowsAny<Exception>(() => computer.Save());
+        f.AfterWrite = null; f.BeforeWrite = null;
+        f.Entry.RefreshCache(new[] { "servicePrincipalName" });
+        if (accepted) computer.Save();
+        else Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Equal(1, f.Attempts);
+        Assert.Equal(!remove, computer.ServicePrincipalNames.Contains(remove ? "HOST/old" : "HOST/new"));
+        Assert.Equal(remove ? !accepted : accepted,
+            f.Server["servicePrincipalName"].Contains(remove ? "HOST/old" : "HOST/new"));
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Guarded_service_name_delete_requires_explicit_readback_even_when_request_only_changes_description(bool matches)
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        computer.ServicePrincipalNames.Remove("HOST/old");
+        f.Server["servicePrincipalName"] = [];
+        f.Entry.RefreshCache(new[] { "servicePrincipalName" });
+        computer.Description = "changed";
+        f.BeforeWrite = () => throw new TimeoutException();
+        Assert.ThrowsAny<Exception>(() => computer.Save());
+        f.BeforeWrite = null;
+        f.Server["servicePrincipalName"] = matches ? [] : ["HOST/old"];
+        f.Entry.RefreshCache(new[] { "description" });
+        Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Equal(1, f.Attempts);
+        f.Entry.RefreshCache(new[] { "description", "servicePrincipalName" });
+        if (matches) computer.Save();
+        else Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Equal(matches ? 2 : 1, f.Attempts);
+        Assert.Empty(computer.ServicePrincipalNames);
+        if (matches) Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(),
+            modification => modification.Name == "servicePrincipalName");
+    }
 }

@@ -314,9 +314,14 @@ public partial class DirectoryEntry
                 return securityRead is null ? Publish() : security!.ValidateIdentityRead(securityRead, Publish);
             });
             Checked(() => true);
+            var recoveryAttributes = request is AddRequest addRequest
+                ? addRequest.Attributes.Cast<DirectoryAttribute>().Select(a => a.Name)
+                : ((ModifyRequest)request).Modifications.Cast<DirectoryAttributeModification>().Select(a => a.Name);
+            // Guarded supplemental edits still carry intent. An absent attribute
+            // in a partial read is not evidence that its server values are absent.
+            if (serviceNames is not null) recoveryAttributes = recoveryAttributes.Append(PrincipalServiceNameWrite.Attribute);
             var uncertain = new UncertainWrite(creating, generation,
-                request is AddRequest addRequest ? addRequest.Attributes.Cast<DirectoryAttribute>().Select(a => a.Name).ToArray()
-                    : ((ModifyRequest)request).Modifications.Cast<DirectoryAttributeModification>().Select(a => a.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                recoveryAttributes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
                 plan?.Sections ?? SecurityMasks.None, properties, propertyVersions, security, securityRead?.Version ?? 0, serviceNames);
             if (hasRequest)
             {

@@ -70,6 +70,16 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    native timeout recovery parity. No credentials, owner references or callbacks
    are carried by the batch, and descriptor/entry copies do not transfer it.
 
+   Readback postconditions include principal adds/removes already represented
+   by ordinary entry-ledger operations. The scratch cache is not delivery proof:
+   coalescing a supplemental operation must not erase its required server result.
+   A review regression reproduced false acknowledgement after timeout-before-
+   application for both coalesced adds and deletes; matching-result controls and
+   mismatching-result refusal now cover both public editing routes together.
+   Recovery also requires the SPN attribute in the readback coverage when every
+   supplemental operation was guarded away and the request only wrote another
+   attribute. An unrequested/missing SPN key is not evidence of server absence.
+
    The earlier set-difference proposal was rejected in review: failed Save →
    cancel edit → retry could publish its stale entry ledger. This implementation
    avoids cache staging and rollback altogether. Tests cover rejection/cancel,

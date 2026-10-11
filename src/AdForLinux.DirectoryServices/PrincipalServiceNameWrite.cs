@@ -18,6 +18,9 @@ internal sealed class PrincipalServiceNameWrite(
         var values = effectiveValues.ToList();
         void Add(string value)
         {
+            // A matching entry-ledger add may already supply this value in the
+            // scratch cache. It still needs server readback proof after timeout.
+            _postconditions[value] = true;
             if (values.Contains(value)) return;
             values.Add(value);
             Append(DirectoryAttributeOperation.Add, value);
@@ -35,7 +38,12 @@ internal sealed class PrincipalServiceNameWrite(
             request.Modifications.Add(modification);
         }
         // Microsoft SDSUtils.MultiStringToDirectoryEntryConverter order/guards.
-        foreach (var value in removed) if (values.Contains(value)) Delete(value);
+        foreach (var value in removed)
+        {
+            // Symmetric with Add: a staged ordinary delete is not delivery proof.
+            _postconditions[value] = false;
+            if (values.Contains(value)) Delete(value);
+        }
         foreach (var pair in changed) { Delete(pair.Original); Add(pair.Current); }
         foreach (var value in inserted) Add(value);
     }
