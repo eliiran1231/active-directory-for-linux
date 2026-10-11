@@ -113,16 +113,31 @@ Source cleanup failure permanently blocks publication for that operation. Dispos
 an uncertain/partial executor never unquarantines its wrapper; separately scoped
 recovery/new-handle work is required if that executor is discarded.
 
-This is controlled executor evidence, not live AD execution readiness. Before any
-live adapter, obtain independent review of the integrated session/deadline and
-publication boundaries and separately authorize exact two-DC experiments. This
-slice proves the tested property/configuration boundaries, not every concurrent
-derived-handle operation. Retained Children/SchemaFilter collections and searchers
-that keep the mutable entry as their root still need an explicit authority policy
-and race tests before a live adapter; they must not silently borrow the published
-destination binding. Unsupported edit families remain separate follow-up work. A scalar
-live experiment is not approval to support those families or enable public Save. No real wire transport may be connected to
-public Save until that work and separately authorized live two-DC proof are complete.
+Retained Children, SchemaFilter and DirectorySearcher handles now capture the entry's
+cross-context authority epoch. Publication revokes their provider operations,
+including delayed child enumerators and schema-filter writes. Close/refresh do not
+change that epoch. Search operations snapshot endpoint credentials before dispatch;
+synchronous, paged, attribute-scoped and streaming paths carry that origin through
+response decoding and result construction. Schema connection admission and final
+result publication recheck the original authority. SearchResult properties and
+copied schema arrays remain data; GetDirectoryEntry cannot reacquire a revoked
+provider authority. Explicit SearchRoot assignment or a freshly acquired Children
+handle obtains the current epoch.
+
+Controlled tests publish while child lookup, search responses, schema decoding and
+filter writes are blocked, and before streaming native dispatch. They check stale
+refusal with zero destination transport requests, fresh-handle success, preserved
+Close/refresh behavior and captured-root behavior on SearchRoot reassignment.
+
+This is controlled executor evidence, not live AD execution readiness. The next
+bounded offline gate is independent review of the integrated session/deadline,
+publication and retained-handle boundaries, including their concurrency policy.
+Unsupported edit families remain separate follow-up work. The exact live gate is
+separately authorized two-DC proof of GUID-addressed object/parent ModifyDN and
+Modify, DN-reuse resistance, destination-only authority, readback/reconciliation
+and ambiguous delivery behavior. A scalar live experiment is not approval to
+support other edit families or enable public Save. No real wire transport may be
+connected to public Save until those gates are complete.
 
 ## Remaining execution sequence and proof obligations
 

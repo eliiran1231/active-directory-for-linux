@@ -13,17 +13,24 @@ public class SchemaNameCollection : IList
     // Public Children wrappers share their entry's binding state. The local
     // storage also supports standalone collections used internally.
     private readonly DirectoryEntry? _parent;
+    private readonly DirectoryEntry.BindingAuthority? _authority;
+    internal Action? BeforeWrite { get; set; }
     private string?[] _names
     {
-        get => _parent?.SchemaFilterNames ?? _localNames;
+        get => _parent is null ? _localNames : _authority!.Checked(() => _parent.SchemaFilterNames);
         set
         {
             if (_parent is null) _localNames = value;
-            else _parent.SchemaFilterNames = value;
+            else
+            {
+                BeforeWrite?.Invoke();
+                _authority!.Checked(() => _parent.SchemaFilterNames = value);
+            }
         }
     }
 
-    internal SchemaNameCollection(DirectoryEntry parent) => _parent = parent;
+    internal SchemaNameCollection(DirectoryEntry parent, DirectoryEntry.BindingAuthority? authority = null)
+    { _parent = parent; _authority = authority ?? parent.CaptureBindingAuthority(); }
 
     internal SchemaNameCollection()
     {

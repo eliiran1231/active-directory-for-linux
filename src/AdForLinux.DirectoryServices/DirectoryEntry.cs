@@ -493,12 +493,15 @@ public partial class DirectoryEntry : Component
     }
 
     /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
-    internal void DeleteChild(string relativeName)
+    internal void DeleteChild(string relativeName, BindingAuthority? authority = null)
     {
-        var distinguishedName = string.IsNullOrEmpty(_path.DistinguishedName)
+        authority ??= CaptureBindingAuthority();
+        var distinguishedName = authority.Checked(() => string.IsNullOrEmpty(_path.DistinguishedName)
             ? relativeName
-            : $"{relativeName},{_path.DistinguishedName}";
-        GetConnection().SendRequestCompatible(new DeleteRequest(distinguishedName));
+            : $"{relativeName},{_path.DistinguishedName}");
+        var connection = GetAuthorityConnection(authority);
+        authority.Validate();
+        connection.SendRequestCompatible(new DeleteRequest(distinguishedName));
     }
 
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
@@ -725,39 +728,44 @@ public partial class DirectoryEntry : Component
     /// LDAP connection bind only authenticates to the server, whereas ADSI's
     /// DirectoryEntry.Bind also resolves the object represented by the path.
     /// </summary>
-    internal string BindEntry()
+    internal string BindEntry() => BindEntry(null);
+
+    private string BindEntry(Action? validateBinding)
     {
-        ThrowIfDisposed();
-        if (_isNew)
+        void Validate() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(Validate);
+        void ValidateRead() => IdentityLifetime.Checked(generation, Validate, () => true);
+        var snapshot = IdentityLifetime.Checked(generation, Validate,
+            () => (Dn: _path.DistinguishedName, IsNew: _isNew, BoundDn: _boundDistinguishedName));
+        if (snapshot.IsNew)
         {
             // Children.Add already created the provider object in Microsoft's
             // implementation, even though CommitChanges has not persisted it.
-            return _path.DistinguishedName;
+            return snapshot.Dn;
         }
 
-        if (_boundDistinguishedName is not null)
+        if (snapshot.BoundDn is not null)
         {
             // ADSI keeps its bound IADs object after DeleteTree(), so Name and
             // Parent continue to use that binding until an explicit unbind.
             // Match that behavior rather than reopening the deleted path.
-            return _boundDistinguishedName;
+            return snapshot.BoundDn;
         }
 
         var request = new SearchRequest(
-            _path.DistinguishedName,
+            snapshot.Dn,
             "(objectClass=*)",
             ProtocolScope.Base,
             "1.1");
-        var response = (SearchResponse)GetConnection().SendRequestCompatible(request);
+        var response = (SearchResponse)GetOwnedConnection(false, ValidateRead).SendRequestCompatible(request);
         if (response.Entries.Count == 0)
         {
             throw LdapExceptionTranslator.Translate(
                 ResultCode.NoSuchObject,
-                $"The directory object '{_path.DistinguishedName}' does not exist.");
+                $"The directory object '{snapshot.Dn}' does not exist.");
         }
 
-        _boundDistinguishedName = response.Entries[0].DistinguishedName;
-        return _boundDistinguishedName;
+        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = response.Entries[0].DistinguishedName);
     }
 
     private PropertyCollection ReadProperties(

@@ -24,7 +24,12 @@ GROUPS = {
         "PublicIdentityHelperTests", "IdenticalEntryInteropTests",
     ]),
 }
-EXTRA = {"functional": ["CollectionCompatibilityTests"]}
+EXTRA = {
+    "functional": ["CollectionCompatibilityTests", "DirectorySearcherConstructorFilterTests"],
+    # Reviewed detached/delegate-backed comparisons: no directory fixture or bind.
+    "surface": ["SchemaNameCollectionComparisonTests", "SearcherConstructorFilterComparisonTests",
+                "SearcherValidationContractComparisonTests"],
+}
 
 
 def prepare(group, framework, classes=None, dotnet="dotnet", results_directory=None):

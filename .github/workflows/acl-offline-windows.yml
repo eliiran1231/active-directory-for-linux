@@ -131,6 +131,13 @@ jobs:
         run: >-
           python tests/run-offline-tests.py surface --framework '${{ matrix.framework }}'
           --results-directory artifacts/test-results
+      - name: Detached search and schema collection compatibility
+        shell: pwsh
+        run: >-
+          python tests/run-offline-tests.py surface --framework '${{ matrix.framework }}'
+          --class SchemaNameCollectionComparisonTests --class SearcherConstructorFilterComparisonTests
+          --class SearcherValidationContractComparisonTests
+          --results-directory artifacts/test-results/search-compatibility
       - name: Public Microsoft companion and compiled usage examples
         shell: pwsh
         run: >-
