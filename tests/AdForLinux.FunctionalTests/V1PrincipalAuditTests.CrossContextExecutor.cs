@@ -57,6 +57,12 @@ public partial class V1PrincipalAuditTests
                 var search = Assert.IsType<SearchRequest>(request); Reads++;
                 var isRoot = search.DistinguishedName.Length == 0;
                 var isDomain = (string)search.Filter == "(objectClass=domainDNS)";
+                var isContainer = ((string)search.Filter).Contains(LdapFilter.EscapeBytes(Proof.ContainerGuid.ToByteArray()));
+                var containerDn = Proof.Fault == "same-container" ? "OU=source," + CrossContextFixture.DomainDn : CrossContextFixture.DomainDn;
+                var rowDn = isDomain ? CrossContextFixture.DomainDn : isContainer ? containerDn : Dn;
+                var rowGuid = isDomain ? Proof.DomainGuid : isContainer ? Proof.ContainerGuid : Proof.ObjectGuid;
+                if ((Fault == "wrong-guid" && !isDomain && !isContainer) || (Fault == "wrong-domain" && isDomain)
+                    || (Fault == "wrong-container-guid" && isContainer)) rowGuid = Guid.NewGuid();
                 if (!isRoot && !isDomain)
                 {
                     Assert.Equal(CrossContextFixture.DomainDn, search.DistinguishedName);
@@ -71,12 +77,12 @@ public partial class V1PrincipalAuditTests
                     ["supportedControl"] = [AdIdentityLookup.DomainScopeControl]
                 } : new()
                 {
-                    ["objectGUID"] = [((Fault == "wrong-guid" && !isDomain) || (Fault == "wrong-domain" && isDomain) ? Guid.NewGuid() : isDomain ? Proof.DomainGuid : Proof.ObjectGuid).ToByteArray()],
+                    ["objectGUID"] = [rowGuid.ToByteArray()],
                     ["objectSid"] = [CrossContextFixture.SidBytes(Fault == "wrong-sid" ? "S-1-5-21-500-501-502-503" : isDomain ? Proof.DomainSid : Proof.ObjectSid)],
-                    ["distinguishedName"] = [isDomain ? CrossContextFixture.DomainDn : Dn],
+                    ["distinguishedName"] = [rowDn],
                     ["description"] = [Description]
                 };
-                return SaveResponse(isRoot ? "" : isDomain ? CrossContextFixture.DomainDn : Dn, values,
+                return SaveResponse(isRoot ? "" : rowDn, values,
                     Fault == "missing" ? 0 : Fault == "multiple" ? 2 : 1,
                     Fault == "partial" ? ResultCode.SizeLimitExceeded : ResultCode.Success, false, Fault == "reference");
             }
@@ -157,7 +163,7 @@ public partial class V1PrincipalAuditTests
 
     [Theory]
     [InlineData("reference")] [InlineData("partial")] [InlineData("missing")]
-    [InlineData("multiple")] [InlineData("wrong-guid")] [InlineData("wrong-domain")] [InlineData("wrong-sid")]
+    [InlineData("multiple")] [InlineData("wrong-guid")] [InlineData("wrong-domain")] [InlineData("wrong-sid")] [InlineData("wrong-container-guid")]
     public void Private_executor_incomplete_or_wrong_identity_readback_keeps_quarantine(string fault)
     {
         var f = new ExecutorFixture { Fault = fault };

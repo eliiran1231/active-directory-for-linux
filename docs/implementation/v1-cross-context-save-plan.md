@@ -75,7 +75,8 @@ acknowledged move followed by rejection or ambiguous delivery stays quarantined.
 There is no compensation, retry, or rollback write. Readback cannot acknowledge
 unsent scalar edits even if current values happen to match. An uncertain submitted
 Modify can reconcile only with complete, unreferred, singleton GUID/SID/domain and
-exact value/DN evidence. Reconciliation re-reads RootDSE/domain identity and uses a
+exact value/DN evidence, including a fresh GUID-and-DN proof of the destination
+container so a reused parent DN cannot satisfy reconciliation. Reconciliation re-reads RootDSE/domain identity and uses a
 critical domain-scope GUID search. Wrong/missing/partial evidence retains quarantine.
 
 Publication closes source connections outside owner locks, then rechecks owners,

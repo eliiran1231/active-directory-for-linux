@@ -183,6 +183,14 @@ public abstract partial class Principal
                 || !string.Equals(row.Text("distinguishedName"), expectedDn, StringComparison.OrdinalIgnoreCase)
                 || frozen.Where(p => !p.Key.Equals("cn", StringComparison.OrdinalIgnoreCase)).Any(p => row.Text(p.Key) != p.Value))
                 throw new InvalidOperationException("Readback does not prove the complete requested state; retain quarantine and intent.");
+            var container = Read(nc, "(&(objectGUID=" + LdapFilter.EscapeBytes(plan.ContainerGuid.ToByteArray())
+                + ")(distinguishedName=" + AdIdentityLookup.EscapeText(plan.ContainerDn) + "))", ProtocolScope.Subtree,
+                "objectGUID", "distinguishedName");
+            if (container.Values("objectGUID") is not [byte[] { Length: 16 } containerGuid]
+                || new Guid(containerGuid) != plan.ContainerGuid
+                || !string.Equals(container.DistinguishedName, plan.ContainerDn, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(container.Text("distinguishedName"), plan.ContainerDn, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Readback does not prove the destination container identity.");
             State = Phase.Verified;
             // Close source sessions outside all owner locks. Any cleanup failure
             // prevents publication and leaves the original wrapper quarantined.
