@@ -14,7 +14,7 @@ internal sealed record CrossContextSavePlan(Guid DomainGuid, string DomainSid,
         "authority rebinding require validation. No write was sent; pending edits and the source binding are retained.";
 
     internal static CrossContextSavePlan Prepare(PrincipalContext source, PrincipalContext destination,
-        DirectoryEntry entry, Guid? retainedObjectGuid, string containerDn, string? pendingName)
+        DirectoryEntry entry, Guid? retainedObjectGuid, string containerDn, string? pendingName, TimeProvider? timeProvider = null)
     {
         // Stable lock ordering is used only for short captures/publication, never I/O.
         var owners = new[] { (source.IdentityLifetime, (Action)source.CheckDisposed),
@@ -41,20 +41,25 @@ internal sealed record CrossContextSavePlan(Guid DomainGuid, string DomainSid,
         });
         if (capture.Source.Port is 3268 or 3269 || capture.Destination.Port is 3268 or 3269)
             throw new NotSupportedException("Cross-context preflight requires domain endpoints, not Global Catalog endpoints.");
-        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        var clock = timeProvider ?? TimeProvider.System;
+        var started = clock.GetTimestamp();
         var timeout = capture.Source.Timeout < capture.Destination.Timeout ? capture.Source.Timeout : capture.Destination.Timeout;
-        Validate();
-        using var sourceSession = capture.OpenSource(capture.Source);
-        Validate();
-        using var destinationSession = capture.OpenDestination(capture.Destination);
-        Validate();
+        TimeSpan Remaining()
+        {
+            Validate();
+            var remaining = timeout - clock.GetElapsedTime(started);
+            if (remaining <= TimeSpan.Zero) throw new TimeoutException("Cross-context preflight deadline expired.");
+            return remaining;
+        }
+        using var sourceSession = capture.OpenSource(capture.Source.Clone(Remaining()));
+        _ = Remaining();
+        using var destinationSession = capture.OpenDestination(capture.Destination.Clone(Remaining()));
+        _ = Remaining();
 
         IdentitySearchRow Read(CrossContextSaveSession session, string dn, string filter,
             System.DirectoryServices.Protocols.SearchScope scope, params string[] attributes)
         {
-            Validate();
-            var remaining = timeout - deadline.Elapsed;
-            if (remaining <= TimeSpan.Zero) throw new TimeoutException("Cross-context preflight deadline expired.");
+            var remaining = Remaining();
             var request = new System.DirectoryServices.Protocols.SearchRequest(dn, filter, scope, attributes)
             {
                 SizeLimit = 2, TimeLimit = remaining,
@@ -64,8 +69,7 @@ internal sealed record CrossContextSavePlan(Guid DomainGuid, string DomainSid,
                 request.Controls.Add(new System.DirectoryServices.Protocols.DirectoryControl(
                     AdIdentityLookup.DomainScopeControl, null, true, true));
             var response = session.Search(request, remaining);
-            Validate();
-            if (deadline.Elapsed >= timeout) throw new TimeoutException("Cross-context preflight deadline expired.");
+            _ = Remaining();
             if (response.ResultCode != System.DirectoryServices.Protocols.ResultCode.Success
                 || response.References.Count != 0 || response.Referral.Length != 0 || response.Entries.Count != 1)
                 throw new InvalidOperationException("Cross-context preflight requires a complete, unreferred, unique successful response.");
@@ -114,8 +118,10 @@ internal sealed record CrossContextSavePlan(Guid DomainGuid, string DomainSid,
         var plan = new CrossContextSavePlan(domainGuid, domainSid, objectGuid, objectSid, Dn(original),
             Dn(replica), GuidValue(container.Values("objectGUID")), Dn(container),
             LdapDistinguishedName.RelativeName(Dn(replica)), pendingName);
+        _ = Remaining();
         return Checked(() =>
         {
+            if (clock.GetElapsedTime(started) >= timeout) throw new TimeoutException("Cross-context preflight deadline expired.");
             // Cached identity can be edited without a binding-generation change.
             if (entry.IdentityTarget != capture.Dn || GuidValue(entry.CachedIdentityValues("objectGUID")) != capture.Guid
                 || SidValue(entry.CachedIdentityValues("objectSid")) != capture.Sid)

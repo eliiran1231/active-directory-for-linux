@@ -121,6 +121,13 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    [concrete execution plan](v1-cross-context-save-plan.md) and compiled,
    [opt-in two-DC probe](../research/cross-dc-save-probe/README.md).
 
+   Preflight bind admission now uses the remaining monotonic budget on each
+   session creation. A separate internal, controlled-transport scalar executor
+   exercises frozen intent, quarantine, GUID readback and same-wrapper rebinding.
+   It has no live/default transport and is not called by public Save. Unsupported
+   extension/SPN/security/specialized intent refuses; the full implementation and
+   live two-controller proof remain open. The plan documents the precise subset.
+
    A safe implementation needs fresh domain GUID/SID proof from each endpoint
    using only that endpoint's supplied authority; source/destination object GUID
    and SID agreement; replication-lag refusal before writing; preservation of

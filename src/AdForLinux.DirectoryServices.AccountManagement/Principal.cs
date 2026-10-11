@@ -14,7 +14,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <see cref="DirectoryEntry"/>.
 /// </summary>
 [System.Diagnostics.DebuggerDisplay("Name = {Name}")]
-public abstract class Principal : IDisposable
+public abstract partial class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
@@ -1192,17 +1192,21 @@ public abstract class Principal : IDisposable
     /// <summary>Stages an arbitrary directory attribute for an extension class.</summary>
     protected void ExtensionSet(string attribute, object? value)
     {
-        if (attribute is null)
+        lock (_crossContextGate)
         {
-            throw new ArgumentException("The attribute cannot be null.");
-        }
+            if (_crossContextOperation is not null) throw new InvalidOperationException("Principal edits are frozen by a cross-context operation.");
+            if (attribute is null)
+            {
+                throw new ArgumentException("The attribute cannot be null.");
+            }
 
-        ValidateExtensionValue(value);
-        // Microsoft shares the supplied array (or the scalar wrapper) with
-        // callers. Queries and saves must consume these same current values.
-        _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
-            ? array
-            : new object?[] { value });
+            ValidateExtensionValue(value);
+            // Microsoft shares the supplied array (or the scalar wrapper) with
+            // callers. Queries and saves must consume these same current values.
+            _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
+                ? array
+                : new object?[] { value });
+        }
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
@@ -1441,19 +1445,22 @@ public abstract class Principal : IDisposable
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)
     {
-        CheckDisposedOrDeleted();
-        // Principal writes must survive refreshes of the underlying entry cache.
-        if (ContextRef is null) throw new NullReferenceException();
-        _pending[attributeName] = value;
-        if (Entry is null)
+        lock (_crossContextGate)
         {
-            SetQueryFilter(
-                attributeName,
-                PrincipalQueryFilterKind.String,
-                attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
-                value);
+            CheckDisposedOrDeleted();
+            // Principal writes must survive refreshes of the underlying entry cache.
+            if (ContextRef is null) throw new NullReferenceException();
+            _pending[attributeName] = value;
+            if (Entry is null)
+            {
+                SetQueryFilter(
+                    attributeName,
+                    PrincipalQueryFilterKind.String,
+                    attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
+                    value);
+            }
+            _loadedScalars[attributeName] = value;
         }
-        _loadedScalars[attributeName] = value;
     }
 
     private protected void CommitPendingScalars(DirectoryEntry entry)
@@ -1491,6 +1498,8 @@ public abstract class Principal : IDisposable
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     protected void CheckDisposedOrDeleted()
     {
+        if (_crossContextOperation is not null)
+            throw new InvalidOperationException("This principal is reserved or quarantined by a cross-context operation.");
         if (_disposed)
         {
             throw new ObjectDisposedException(GetType().ToString());

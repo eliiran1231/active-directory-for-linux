@@ -4,7 +4,9 @@ Status: read-only preflight and refusal boundary implemented; cross-controller
 execution remains disabled. No live AD operation has been run for this change.
 
 The production preflight now owns one source and one destination LDAP session for
-its entire read operation. Each session uses only its context's endpoint and
+its entire read operation. A monotonic remaining budget admits each session open,
+caps its bind timeout, and is checked after each open, read and final publication.
+A source bind that exhausts the budget cannot start a destination bind. Each session uses only its context's endpoint and
 credentials, disables referrals before binding, and never forwards credentials.
 Raw SearchResponse result codes, references and referrals survive to validation;
 anything other than a successful, unreferred singleton refuses, including partial
@@ -49,6 +51,49 @@ catch path now distinguishes an acknowledged forward move from a planned move;
 it cannot attempt rollback merely because a target container differed. This does
 not establish safe automatic compensation after an uncertain move or write.
 
+## Private controlled executor
+
+An internal scalar-only executor now exercises the retained wrapper lifecycle.
+It has no default/live transport implementation and no call from public Save.
+Only exact UserPrincipal instances with supported nonempty string scalar edits
+(including Name) and a clean entry are admitted. Extension, SPN/group, password,
+account-control, certificate, logon-hours, deletion and raw/security intent refuse
+before sending. These refusals retain intent; unsupported edits are not projected
+or silently acknowledged. This narrow scope is not the final compatibility scope.
+
+The executor freezes scalar values and owner generations, reserves the retained
+entry and its cached ledgers, and compares versions and copied binary cache values.
+Normal principal/entry mutations, rebinding, Close, refresh and writes refuse while
+reserved/quarantined. GUID-addressed ModifyDN and Modify requests are constructed
+for a transport supplied only the destination context's settings. No source
+credentials, ObjectSecurity or reusable preflight authority cross that boundary.
+
+States distinguish prepared/not-sent, rejected, acknowledged move, acknowledged
+Modify, uncertain, readback-verified and published. Execution is single-submit.
+A rejected first write releases the reservation and retains pending edits; an
+acknowledged move followed by rejection or ambiguous delivery stays quarantined.
+There is no compensation, retry, or rollback write. Readback cannot acknowledge
+unsent scalar edits even if current values happen to match. An uncertain submitted
+Modify can reconcile only with complete, unreferred, singleton GUID/SID/domain and
+exact value/DN evidence. Reconciliation re-reads RootDSE/domain identity and uses a
+critical domain-scope GUID search. Wrong/missing/partial evidence retains quarantine.
+
+Publication closes source connections outside owner locks, then rechecks owners,
+ledgers and frozen intent before changing the same entry's endpoint/credentials and
+publishing ContextRef. Old property/configuration wrappers and identity resolvers
+are revoked. No replacement Principal.Entry or copied security authority is used.
+Source cleanup failure permanently blocks publication for that operation. Disposing
+an uncertain/partial executor never unquarantines its wrapper; separately scoped
+recovery/new-handle work is required if that executor is discarded.
+
+This is controlled executor evidence, not live AD execution readiness. Before any
+live adapter, integrate preflight and executor into one retained session/budget
+operation (the current prototype opens its controlled destination transport after
+the read-only preflight finishes), expand frozen intent for the unsupported families,
+prove concurrent mutation/publication behavior across all retained subordinate
+wrappers, and obtain independent review. No real wire transport may be connected to
+public Save until that work and separately authorized live two-DC proof are complete.
+
 ## Remaining execution sequence and proof obligations
 
 1. Freeze/check the retained principal identity, entry lifetime/generation,
@@ -90,8 +135,8 @@ evidence for the proposed wire forms, not sufficient proof of the full lifecycle
 
 ## Next bounded offline slice and live gate
 
-Offline work can implement an internal executor/state machine behind the existing
-unconditional public refusal: freeze edit ledger versions and raw intent; model
+The internal scalar-only executor covers a first controlled subset. Remaining
+offline work behind the unconditional public refusal must: freeze edit ledger versions and raw intent; model
 not-sent, rejected, acknowledged-move, acknowledged-modify and uncertain outcomes;
 permit best-effort compensation only after an acknowledged move and an established
 safe target; quarantine ambiguous delivery; reconcile by immutable identity; and

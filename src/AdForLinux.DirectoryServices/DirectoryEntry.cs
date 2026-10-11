@@ -127,6 +127,7 @@ public partial class DirectoryEntry : Component
         get => _pathText;
         set
         {
+            CheckCrossContextReservation();
             value ??= string.Empty;
             // Match ADSI's fixed en-US linguistic comparison (Utils.Compare),
             // including accents, width and kana, without requiring Windows NLS.
@@ -151,6 +152,7 @@ public partial class DirectoryEntry : Component
         get => _authenticationType;
         set
         {
+            CheckCrossContextReservation();
             if (_authenticationType != value)
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -168,6 +170,7 @@ public partial class DirectoryEntry : Component
         get => _username;
         set
         {
+            CheckCrossContextReservation();
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -184,6 +187,7 @@ public partial class DirectoryEntry : Component
     {
         set
         {
+            CheckCrossContextReservation();
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -338,7 +342,7 @@ public partial class DirectoryEntry : Component
             // directory values still checks disposal through GetConnection().
             lock (_entryWriteGate)
                 return _properties ??= new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), CapturePropertyOwnerValidation());
         }
     }
 
@@ -508,7 +512,7 @@ public partial class DirectoryEntry : Component
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
         child._isNew = true;
-        child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.ThrowIfDisposed);
+        child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.CapturePropertyOwnerValidation());
 
         // The structural class; AD fills in the rest of the class chain.
         child._properties["objectClass"].Value = schemaClassName;
@@ -609,7 +613,7 @@ public partial class DirectoryEntry : Component
     /// Releases this entry's active LDAP bindings and transient cached state.
     /// The entry remains reusable and binds again when an operation needs a connection.
     /// </summary>
-    public void Close() => Unbind();
+    public void Close() { CheckCrossContextReservation(); Unbind(); }
 
     /// <summary>Determines whether an LDAP path resolves to an entry.</summary>
     public static bool Exists(string path)
@@ -787,7 +791,7 @@ public partial class DirectoryEntry : Component
             || response.References.Count != 0 || response.Referral.Length != 0))
             throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
         if (requireCompleteServiceNames) ValidateCompleteServiceNameReadback(response.Entries[0]);
-        var properties = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+        var properties = new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
 
         if (response.Entries.Count > 0)
         {
@@ -913,6 +917,7 @@ public partial class DirectoryEntry : Component
 
     internal DirectoryEntry CreateEntryForPath(string path)
     {
+        ThrowIfDisposed();
         return _connectionOptionsOverride is null
             ? new DirectoryEntry(path, _username, _password, _authenticationType)
             : new DirectoryEntry(path, _connectionOptionsOverride.Clone());
@@ -997,13 +1002,14 @@ public partial class DirectoryEntry : Component
         lock (_entryWriteGate)
         {
             ThrowIfDisposed();
+            property.ValidateOwnerForWrite();
             // Membership and its version are one publication. A request must see
             // both, or see neither and reject this later registration at completion.
             _pendingPropertyChanges.Add(property);
             _entryChangeVersion++;
             if (_properties is null && !_isNew)
                 reload = _properties = new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), CapturePropertyOwnerValidation());
             commit = !_usePropertyCache && !_isNew;
         }
         if (reload is not null)
@@ -1130,7 +1136,7 @@ public partial class DirectoryEntry : Component
             {
                 // An unsaved child has no server object to reload. Carry its staged
                 // attributes (including objectClass) into a non-loading wrapper.
-                var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
                 foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
                 {
                     replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
@@ -1170,6 +1176,12 @@ public partial class DirectoryEntry : Component
     }
 
     internal void ThrowIfDisposed()
+    {
+        CheckCrossContextReservation();
+        ThrowIfActuallyDisposed();
+    }
+
+    private void ThrowIfActuallyDisposed()
     {
         if (_disposed)
         {

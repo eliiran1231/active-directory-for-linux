@@ -15,6 +15,25 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
     private readonly Action? _validateOwner;
+    private volatile bool _revoked, _crossContextReserved;
+    internal void ReserveCrossContext() { lock (ChangeGate) _crossContextReserved = true; }
+    internal void ReleaseCrossContext() { lock (ChangeGate) _crossContextReserved = false; }
+    internal void Revoke() { lock (ChangeGate) { _revoked = true; _crossContextReserved = false; } }
+    private void CheckCrossContextMutation()
+    {
+        if (_revoked || _crossContextReserved)
+            throw new InvalidOperationException("This property wrapper is reserved or belongs to a revoked binding.");
+    }
+    protected override void OnInsert(int index, object? value) => CheckCrossContextMutation();
+    protected override void OnRemove(int index, object? value) => CheckCrossContextMutation();
+    protected override void OnSet(int index, object? oldValue, object? newValue) => CheckCrossContextMutation();
+    protected override void OnClear() => CheckCrossContextMutation();
+    private void ValidateOwner()
+    {
+        if (_revoked) throw new InvalidOperationException("This property wrapper belongs to a revoked entry binding.");
+        _validateOwner?.Invoke();
+    }
+    internal void ValidateOwnerForWrite() => ValidateOwner();
     internal object ChangeGate { get; } = new();
     private long _changeVersion;
     internal long ChangeVersion => Interlocked.Read(ref _changeVersion);
@@ -62,12 +81,13 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         };
         set
         {
+            CheckCrossContextMutation();
             // Bypass CollectionBase's hooks so replacing the whole attribute
             // is recorded as one LDAP operation rather than Clear plus Adds.
             InnerList.Clear();
             // Clear reaches the owner before a replacement is constructed.
             // In particular a disposed owner leaves this retained wrapper empty.
-            _validateOwner?.Invoke();
+            ValidateOwner();
             if (value is byte[] bytes)
             {
                 InnerList.Add(bytes);
@@ -190,6 +210,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         var snapshot = values.ToArray();
         lock (ChangeGate)
         {
+            CheckCrossContextMutation();
             // A replacement supersedes earlier deltas, but never a delta recorded
             // after a request has captured and acknowledged this ledger.
             if (type is PropertyValueChangeType.Replace or PropertyValueChangeType.Clear) _changes.Clear();

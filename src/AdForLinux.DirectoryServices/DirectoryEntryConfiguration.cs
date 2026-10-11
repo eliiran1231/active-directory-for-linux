@@ -23,6 +23,14 @@ public class DirectoryEntryConfiguration
         Reset();
     }
 
+    private volatile bool _revoked;
+    internal void Revoke() => _revoked = true;
+    private void ValidateOwner()
+    {
+        if (_revoked) throw new InvalidOperationException("This configuration belongs to a revoked entry binding.");
+        _entry.ThrowIfDisposed();
+    }
+
     internal void Reset()
     {
         // Reset this wrapper in place: callers may retain it across Close().
@@ -38,7 +46,7 @@ public class DirectoryEntryConfiguration
     /// <summary>Gets or sets the page size used when enumerating child entries. Zero disables paging.</summary>
     public int PageSize
     {
-        get { _entry.ThrowIfDisposed(); return _pageSize; }
+        get { ValidateOwner(); return _pageSize; }
         set
         {
             if (value < 0)
@@ -46,7 +54,7 @@ public class DirectoryEntryConfiguration
                 throw new ArgumentException("The PageSize must be greater than or equal to zero.");
             }
 
-            _entry.ThrowIfDisposed();
+            ValidateOwner();
             _pageSize = value;
         }
     }
@@ -57,7 +65,7 @@ public class DirectoryEntryConfiguration
     /// </summary>
     public PasswordEncodingMethod PasswordEncoding
     {
-        get { _entry.ThrowIfDisposed(); return _passwordEncoding; }
+        get { ValidateOwner(); return _passwordEncoding; }
         set
         {
             if (value is not PasswordEncodingMethod.PasswordEncodingSsl and
@@ -66,7 +74,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(PasswordEncodingMethod));
             }
 
-            _entry.ThrowIfDisposed();
+            ValidateOwner();
             _passwordEncoding = value;
         }
     }
@@ -77,8 +85,8 @@ public class DirectoryEntryConfiguration
     /// </summary>
     public int PasswordPort
     {
-        get { _entry.ThrowIfDisposed(); return _passwordPort; }
-        set { _entry.ThrowIfDisposed(); _passwordPort = value; }
+        get { ValidateOwner(); return _passwordPort; }
+        set { ValidateOwner(); _passwordPort = value; }
     }
 
     internal void ValidatePasswordOperation()
@@ -99,7 +107,7 @@ public class DirectoryEntryConfiguration
     /// <summary>Gets or sets the referral-chasing preference.</summary>
     public ReferralChasingOption Referral
     {
-        get { _entry.ThrowIfDisposed(); return _referral; }
+        get { ValidateOwner(); return _referral; }
         set
         {
             if (value is not ReferralChasingOption.None and
@@ -110,7 +118,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(ReferralChasingOption));
             }
 
-            _entry.ThrowIfDisposed();
+            ValidateOwner();
             if (_referral != value)
             {
                 _referral = value;
@@ -125,7 +133,7 @@ public class DirectoryEntryConfiguration
     /// </summary>
     public SecurityMasks SecurityMasks
     {
-        get { _entry.ThrowIfDisposed(); return _securityMasks; }
+        get { ValidateOwner(); return _securityMasks; }
         set
         {
             const SecurityMasks allMasks = SecurityMasks.Owner | SecurityMasks.Group |
@@ -135,7 +143,7 @@ public class DirectoryEntryConfiguration
                 throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(SecurityMasks));
             }
 
-            _entry.ThrowIfDisposed();
+            ValidateOwner();
             _securityMasks = value;
         }
     }

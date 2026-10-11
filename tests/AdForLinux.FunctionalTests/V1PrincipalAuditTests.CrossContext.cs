@@ -73,6 +73,7 @@ public partial class V1PrincipalAuditTests
         internal readonly List<(bool Destination, string Path, string User)> Reads = [];
         internal string Fault = "";
         internal int Writes, Opens, Closes;
+        internal readonly List<TimeSpan> OpenTimeouts = [];
         internal Action<int>? AfterRead;
         internal Action<int>? AfterOpen;
         internal int CorruptRead;
@@ -114,6 +115,7 @@ public partial class V1PrincipalAuditTests
             Assert.Equal(destination ? "destination.invalid" : "source.invalid", options.Host);
             Assert.Equal(destination ? "destination-reader" : "source-reader", options.BindDn);
             Assert.Equal(destination ? "destination-test-value" : "source-test-value", options.BindPassword);
+            OpenTimeouts.Add(options.Timeout);
             Opens++;
             AfterOpen?.Invoke(Opens);
             return new CrossContextSaveSession(SaveReadConnection.Create(request => Read(destination, Assert.IsType<SearchRequest>(request)), () => Closes++));
@@ -144,6 +146,7 @@ public partial class V1PrincipalAuditTests
                 sid = "S-1-5-21-900-901-902-903";
             if (!destination && subtree && Fault == "source-replaced") guid = Guid.NewGuid();
             var dn = domain || container ? DomainDn : ItemDn;
+            if (container && Fault == "same-container") dn = "OU=source," + DomainDn;
             if (container && Fault == "nested-container") dn = "OU=valid," + DomainDn;
             var values = new Dictionary<string, object[]>
             {
@@ -169,7 +172,7 @@ public partial class V1PrincipalAuditTests
             if (Reads.Count == CorruptRead && ThrowResponse) throw new DirectoryOperationException(response);
             return response;
         }
-        private static byte[] SidBytes(string text)
+        internal static byte[] SidBytes(string text)
         {
             var sid = new SecurityIdentifier(text); var bytes = new byte[sid.BinaryLength]; sid.GetBinaryForm(bytes, 0); return bytes;
         }
@@ -431,6 +434,32 @@ public partial class V1PrincipalAuditTests
         using var parent = f.Source.CreateDirectoryEntry(CrossContextFixture.DomainDn);
         Assert.Throws<InvalidOperationException>(() => f.Entry.MoveTo(parent));
         Assert.Equal(1, f.Writes);
+    }
+
+    private sealed class SaveClock : TimeProvider
+    {
+        internal TimeSpan Elapsed;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Elapsed.Ticks;
+    }
+    [Theory]
+    [InlineData(1)] [InlineData(2)]
+    public void Cross_context_expired_open_budget_prevents_further_work_and_disposes_sessions(int open)
+    {
+        using var f = new CrossContextFixture(); var clock = new SaveClock();
+        f.AfterOpen = index => { if (index == open) clock.Elapsed = TimeSpan.FromSeconds(30); };
+        Assert.Throws<TimeoutException>(() => CrossContextSavePlan.Prepare(f.Source, f.Destination,
+            f.Entry, f.ObjectGuid, CrossContextFixture.DomainDn, null, clock));
+        Assert.Equal(open, f.Opens); Assert.Equal(open, f.Closes); Assert.Empty(f.Reads); Assert.Equal(0, f.Writes);
+    }
+    [Fact]
+    public void Cross_context_second_open_receives_only_remaining_budget()
+    {
+        using var f = new CrossContextFixture(); var clock = new SaveClock();
+        f.AfterOpen = index => { if (index == 1) clock.Elapsed = TimeSpan.FromSeconds(12); };
+        _ = CrossContextSavePlan.Prepare(f.Source, f.Destination, f.Entry, f.ObjectGuid, CrossContextFixture.DomainDn, null, clock);
+        Assert.Equal(new[] { TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(18) }, f.OpenTimeouts);
+        Assert.Equal(2, f.Closes); Assert.Equal(0, f.Writes);
     }
 
 }

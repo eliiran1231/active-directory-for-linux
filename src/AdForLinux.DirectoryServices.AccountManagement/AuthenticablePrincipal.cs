@@ -13,6 +13,11 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class AuthenticablePrincipal : Principal
 {
     // userAccountControl bits.
+    internal bool HasDeferredCrossContextEdits => _passwordToSet is not null || _enabledAfterPassword is not null
+        || _expirePasswordAfterSave || _userCannotChangePassword is not null || _unsavedEnabled is not null
+        || _unsavedDelegationPermitted is not null || _accountExpirationDateChanged || _changedAccountControlBits != 0
+        || _permittedLogonTimesLoaded || _certificates is not null || _permittedWorkstations is not null;
+
     private const int AccountDisabled = 0x2;
     private const int PasswordNotRequiredFlag = 0x20;
     private const int ReversiblePasswordEncryption = 0x80;

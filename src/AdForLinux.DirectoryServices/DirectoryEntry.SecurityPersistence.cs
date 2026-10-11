@@ -103,14 +103,14 @@ public partial class DirectoryEntry
                     }
                     if (full)
                     {
-                        var owned = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                        var owned = new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
                         foreach (var property in (IEnumerable<PropertyValueCollection>)refreshed)
                             owned.ReplaceLoaded(property.PropertyName, property.Select(value => value!));
                         _pendingPropertyChanges.Clear(); _properties = owned;
                     }
                     else
                     {
-                        var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                        var properties = _properties ?? new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
                         properties.MarkLoaded();
                         foreach (var name in names)
                         {
