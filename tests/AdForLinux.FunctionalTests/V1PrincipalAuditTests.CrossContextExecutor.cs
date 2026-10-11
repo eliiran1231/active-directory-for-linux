@@ -121,6 +121,117 @@ public partial class V1PrincipalAuditTests
         finally { f.Cleanup(); }
     }
 
+    [Fact]
+    public void Private_executor_revokes_retained_configuration_before_destination_io()
+    {
+        var f = new ExecutorFixture();
+        try
+        {
+            var entry = f.Proof.Entry;
+            var retained = entry.Options;
+            using var operation = f.Create();
+            operation.Execute();
+            Assert.Equal(Phase.Published, operation.State);
+            var connectionField = typeof(DirectoryEntry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            Assert.Null(connectionField.GetValue(entry));
+            Assert.Contains("revoked", Assert.Throws<InvalidOperationException>(() => retained.GetCurrentServerName()).Message);
+            Assert.Contains("revoked", Assert.Throws<InvalidOperationException>(() => retained.IsMutuallyAuthenticated()).Message);
+            Assert.Null(connectionField.GetValue(entry));
+            var requests = 0;
+            connectionField.SetValue(entry, SaveReadConnection.Create(_ =>
+                {
+                    requests++;
+                    return SaveResponse("", new() { ["dnsHostName"] = ["destination.invalid"] },
+                        1, ResultCode.Success, false, false);
+                }, () => { }));
+            Assert.Throws<InvalidOperationException>(() => retained.GetCurrentServerName());
+            Assert.Throws<InvalidOperationException>(() => retained.IsMutuallyAuthenticated());
+            Assert.Equal(0, requests);
+            Assert.Equal("destination.invalid", entry.Options.GetCurrentServerName());
+            Assert.Equal(1, requests);
+            Assert.Throws<PlatformNotSupportedException>(() => entry.Options.IsMutuallyAuthenticated());
+        }
+        finally { f.Cleanup(); }
+    }
+
+    [Fact]
+    public async Task Private_executor_admits_only_one_execute_while_still_prepared()
+    {
+        var f = new ExecutorFixture { Fault = "lost-before-move" };
+        try
+        {
+            using var operation = f.Create();
+            var ownerGate = typeof(Principal).GetField("_crossContextGate", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(f.User)!;
+            var admission = operation.GetType().GetField("operationActive", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            Task active;
+            lock (ownerGate)
+            {
+                active = Task.Run(() => Assert.Throws<TimeoutException>(() => operation.Execute()));
+                Assert.True(SpinWait.SpinUntil(() => (int)admission.GetValue(operation)! == 1, TimeSpan.FromSeconds(10)));
+                Assert.Equal(Phase.Prepared, operation.State);
+                Assert.Contains("active", Assert.Throws<InvalidOperationException>(() => operation.Execute()).Message);
+                Assert.Equal(0, f.Sends);
+            }
+            await active;
+            Assert.Equal(1, f.Sends); Assert.Equal(0, f.Reads);
+            Assert.Equal(Phase.Uncertain, operation.State);
+            Assert.Throws<InvalidOperationException>(() => operation.Execute());
+        }
+        finally { f.Cleanup(); }
+    }
+
+    [Theory]
+    [InlineData("execute")]
+    [InlineData("reconcile")]
+    [InlineData("dispose")]
+    public async Task Private_executor_rejects_overlapping_operations_without_replay_or_publication(string overlapping)
+    {
+        var f = new ExecutorFixture { Fault = "lost-after-move" };
+        using var sent = new ManualResetEventSlim();
+        using var resume = new ManualResetEventSlim();
+        Task? active = null;
+        Principal.CrossContextExecutor? operation = null;
+        try
+        {
+            f.AfterSend = _ =>
+            {
+                sent.Set();
+                Assert.True(resume.Wait(TimeSpan.FromSeconds(10)));
+            };
+            operation = f.Create();
+            active = Task.Run(() => Assert.Throws<TimeoutException>(() => operation.Execute()));
+            Assert.True(sent.Wait(TimeSpan.FromSeconds(10)));
+            Action overlap = overlapping switch
+            {
+                "execute" => operation.Execute,
+                "reconcile" => operation.Reconcile,
+                _ => operation.Dispose
+            };
+            Assert.Contains("active", Assert.Throws<InvalidOperationException>(overlap).Message);
+            Assert.Equal(1, f.Sends); Assert.Equal(0, f.Reads); Assert.Equal(0, f.TransportCloses);
+            Assert.Equal(Phase.Uncertain, operation.State);
+            resume.Set();
+            await active;
+            Assert.Equal(Phase.Uncertain, operation.State);
+            Assert.Equal(1, f.Sends); Assert.Equal(0, f.Reads);
+            Assert.Contains("source.invalid", f.Proof.Entry.Path);
+            Assert.Throws<InvalidOperationException>(() => operation.Execute());
+            operation.Dispose(); operation.Dispose();
+            Assert.Equal(1, f.TransportCloses);
+            Assert.Throws<ObjectDisposedException>(() => operation.Reconcile());
+            Assert.Throws<InvalidOperationException>(() => f.Proof.Entry.CommitChanges());
+            Assert.Equal(0, f.Proof.Writes);
+        }
+        finally
+        {
+            resume.Set();
+            if (active is not null) await active;
+            operation?.Dispose();
+            f.Cleanup();
+        }
+    }
+
     [Theory]
     [InlineData("reject-move", "Rejected", 1)]
     [InlineData("reject-modify", "MoveAcknowledged", 2)]

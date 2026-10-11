@@ -24,7 +24,10 @@ public abstract partial class Principal
     internal sealed class CrossContextExecutor : IDisposable
     {
         internal enum Phase { Prepared, Rejected, MoveAcknowledged, ModifyAcknowledged, Uncertain, Verified, Published, Abandoned }
-        internal Phase State { get; private set; } = Phase.Prepared;
+        private volatile Phase state = Phase.Prepared;
+        internal Phase State { get => state; private set => state = value; }
+        private int operationActive;
+        private bool executionStarted;
         private readonly Principal principal;
         private readonly PrincipalContext source, destination;
         private readonly DirectoryEntry entry;
@@ -119,7 +122,16 @@ public abstract partial class Principal
 
         internal void Execute()
         {
-            if (State != Phase.Prepared) throw new InvalidOperationException("An executor is single-submit; reconcile uncertain delivery, never retry it.");
+            EnterOperation();
+            try { ExecuteCore(); }
+            finally { ExitOperation(); }
+        }
+
+        private void ExecuteCore()
+        {
+            if (disposed) throw new ObjectDisposedException(nameof(CrossContextExecutor));
+            if (executionStarted || State != Phase.Prepared) throw new InvalidOperationException("An executor is single-submit; reconcile uncertain delivery, never retry it.");
+            executionStarted = true;
             Validate();
             if (plan.PendingName is not null || !string.Equals(plan.ReplicaDn, expectedDn, StringComparison.OrdinalIgnoreCase))
             {
@@ -139,7 +151,7 @@ public abstract partial class Principal
                 Validate(); scalarSubmitted = true;
                 SendWrite(modify, Phase.ModifyAcknowledged);
             }
-            Reconcile();
+            ReconcileCore();
         }
 
         private void SendWrite(DirectoryRequest request, Phase acknowledged)
@@ -163,6 +175,17 @@ public abstract partial class Principal
         }
 
         internal void Reconcile()
+        {
+            EnterOperation();
+            try
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(CrossContextExecutor));
+                ReconcileCore();
+            }
+            finally { ExitOperation(); }
+        }
+
+        private void ReconcileCore()
         {
             if (State is not (Phase.Uncertain or Phase.MoveAcknowledged or Phase.ModifyAcknowledged or Phase.Prepared or Phase.Verified))
                 throw new InvalidOperationException("This operation cannot be reconciled in its current state.");
@@ -230,6 +253,23 @@ public abstract partial class Principal
             if (actual.Value != sid || actual.BinaryLength != sidBytes.Length) throw new InvalidOperationException("Wrong immutable identity.");
         }
         public void Dispose()
+        {
+            EnterOperation();
+            try { DisposeCore(); }
+            finally { ExitOperation(); }
+        }
+
+        // Reject overlapping and reentrant calls, including disposal. The caller
+        // may dispose again once the active operation completes. This admission
+        // flag is independent of owner locks and holds no monitor across I/O.
+        private void EnterOperation()
+        {
+            if (Interlocked.CompareExchange(ref operationActive, 1, 0) != 0)
+                throw new InvalidOperationException("Another executor operation is active.");
+        }
+        private void ExitOperation() => Volatile.Write(ref operationActive, 0);
+
+        private void DisposeCore()
         {
             if (disposed) return;
             try

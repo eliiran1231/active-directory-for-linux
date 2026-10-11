@@ -149,8 +149,11 @@ public class DirectoryEntryConfiguration
     }
 
     /// <summary>Gets the server backing the entry's active LDAP connection.</summary>
-    public string GetCurrentServerName() =>
-        Ldap.RootDse.GetConnectedServerName(_entry.GetConnection());
+    public string GetCurrentServerName()
+    {
+        ValidateOwner();
+        return Ldap.RootDse.GetConnectedServerName(_entry.GetConnection());
+    }
 
     /// <summary>
     /// Determines whether the active LDAP authentication exchanged mutual credentials.
@@ -161,6 +164,7 @@ public class DirectoryEntryConfiguration
     /// </exception>
     public bool IsMutuallyAuthenticated()
     {
+        ValidateOwner();
         // Bind first so this member cannot make an invalid configured endpoint
         // appear healthy merely because the protocol limitation is known.
         _entry.GetConnection();

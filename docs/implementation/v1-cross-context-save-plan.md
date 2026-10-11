@@ -70,6 +70,10 @@ credentials, ObjectSecurity or reusable preflight authority cross that boundary.
 
 States distinguish prepared/not-sent, rejected, acknowledged move, acknowledged
 Modify, uncertain, readback-verified and published. Execution is single-submit.
+An atomic operation admission flag rejects overlapping or reentrant Execute,
+Reconcile and Dispose calls without holding owner locks over transport I/O.
+Rejected overlapping disposal leaves the active operation and transport intact;
+the caller can dispose again after that operation completes.
 A rejected first write releases the reservation and retains pending edits; an
 acknowledged move followed by rejection or ambiguous delivery stays quarantined.
 There is no compensation, retry, or rollback write. Readback cannot acknowledge
