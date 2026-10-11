@@ -1035,17 +1035,6 @@ public abstract class Principal : IDisposable
             return;
         }
 
-        if (!string.Equals(
-                context.DefaultNamingContext,
-                ContextRef.DefaultNamingContext,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            throw new PlatformNotSupportedException(
-                "Moving a persisted principal between AD domains requires ADSI's cross-store move " +
-                "support and is not available through this LDAP port. Same-domain cross-controller " +
-                "execution requires separately verified identity and rebinding support.");
-        }
-
         var originalContext = ContextRef;
         var originalEntry = Entry;
         var currentDn = Entry.DistinguishedName;
@@ -1061,6 +1050,17 @@ public abstract class Principal : IDisposable
                 throw new PlatformNotSupportedException(CrossContextSavePlan.ExecutionBoundary);
             }
         }
+        if (!string.Equals(
+                context.DefaultNamingContext,
+                ContextRef.DefaultNamingContext,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PlatformNotSupportedException(
+                "Moving a persisted principal between AD domains requires ADSI's cross-store move " +
+                "support and is not available through this LDAP port. Same-domain cross-controller " +
+                "execution requires separately verified identity and rebinding support.");
+        }
+
         var movePlanned = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
         var moveAcknowledged = false;
 

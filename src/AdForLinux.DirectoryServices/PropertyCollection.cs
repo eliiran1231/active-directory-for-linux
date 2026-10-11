@@ -35,6 +35,10 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     // attributes through a previously created, still-unloaded wrapper.
     internal void MarkLoaded() => _load = null;
 
+    // Read-only evidence must not invoke a deferred load or populate this cache.
+    internal object[] CachedValues(string name) => _byName.TryGetValue(name, out var values)
+        ? values.Select(value => value is byte[] bytes ? (object)bytes.Clone() : value!).ToArray() : [];
+
     internal void EnsureLoaded()
     {
         if (_load is null) return;

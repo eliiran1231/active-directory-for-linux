@@ -102,8 +102,8 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    Context switching to the destination while the same underlying DirectoryEntry
    remains at the source endpoint. A different-container move hits the existing
    low-level connection guard. Equal defaultNamingContext text is insufficient
-   stable domain identity proof. Current control flow also attempts rollback
-   based on a planned move, even if the forward guard rejected before send.
+   stable domain identity proof. The baseline also attempted rollback based on
+   a planned move, even if the forward guard rejected before send; that bug is fixed.
    The only remaining skipped test,
    `Cross_dc_same_container_save_requires_rebinding_existing_wrapper`, records
    the unresolved same-container expectation.
@@ -113,8 +113,11 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    changing Context, the retained wrapper or pending edits. Equal naming-context
    text no longer permits a misleading same-container success. Fresh source GUID
    must match the principal's captured identity, not merely a refreshed entry
-   cache. Container ancestry uses parsed RDN boundaries. The existing catch path
-   distinguishes acknowledged moves from planned moves. See the
+   cache. Production preflight now uses operation-owned sessions, fresh RootDSE
+   and domain identity, complete raw responses, critical domain-scope membership
+   searches and checked owner generations through final publication. Cached NCs
+   and textual ancestry are not proof. The existing catch path distinguishes
+   acknowledged moves from planned moves. See the
    [concrete execution plan](v1-cross-context-save-plan.md) and compiled,
    [opt-in two-DC probe](../research/cross-dc-save-probe/README.md).
 
