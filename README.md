@@ -5,8 +5,9 @@ A Linux copy of Microsoft's directory APIs, built on the cross-platform
 `System.DirectoryServices` and `System.DirectoryServices.AccountManagement`
 run on Linux against Active Directory.
 
-Same shape as Microsoft, new name (so it does not clash with the real DLL on
-Windows).
+Microsoft-style APIs under distinct namespaces, so they can coexist with the
+Microsoft DLLs on Windows. Security consumers must use the portable types
+described below; this is not binary compatibility with Microsoft's object model.
 
 For standalone portable SID/name translation, see the
 [explicit entry/context identity helper](docs/identity-resolution.md).
@@ -17,6 +18,8 @@ For standalone portable SID/name translation, see the
 | --- | --- |
 | `AdForLinux.DirectoryServices` | `System.DirectoryServices` (`DirectoryEntry`, `DirectorySearcher`) |
 | `AdForLinux.DirectoryServices.AccountManagement` | `System.DirectoryServices.AccountManagement` (`PrincipalContext`, `UserPrincipal`, `GroupPrincipal`, `PrincipalSearcher`) |
+| `AdForLinux.Security.AccessControl` | Portable ACL, rule and security-descriptor foundations used by the AD APIs |
+| `AdForLinux.Security.Principal` | Portable `SecurityIdentifier`, `NTAccount`, identity collections and translation exceptions |
 
 ## Targets
 
@@ -52,19 +55,19 @@ because their portable fallback can require multiple dependent LDAP requests.
 The remaining modern `System.DirectoryServices` low-level public surface is
 also present: schema-name collections, `DirectoryEntryConfiguration`, the
 Active Directory access-rule/security-descriptor family, and
-`DirectoryServicesCOMException`. Security-descriptor reads and writes use the
-LDAP security-descriptor control on Windows. The access-rule family derives
-from `System.Security.AccessControl`. On current .NET 8 and .NET 10 Linux
-runtimes, even binary `SecurityIdentifier` construction and an empty
-`DirectoryObjectSecurity` descriptor throw `PlatformNotSupportedException`.
-Consequently `DirectoryEntry.ObjectSecurity` keeps an explicit Linux guard;
-transporting the LDAP bytes is portable, but constructing the API's required
-SID/ACL object model is not.
+`DirectoryServicesCOMException`. `ActiveDirectorySecurity` and all nine AD rule
+classes are implemented on Linux: `ActiveDirectoryAccessRule`,
+`ActiveDirectoryAuditRule`, `ListChildrenAccessRule`, `CreateChildAccessRule`,
+`DeleteChildAccessRule`, `PropertyAccessRule`, `PropertySetAccessRule`,
+`ExtendedRightAccessRule` and `DeleteTreeAccessRule`. `DirectoryEntry.ObjectSecurity`
+uses the portable model, with section-aware LDAP reads and writes. Mutations
+preserve unrelated raw data or refuse atomically; observable normalization is
+kept separate from raw write state. See the [entry persistence contract](docs/implementation/issue-226-entry-persistence-status.md).
 
 **High layer** — `PrincipalContext` (server, container, credentials,
 `ValidateCredentials`), `UserPrincipal` and `GroupPrincipal`
 (`FindByIdentity`, typed extension lookup, `Save`, context-aware save/move,
-`Delete`, `Sid` (`SidValue` on Linux), extension attributes, identity equality,
+`Delete`, portable `Sid`, extension attributes, identity equality,
 properties), `SetPassword`, `ChangePassword`, `UnlockAccount`,
 `ExpirePasswordNow`, `RefreshExpiredPassword`, `Enabled`, account dates and
 flags, permitted logon times/workstations, X.509 account certificates, and the
@@ -74,6 +77,36 @@ recursive), `GetGroups`, `IsMemberOf`, `GetAuthorizationGroups` (directory-backe
 authorization groups via `tokenGroups`, with a matching-rule fallback), `ComputerPrincipal` with mutable service
 principal names, and `PrincipalSearcher` query-by-example with wildcards and
 advanced date/count comparisons.
+
+### Portable security types and migration
+
+The AD class names remain in `AdForLinux.DirectoryServices`, but their base
+classes, rule parameters and identity results use `AdForLinux.Security.AccessControl`
+and `AdForLinux.Security.Principal`. For example, `ActiveDirectorySecurity`
+derives from the portable `DirectoryObjectSecurity`, and `Principal.Sid` returns
+`AdForLinux.Security.Principal.SecurityIdentifier`. `Sid` works on Linux;
+`SidValue` remains a string convenience, not a required platform workaround.
+
+Consumers migrating from Microsoft security types must update imports, aliases,
+explicit type declarations and custom base classes, then recompile. The portable
+objects are distinct CLR types and cannot be cast to Microsoft identities or
+access-control objects. Shared framework enums, such as
+`System.Security.AccessControl.AccessControlType` and `AccessControlSections`,
+remain framework types; do not replace every `System.Security` import blindly.
+
+For explicit SID/name lookup, use `DirectoryIdentityResolver.ForEntry(entry)` or
+`PrincipalContext.CreateIdentityResolver()`, then the helper's `Translate`
+overloads for an identity or collection. These helpers borrow the existing
+owner's context, have no credential constructor and perform no lookup at factory
+creation. Keep the owner alive and reacquire the helper after its binding is
+invalidated. Returned identities and descriptor copies contain data, not resolver
+access or connection authority. See [identity translation and lifetime rules](docs/identity-resolution.md).
+
+The optional Windows-only [MicrosoftInterop companion](src/AdForLinux.DirectoryServices.MicrosoftInterop/README.md)
+provides **export-only** `ToMicrosoftObject(s)` conversions and defensive
+`CaptureSnapshot` data. Exports are independent objects; there are no Microsoft
+import, edit-session or apply-back APIs. Unverified or lossy conversions refuse.
+The core and AccountManagement packages do not depend on the companion.
 
 ### Not supported
 
@@ -161,9 +194,15 @@ advanced date/count comparisons.
   which protocol-based LDAP does not expose. All three methods therefore throw
   `PlatformNotSupportedException` on Linux.
 - `DirectoryEntry` certificate members and the remaining COM/event surface.
-- **Active Directory ACL manipulation on Linux.** The public rule types are
-  available for source compatibility, but their required
-  `System.Security.AccessControl` base classes are Windows-only in modern .NET.
+- **Unvalidated security and identity scenarios.** The broader explicit
+  security-descriptor [LDAP Add matrix](docs/implementation/issue-226-add-validation-plan.md)
+  remains deferred/unvalidated. Identity resolution retains its verified
+  single-domain boundary; GC/trust routing and ambient/provider identity
+  continuity remain limited. Unusual raw layouts and
+  [large-SDDL behavior](docs/implementation/issue-226-sddl-boundary-findings.md)
+  still have gaps. Preservation checks can refuse edits or exports whose effect
+  on retained data cannot be proved safe. Implemented APIs and offline/native
+  comparisons do not establish full Microsoft parity or production certification.
 - **`DirectoryEntryConfiguration.SetUserNameQueryQuota`.** This is an ADSI
   provider option for returning quota information for a named security
   principal. LDAP has no equivalent interoperable option or control, so there
@@ -210,12 +249,23 @@ it for the tests.
 
 ## Testing
 
-Two test projects:
+Three test projects:
 
-- **`tests/AdForLinux.FunctionalTests`** — runs on Linux in Docker against the
-  `smblds` Samba AD DC. Checks our clone works.
-- **`tests/AdForLinux.DifferentialTests`** — runs on **Windows**. Compares the
-  real Microsoft library with our clone, side by side. See its README.
+- [AdForLinux.FunctionalTests](tests/AdForLinux.FunctionalTests) contains portable
+  offline codec, mutation, preservation and recorded-oracle replay tests, plus
+  directory integration tests run on Linux against the `smblds` Samba AD DC.
+- [AdForLinux.DifferentialTests](tests/AdForLinux.DifferentialTests/README.md)
+  compares Microsoft and portable APIs on Windows, including offline metadata
+  checks and real-AD integration fixtures.
+- [AdForLinux.MicrosoftInterop.Tests](tests/AdForLinux.MicrosoftInterop.Tests)
+  verifies the export-only companion, its public contract and compiled usage
+  examples; actual Microsoft object construction requires Windows.
+
+The [detached Windows oracle](docs/research/acl-windows-oracle/README.md) records
+native evidence separately. [Bounded invariant workers](tests/run-bounded-invariants.py)
+exercise portable preservation properties. Use explicit offline test filters for
+directory-free checks: unfiltered functional/differential suites require directory
+fixtures and can modify their test directory.
 
 ### Validated credential cache and unbound commit findings
 
