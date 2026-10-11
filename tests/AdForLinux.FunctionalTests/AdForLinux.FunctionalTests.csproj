@@ -4,6 +4,7 @@
     <!-- Runs on Linux in Docker against the smblds Samba AD DC. -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);PORTABLE_FACADE</DefineConstants>
     <RootNamespace>AdForLinux.FunctionalTests</RootNamespace>
   </PropertyGroup>
 
@@ -11,11 +12,75 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- Detached Windows interop comparisons only; no production Microsoft AD dependency. -->
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices\AdForLinux.DirectoryServices.csproj" />
     <ProjectReference Include="..\..\src\AdForLinux.DirectoryServices.AccountManagement\AdForLinux.DirectoryServices.AccountManagement.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../docs/research/acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlCompositionContracts.cs" Link="SddlCompositionContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlReplacementStates.cs" Link="SddlReplacementStates.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlReplacementContracts.cs" Link="SddlReplacementContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlAlarmContracts.cs" Link="SddlAlarmContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlRawContractContracts.cs" Link="SddlRawContractContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlExportInputs.cs" Link="SddlExportInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlExportContracts.cs" Link="SddlExportContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedInputs.cs" Link="SddlMixedInputs.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlMixedContracts.cs" Link="SddlMixedContracts.cs" />
+    <Compile Include="../../docs/research/acl-windows-oracle/SddlAceSizeInputs.cs" Link="SddlAceSizeInputs.cs" />
+    <Compile Include="../Shared/LayoutRelocationCases.cs" Link="LayoutRelocationCases.cs" />
+    <Compile Include="../Shared/IdenticalAssignmentCases.cs" Link="IdenticalAssignmentCases.cs" />
+    <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-mixed-net8.0.json.gz" LogicalName="AclOracle.Mixed.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-mixed-net10.0.json.gz" LogicalName="AclOracle.Mixed.net10.json.gz" />
+    <EmbeddedResource Include="SddlMixedPreservationRefusals.json" LogicalName="AclOracle.Mixed.Refusals.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net8.0.json.gz" LogicalName="AclOracle.RetainedExport.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-retained-export-net10.0.json.gz" LogicalName="AclOracle.RetainedExport.net10.json.gz" />
+    <EmbeddedResource Include="SddlRetainedExportDifferences.json" LogicalName="AclOracle.RetainedExport.Differences.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net8.0.json.gz" LogicalName="AclOracle.Composition.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-states-net8.0.json.gz" LogicalName="AclOracle.ReplacementStates.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-net8.0.json.gz" LogicalName="AclOracle.Replacement.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net8.0.json.gz" LogicalName="AclOracle.Alarm.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net8.0.json.gz" LogicalName="AclOracle.RawContract.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-composition-net10.0.json.gz" LogicalName="AclOracle.Composition.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-states-net10.0.json.gz" LogicalName="AclOracle.ReplacementStates.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-replacement-net10.0.json.gz" LogicalName="AclOracle.Replacement.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-alarm-net10.0.json.gz" LogicalName="AclOracle.Alarm.net10.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-raw-contract-net10.0.json.gz" LogicalName="AclOracle.RawContract.net10.json.gz" />
+    <EmbeddedResource Include="SddlCompositionRefusals.json" LogicalName="AclOracle.Composition.Refusals.json" />
+    <EmbeddedResource Include="SddlReplacementStateRefusals.json" LogicalName="AclOracle.ReplacementStates.Refusals.json" />
+    <EmbeddedResource Include="SddlReplacementRefusals.json" LogicalName="AclOracle.Replacement.Refusals.json" />
+    <EmbeddedResource Include="SddlAlarmRefusals.json" LogicalName="AclOracle.Alarm.Refusals.json" />
+    <EmbeddedResource Include="SddlRawContractRefusals.json" LogicalName="AclOracle.RawContract.Refusals.json" />
+    <!-- Literal Windows observations; replay remains fully offline on every target. -->
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net8.json.gz" LogicalName="AclOracle.Boundary.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-boundary-windows-net10.json.gz" LogicalName="AclOracle.Boundary.net10.json.gz" />
+    <EmbeddedResource Include="SddlBoundaryPreservationRefusals.json" LogicalName="AclOracle.Boundary.Refusals.json" />
+    <EmbeddedResource Include="SddlBoundaryKnownSizeGaps.json" LogicalName="AclOracle.Boundary.SizeGaps.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net8.json.gz" LogicalName="AclOracle.Size.net8.json.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-size-windows-net10.json.gz" LogicalName="AclOracle.Size.net10.json.gz" />
+    <EmbeddedResource Include="SddlSizeReplayExceptions.json" LogicalName="AclOracle.Size.Exceptions.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-partition-net8.0.jsonl.gz" LogicalName="AclOracle.TokenPartition.net8.jsonl.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-partition-net10.0.jsonl.gz" LogicalName="AclOracle.TokenPartition.net10.jsonl.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-ace-size-net8.0.jsonl.gz" LogicalName="AclOracle.AceSize.net8.jsonl.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/sddl-ace-size-net10.0.jsonl.gz" LogicalName="AclOracle.AceSize.net10.jsonl.gz" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net8.json" LogicalName="AclOracle.Seeded.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/seeded-windows-net10.json" LogicalName="AclOracle.Seeded.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net8.json" LogicalName="AclOracle.Foundation.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net8.json" LogicalName="AclOracle.Surface.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/foundation-windows-net10.json" LogicalName="AclOracle.Foundation.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/required-surface-windows-net10.json" LogicalName="AclOracle.Surface.net10.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/closure-windows-net8.json" LogicalName="AclOracle.Closure.net8.json" />
+    <EmbeddedResource Include="../../docs/research/acl-windows-oracle/results/closure-windows-net10.json" LogicalName="AclOracle.Closure.net10.json" />
   </ItemGroup>
 
 </Project>

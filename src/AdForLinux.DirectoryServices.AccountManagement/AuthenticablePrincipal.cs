@@ -619,9 +619,9 @@ public class AuthenticablePrincipal : Principal
 
         if (_userCannotChangePassword is not null)
         {
-            var descriptor = Entry!.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
-            var changed = ChangePasswordAcl.SetDenied(descriptor, _userCannotChangePassword.Value);
-            Entry.ReplaceSecurityDescriptorImmediate(changed, SecurityMasks.Dacl);
+            var security = Entry!.ObjectSecurity;
+            security.EditRawDacl(raw => ChangePasswordAcl.SetDenied(raw, _userCannotChangePassword.Value));
+            Entry.CommitChanges();
             if (!deferResetUntilInsertCompletes)
             {
                 _userCannotChangePassword = null;

@@ -1,0 +1,29 @@
+{
+  "source": "Exact CLOSURE_JSON from authorized decoded Windows job logs; no artifact ZIP downloads or fabricated outcomes",
+  "run": 38000157544,
+  "head": "16bc6b135e901d925cff82501b68143e2ef2bd58",
+  "prior_observations_unchanged": 3589,
+  "added_observations": 719,
+  "first_probe_run": 37999848527,
+  "first_probe_head": "f28bfe19daf66c9130caed915743b3b2049eeed2",
+  "first_probe_observations": 404,
+  "probe_result": "Full builds, 11119 core and 321 companion tests each runtime passed; closure freshness intentionally failed until importing new native evidence",
+  "recordings": [
+    {
+      "framework": "net8.0",
+      "job": 114056006576,
+      "file": "closure-windows-net8.json",
+      "sha256": "4628bc8061998c8cd276b19b6a6800ba8d29aeb97a9fd65df32df2738c018acd",
+      "bytes": 1121666,
+      "observations": 4308
+    },
+    {
+      "framework": "net10.0",
+      "job": 114056006221,
+      "file": "closure-windows-net10.json",
+      "sha256": "66b998bc69590ce10babfa31e0cea940aaa51354d59278ab635f6b490a4e39d9",
+      "bytes": 1121591,
+      "observations": 4308
+    }
+  ]
+}

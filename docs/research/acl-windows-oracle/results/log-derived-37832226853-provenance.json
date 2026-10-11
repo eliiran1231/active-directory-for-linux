@@ -1,0 +1,28 @@
+{
+  "sourceRun": 37832226853,
+  "sourceHead": "cd2140a0fe52671045572a3a397a05da520e8f6c",
+  "origin": "CLOSURE_JSON lines from authorized GitHub job logs; not artifact ZIP bytes",
+  "previousObservationsUnchanged": 2462,
+  "files": [
+    {
+      "path": "closure-windows-net8.json",
+      "job": 113500196890,
+      "sha256": "f764b0153df4600f9adf6dd1b26c7cfe612ddbda39e84dc4d97b4017e21b8d63",
+      "bytes": 589361,
+      "observations": 2564
+    },
+    {
+      "path": "closure-windows-net10.json",
+      "job": 113500196407,
+      "sha256": "880276c66ef51dfb2df1ac887754dc218562ee5c303423e598e5edc0babccec8",
+      "bytes": 589286,
+      "observations": 2564
+    }
+  ],
+  "priorProbe": {
+    "sourceRun": 37831311746,
+    "sourceHead": "75f89827617ccf3e801d3f4ac8621d782f07d61c",
+    "newObservations": 141,
+    "previousObservationsUnchanged": 2321
+  }
+}

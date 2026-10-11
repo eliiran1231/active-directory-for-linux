@@ -1,0 +1,33 @@
+{
+  "NativeCasesPerRuntime": 48,
+  "RuntimeAgreement": true,
+  "ExistingFormattingParityBeforeCorrection": 44,
+  "ExactPortableRowsAfterPolicyCorrection": 27,
+  "PinnedRows": 21,
+  "PinnedFacets": {
+    "nonroundtrippable-empty-callback": 51,
+    "existing-retained-alarm-omission": 8
+  },
+  "NativeFormattingSuccessFacets": 128,
+  "NativeReparseFailureFacets": 51,
+  "NewParserAcceptanceGapObserved": false,
+  "LiteralLegacyFormattingCases": [
+    857,
+    858,
+    859
+  ],
+  "NegativeControl": {
+    "Failed": 17,
+    "Passed": 31,
+    "Total": 48
+  },
+  "UnchangedGenuineCompatibilityGaps": {
+    "RetainedExceptionFacets": 12,
+    "RetainedRawAuditValidationFacets": 6,
+    "FrozenAllocationObservations": [
+      25,
+      243,
+      623
+    ]
+  }
+}

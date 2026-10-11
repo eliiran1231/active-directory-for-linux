@@ -14,7 +14,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// controller name. Simple and negotiate LDAP authentication are selected with
 /// <see cref="ContextOptions"/>.
 /// </summary>
-public class PrincipalContext : IDisposable
+public partial class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
     private readonly bool _hasExplicitPort;
@@ -795,6 +795,7 @@ public class PrincipalContext : IDisposable
             return;
         }
 
+        using var identityChange = IdentityLifetime.Change();
         lock (_foreignContextLock)
         {
             foreach (var context in _foreignContexts.Values)

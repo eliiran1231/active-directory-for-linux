@@ -1,0 +1,70 @@
+{
+  "SourceHead": "2be57688a776e62b92f4b32b65820ff2b5612363",
+  "RunId": 38064066296,
+  "Runtimes": {
+    "net8.0": {
+      "JobId": 114248028018,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "a1dacdc82e610141e1206c20752cb39eae8093b929f1551b8caa0b32e1a33bd9"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "87ad08978550e280050034c746ea6781704af4d87060ead0f64def8f33b4551c"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "7218c1e33f6279963c5e33f0535c27ae3f911d33fc2dc5a1305477b3c441ee7e"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "f634e5e8d79f0d1173a9bbabf88f8b72fad43fa5de8ed39b9fcc847fe14e3017"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "6c2bc4a09de2b01d4b433d70afcd2c77350404d1951693d4b4aa5f4cc2ac306a"
+        },
+        {
+          "Name": "boundary-080.jsonl",
+          "Sha256": "5809db76e9d10b52a87feba32e028e20fa123443a733f2db89539d035b75e0d7"
+        }
+      ],
+      "OriginalGzipSha256": "33a05174ccf84e7853b17e4d2006ad6d4ad39f775444220fc3b67b2d91608b6c",
+      "BaselineGzipSha256": "59f93bae61668fcbcf157e86abc142c1e0090850bee704adcb5ab00a73e8d858",
+      "ArtifactId": 11674925428
+    },
+    "net10.0": {
+      "JobId": 114248027738,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "336938355e965b4dd38003729c484f54cb99b85343192d9c450d6db92568b63e"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "f365f5b37bfe00a1384cb29fe3adaf7b6e2d6f0b606440ebd31e24e04f28e472"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "1c3fb14d50aeca00cdb25663f835b1b51b5f5f5d9a5a42b205e30b7f67d3dfab"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "cc3262a1020aa38182271ea8f4b4c8919ae386a3347534699ec0e12c42ea85fb"
+        },
+        {
+          "Name": "boundary-064.jsonl",
+          "Sha256": "92f26eba277d98c8e006159dfd360771c572b1b72dce70eb73e92e56ca1e72a1"
+        },
+        {
+          "Name": "boundary-080.jsonl",
+          "Sha256": "254ba122192399649f888ad56e258467af0992fe437b6b5165775967ddb9b4eb"
+        }
+      ],
+      "OriginalGzipSha256": "a92c251432a9a1193b9fef71fecb849b82174c3d18d6c3be5e9e18cfd0c0fa2d",
+      "BaselineGzipSha256": "25e37bb6ab1e5616e22847bd6992cf9963b886e0b1646df0e888b61dada31317",
+      "ArtifactId": 11674905469
+    }
+  }
+}

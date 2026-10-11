@@ -1,0 +1,55 @@
+{
+  "SourceHead": "057876c053d186ac778ea265559a6626b4ed6afc",
+  "Run": 38056717673,
+  "Scope": "64 fresh detached ordinary-size operations; raw bytes separate from native facade normalization. Actual Windows recordings, no synthesized observations.",
+  "Runtimes": {
+    "net8.0": {
+      "Job": 114226607837,
+      "BaselineSha256": "9e20e0f67aae24d53b53dab22625ddde2bf78be8c517913a9863daf32e0913c6",
+      "OriginalGzipSha256": "be1397c02c2d891d1fa80c01b46187e1842b63a35375439bda3e51eb5b71b447",
+      "Files": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "4896d341342636402d0b810a885cf4ca71b849c7c0c0f89ded70bceaa3458d8e"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "766c8dd2d78a3073c6b77f99ae05ea302f531008f2e9a4addad920e4f5aec197"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "b1b8f0b299bea318be086caa77b1b959baf34154d3b27669f1b953bdffb5e100"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "979fae8fba7b975d80362402c2d1da56b62f88e4f9337c423b919ecc69d0a79a"
+        }
+      ],
+      "Artifact": 11671787807
+    },
+    "net10.0": {
+      "Job": 114226607852,
+      "BaselineSha256": "924f44c4c11decefde5c8c8fc60431b185e18c930f68c275bce552dd353dcf33",
+      "OriginalGzipSha256": "bd2bd0d0bc614e36f907c767c80102efbe70382c56ba2acbda25044bd6fdd187",
+      "Files": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "d5fba3f92202b8263e8cd9fe34e9f43fdf2d17a9c14ae0efd2cc93fc591099a6"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "c66144c2c4186074911a238e59f2035d14277eddc0bf7bbd3e7ca4fac4149be8"
+        },
+        {
+          "Name": "boundary-032.jsonl",
+          "Sha256": "a5613ac2cffaf63002c997870bbe1b527d619757b8793f22e5e3edb93fef2954"
+        },
+        {
+          "Name": "boundary-048.jsonl",
+          "Sha256": "22c8b71cdc9976128d63ec6de4d66074785a8213dbe934296b768c9d2aae1613"
+        }
+      ],
+      "Artifact": 11671957690
+    }
+  }
+}

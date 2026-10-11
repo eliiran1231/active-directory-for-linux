@@ -1,0 +1,46 @@
+{
+  "NativeRowsPerRuntime": 96,
+  "NativeRuntimeAgreement": true,
+  "CompletePortableExactRows": 52,
+  "PinnedRefusalRows": 44,
+  "PinnedRefusalFacets": {
+    "native-alarm-nonroundtrippable-text": 21,
+    "existing-facade-alarm-omission": 88
+  },
+  "NewRawRefusalFacets": 17,
+  "NewRawRefusalCases": [
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    72,
+    74,
+    76,
+    92,
+    94
+  ],
+  "FacadeOutcomesUnchanged": true,
+  "Original18RawContractFacetsRemainExact": true,
+  "Previous80RowMatrix": {
+    "CompletePortableExactRows": 55,
+    "PinnedRefusalRows": 25
+  },
+  "FrozenAllocationGaps": [
+    25,
+    243,
+    623
+  ],
+  "NegativeControl": {
+    "Failed": 17,
+    "Passed": 80,
+    "Total": 97
+  }
+}

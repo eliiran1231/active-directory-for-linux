@@ -1,0 +1,163 @@
+{
+  "source_head": "c7125ad27e1809fa48a3c42ed77ed8de4550881d",
+  "run_id": 38083602105,
+  "scope": "Fourteen isolated native witnesses only; original bytes and environment retained. Not portable parity or a general allocation algorithm.",
+  "initial_eight_source_head": "68bec3d8dc72fcb2c020df9b8d615078faf7332a",
+  "initial_eight_run_id": 38083120604,
+  "frameworks": {
+    "net8.0": {
+      "job_id": 114305379970,
+      "file": "sddl-assembly-net8.0.jsonl.gz",
+      "gzip_sha256": "91c36bae081bc8ce9dca151303a119b7284ae04bc511fdb1905a74251aae9024",
+      "original_files": [
+        {
+          "case": 0,
+          "original_sha256": "ac9c82765f3e463db981225e71b58dc702a86dd9a06b333eeb5c4c678a3ef012",
+          "original_bytes": 1182103
+        },
+        {
+          "case": 1,
+          "original_sha256": "0656aea77972e3c4a2753cd33b77a26be2bf00eb56f9272e6258af35b54135c7",
+          "original_bytes": 1838680
+        },
+        {
+          "case": 2,
+          "original_sha256": "90eaf1267da2fffbb59d2489c6040e7438a303e4068956892c66db66cf5e86ee",
+          "original_bytes": 1707702
+        },
+        {
+          "case": 3,
+          "original_sha256": "44d76042a421057b26ec90f5327e35006e90b8a82e7f00a21f0530a58b9a9059",
+          "original_bytes": 3284471
+        },
+        {
+          "case": 4,
+          "original_sha256": "debe1957d286c684f09cfec4d7c3e136f1fa586e723c2a734b73cb921d57f18c",
+          "original_bytes": 1839059
+        },
+        {
+          "case": 5,
+          "original_sha256": "b2f3b2912bbc28fc365c6d6000044540d48d6dcfc953f34e4279e1a60da0d911",
+          "original_bytes": 2233061
+        },
+        {
+          "case": 6,
+          "original_sha256": "ac0f949955ff1c44bd0dc506770c0cab7a25e4badb3e6bf399ef364e46193444",
+          "original_bytes": 2364192
+        },
+        {
+          "case": 7,
+          "original_sha256": "0baa192bcb8b1b17ea16cd677fb2558f62aff626e9aa37504091fe2a054d093a",
+          "original_bytes": 1315471
+        },
+        {
+          "case": 8,
+          "original_sha256": "345b0b9c6d554d017c7dab2323a7bd0e757d7621196a37abf5b1d5f486b7d5af",
+          "original_bytes": 1181099
+        },
+        {
+          "case": 9,
+          "original_sha256": "b553a280d4e930cd53617da6a0b00ee8bf33ca7b9c818d67935f0bd28e37197f",
+          "original_bytes": 1706428
+        },
+        {
+          "case": 10,
+          "original_sha256": "734c889275a6fdf98c6719f1683bab2777f61f615f81c0d768380c5b85158a05",
+          "original_bytes": 1181145
+        },
+        {
+          "case": 11,
+          "original_sha256": "a2aa61fd654246ce4a1aa2c8b86d714eaf95582e15610db437d62ede57f0a0fc",
+          "original_bytes": 1706504
+        },
+        {
+          "case": 12,
+          "original_sha256": "8fb15c9bca1c04c64467c5424798422646b4d59ff6351998a30e9cbe4fa45cb7",
+          "original_bytes": 1181193
+        },
+        {
+          "case": 13,
+          "original_sha256": "9321f6642e99cbbbd107df38af1d2465b9adf585d37ee206c240a406961f83d2",
+          "original_bytes": 1706584
+        }
+      ]
+    },
+    "net10.0": {
+      "job_id": 114305379789,
+      "file": "sddl-assembly-net10.0.jsonl.gz",
+      "gzip_sha256": "62adbafc9059d4cac953d4bc0cd82a9a56f764f9db0afa38352bc4f6d74a1e36",
+      "original_files": [
+        {
+          "case": 0,
+          "original_sha256": "63deb1d5fc02b5add02d3311459e8c50919ac70cfddac433ae9412ab5fd8f107",
+          "original_bytes": 1182104
+        },
+        {
+          "case": 1,
+          "original_sha256": "92c0445f3c0b1fd85eccbc6d20ae681ecdc7d99a9d68c31d2e5a38326bdd378e",
+          "original_bytes": 1838681
+        },
+        {
+          "case": 2,
+          "original_sha256": "306b299aba58bb08a929c8d61ea9d6538bc64b42f7ede990a1892c86b313a327",
+          "original_bytes": 1707703
+        },
+        {
+          "case": 3,
+          "original_sha256": "b4b12dd84cf7166dc96580d1312bc6d8b87a50a696cecb9090ab6b40c59742b7",
+          "original_bytes": 3284472
+        },
+        {
+          "case": 4,
+          "original_sha256": "c20de9f953c9bc5d66b0ba1ad012cabb916222b509084a34e56559d91f481e66",
+          "original_bytes": 1839060
+        },
+        {
+          "case": 5,
+          "original_sha256": "d9cf5e0ce538aa838d6a805100bc17f2526bb2e6e7a67aae33fd7177423209df",
+          "original_bytes": 2233062
+        },
+        {
+          "case": 6,
+          "original_sha256": "08c9f237c8584bae5a7e8ac417e37c95997ed3a724961abbabffe7db89656c72",
+          "original_bytes": 2364193
+        },
+        {
+          "case": 7,
+          "original_sha256": "46f4f2030890db5602592e818f034186fcb2bff2104ec1524856d7c0dfa86b60",
+          "original_bytes": 1315472
+        },
+        {
+          "case": 8,
+          "original_sha256": "2aea47efe341e801a60894e87ac6038dab908048f44dcc3e0776b4b75fab95bd",
+          "original_bytes": 1181100
+        },
+        {
+          "case": 9,
+          "original_sha256": "4210c58f380fe32a7686fbef0c7da44e577e0a45da5ea637d7a6080a62a3d256",
+          "original_bytes": 1706429
+        },
+        {
+          "case": 10,
+          "original_sha256": "e9f35c231a55be768c4648d898f67d102afce7a1eb78e5ad4d4341a5dc0502e4",
+          "original_bytes": 1181146
+        },
+        {
+          "case": 11,
+          "original_sha256": "2b1a049e5090d13f5ef3a8a8b8077b96393545d2c32790ce5e6d4f2358c480a7",
+          "original_bytes": 1706505
+        },
+        {
+          "case": 12,
+          "original_sha256": "6a0e702fe6276e8fbc7b21198d7867a426428855a6cc9c8deb9994e3c6d713ea",
+          "original_bytes": 1181194
+        },
+        {
+          "case": 13,
+          "original_sha256": "e77944f4f3bee794c6a6083188f42eb90f1c1c58787603ce1268a10807ad4232",
+          "original_bytes": 1706585
+        }
+      ]
+    }
+  }
+}

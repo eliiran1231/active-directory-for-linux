@@ -32,53 +32,66 @@ internal static class LdapConnectionFactory
     internal static LdapConnection Create(LdapConnectionOptions options)
     {
         var identifier = new LdapDirectoryIdentifier(options.Host, options.Port);
-        var connection = new LdapConnection(identifier)
+        return ConfigureOwned(new LdapConnection(identifier), connection =>
         {
-            AuthType = options.IsAnonymous ? AuthType.Anonymous : options.AuthenticationType,
-        };
+            connection.AuthType = options.IsAnonymous ? AuthType.Anonymous : options.AuthenticationType;
+            connection.SessionOptions.ProtocolVersion = 3;
 
-        connection.SessionOptions.ProtocolVersion = 3;
+            if (options.SkipCertificateCheck)
+            {
+                ConfigureCertificateSkip(connection);
+            }
 
-        if (options.SkipCertificateCheck)
+            if (options.UseSsl)
+            {
+                // LDAPS: TLS wraps the socket from the start (port 636).
+                connection.SessionOptions.SecureSocketLayer = true;
+            }
+
+            // On OpenLDAP, even assigning false can force early server access.
+            // Leave the platform defaults alone unless the caller requested these.
+            if (options.Signing)
+            {
+                connection.SessionOptions.Signing = true;
+            }
+
+            if (options.Sealing)
+            {
+                connection.SessionOptions.Sealing = true;
+            }
+
+            var credential = options.ToCredential();
+            if (credential is not null)
+            {
+                connection.Credential = credential;
+            }
+
+            // The connection stays open until disposed; bind eagerly so failures
+            // surface here rather than on first search.
+            connection.Timeout = options.Timeout;
+
+            if (options.UseStartTls && !options.UseSsl)
+            {
+                // StartTLS: connect in the clear (port 389), then upgrade to TLS.
+                connection.SessionOptions.StartTransportLayerSecurity(null);
+            }
+        });
+    }
+
+    // Ownership transfers only after all setup succeeds. Kept independent of the
+    // native LDAP handle so failure cleanup can be tested without a server/library.
+    internal static T ConfigureOwned<T>(T connection, Action<T> configure) where T : IDisposable
+    {
+        try
         {
-            ConfigureCertificateSkip(connection);
+            configure(connection);
+            return connection;
         }
-
-        if (options.UseSsl)
+        catch
         {
-            // LDAPS: TLS wraps the socket from the start (port 636).
-            connection.SessionOptions.SecureSocketLayer = true;
+            connection.Dispose();
+            throw;
         }
-
-        // On OpenLDAP, even assigning false can force early server access.
-        // Leave the platform defaults alone unless the caller requested these.
-        if (options.Signing)
-        {
-            connection.SessionOptions.Signing = true;
-        }
-
-        if (options.Sealing)
-        {
-            connection.SessionOptions.Sealing = true;
-        }
-
-        var credential = options.ToCredential();
-        if (credential is not null)
-        {
-            connection.Credential = credential;
-        }
-
-        // The connection stays open until disposed; bind eagerly so failures
-        // surface here rather than on first search.
-        connection.Timeout = options.Timeout;
-
-        if (options.UseStartTls && !options.UseSsl)
-        {
-            // StartTLS: connect in the clear (port 389), then upgrade to TLS.
-            connection.SessionOptions.StartTransportLayerSecurity(null);
-        }
-
-        return connection;
     }
 
     /// <summary>Applies the public DirectoryServices referral modes to the platform LDAP client.</summary>

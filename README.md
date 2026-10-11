@@ -8,6 +8,9 @@ run on Linux against Active Directory.
 Same shape as Microsoft, new name (so it does not clash with the real DLL on
 Windows).
 
+For standalone portable SID/name translation, see the
+[explicit entry/context identity helper](docs/identity-resolution.md).
+
 ## Layers
 
 | Our namespace | Copies |
@@ -386,3 +389,11 @@ suite on each target, including live coverage against a real Samba AD domain
 controller.
 
 The tests create and delete their own objects under `CN=Users`.
+
+
+### Optional Microsoft object exports
+
+On Windows, the optional [MicrosoftInterop companion](src/AdForLinux.DirectoryServices.MicrosoftInterop/README.md)
+exports independent Microsoft identities, AD rules and security descriptors. It is
+export only: there are no Microsoft-to-portable imports or edit-back sessions. Portable
+edits use the portable APIs; export never changes raw write state or saves to a directory.

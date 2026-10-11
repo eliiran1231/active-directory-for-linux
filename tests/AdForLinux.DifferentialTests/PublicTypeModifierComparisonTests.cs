@@ -32,6 +32,13 @@ public class PublicTypeModifierComparisonTests
         var ourTypes = ourAssembly.GetExportedTypes()
             .Where(type => type.Namespace == ourNamespace)
             .ToDictionary(type => TypeKey(type, ourNamespace), StringComparer.Ordinal);
+        if (ourNamespace == "AdForLinux.DirectoryServices")
+        {
+            // The approved helper has no native peer; pin its exact shape instead
+            // of exempting a namespace or ignoring arbitrary extra types.
+            Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
+            Assert.Equal("visibility=public, sealed=True, abstract=False, base=System.Object", Shape(helper!));
+        }
 
         var differences = microsoftTypes.Keys.Union(ourTypes.Keys, StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -93,7 +100,7 @@ public class PublicTypeModifierComparisonTests
         return NormalizeName(type.FullName ?? type.Name);
     }
 
-    private static string NormalizeName(string name) => name
+    private static string NormalizeName(string name) => PortableSecurityContract.NormalizeName(name)
         .Replace("System.DirectoryServices.AccountManagement.", "DirectoryServices.AccountManagement.", StringComparison.Ordinal)
         .Replace("AdForLinux.DirectoryServices.AccountManagement.", "DirectoryServices.AccountManagement.", StringComparison.Ordinal)
         .Replace("System.DirectoryServices.", "DirectoryServices.", StringComparison.Ordinal)

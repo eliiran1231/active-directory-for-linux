@@ -189,6 +189,45 @@ internal sealed class SecurityDescriptor
 
     internal static ArgumentException Malformed(string message) => new(message, "binaryForm");
 
+    // Compare retained storage, never the Microsoft observable projection. Offsets
+    // may change when fully understood components are repacked; unexplained bytes
+    // and global header state have no section mask and must remain identical.
+    internal SecurityMasks NetChangedSections(SecurityDescriptor baseline)
+    {
+        if (Revision != baseline.Revision || Sbz1 != baseline.Sbz1
+            || ((Control ^ baseline.Control) & 0xC0C0) != 0
+            || !UnscopedStorage().SequenceEqual(baseline.UnscopedStorage()))
+            throw new InvalidOperationException("Global or unexplained descriptor storage cannot be attributed to a section-scoped write.");
+        SecurityMasks changed = 0;
+        foreach (var (section, field, control) in new[] {
+            (SecurityMasks.Owner, OwnerField, 0x0001), (SecurityMasks.Group, GroupField, 0x0002),
+            (SecurityMasks.Dacl, DaclField, 0x150C), (SecurityMasks.Sacl, SaclField, 0x2A30) })
+            if (((Control ^ baseline.Control) & control) != 0
+                || !Component(field).SequenceEqual(baseline.Component(field))) changed |= section;
+        return changed;
+    }
+
+    private IEnumerable<(int Offset, byte Value)> UnscopedStorage()
+    {
+        var covered = new bool[_image.Length];
+        Array.Fill(covered, true, 0, HeaderLength);
+        foreach (var field in new[] { OwnerField, GroupField, SaclField, DaclField })
+        {
+            var offset = ReadOffset(_image, field);
+            if (offset != 0) Array.Fill(covered, true, offset, Component(field).Length);
+        }
+        for (var i = HeaderLength; i < _image.Length; i++) if (!covered[i]) yield return (i, _image[i]);
+    }
+
+    private ReadOnlySpan<byte> Component(int field)
+    {
+        var offset = ReadOffset(_image, field);
+        if (offset == 0) return ReadOnlySpan<byte>.Empty;
+        var length = field is OwnerField or GroupField ? 8 + _image[offset + 1] * 4
+            : BinaryPrimitives.ReadUInt16LittleEndian(_image.AsSpan(offset + 2));
+        return _image.AsSpan(offset, length);
+    }
+
     private AclState StateOf(SecurityMasks section, ushort presentBit, Acl? acl)
     {
         if (!IsRetrieved(section))

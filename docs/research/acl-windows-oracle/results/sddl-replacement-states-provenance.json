@@ -1,0 +1,39 @@
+{
+  "SourceHead": "c6bf1a58bbf3acc17ee9a7d5d9a042d6b738f632",
+  "RunId": 38067374209,
+  "Recovery": "Original Windows JSONL from compressed connector logs; per-file Windows SHA256 verified; artifact ZIPs not downloaded.",
+  "Runtimes": {
+    "net8.0": {
+      "JobId": 114257652449,
+      "ArtifactId": 11674554703,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "39b0b49694111c7b8b1340a8e77683d641fb2856d0e5eac222a9e268d72d39b3"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "f109579ccab4fb359a33dd25dc98e84d1987dc51c390de7c46fd515404b2bb57"
+        }
+      ],
+      "OriginalGzipSha256": "8b23ffa3c76ed824a8a85fa2402bf352902e35d84860015310876a89f9d978d9",
+      "BaselineGzipSha256": "52c1b7180f9629dbec78b607643cb7453003b6b7099bdb37d2fd9eba00907c71"
+    },
+    "net10.0": {
+      "JobId": 114257652800,
+      "ArtifactId": 11675775952,
+      "OriginalFiles": [
+        {
+          "Name": "boundary-000.jsonl",
+          "Sha256": "80c33cfd833726296b6411131dbb7bd8edc99762560158af4bd194a1bd217e7b"
+        },
+        {
+          "Name": "boundary-016.jsonl",
+          "Sha256": "95b7ffec80c0bc8a04eed906297426c858a5494e6d5cf814e0be650f7ba2198d"
+        }
+      ],
+      "OriginalGzipSha256": "46a1c970d399bffd11df34a3f0277c6df50c32101338c8a1efbe5a7778eccaf6",
+      "BaselineGzipSha256": "bbcf79aa98436f97d7a7289d8d97695227654720650dd9f756d28889e8d489ca"
+    }
+  }
+}
