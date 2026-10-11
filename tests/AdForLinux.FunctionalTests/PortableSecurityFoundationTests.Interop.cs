@@ -158,6 +158,28 @@ public partial class PortableSecurityFoundationTests
         Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
     }
 
+    [Fact]
+    public void InteropAcl_UnrelatedOpaqueAuditDataRefusesExportWithoutMutation()
+    {
+        var raw = Build(U1, U1, Acl(4, Ace(0, 0, 16, U1)),
+            Acl(4, Ace(13, 0x40, 16, U1, new byte[] { 1, 2, 3, 4 })));
+        var wrapper = InteropWrapper(raw);
+        var state = wrapper.Descriptor.MutationState;
+        var generation = wrapper.Descriptor.MutationVersion;
+        var called = false;
+        Assert.Throws<InvalidOperationException>(() => wrapper.ExportDetachedInterop((bytes, container, directory) =>
+        {
+            called = true;
+            return InteropRoundTrip(bytes, container, directory);
+        }, bytes => bytes));
+        Assert.False(called);
+        Assert.Same(state, wrapper.Descriptor.MutationState);
+        Assert.Equal(generation, wrapper.Descriptor.MutationVersion);
+        Assert.Equal(raw, wrapper.Descriptor.MutationState.Descriptor.GetBinaryForm());
+        Assert.Equal(new[] { false, false, false, false }, wrapper.Flags());
+        Assert.Equal(SecurityMasks.None, wrapper.PendingWriteSections);
+    }
+
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)]
     public void Interop_UnverifiedDataRefusesWithoutDroppingOriginals(int variant)

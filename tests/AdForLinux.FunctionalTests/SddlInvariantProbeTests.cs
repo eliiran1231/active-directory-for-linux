@@ -134,7 +134,9 @@ public sealed class SddlInvariantProbeTests(ITestOutputHelper output)
         var random = new Random(Seed + 3); var accepted = 0; var refused = 0;
         for (var i = 0; i < 256; i++)
         {
-            var source = Build(U1, U1, Acl(4, Ace(0, 0, 16, U1), Ace(0, 0, 32, U2)), Acl(4, Ace(2, 0x40, 16, U1)));
+            // Include approved NoPropagate normalization without expanding the batch.
+            var normalizedFlags = i % 8 >= 4;
+            var source = Build(U1, U1, Acl(4, Ace(0, normalizedFlags ? (byte)4 : (byte)0, 16, U1), Ace(0, 0, 32, U2)), Acl(4, Ace(2, 0x40, 16, U1)));
             var descriptor = new A.CommonSecurityDescriptor(true, true, source, 0);
             var wrapper = new FacadeContracts.Wrapper(descriptor); var peer = new FacadeContracts.Wrapper(descriptor);
             wrapper.SetOwner(new P.SecurityIdentifier(U2, 0)); // Preserve pre-existing intent through failures.
@@ -155,10 +157,23 @@ public sealed class SddlInvariantProbeTests(ITestOutputHelper output)
                 candidate = Bytes(raw);
             }
             var input = (byte[])candidate.Clone();
-            var error = Record.Exception(() => wrapper.ExportDetachedInterop((_, _, _) => candidate, bytes => bytes));
+            byte[]? result = null;
+            var error = Record.Exception(() => result = wrapper.ExportDetachedInterop((_, _, _) => candidate, bytes => bytes));
             Assert.Equal(input, candidate);
             if (error is not null) { ManagedRefusal(error, $"export {i}"); refused++; }
-            else accepted++;
+            else
+            {
+                accepted++;
+                // Export promises exact canonical serialization of the approved
+                // observable projection, not raw-byte equality. Do not project the
+                // result again: that could hide unauthorized output normalization.
+                var expected = C.MicrosoftObservableProjector.Project(
+                    C.SecurityDescriptor.Parse(savedLive, (SecurityMasks)15)).GetBinaryForm();
+                var actual = C.SecurityDescriptor.Parse(Assert.IsType<byte[]>(result), (SecurityMasks)15);
+                Assert.Equal(expected, C.DescriptorRewriter.RepackObservable(actual, actual.Control,
+                    new Dictionary<SecurityMasks, byte[]?>()).GetBinaryForm());
+                if (normalizedFlags) Assert.NotEqual(savedRaw, expected);
+            }
             Assert.Same(state, descriptor.MutationState); Assert.Equal(version, descriptor.MutationVersion);
             Assert.Equal(flags, wrapper.Flags()); Assert.Equal(peerFlags, peer.Flags()); Assert.Equal(pending, wrapper.PendingWriteSections);
             Assert.Equal(before, wrapper.GetSecurityDescriptorBinaryForm()); Assert.Equal(before, peer.GetSecurityDescriptorBinaryForm());
