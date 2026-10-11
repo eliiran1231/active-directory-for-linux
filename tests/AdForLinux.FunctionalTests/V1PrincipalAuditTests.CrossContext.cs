@@ -15,17 +15,17 @@ public partial class V1PrincipalAuditTests
     private sealed class SaveReadConnection : LdapConnection
     {
         private SaveReadConnection() : base("offline.invalid") { }
-        private Func<SearchRequest, SearchResponse> read = null!;
+        private Func<DirectoryRequest, DirectoryResponse> read = null!;
         private Action close = null!;
-        internal static SaveReadConnection Create(Func<SearchRequest, SearchResponse> read, Action close)
+        internal static SaveReadConnection Create(Func<DirectoryRequest, DirectoryResponse> read, Action close)
         {
             var connection = (SaveReadConnection)RuntimeHelpers.GetUninitializedObject(typeof(SaveReadConnection));
-            connection.read = read; connection.close = close; return connection;
+            connection.read = read; connection.close = close; connection.Timeout = TimeSpan.FromSeconds(30); return connection;
         }
         public override DirectoryResponse SendRequest(DirectoryRequest request)
         {
             Assert.True(Timeout > TimeSpan.Zero);
-            return read(Assert.IsType<SearchRequest>(request));
+            return read(request);
         }
         protected override void Dispose(bool disposing) { if (disposing) close(); }
     }
@@ -95,6 +95,14 @@ public partial class V1PrincipalAuditTests
                 return values;
             };
             Entry.WriteRequestOverride = _ => { Writes++; return System.DirectoryServices.Protocols.ResultCode.Success; };
+            // MoveTo bypasses the Modify write hook. Intercept its actual retained
+            // connection too, so an attempted compensation cannot hide in a catch.
+            typeof(DirectoryEntry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(Entry, SaveReadConnection.Create(_ =>
+                {
+                    Writes++;
+                    throw new InvalidOperationException("unexpected retained-entry transport request");
+                }, () => { }));
             User = new SaveUser(Source);
             typeof(Principal).GetMethod("AttachExisting", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(User, [Source, Entry]);
             Source.SaveContextSessionFactory = options => Open(false, options);
@@ -108,7 +116,7 @@ public partial class V1PrincipalAuditTests
             Assert.Equal(destination ? "destination-test-value" : "source-test-value", options.BindPassword);
             Opens++;
             AfterOpen?.Invoke(Opens);
-            return new CrossContextSaveSession(SaveReadConnection.Create(request => Read(destination, request), () => Closes++));
+            return new CrossContextSaveSession(SaveReadConnection.Create(request => Read(destination, Assert.IsType<SearchRequest>(request)), () => Closes++));
         }
         private SearchResponse Read(bool destination, SearchRequest request)
         {
@@ -414,6 +422,15 @@ public partial class V1PrincipalAuditTests
         };
         Assert.Throws<InvalidOperationException>(() => f.User.Save(f.Destination));
         Assert.Equal(0, f.Writes); Assert.Same(f.Source, f.User.Context); Assert.Equal(2, f.Closes);
+    }
+
+    [Fact]
+    public void Cross_context_fixture_observes_direct_move_transport_for_rollback_assertions()
+    {
+        using var f = new CrossContextFixture();
+        using var parent = f.Source.CreateDirectoryEntry(CrossContextFixture.DomainDn);
+        Assert.Throws<InvalidOperationException>(() => f.Entry.MoveTo(parent));
+        Assert.Equal(1, f.Writes);
     }
 
 }
