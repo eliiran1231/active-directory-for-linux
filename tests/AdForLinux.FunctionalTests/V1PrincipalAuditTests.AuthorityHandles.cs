@@ -145,6 +145,33 @@ public partial class V1PrincipalAuditTests
     }
 
     [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Schema_filter_indexer_reservation_cannot_mutate_retained_array_before_refusal(bool bound)
+    {
+        var f = new ExecutorFixture();
+        IDisposable? reservation = null;
+        try
+        {
+            SetEntryField(f.Proof.Entry, "_boundDistinguishedName", bound ? CrossContextFixture.ItemDn : null);
+            var filter = f.Proof.Entry.Children.SchemaFilter; filter.Add("original");
+            var retained = filter.GetEnumerator();
+            filter.BeforeWrite = () => reservation = f.Create();
+            Assert.Throws<InvalidOperationException>(() => filter[0] = "refused");
+            Assert.True(retained.MoveNext()); Assert.Equal("original", retained.Current);
+            Assert.Equal(0, f.Sends);
+            reservation!.Dispose(); reservation = null; filter.BeforeWrite = null;
+            Assert.Equal("original", filter[0]);
+            filter[0] = "accepted";
+            Assert.Equal("accepted", filter[0]);
+            // Ordinary unbound writes remain visible through retained arrays;
+            // bound writes still marshal a replacement array.
+            retained.Reset(); Assert.True(retained.MoveNext());
+            Assert.Equal(bound ? "original" : "accepted", retained.Current);
+        }
+        finally { reservation?.Dispose(); f.Cleanup(); }
+    }
+
+    [Theory]
     [InlineData(false, 1)] [InlineData(true, 1)]
     [InlineData(false, 2)] [InlineData(true, 2)]
     public async Task Search_response_arriving_after_publication_cannot_create_destination_results(bool all, int blockRequest)

@@ -139,14 +139,14 @@ and ambiguous delivery behavior. A scalar live experiment is not approval to
 support other edit families or enable public Save. No real wire transport may be
 connected to public Save until those gates are complete.
 
-## Remaining execution sequence and proof obligations
+## Execution contract and proof obligations
 
 1. Freeze/check the retained principal identity, entry lifetime/generation,
    pending scalar/extension/SPN edits, property ledger versions and security raw
    intent/provenance. Fresh preflight evidence is not a durable authorization.
-   The bounded preflight now owns sessions and checks generations, response
-   completeness and server-attested domain membership. An executor must extend
-   those checks across writes and publication, rather than reuse a returned plan.
+   The integrated controlled operation owns sessions and extends generation,
+   response-completeness and domain-membership checks across reads, writes and
+   publication; detached plans do not confer execution authority.
 2. Verify destination write targeting against DN reuse. Measure GUID-addressed
    ModifyDN (object and parent) and Modify, or establish an equivalent supported
    atomic identity assertion. A preceding search is not sufficient. Use only the
@@ -158,8 +158,9 @@ connected to public Save until those gates are complete.
    uncertain delivery separately. Never roll back a merely planned move. A lost
    response quarantines all further writes on the retained wrapper; do not issue
    a compensating move. GUID readback under destination authority must establish
-   identity and outcome before any next operation. State needed for this future
-   cross-controller quarantine is not implemented by a data-only preflight plan.
+   identity and outcome before any next operation. The integrated controlled
+   executor implements these states; its data-only plan carries no quarantine
+   authority. No automatic compensation is implemented.
 5. On verified success, retain the exact DirectoryEntry object, revoke its old
    resolver/lifetime, close source connections, and install destination-owned
    authority coherently. Do not discard pending edits or acknowledge unsent edits.
@@ -178,17 +179,25 @@ addressing and destination authority on existing fixtures. It neither creates
 fixtures nor runs in the offline workflow. Successful probe results are necessary
 evidence for the proposed wire forms, not sufficient proof of the full lifecycle.
 
-## Next bounded offline slice and live gate
+## Completed scalar offline boundary and next live gate
 
-The internal scalar-only executor covers a first controlled subset. Remaining
-offline work behind the unconditional public refusal must: freeze edit ledger versions and raw intent; model
-not-sent, rejected, acknowledged-move, acknowledged-modify and uncertain outcomes;
-permit best-effort compensation only after an acknowledged move and an established
-safe target; quarantine ambiguous delivery; reconcile by immutable identity; and
-publish a destination-owned binding on the original wrapper only after verified
-success. Controlled transports can exercise every transition, edits arriving during
-I/O, disposal/rebinding, stale security authority, and cleanup failures. Native
-Save(context) moves, then updates, with best-effort compensation; it is not atomic.
+The controlled scalar executor now freezes intent and ledger versions, models
+not-sent/rejected/acknowledged/uncertain outcomes, quarantines ambiguous delivery,
+reconciles immutable identity and publishes destination authority on the original
+wrapper only after verified success. Retained child/filter/search handles are
+revoked at publication. The schema-filter indexer checks reservation and authority,
+reads its backing array and mutates/publishes it within one local critical section;
+a refused write cannot change an existing enumerator's array. Ordinary unbound
+in-place and bound replacement-array behavior is preserved.
+
+The finite scalar offline authority slice is complete pending final review. The
+next meaningful evidence gate is the named two-DC fixture experiment below, not
+additional generic offline matrices. The 53 native search/schema comparisons use
+detached objects only and do not establish live ADSI or AD behavior. Unsupported
+extension/SPN/group, password/account-control, certificate/logon-hours, deletion
+and raw/security intent remains refused and requires separate implementation.
+Native Save(context) moves then updates and may attempt best-effort compensation;
+it is not atomic. This executor deliberately performs no automatic compensation.
 
 The live gate remains separately scoped two-DC authorization on disposable existing
 fixtures: measure the exact GUID-addressed ModifyDN object/parent and Modify wire
@@ -197,5 +206,6 @@ credentials with an independently allowed source; observe same/different contain
 rename plus edits, missing replicas/lag and DN reuse; and verify rejected move,
 acknowledged move followed by rejected Modify, uncertain delivery and GUID readback.
 Retained-wrapper identity, descriptor authority revocation and pending-edit behavior
-must be checked through the public route against native behavior. No live operation
+require a separately authorized harness and native comparison before any public
+route can be enabled. Public cross-DC execution remains unconditionally refused. No live operation
 was executed for this slice; the opt-in probe remains preparation only.
