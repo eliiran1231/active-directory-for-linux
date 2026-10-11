@@ -494,6 +494,13 @@ public partial class PrincipalContext : IDisposable
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
+    internal Func<DirectorySearcher, SearchResultCollection>? SaveContextSearchOverride { get; set; }
+    internal SearchResultCollection SearchSaveContextEntries(DirectorySearcher searcher)
+    {
+        CheckDisposed();
+        return SaveContextSearchOverride is { } search ? search(searcher) : searcher.FindAll();
+    }
+
     // Offline request-contract tests intercept execution, not context construction.
     internal Func<DirectorySearcher, SearchResultCollection>? AuthorizationSearchOverride { get; set; }
     internal SearchResultCollection SearchAuthorizationEntries(DirectorySearcher searcher)

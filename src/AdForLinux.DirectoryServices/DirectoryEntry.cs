@@ -993,12 +993,11 @@ public partial class DirectoryEntry : Component
         if (commit) CommitPortableChanges();
     }
 
-    private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
+    internal bool HasSameConnectionContext(DirectoryEntry other)
     {
         var source = BuildOptions();
-        var destination = newParent.BuildOptions();
-
-        if (SameHost(source.Host, destination.Host)
+        var destination = other.BuildOptions();
+        return SameHost(source.Host, destination.Host)
             && source.Port == destination.Port
             && source.UseSsl == destination.UseSsl
             && source.UseStartTls == destination.UseStartTls
@@ -1007,11 +1006,12 @@ public partial class DirectoryEntry : Component
             && source.Signing == destination.Signing
             && source.Sealing == destination.Sealing
             && string.Equals(source.BindDn, destination.BindDn, StringComparison.Ordinal)
-            && string.Equals(source.BindPassword, destination.BindPassword, StringComparison.Ordinal))
-        {
-            return;
-        }
+            && string.Equals(source.BindPassword, destination.BindPassword, StringComparison.Ordinal);
+    }
 
+    private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
+    {
+        if (HasSameConnectionContext(newParent)) return;
         throw new PlatformNotSupportedException(
             "DirectoryEntry.MoveTo does not support moving between different LDAP connection contexts. " +
             "Source and destination must use the same server, port, TLS settings, authentication type, " +

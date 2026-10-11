@@ -6,7 +6,7 @@ using Xunit;
 
 namespace AdForLinux.FunctionalTests;
 
-public class V1PrincipalAuditTests
+public partial class V1PrincipalAuditTests
 {
     private sealed class ExtendedGroup(PrincipalContext context) : GroupPrincipal(context)
     {
@@ -117,7 +117,7 @@ public class V1PrincipalAuditTests
         if (!tokens) Assert.Contains("objectSid=", Assert.Single(groupQueries).Filter);
     }
 
-    [Fact(Skip = "Confirmed item 5: same-container cross-DC Save changes Context but leaves the existing entry at the source endpoint.")]
+    [Fact(Skip = "Item 5 execution remains gated: verified cross-DC authority rebinding and retained-wrapper lifecycle are not implemented.")]
     public void Cross_dc_same_container_save_requires_rebinding_existing_wrapper()
     {
         using var f = new Fixture(); using var user = f.Attach(new UserPrincipal(f.Context));

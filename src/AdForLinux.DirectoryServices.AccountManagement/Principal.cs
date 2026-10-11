@@ -1042,8 +1042,8 @@ public abstract class Principal : IDisposable
         {
             throw new PlatformNotSupportedException(
                 "Moving a persisted principal between AD domains requires ADSI's cross-store move " +
-                "support and is not available through this LDAP port. Different domain controllers " +
-                "for the same AD domain are supported.");
+                "support and is not available through this LDAP port. Same-domain cross-controller " +
+                "execution requires separately verified identity and rebinding support.");
         }
 
         var originalContext = ContextRef;
@@ -1051,14 +1051,26 @@ public abstract class Principal : IDisposable
         var currentDn = Entry.DistinguishedName;
         var currentParent = LdapDistinguishedName.Parent(currentDn);
         var destinationContainer = context.GetCreationContainer(GetType());
-        var moved = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
+        using (var target = context.CreateDirectoryEntry(destinationContainer))
+        {
+            if (!originalEntry.HasSameConnectionContext(target))
+            {
+                // Read-only proof and request planning never convey write authority.
+                _ = CrossContextSavePlan.Prepare(originalContext, context, originalEntry,
+                    _storedGuid, destinationContainer, _pending.GetValueOrDefault("cn") as string);
+                throw new PlatformNotSupportedException(CrossContextSavePlan.ExecutionBoundary);
+            }
+        }
+        var movePlanned = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
+        var moveAcknowledged = false;
 
         try
         {
-            if (moved)
+            if (movePlanned)
             {
                 using var target = context.CreateDirectoryEntry(destinationContainer);
                 originalEntry.MoveTo(target);
+                moveAcknowledged = true;
                 currentDn = originalEntry.DistinguishedName;
             }
 
@@ -1074,7 +1086,7 @@ public abstract class Principal : IDisposable
         {
             Entry = originalEntry;
             ContextRef = originalContext;
-            if (moved)
+            if (moveAcknowledged)
             {
                 try
                 {

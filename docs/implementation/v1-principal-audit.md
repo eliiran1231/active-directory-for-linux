@@ -88,7 +88,7 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
 
 ## Confirmed defect still open
 
-5. **Save(context) across DCs.** An offline same-container reproduction shows
+5. **Save(context) across DCs.** The baseline offline same-container reproduction showed
    Context switching to the destination while the same underlying DirectoryEntry
    remains at the source endpoint. A different-container move hits the existing
    low-level connection guard. Equal defaultNamingContext text is insufficient
@@ -97,6 +97,16 @@ used or mutated. Items 1–4 are implemented here; item 5 remains open.
    The only remaining skipped test,
    `Cross_dc_same_container_save_requires_rebinding_existing_wrapper`, records
    the unresolved same-container expectation.
+
+   The bounded follow-up now performs read-only domain/replica identity preflight
+   under separate endpoint authority and refuses cross-context execution before
+   changing Context, the retained wrapper or pending edits. Equal naming-context
+   text no longer permits a misleading same-container success. Fresh source GUID
+   must match the principal's captured identity, not merely a refreshed entry
+   cache. Container ancestry uses parsed RDN boundaries. The existing catch path
+   distinguishes acknowledged moves from planned moves. See the
+   [concrete execution plan](v1-cross-context-save-plan.md) and compiled,
+   [opt-in two-DC probe](../research/cross-dc-save-probe/README.md).
 
    A safe implementation needs fresh domain GUID/SID proof from each endpoint
    using only that endpoint's supplied authority; source/destination object GUID
