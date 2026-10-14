@@ -154,6 +154,10 @@ connected to public Save until those gates are complete.
 3. Plan pending Name as an escaped new RDN separately from property modifications.
    Keep the current RDN if Name is unchanged. Reject combinations whose ordinary
    or raw security intent cannot be retained faithfully across the move.
+   The controlled executor compares the effective replica and target DNs before
+   ModifyDN; an explicitly assigned unchanged Name does not force a rename.
+   Matching GUID-based readback can establish this no-op without acknowledging
+   an unsent scalar update. Live two-DC proof remains deferred in issue 230.
 4. Track no-send/rejection, acknowledged move, acknowledged scalar write, and
    uncertain delivery separately. Never roll back a merely planned move. A lost
    response quarantines all further writes on the retained wrapper; do not issue

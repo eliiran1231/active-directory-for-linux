@@ -51,6 +51,35 @@ public class PrincipalValueCollection<T> : IList<T>, IList
         _acknowledgement++;
     }
 
+    // LDAP multi-valued attributes persist sets, while the public collection is
+    // an ordered list (and accepts duplicates). Keep this persistence policy
+    // separate from Microsoft's ordinary positional change-tracking semantics.
+    internal ChangeSet CaptureSetChanges()
+    {
+        var values = _values.Distinct().ToArray();
+        var baseline = _baseline.Distinct().ToArray();
+        return new(_acknowledgement, _edits.Count, values,
+            baseline.Except(values).ToArray(), [], values.Except(baseline).ToArray());
+    }
+
+    internal void AcknowledgeSet(ChangeSet captured)
+    {
+        var desired = _values.Distinct().ToArray();
+        Acknowledge(captured);
+        // Rebase later edits by set intent, not indices into the duplicate list.
+        // They remain pending against only the snapshot actually acknowledged.
+        _edits.Clear();
+        if (!desired.SequenceEqual(_baseline))
+        {
+            _edits.Add((3, 0, default!));
+            for (var i = 0; i < desired.Length; i++) _edits.Add((0, i, desired[i]));
+        }
+        if (!_values.SequenceEqual(desired))
+        {
+            _values.Clear(); _values.AddRange(desired); _version++;
+        }
+    }
+
     internal PrincipalValueCollection()
         : this(Array.Empty<T>(), null)
     {

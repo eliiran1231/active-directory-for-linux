@@ -315,6 +315,19 @@ public partial class DirectoryEntry
                 return securityRead is null ? Publish() : security!.ValidateIdentityRead(securityRead, Publish);
             });
             Checked(() => true);
+            if (serviceNames is { RequiresReadback: true })
+            {
+                // Cached effective values (or success writing some other
+                // attribute) cannot prove a skipped service-name write.
+                var proof = ReadProperties([PrincipalServiceNameWrite.Attribute], requireObject: true,
+                    requireCompleteServiceNames: true, validateBinding: () => Checked(() => true));
+                Checked(() =>
+                {
+                    if (!serviceNames.MatchesReadback(proof[PrincipalServiceNameWrite.Attribute]))
+                        throw new InvalidOperationException("Service-name readback does not establish the skipped write. Refresh or acquire a fresh principal before retrying.");
+                    return true;
+                });
+            }
             var recoveryAttributes = request is AddRequest addRequest
                 ? addRequest.Attributes.Cast<DirectoryAttribute>().Select(a => a.Name)
                 : ((ModifyRequest)request).Modifications.Cast<DirectoryAttributeModification>().Select(a => a.Name);

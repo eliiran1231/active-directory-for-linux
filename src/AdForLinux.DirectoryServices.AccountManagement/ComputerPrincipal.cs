@@ -48,7 +48,7 @@ public class ComputerPrincipal : AuthenticablePrincipal
             throw new InvalidOperationException("Service-name readback does not establish the requested result. Verify the uncertain operation and acquire a fresh principal before editing service names again.");
         if (_serviceNamesWrite.State is PrincipalServiceNameWrite.Outcome.Acknowledged or PrincipalServiceNameWrite.Outcome.Reconciled)
         {
-            _servicePrincipalNames!.Acknowledge(_serviceNamesSnapshot!);
+            _servicePrincipalNames!.AcknowledgeSet(_serviceNamesSnapshot!);
             _serviceNamesWrite = null;
             _serviceNamesSnapshot = null;
         }
@@ -60,23 +60,21 @@ public class ComputerPrincipal : AuthenticablePrincipal
         if (_serviceNamesWrite?.State == PrincipalServiceNameWrite.Outcome.Uncertain)
             throw new InvalidOperationException("Refresh the underlying entry to reconcile the uncertain service-name write before saving again.");
         base.OnBeforeSave();
-        if (Entry is null) _serviceNamesSnapshot = _servicePrincipalNames?.CaptureChanges();
+        if (Entry is null) _serviceNamesSnapshot = _servicePrincipalNames?.CaptureSetChanges();
     }
 
     private protected override void CommitEntryChanges(DirectoryEntry entry)
     {
         if (_servicePrincipalNames is null) { base.CommitEntryChanges(entry); return; }
-        _serviceNamesSnapshot = _servicePrincipalNames.CaptureChanges();
-        if (_serviceNamesSnapshot.Removed.Length == 0 && _serviceNamesSnapshot.Changed.Length == 0
-            && _serviceNamesSnapshot.Inserted.Length == 0)
+        _serviceNamesSnapshot = _servicePrincipalNames.CaptureSetChanges();
+        if (_serviceNamesSnapshot.EditCount == 0)
         {
-            _servicePrincipalNames.Acknowledge(_serviceNamesSnapshot);
             _serviceNamesSnapshot = null; _serviceNamesWrite = null;
             base.CommitEntryChanges(entry);
             return;
         }
         _serviceNamesWrite = new PrincipalServiceNameWrite(_serviceNamesSnapshot.Removed,
-            _serviceNamesSnapshot.Changed, _serviceNamesSnapshot.Inserted);
+            _serviceNamesSnapshot.Changed, _serviceNamesSnapshot.Inserted, _serviceNamesSnapshot.Values);
         try { entry.CommitPrincipalServiceNames(_serviceNamesWrite); }
         finally { AcknowledgeServiceNames(); }
     }
@@ -88,7 +86,7 @@ public class ComputerPrincipal : AuthenticablePrincipal
         // still follows Principal's existing insert/rollback lifecycle.
         if (_serviceNamesWrite is null && _serviceNamesSnapshot is { } snapshot)
         {
-            _servicePrincipalNames!.Acknowledge(snapshot);
+            _servicePrincipalNames!.AcknowledgeSet(snapshot);
             _serviceNamesSnapshot = null;
         }
     }

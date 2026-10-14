@@ -119,7 +119,7 @@ public abstract partial class Principal
             if (executionStarted || State != Phase.Prepared) throw new InvalidOperationException("An executor is single-submit; reconcile uncertain delivery, never retry it.");
             executionStarted = true;
             Validate();
-            if (plan.PendingName is not null || !string.Equals(plan.ReplicaDn, expectedDn, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(plan.ReplicaDn, expectedDn, StringComparison.OrdinalIgnoreCase))
             {
                 SendWrite(new ModifyDNRequest($"<GUID={plan.ObjectGuid:D}>", $"<GUID={plan.ContainerGuid:D}>", newRdn)
                     { DeleteOldRdn = true }, Phase.MoveAcknowledged);
@@ -183,7 +183,7 @@ public abstract partial class Principal
             if (State is not (Phase.Uncertain or Phase.MoveAcknowledged or Phase.ModifyAcknowledged or Phase.Prepared or Phase.Verified))
                 throw new InvalidOperationException("This operation cannot be reconciled in its current state.");
             if ((!scalarSubmitted && frozen.Keys.Any(k => !k.Equals("cn", StringComparison.OrdinalIgnoreCase)))
-                || (State == Phase.Prepared && (frozen.Count != 0 || !string.Equals(plan.ReplicaDn, expectedDn, StringComparison.OrdinalIgnoreCase))))
+                || (State == Phase.Prepared && !string.Equals(plan.ReplicaDn, expectedDn, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("Readback cannot acknowledge unsent edits. Explicitly resolve the partial operation first.");
             Validate();
             var root = Read("", "(objectClass=*)", ProtocolScope.Base,

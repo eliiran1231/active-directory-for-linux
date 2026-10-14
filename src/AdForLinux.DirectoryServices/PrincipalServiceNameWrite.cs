@@ -5,11 +5,12 @@ namespace AdForLinux.DirectoryServices;
 // A single data-only contribution to the entry's ordinary atomic Modify. It is
 // never installed in the property cache, so rejection cannot leave stale edits.
 internal sealed class PrincipalServiceNameWrite(
-    string[] removed, (string Original, string Current)[] changed, string[] inserted)
+    string[] removed, (string Original, string Current)[] changed, string[] inserted, string[]? desiredValues = null)
 {
     internal enum Outcome { Prepared, Acknowledged, Uncertain, Reconciled }
     internal Outcome State { get; set; }
     internal bool ReconciledIntentMatches { get; set; }
+    internal bool RequiresReadback { get; private set; }
     private readonly Dictionary<string, bool> _postconditions = new(StringComparer.Ordinal);
     internal const string Attribute = "servicePrincipalName";
 
@@ -46,6 +47,10 @@ internal sealed class PrincipalServiceNameWrite(
         }
         foreach (var pair in changed) { Delete(pair.Original); Add(pair.Current); }
         foreach (var value in inserted) Add(value);
+        RequiresReadback = !request.Modifications.Cast<DirectoryAttributeModification>()
+            .Any(modification => modification.Name.Equals(Attribute, StringComparison.OrdinalIgnoreCase));
+        if (RequiresReadback && desiredValues is not null)
+            foreach (var value in desiredValues) _postconditions[value] = true;
     }
 
     internal bool MatchesReadback(IEnumerable<object?> values)

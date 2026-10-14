@@ -64,6 +64,16 @@ Items 1–4 are implemented here; item 5 remains open.
    operation prefix; later edits remain pending. Acknowledgement occurs before
    post-save work, so a later failure does not replay completed SPN writes.
 
+   SPN persistence now computes set deltas separately from the public list's
+   positional tracking. Public Add/index operations still accept duplicates;
+   successful creation or update acknowledges canonical unique values and
+   normalizes the retained collection. Later edits are rebased by set intent,
+   so removing one duplicate cannot delete a value that remains desired.
+   When no SPN modification is sent, fresh complete readback must establish the
+   guarded result before acknowledgement, even if another attribute is written.
+   Cached values alone do not prove persistence. Rejection or incomplete/mismatching
+   readback leaves the collection and pending edits unacknowledged.
+
    An indeterminate delivery retains the existing entry uncertainty gate and the
    captured batch. Only qualifying entry readback can reconcile it. If observed
    values satisfy the submitted SPN operations, the captured prefix is consumed
