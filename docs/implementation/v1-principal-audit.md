@@ -73,6 +73,8 @@ Items 1–4 are implemented here; item 5 remains open.
    guarded result before acknowledgement, even if another attribute is written.
    Cached values alone do not prove persistence. Rejection or incomplete/mismatching
    readback leaves the collection and pending edits unacknowledged.
+   A direct entry deletion that contradicts the retained principal SPN set
+   refuses before sending; both pending intents remain available for resolution.
 
    An indeterminate delivery retains the existing entry uncertainty gate and the
    captured batch. Only qualifying entry readback can reconcile it. If observed

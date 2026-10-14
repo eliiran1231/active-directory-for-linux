@@ -85,6 +85,20 @@ public partial class V1PrincipalAuditTests
     }
 
     [Fact]
+    public void Duplicate_no_op_cannot_acknowledge_a_conflicting_direct_entry_delete()
+    {
+        using var f = new Fixture(); using var computer = f.Attach(new ComputerPrincipal(f.Context));
+        var names = computer.ServicePrincipalNames; names.Add("HOST/old");
+        f.Entry.Properties["servicePrincipalName"].Remove("HOST/old");
+        Assert.Throws<InvalidOperationException>(() => computer.Save());
+        Assert.Empty(f.Writes); Assert.Equal(2, names.Count);
+        Assert.True(f.Entry.Properties["servicePrincipalName"].Changed);
+        Assert.Equal(new object[] { "HOST/old" }, f.Server["servicePrincipalName"]);
+        names.Clear(); computer.Save(); // Explicitly resolve the conflicting intents.
+        Assert.Empty(names); Assert.Empty(f.Server["servicePrincipalName"]); Assert.Single(f.Writes);
+    }
+
+    [Fact]
     public void Duplicate_initial_service_names_acknowledge_the_actual_add_values()
     {
         using var f = new Fixture(); using var computer = new CreationComputer(f.Context);

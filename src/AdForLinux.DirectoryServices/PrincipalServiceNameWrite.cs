@@ -47,6 +47,8 @@ internal sealed class PrincipalServiceNameWrite(
         }
         foreach (var pair in changed) { Delete(pair.Original); Add(pair.Current); }
         foreach (var value in inserted) Add(value);
+        if (desiredValues is not null && desiredValues.Any(value => !values.Contains(value)))
+            throw new InvalidOperationException("Direct entry edits conflict with the retained service-name set. Resolve both pending intents before saving.");
         RequiresReadback = !request.Modifications.Cast<DirectoryAttributeModification>()
             .Any(modification => modification.Name.Equals(Attribute, StringComparison.OrdinalIgnoreCase));
         if (RequiresReadback && desiredValues is not null)
