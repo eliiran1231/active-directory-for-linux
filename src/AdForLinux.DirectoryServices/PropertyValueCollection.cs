@@ -199,8 +199,18 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         }
         else
         {
-            RecordChange(PropertyValueChangeType.Delete, new[] { oldValue! });
-            RecordChange(PropertyValueChangeType.Add, new[] { newValue! });
+            // Publish the entire replacement before notifying the owner. Immediate
+            // mode must send one atomic Modify, never commit the delete alone.
+            // Keep both deltas after rejection for explicit CommitChanges retry;
+            // CollectionBase independently rolls back the local index on failure.
+            lock (ChangeGate)
+            {
+                CheckCrossContextMutation();
+                _changes.Add(new PropertyValueChange(PropertyValueChangeType.Delete, [oldValue!]));
+                _changes.Add(new PropertyValueChange(PropertyValueChangeType.Add, [newValue!]));
+                Interlocked.Increment(ref _changeVersion);
+            }
+            _onChanged?.Invoke(this);
         }
     }
 

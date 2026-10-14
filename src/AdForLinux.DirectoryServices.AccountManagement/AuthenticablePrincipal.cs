@@ -802,10 +802,15 @@ public class AuthenticablePrincipal : Principal
             ? "(objectCategory=computer)"
             : typeof(T) == typeof(UserPrincipal)
                 ? "(objectCategory=person)(objectClass=user)"
-                : "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
+                : typeof(T) == typeof(AuthenticablePrincipal)
+                    ? "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))"
+                    : $"(objectClass={LdapFilter.EscapeValue(
+                        PrincipalExtensionMetadata.GetDeclaredObjectClass(typeof(T))
+                        ?? throw new InvalidOperationException($"Custom principal type {typeof(T).FullName} must declare DirectoryObjectClassAttribute."))})";
         using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, $"(&{category}{condition})") { PageSize = 500 };
-        using var results = searcher.FindAll();
+        using var results = context.DateFinderSearchOverride is { } search
+            ? search(searcher) : searcher.FindAll();
         var rows = results.Cast<SearchResult>().ToArray();
         return new PrincipalSearchResult<T>(rows.Length, index =>
             (T)(object)PrincipalFactory.FromEntry(context, rows[index].GetDirectoryEntry())!);
