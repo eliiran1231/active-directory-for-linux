@@ -81,6 +81,11 @@ public partial class V1PrincipalAuditTests
 {
     [DirectoryObjectClass("customAccount")]
     private class AuditCustomUser(PrincipalContext context) : UserPrincipal(context);
+    [DirectoryObjectClass(null)]
+    [DirectoryObjectClass("customAccount")]
+    private class AuditNullThenCustomUser(PrincipalContext context) : UserPrincipal(context);
+    [DirectoryObjectClass(null)]
+    private class AuditNullOnlyUser(PrincipalContext context) : AuditCustomUser(context);
     [DirectoryObjectClass("customComputer")]
     private class AuditCustomComputer(PrincipalContext context) : ComputerPrincipal(context);
     private class AuditUndeclaredUser(PrincipalContext context) : AuditCustomUser(context);
@@ -91,7 +96,8 @@ public partial class V1PrincipalAuditTests
     {
         foreach (var method in new[] { "FindByLockoutTime", "FindByLogonTime", "FindByExpirationTime",
             "FindByBadPasswordAttempt", "FindByPasswordSetTime" })
-        foreach (var type in new[] { typeof(AuditCustomUser), typeof(AuditCustomComputer),
+        foreach (var type in new[] { typeof(AuditCustomUser), typeof(AuditNullThenCustomUser),
+            typeof(AuditNullOnlyUser), typeof(AuditCustomComputer),
             typeof(AuditUndeclaredUser), typeof(AuditEscapedUser), typeof(UserPrincipal),
             typeof(ComputerPrincipal), typeof(AuthenticablePrincipal) })
             yield return [method, type];
@@ -111,14 +117,15 @@ public partial class V1PrincipalAuditTests
         var method = typeof(AuthenticablePrincipal).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
             .Single(m => m.Name == methodName && m.IsGenericMethodDefinition).MakeGenericMethod(type);
         object? Invoke() => method.Invoke(null, [context, new DateTime(2024, 1, 1), MatchType.GreaterThan]);
-        if (type == typeof(AuditUndeclaredUser))
+        if (type == typeof(AuditUndeclaredUser) || type == typeof(AuditNullOnlyUser))
         {
             Assert.IsType<InvalidOperationException>(Assert.Throws<TargetInvocationException>(() => Invoke()).InnerException);
             Assert.Empty(filters);
             return;
         }
         using var result = (IDisposable)Invoke()!;
-        var expected = type == typeof(AuditCustomUser) ? "(objectClass=customAccount)"
+        var expected = type == typeof(AuditCustomUser) || type == typeof(AuditNullThenCustomUser)
+            ? "(objectClass=customAccount)"
             : type == typeof(AuditCustomComputer) ? "(objectClass=customComputer)"
             : type == typeof(AuditEscapedUser) ? @"(objectClass=literal\2a\28class\29)"
             : type == typeof(UserPrincipal) ? "(objectCategory=person)(objectClass=user)"
