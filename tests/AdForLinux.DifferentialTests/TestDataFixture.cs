@@ -18,6 +18,7 @@ public sealed class TestDataFixture : IDisposable
 
     public TestDataFixture()
     {
+        AdForLinux.DirectoryServices.Ldap.OfflineTestGuard.RequireLiveAccess();
         var suffix = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         UserName = $"adfl-d-u-{suffix}";

@@ -83,7 +83,7 @@ internal sealed class LdapConnectionOptions
     /// new connection-specific settings cannot be silently dropped by callers
     /// that need to preserve the complete bind configuration.
     /// </summary>
-    public LdapConnectionOptions Clone() => new()
+    public LdapConnectionOptions Clone(TimeSpan? timeout = null) => new()
     {
         Host = Host,
         Port = Port,
@@ -95,6 +95,6 @@ internal sealed class LdapConnectionOptions
         Sealing = Sealing,
         BindDn = BindDn,
         BindPassword = BindPassword,
-        Timeout = Timeout,
+        Timeout = timeout ?? Timeout,
     };
 }

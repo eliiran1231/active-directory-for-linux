@@ -15,6 +15,25 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     private readonly List<PropertyValueChange> _changes = new();
     private readonly Action<PropertyValueCollection>? _onChanged;
     private readonly Action? _validateOwner;
+    private volatile bool _revoked, _crossContextReserved;
+    private object?[]? _crossContextFrozenValues;
+    internal void ReserveCrossContext()
+    { lock (ChangeGate) { _crossContextFrozenValues = InnerList.ToArray(); _crossContextReserved = true; } }
+    internal void ReleaseCrossContext()
+    { lock (ChangeGate) { _crossContextReserved = false; _crossContextFrozenValues = null; } }
+    internal void Revoke()
+    { lock (ChangeGate) { _revoked = true; _crossContextReserved = false; _crossContextFrozenValues = null; } }
+    private void CheckCrossContextMutation()
+    {
+        if (_revoked || _crossContextReserved)
+            throw new InvalidOperationException("This property wrapper is reserved or belongs to a revoked binding.");
+    }
+    private void ValidateOwner()
+    {
+        if (_revoked) throw new InvalidOperationException("This property wrapper belongs to a revoked entry binding.");
+        _validateOwner?.Invoke();
+    }
+    internal void ValidateOwnerForWrite() => ValidateOwner();
     internal object ChangeGate { get; } = new();
     private long _changeVersion;
     internal long ChangeVersion => Interlocked.Read(ref _changeVersion);
@@ -45,7 +64,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     public object? this[int index]
     {
         get => List[index]!;
-        set => List[index] = value;
+        set { CheckCrossContextMutation(); List[index] = value; }
     }
 
     /// <summary>
@@ -62,12 +81,13 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         };
         set
         {
+            CheckCrossContextMutation();
             // Bypass CollectionBase's hooks so replacing the whole attribute
             // is recorded as one LDAP operation rather than Clear plus Adds.
             InnerList.Clear();
             // Clear reaches the owner before a replacement is constructed.
             // In particular a disposed owner leaves this retained wrapper empty.
-            _validateOwner?.Invoke();
+            ValidateOwner();
             if (value is byte[] bytes)
             {
                 InnerList.Add(bytes);
@@ -103,7 +123,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
 
     /// <summary>Adds one value. Returns its index.</summary>
     public int Add(object? value)
-        => List.Add(value);
+    { CheckCrossContextMutation(); return List.Add(value); }
 
     /// <summary>Adds several values.</summary>
     public void AddRange(IEnumerable<object?> values)
@@ -132,6 +152,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     /// <summary>Removes one value.</summary>
     public void Remove(object? value)
     {
+        CheckCrossContextMutation();
         var index = List.IndexOf(value);
         if (index >= 0)
         {
@@ -160,6 +181,7 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
     /// <summary>Inserts a value at the specified index.</summary>
     public void Insert(int index, object? value)
     {
+        CheckCrossContextMutation();
         List.Insert(index, value);
     }
 
@@ -182,14 +204,27 @@ public class PropertyValueCollection : CollectionBase, IEnumerable<object?>
         }
     }
 
-    protected override void OnClearComplete() =>
+    protected override void OnClearComplete()
+    {
+        lock (ChangeGate)
+        {
+            // Clear is inherited. Keep its existing protected surface and restore
+            // the reserved snapshot before rejecting the completed local clear.
+            if (_crossContextReserved)
+            {
+                InnerList.AddRange(_crossContextFrozenValues!);
+                throw new InvalidOperationException("This property wrapper is reserved by a cross-context operation.");
+            }
+        }
         RecordChange(PropertyValueChangeType.Clear, Array.Empty<object>());
+    }
 
     private void RecordChange(PropertyValueChangeType type, IEnumerable<object> values)
     {
         var snapshot = values.ToArray();
         lock (ChangeGate)
         {
+            CheckCrossContextMutation();
             // A replacement supersedes earlier deltas, but never a delta recorded
             // after a request has captured and acknowledged this ledger.
             if (type is PropertyValueChangeType.Replace or PropertyValueChangeType.Clear) _changes.Clear();

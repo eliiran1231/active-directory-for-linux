@@ -13,17 +13,24 @@ public class SchemaNameCollection : IList
     // Public Children wrappers share their entry's binding state. The local
     // storage also supports standalone collections used internally.
     private readonly DirectoryEntry? _parent;
+    private readonly DirectoryEntry.BindingAuthority? _authority;
+    internal Action? BeforeWrite { get; set; }
     private string?[] _names
     {
-        get => _parent?.SchemaFilterNames ?? _localNames;
+        get => _parent is null ? _localNames : _authority!.Checked(() => _parent.SchemaFilterNames);
         set
         {
             if (_parent is null) _localNames = value;
-            else _parent.SchemaFilterNames = value;
+            else
+            {
+                BeforeWrite?.Invoke();
+                _authority!.Checked(() => _parent.SchemaFilterNames = value);
+            }
         }
     }
 
-    internal SchemaNameCollection(DirectoryEntry parent) => _parent = parent;
+    internal SchemaNameCollection(DirectoryEntry parent, DirectoryEntry.BindingAuthority? authority = null)
+    { _parent = parent; _authority = authority ?? parent.CaptureBindingAuthority(); }
 
     internal SchemaNameCollection()
     {
@@ -43,9 +50,23 @@ public class SchemaNameCollection : IList
             ValidateIndex(index);
             // A bound provider marshals a new array on each access. The local,
             // unbound collection retains its in-place indexer behavior.
-            var names = _parent?.HasBoundObject == true ? _names.ToArray() : _names;
-            names[index] = value;
-            _names = names;
+            if (_parent is null)
+            {
+                _localNames[index] = value;
+                return;
+            }
+            BeforeWrite?.Invoke();
+            // Unbound enumerators retain this array. Mutate it only after the
+            // final check, with validation, capture and publication all inside
+            // the same local critical section.
+            _authority!.Checked(() =>
+            {
+                var names = _parent.HasBoundObject
+                    ? _parent.SchemaFilterNames.ToArray() : _parent.SchemaFilterNames;
+                if ((uint)index >= (uint)names.Length) throw new IndexOutOfRangeException();
+                names[index] = value;
+                return _parent.SchemaFilterNames = names;
+            });
         }
     }
 

@@ -127,6 +127,7 @@ public partial class DirectoryEntry : Component
         get => _pathText;
         set
         {
+            CheckCrossContextReservation();
             value ??= string.Empty;
             // Match ADSI's fixed en-US linguistic comparison (Utils.Compare),
             // including accents, width and kana, without requiring Windows NLS.
@@ -151,6 +152,7 @@ public partial class DirectoryEntry : Component
         get => _authenticationType;
         set
         {
+            CheckCrossContextReservation();
             if (_authenticationType != value)
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -168,6 +170,7 @@ public partial class DirectoryEntry : Component
         get => _username;
         set
         {
+            CheckCrossContextReservation();
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -184,6 +187,7 @@ public partial class DirectoryEntry : Component
     {
         set
         {
+            CheckCrossContextReservation();
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
                 using var identityChange = IdentityLifetime.Change();
@@ -264,7 +268,8 @@ public partial class DirectoryEntry : Component
         "DirectoryEntry.NativeObject requires ADSI/COM and is not available on Linux.");
 
     /// <summary>Gets the LDAP provider options associated with this entry.</summary>
-    public DirectoryEntryConfiguration Options => _options ??= new DirectoryEntryConfiguration(this);
+    public DirectoryEntryConfiguration Options
+    { get { lock (_entryWriteGate) return _options ??= new DirectoryEntryConfiguration(this); } }
 
     /// <summary>Gets or sets this entry's Active Directory security descriptor.</summary>
     public ActiveDirectorySecurity ObjectSecurity
@@ -337,8 +342,7 @@ public partial class DirectoryEntry : Component
             // The wrapper itself does not bind, even after disposal. Loading
             // directory values still checks disposal through GetConnection().
             lock (_entryWriteGate)
-                return _properties ??= new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+                return _properties ??= CreateLazyProperties();
         }
     }
 
@@ -489,12 +493,15 @@ public partial class DirectoryEntry : Component
     }
 
     /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
-    internal void DeleteChild(string relativeName)
+    internal void DeleteChild(string relativeName, BindingAuthority? authority = null)
     {
-        var distinguishedName = string.IsNullOrEmpty(_path.DistinguishedName)
+        authority ??= CaptureBindingAuthority();
+        var distinguishedName = authority.Checked(() => string.IsNullOrEmpty(_path.DistinguishedName)
             ? relativeName
-            : $"{relativeName},{_path.DistinguishedName}";
-        GetConnection().SendRequestCompatible(new DeleteRequest(distinguishedName));
+            : $"{relativeName},{_path.DistinguishedName}");
+        var connection = GetAuthorityConnection(authority);
+        authority.Validate();
+        connection.SendRequestCompatible(new DeleteRequest(distinguishedName));
     }
 
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
@@ -508,7 +515,7 @@ public partial class DirectoryEntry : Component
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
         child._isNew = true;
-        child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.ThrowIfDisposed);
+        child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.CapturePropertyOwnerValidation());
 
         // The structural class; AD fills in the rest of the class chain.
         child._properties["objectClass"].Value = schemaClassName;
@@ -609,7 +616,7 @@ public partial class DirectoryEntry : Component
     /// Releases this entry's active LDAP bindings and transient cached state.
     /// The entry remains reusable and binds again when an operation needs a connection.
     /// </summary>
-    public void Close() => Unbind();
+    public void Close() { CheckCrossContextReservation(); Unbind(); }
 
     /// <summary>Determines whether an LDAP path resolves to an entry.</summary>
     public static bool Exists(string path)
@@ -721,55 +728,62 @@ public partial class DirectoryEntry : Component
     /// LDAP connection bind only authenticates to the server, whereas ADSI's
     /// DirectoryEntry.Bind also resolves the object represented by the path.
     /// </summary>
-    internal string BindEntry()
+    internal string BindEntry() => BindEntry(null);
+
+    private string BindEntry(Action? validateBinding)
     {
-        ThrowIfDisposed();
-        if (_isNew)
+        void Validate() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(Validate);
+        void ValidateRead() => IdentityLifetime.Checked(generation, Validate, () => true);
+        var snapshot = IdentityLifetime.Checked(generation, Validate,
+            () => (Dn: _path.DistinguishedName, IsNew: _isNew, BoundDn: _boundDistinguishedName));
+        if (snapshot.IsNew)
         {
             // Children.Add already created the provider object in Microsoft's
             // implementation, even though CommitChanges has not persisted it.
-            return _path.DistinguishedName;
+            return snapshot.Dn;
         }
 
-        if (_boundDistinguishedName is not null)
+        if (snapshot.BoundDn is not null)
         {
             // ADSI keeps its bound IADs object after DeleteTree(), so Name and
             // Parent continue to use that binding until an explicit unbind.
             // Match that behavior rather than reopening the deleted path.
-            return _boundDistinguishedName;
+            return snapshot.BoundDn;
         }
 
         var request = new SearchRequest(
-            _path.DistinguishedName,
+            snapshot.Dn,
             "(objectClass=*)",
             ProtocolScope.Base,
             "1.1");
-        var response = (SearchResponse)GetConnection().SendRequestCompatible(request);
+        var response = (SearchResponse)GetOwnedConnection(false, ValidateRead).SendRequestCompatible(request);
         if (response.Entries.Count == 0)
         {
             throw LdapExceptionTranslator.Translate(
                 ResultCode.NoSuchObject,
-                $"The directory object '{_path.DistinguishedName}' does not exist.");
+                $"The directory object '{snapshot.Dn}' does not exist.");
         }
 
-        _boundDistinguishedName = response.Entries[0].DistinguishedName;
-        return _boundDistinguishedName;
+        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = response.Entries[0].DistinguishedName);
     }
 
     private PropertyCollection ReadProperties(
         string[] requestedProperties,
-        bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false)
+        bool loadDefaultProperties = false, SecurityMasks? readSecurityMasks = null, bool requireObject = false,
+        bool requireCompleteServiceNames = false, Action? validateBinding = null)
     {
-        ThrowIfDisposed();
-        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        void ValidateBinding() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(ValidateBinding);
+        void ValidateRead() => IdentityLifetime.Checked(generation, ValidateBinding, () => true);
         if (PropertyReadOverride is { } read)
         {
             var controlled = read(requestedProperties, loadDefaultProperties);
-            return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => controlled);
+            return IdentityLifetime.Checked(generation, ValidateBinding, () => controlled);
         }
-        var connection = GetConnection();
+        var connection = GetOwnedConnection(false, ValidateRead);
         var request = new SearchRequest(
-            _path.DistinguishedName,
+            IdentityLifetime.Checked(generation, ValidateBinding, () => _path.DistinguishedName),
             "(objectClass=*)",
             ProtocolScope.Base,
             requestedProperties);
@@ -782,19 +796,44 @@ public partial class DirectoryEntry : Component
         }
 
         var response = (SearchResponse)connection.SendRequestCompatible(request);
-        if (requireObject && response.Entries.Count != 1)
+        if (requireObject && (response.ResultCode != ResultCode.Success || response.Entries.Count != 1
+            || response.References.Count != 0 || response.Referral.Length != 0))
             throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
-        var properties = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+        if (requireCompleteServiceNames) ValidateCompleteServiceNameReadback(response.Entries[0]);
+        var properties = IdentityLifetime.Checked(generation, ValidateBinding,
+            () => new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation()));
 
         if (response.Entries.Count > 0)
         {
-            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties);
+            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties, ValidateRead);
         }
-        return IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+        return IdentityLifetime.Checked(generation, ValidateBinding, () =>
         {
             if (response.Entries.Count > 0) _boundDistinguishedName = response.Entries[0].DistinguishedName;
             return properties;
         });
+    }
+
+    private static void ValidateCompleteServiceNameReadback(SearchResultEntry entry)
+    {
+        // Validate the wire names before LoadEntry normalizes range options.
+        // A range ending at N cannot prove absence; even N-* lacks the prefix
+        // unless N is zero. Do not assemble ranges across mutable snapshots.
+        DirectoryAttribute? bare = null;
+        DirectoryAttribute? terminal = null;
+        foreach (string name in entry.Attributes.AttributeNames)
+        {
+            var parts = name.Split(';');
+            if (!parts[0].Equals(PrincipalServiceNameWrite.Attribute, StringComparison.OrdinalIgnoreCase)) continue;
+            if (parts.Length == 1) bare = entry.Attributes[name];
+            else if (parts.Length == 2 && parts[1].Equals("range=0-*", StringComparison.OrdinalIgnoreCase) && terminal is null)
+                terminal = entry.Attributes[name];
+            else throw new InvalidOperationException("Service-name reconciliation requires complete, unambiguous attribute values; ranged or malformed readback was refused.");
+        }
+        // AD can return an empty bare companion with its ranged value attribute.
+        // Nonempty bare plus ranged data is ambiguous and cannot be merged here.
+        if (terminal is not null && bare is { Count: > 0 })
+            throw new InvalidOperationException("Service-name readback contains conflicting bare and ranged values.");
     }
 
     private static bool HasRangeSpecifier(string propertyName) =>
@@ -824,13 +863,20 @@ public partial class DirectoryEntry : Component
         ? DirectoryEntryConfiguration.DefaultSecurityMasks
         : Options.SecurityMasks;
 
+    private PropertyCollection CreateLazyProperties()
+    {
+        var validate = CapturePropertyOwnerValidation();
+        return new PropertyCollection(OnPropertyChanged,
+            () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true, validateBinding: validate), validate);
+    }
+
     private void LoadEntry(
     SearchResultEntry entry,
     PropertyCollection properties,
     string[] requestedProperties,
-    bool normalizeRangedNames)
+    bool normalizeRangedNames, Action validateBinding)
     {
-        foreach (var (name, value) in SearchEntryReader.Read(entry, GetSchemaConnection()))
+        foreach (var (name, value) in SearchEntryReader.Read(entry, GetOwnedConnection(true, validateBinding)))
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
@@ -847,10 +893,18 @@ public partial class DirectoryEntry : Component
 
     internal LdapConnection GetSchemaConnection() => GetOwnedConnection(true);
 
-    private LdapConnection GetOwnedConnection(bool schema)
+    internal Action? BeforeConfigurationConnection { get; set; }
+    internal LdapConnection GetConfigurationConnection(DirectoryEntryConfiguration owner)
     {
-        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
-        var snapshot = IdentityLifetime.Checked(generation, ThrowIfDisposed,
+        BeforeConfigurationConnection?.Invoke();
+        return GetOwnedConnection(false, owner.ValidateOwner);
+    }
+
+    private LdapConnection GetOwnedConnection(bool schema, Action? validateBinding = null)
+    {
+        void ValidateBinding() { ThrowIfDisposed(); validateBinding?.Invoke(); }
+        var generation = IdentityLifetime.Capture(ValidateBinding);
+        var snapshot = IdentityLifetime.Checked(generation, ValidateBinding,
             () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
         if (snapshot.Existing is not null) return snapshot.Existing;
         var created = LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(snapshot.Options));
@@ -858,7 +912,7 @@ public partial class DirectoryEntry : Component
         try
         {
             LdapConnectionFactory.ConfigureReferralChasing(created, snapshot.Referral);
-            selected = IdentityLifetime.Checked(generation, ThrowIfDisposed, () =>
+            selected = IdentityLifetime.Checked(generation, ValidateBinding, () =>
             {
                 if (schema) return _schemaConnection ??= created;
                 return _connection ??= created;
@@ -868,7 +922,24 @@ public partial class DirectoryEntry : Component
         finally { if (!ReferenceEquals(selected, created)) created.Dispose(); }
     }
 
-    internal void OnReferralChanged() => ResetConnection();
+    internal void OnReferralChanged(DirectoryEntryConfiguration owner, Action update)
+    {
+        var generation = IdentityLifetime.Capture(owner.ValidateOwner);
+        var connections = IdentityLifetime.Checked(generation, owner.ValidateOwner, () =>
+        {
+            lock (_entryWriteGate)
+            {
+                update();
+                SchemaFilterNames = []; _boundDistinguishedName = null;
+                var detached = new[] { _connection, _schemaConnection }.Where(c => c is not null).Distinct().ToArray();
+                _connection = null; _schemaConnection = null;
+                IdentityLifetime.Invalidate();
+                return detached;
+            }
+        });
+        try { connections.FirstOrDefault()?.Dispose(); }
+        finally { if (connections.Length > 1) connections[1]!.Dispose(); }
+    }
 
     internal string? ServerHost => _path.Host;
 
@@ -888,6 +959,7 @@ public partial class DirectoryEntry : Component
 
     internal DirectoryEntry CreateEntryForPath(string path)
     {
+        ThrowIfDisposed();
         return _connectionOptionsOverride is null
             ? new DirectoryEntry(path, _username, _password, _authenticationType)
             : new DirectoryEntry(path, _connectionOptionsOverride.Clone());
@@ -972,13 +1044,13 @@ public partial class DirectoryEntry : Component
         lock (_entryWriteGate)
         {
             ThrowIfDisposed();
+            property.ValidateOwnerForWrite();
             // Membership and its version are one publication. A request must see
             // both, or see neither and reject this later registration at completion.
             _pendingPropertyChanges.Add(property);
             _entryChangeVersion++;
             if (_properties is null && !_isNew)
-                reload = _properties = new PropertyCollection(OnPropertyChanged,
-                    () => ReadProperties(new[] { "*", "nTSecurityDescriptor" }, loadDefaultProperties: true), ThrowIfDisposed);
+                reload = _properties = CreateLazyProperties();
             commit = !_usePropertyCache && !_isNew;
         }
         if (reload is not null)
@@ -993,12 +1065,11 @@ public partial class DirectoryEntry : Component
         if (commit) CommitPortableChanges();
     }
 
-    private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
+    internal bool HasSameConnectionContext(DirectoryEntry other)
     {
         var source = BuildOptions();
-        var destination = newParent.BuildOptions();
-
-        if (SameHost(source.Host, destination.Host)
+        var destination = other.BuildOptions();
+        return SameHost(source.Host, destination.Host)
             && source.Port == destination.Port
             && source.UseSsl == destination.UseSsl
             && source.UseStartTls == destination.UseStartTls
@@ -1007,11 +1078,12 @@ public partial class DirectoryEntry : Component
             && source.Signing == destination.Signing
             && source.Sealing == destination.Sealing
             && string.Equals(source.BindDn, destination.BindDn, StringComparison.Ordinal)
-            && string.Equals(source.BindPassword, destination.BindPassword, StringComparison.Ordinal))
-        {
-            return;
-        }
+            && string.Equals(source.BindPassword, destination.BindPassword, StringComparison.Ordinal);
+    }
 
+    private void EnsureSameMoveConnectionContext(DirectoryEntry newParent)
+    {
+        if (HasSameConnectionContext(newParent)) return;
         throw new PlatformNotSupportedException(
             "DirectoryEntry.MoveTo does not support moving between different LDAP connection contexts. " +
             "Source and destination must use the same server, port, TLS settings, authentication type, " +
@@ -1105,7 +1177,7 @@ public partial class DirectoryEntry : Component
             {
                 // An unsaved child has no server object to reload. Carry its staged
                 // attributes (including objectClass) into a non-loading wrapper.
-                var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: ThrowIfDisposed);
+                var replacement = new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation());
                 foreach (var property in (IEnumerable<PropertyValueCollection>)_properties)
                 {
                     replacement.ReplaceLoaded(property.PropertyName, property.Cast<object>());
@@ -1145,6 +1217,12 @@ public partial class DirectoryEntry : Component
     }
 
     internal void ThrowIfDisposed()
+    {
+        CheckCrossContextReservation();
+        ThrowIfActuallyDisposed();
+    }
+
+    private void ThrowIfActuallyDisposed()
     {
         if (_disposed)
         {

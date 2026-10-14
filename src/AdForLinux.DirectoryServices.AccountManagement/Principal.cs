@@ -14,7 +14,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// <see cref="DirectoryEntry"/>.
 /// </summary>
 [System.Diagnostics.DebuggerDisplay("Name = {Name}")]
-public abstract class Principal : IDisposable
+public abstract partial class Principal : IDisposable
 {
     // Values set before the object is saved, kept until there is an entry.
     private readonly Dictionary<string, object?> _pending = new(StringComparer.OrdinalIgnoreCase);
@@ -356,7 +356,8 @@ public abstract class Principal : IDisposable
                 "(objectClass=*)",
                 new[] { "tokenGroups" },
                 SearchScope.Base);
-            var tokenResult = tokenSearcher.FindOne();
+            using var tokenResults = ContextRef.SearchAuthorizationEntries(tokenSearcher);
+            var tokenResult = tokenResults.Cast<SearchResult>().FirstOrDefault();
             var tokenSids = tokenResult?.Properties["tokenGroups"]
                 .Cast<object>()
                 .OfType<byte[]>()
@@ -364,16 +365,20 @@ public abstract class Principal : IDisposable
 
             if (tokenSids.Count == 0)
             {
-                // Some LDAP servers do not expose tokenGroups. Keep the normal
-                // transitive membership behavior, but explicitly include the
-                // principal's primary group so it is never silently omitted.
+                // Authorization is domain-wide even when the context's ordinary
+                // principal queries are scoped to an OU. Distribution groups must
+                // never enter this result, including through the primary-group arm.
                 var memberFilter =
                     $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(distinguishedName)})";
                 var primaryGroupSid = TryGetPrimaryGroupSid();
-                return FindGroups(
-                    ContextRef,
-                    memberFilter,
-                    primaryGroupSid);
+                var membership = primaryGroupSid is null ? memberFilter
+                    : $"(|{memberFilter}(objectSid={LdapFilter.EscapeBytes(primaryGroupSid)}))";
+                var groups = new List<Principal>();
+                SearchAuthorizationGroups(ContextRef,
+                    ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext),
+                    AuthorizationGroupFilter(membership), groups,
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                return new PrincipalSearchResult<Principal>(groups);
             }
 
             var objectSid = Entry?.Properties["objectSid"].Value as byte[]
@@ -479,8 +484,8 @@ public abstract class Principal : IDisposable
         byte[] principalSid,
         string principalDn)
     {
-        var filter = $"(&(objectCategory=group)(|{string.Concat(tokenSids.Select(
-            sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"))}))";
+        var filter = AuthorizationGroupFilter($"(|{string.Concat(tokenSids.Select(
+            sid => $"(objectSid={LdapFilter.EscapeBytes(sid)})"))})");
         var groups = new List<Principal>();
         var returnedSids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -515,7 +520,7 @@ public abstract class Principal : IDisposable
             var memberFilter = string.Concat(memberDns.Select(dn =>
                 $"(member:1.2.840.113556.1.4.1941:={LdapFilter.EscapeValue(dn)})"));
             SearchAuthorizationGroups(context, context.CreateGlobalCatalogEntry(forestRoot),
-                $"(&(objectCategory=group)(|{memberFilter}))", groups, returnedSids);
+                AuthorizationGroupFilter($"(|{memberFilter})"), groups, returnedSids);
         }
         catch (Exception exception) when (
             exception is LdapException or DirectoryOperationException)
@@ -527,6 +532,9 @@ public abstract class Principal : IDisposable
 
         return new PrincipalSearchResult<Principal>(groups);
     }
+
+    private static string AuthorizationGroupFilter(string membership) =>
+        $"(&(objectCategory=group)(groupType:1.2.840.113556.1.4.803:=2147483648){membership})";
 
     private static HashSet<string> FindForestPrincipalDns(
         PrincipalContext context,
@@ -542,7 +550,7 @@ public abstract class Principal : IDisposable
         {
             PageSize = 500,
         };
-        using var results = searcher.FindAll();
+        using var results = context.SearchAuthorizationEntries(searcher);
         return results.Cast<SearchResult>()
             .Select(result => result.Properties["distinguishedName"].Count > 0
                 ? result.Properties["distinguishedName"][0]?.ToString()
@@ -561,7 +569,7 @@ public abstract class Principal : IDisposable
     {
         using (root)
         using (var searcher = new DirectorySearcher(root, filter) { PageSize = 500 })
-        using (var results = searcher.FindAll())
+        using (var results = context.SearchAuthorizationEntries(searcher))
         {
             foreach (var result in results.Cast<SearchResult>())
             {
@@ -823,6 +831,8 @@ public abstract class Principal : IDisposable
     {
     }
 
+    private protected virtual void CommitEntryChanges(DirectoryEntry entry) => entry.CommitChanges();
+
     /// <summary>Runs after a successful save, for extra work like membership.</summary>
     private protected virtual void OnAfterSave()
     {
@@ -852,7 +862,7 @@ public abstract class Principal : IDisposable
             OnBeforeSave();
             ApplyPendingScalars(Entry);
             ApplyExtensionChanges(Entry);
-            Entry.CommitChanges();
+            CommitEntryChanges(Entry);
             _pending.Clear();
             OnAfterSave();
             return;
@@ -1025,6 +1035,21 @@ public abstract class Principal : IDisposable
             return;
         }
 
+        var originalContext = ContextRef;
+        var originalEntry = Entry;
+        var currentDn = Entry.DistinguishedName;
+        var currentParent = LdapDistinguishedName.Parent(currentDn);
+        var destinationContainer = context.GetCreationContainer(GetType());
+        using (var target = context.CreateDirectoryEntry(destinationContainer))
+        {
+            if (!originalEntry.HasSameConnectionContext(target))
+            {
+                // Read-only proof and request planning never convey write authority.
+                _ = CrossContextSavePlan.Prepare(originalContext, context, originalEntry,
+                    _storedGuid, destinationContainer, _pending.GetValueOrDefault("cn") as string);
+                throw new PlatformNotSupportedException(CrossContextSavePlan.ExecutionBoundary);
+            }
+        }
         if (!string.Equals(
                 context.DefaultNamingContext,
                 ContextRef.DefaultNamingContext,
@@ -1032,30 +1057,27 @@ public abstract class Principal : IDisposable
         {
             throw new PlatformNotSupportedException(
                 "Moving a persisted principal between AD domains requires ADSI's cross-store move " +
-                "support and is not available through this LDAP port. Different domain controllers " +
-                "for the same AD domain are supported.");
+                "support and is not available through this LDAP port. Same-domain cross-controller " +
+                "execution requires separately verified identity and rebinding support.");
         }
 
-        var originalContext = ContextRef;
-        var originalEntry = Entry;
-        var currentDn = Entry.DistinguishedName;
-        var currentParent = LdapDistinguishedName.Parent(currentDn);
-        var destinationContainer = context.GetCreationContainer(GetType());
-        var moved = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
+        var movePlanned = !string.Equals(currentParent, destinationContainer, StringComparison.OrdinalIgnoreCase);
+        var moveAcknowledged = false;
 
         try
         {
-            if (moved)
+            if (movePlanned)
             {
                 using var target = context.CreateDirectoryEntry(destinationContainer);
                 originalEntry.MoveTo(target);
+                moveAcknowledged = true;
                 currentDn = originalEntry.DistinguishedName;
             }
 
             OnBeforeSave();
             ApplyPendingScalars(originalEntry);
             ApplyExtensionChanges(originalEntry);
-            originalEntry.CommitChanges();
+            CommitEntryChanges(originalEntry);
             _pending.Clear();
             ContextRef = context;
             OnAfterSave();
@@ -1064,7 +1086,7 @@ public abstract class Principal : IDisposable
         {
             Entry = originalEntry;
             ContextRef = originalContext;
-            if (moved)
+            if (moveAcknowledged)
             {
                 try
                 {
@@ -1174,13 +1196,18 @@ public abstract class Principal : IDisposable
         {
             throw new ArgumentException("The attribute cannot be null.");
         }
-
+        // Validation may inspect caller-owned ICollection implementations. Keep
+        // that work outside the short frozen-state publication gate.
         ValidateExtensionValue(value);
-        // Microsoft shares the supplied array (or the scalar wrapper) with
-        // callers. Queries and saves must consume these same current values.
-        _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
-            ? array
-            : new object?[] { value });
+        lock (_crossContextGate)
+        {
+            if (_crossContextOperation is not null) throw new InvalidOperationException("Principal edits are frozen by a cross-context operation.");
+            // Microsoft shares the supplied array (or the scalar wrapper) with
+            // callers. Queries and saves must consume these same current values.
+            _extensionCache[attribute] = new ExtensionCacheEntry(value is object?[] array
+                ? array
+                : new object?[] { value });
+        }
     }
 
     private void ApplyExtensionChanges(DirectoryEntry entry)
@@ -1419,19 +1446,22 @@ public abstract class Principal : IDisposable
     /// <summary>Sets a single string attribute, on the entry or as a pending value.</summary>
     private protected void SetString(string attributeName, string? value)
     {
-        CheckDisposedOrDeleted();
-        // Principal writes must survive refreshes of the underlying entry cache.
-        if (ContextRef is null) throw new NullReferenceException();
-        _pending[attributeName] = value;
-        if (Entry is null)
+        lock (_crossContextGate)
         {
-            SetQueryFilter(
-                attributeName,
-                PrincipalQueryFilterKind.String,
-                attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
-                value);
+            CheckDisposedOrDeleted();
+            // Principal writes must survive refreshes of the underlying entry cache.
+            if (ContextRef is null) throw new NullReferenceException();
+            _pending[attributeName] = value;
+            if (Entry is null)
+            {
+                SetQueryFilter(
+                    attributeName,
+                    PrincipalQueryFilterKind.String,
+                    attributeName.Equals("cn", StringComparison.OrdinalIgnoreCase) ? "name" : attributeName,
+                    value);
+            }
+            _loadedScalars[attributeName] = value;
         }
-        _loadedScalars[attributeName] = value;
     }
 
     private protected void CommitPendingScalars(DirectoryEntry entry)
@@ -1469,6 +1499,8 @@ public abstract class Principal : IDisposable
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     protected void CheckDisposedOrDeleted()
     {
+        if (_crossContextOperation is not null)
+            throw new InvalidOperationException("This principal is reserved or quarantined by a cross-context operation.");
         if (_disposed)
         {
             throw new ObjectDisposedException(GetType().ToString());

@@ -494,6 +494,17 @@ public partial class PrincipalContext : IDisposable
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
+    internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
+        = static options => new CrossContextSaveSession(options);
+
+    // Offline request-contract tests intercept execution, not context construction.
+    internal Func<DirectorySearcher, SearchResultCollection>? AuthorizationSearchOverride { get; set; }
+    internal SearchResultCollection SearchAuthorizationEntries(DirectorySearcher searcher)
+    {
+        CheckDisposed();
+        return AuthorizationSearchOverride is { } search ? search(searcher) : searcher.FindAll();
+    }
+
     /// <summary>Opens the same server's global-catalog endpoint.</summary>
     internal DirectoryEntry CreateGlobalCatalogEntry(string distinguishedName)
     {
