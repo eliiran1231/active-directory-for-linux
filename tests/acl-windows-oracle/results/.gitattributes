@@ -1,0 +1,2 @@
+# Preserve downloaded Windows recordings byte-for-byte, including their CRLF line endings.
+seeded-windows-net*.json -text whitespace=cr-at-eol

@@ -349,5 +349,9 @@ public class GroupPrincipal : Principal
         }
     }
 
-    private protected override void OnAfterSave() => _members?.ApplyChanges();
+    private protected override void OnAfterSave()
+    {
+        _members?.ApplyChanges();
+        base.OnAfterSave();
+    }
 }

@@ -1,6 +1,12 @@
 using System.ComponentModel;
 using System.Security.AccessControl;
-using System.Security.Principal;
+using AdForLinux.Security.Principal;
+using DirectoryObjectSecurity = AdForLinux.Security.AccessControl.DirectoryObjectSecurity;
+using CommonSecurityDescriptor = AdForLinux.Security.AccessControl.CommonSecurityDescriptor;
+using AccessRule = AdForLinux.Security.AccessControl.AccessRule;
+using AuditRule = AdForLinux.Security.AccessControl.AuditRule;
+using ObjectAccessRule = AdForLinux.Security.AccessControl.ObjectAccessRule;
+using ObjectAuditRule = AdForLinux.Security.AccessControl.ObjectAuditRule;
 
 #pragma warning disable CA1416 // These APIs manipulate in-memory AD descriptors; no local OS ACL is accessed.
 
@@ -62,14 +68,55 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
         _retrievedMasks = retrievedMasks;
     }
 
+    internal ActiveDirectorySecurity(CommonSecurityDescriptor descriptor, SecurityMasks retrievedMasks)
+        : base(descriptor) { _retrievedMasks = retrievedMasks; }
+
     internal SecurityMasks RetrievedMasks => _retrievedMasks;
+
+    // Internal consumers share the entry-bound facade, freshness checks and raw
+    // commit planner. Planning is detached and never executes under security locks.
+    internal void EditRawDacl(Func<byte[], byte[]> edit)
+    {
+        RequireDacl();
+        var read = CaptureIdentityRead();
+        byte[] raw;
+        lock (AdForLinux.Security.AccessControl.FacadeMutation.Gate)
+            raw = _securityDescriptor.MutationState.Descriptor.GetBinaryForm();
+        // This callback edits an existing DACL, not an imported descriptor. Keep
+        // the retained header and other sections on the owner; the public section
+        // setter deliberately refuses metadata it cannot import losslessly.
+        const SecurityMasks all = SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
+        var original = Security.Core.SecurityDescriptor.Parse(raw, all);
+        var changed = edit(raw);
+        var candidate = Security.Core.SecurityDescriptor.Parse(changed, all);
+        if (candidate.Revision != original.Revision || candidate.Sbz1 != original.Sbz1
+            || candidate.Control != original.Control
+            || (candidate.NetChangedSections(original) & ~SecurityMasks.Dacl) != 0)
+            throw new InvalidOperationException("A raw DACL edit cannot change descriptor metadata or other sections.");
+        var sectionInput = (byte[])changed.Clone();
+        // These fields are not imported by an Access-only assignment. They were
+        // proved unchanged above and remain in the owner's retained raw state.
+        sectionInput[1] = 0;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(
+            sectionInput.AsSpan(2), (ushort)(candidate.Control & 0xbc14));
+        WriteLock();
+        try
+        {
+            ValidateIdentityRead(read, () =>
+            {
+                SetSecurityDescriptorBinaryForm(sectionInput, AccessControlSections.Access);
+                return true;
+            });
+        }
+        finally { WriteUnlock(); }
+    }
 
     internal bool IsModified()
     {
         ReadLock();
         try
         {
-            return OwnerModified || GroupModified || AccessRulesModified || AuditRulesModified;
+            return PendingWriteSections != SecurityMasks.None;
         }
         finally
         {

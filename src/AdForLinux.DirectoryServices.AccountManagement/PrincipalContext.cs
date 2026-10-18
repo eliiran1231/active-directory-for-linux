@@ -14,7 +14,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 /// controller name. Simple and negotiate LDAP authentication are selected with
 /// <see cref="ContextOptions"/>.
 /// </summary>
-public class PrincipalContext : IDisposable
+public partial class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
     private readonly bool _hasExplicitPort;
@@ -494,6 +494,18 @@ public class PrincipalContext : IDisposable
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
+    internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
+        = static options => new CrossContextSaveSession(options);
+
+    // Offline request-contract tests intercept execution, not context construction.
+    internal Func<DirectorySearcher, SearchResultCollection>? DateFinderSearchOverride { get; set; }
+    internal Func<DirectorySearcher, SearchResultCollection>? AuthorizationSearchOverride { get; set; }
+    internal SearchResultCollection SearchAuthorizationEntries(DirectorySearcher searcher)
+    {
+        CheckDisposed();
+        return AuthorizationSearchOverride is { } search ? search(searcher) : searcher.FindAll();
+    }
+
     /// <summary>Opens the same server's global-catalog endpoint.</summary>
     internal DirectoryEntry CreateGlobalCatalogEntry(string distinguishedName)
     {
@@ -531,6 +543,9 @@ public class PrincipalContext : IDisposable
 
         lock (_foreignContextLock)
         {
+            // Disposal clears this cache under the same lock. A caller may have
+            // passed the initial check before disposal acquired it.
+            CheckDisposed();
             if (!_foreignContexts.TryGetValue(domainName, out var context))
             {
                 context = new PrincipalContext(
@@ -795,6 +810,7 @@ public class PrincipalContext : IDisposable
             return;
         }
 
+        using var identityChange = IdentityLifetime.Change();
         lock (_foreignContextLock)
         {
             foreach (var context in _foreignContexts.Values)

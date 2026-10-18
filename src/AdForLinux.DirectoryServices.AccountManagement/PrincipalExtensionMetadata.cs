@@ -7,7 +7,7 @@ internal static class PrincipalExtensionMetadata
             .GetCustomAttributes(typeof(DirectoryObjectClassAttribute), inherit: false)
             .Cast<DirectoryObjectClassAttribute>()
             .Select(attribute => attribute.ObjectClass)
-            .FirstOrDefault();
+            .FirstOrDefault(objectClass => objectClass is not null);
 
     internal static string GetObjectClassForCreation(
         Type principalType,

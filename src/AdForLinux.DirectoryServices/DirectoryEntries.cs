@@ -10,10 +10,14 @@ namespace AdForLinux.DirectoryServices;
 public class DirectoryEntries : IEnumerable<DirectoryEntry>
 {
     private readonly DirectoryEntry _parent;
+    private readonly DirectoryEntry.BindingAuthority _authority;
+    internal Action<DirectoryEntry>? BeforeChildLookup { get; set; }
+    internal Action<DirectorySearcher>? SearcherCreated { get; set; }
 
     internal DirectoryEntries(DirectoryEntry parent)
     {
         _parent = parent;
+        _authority = parent.CaptureBindingAuthority();
     }
 
     /// <summary>
@@ -22,15 +26,16 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// </summary>
     public DirectoryEntry Add(string name, string schemaClassName)
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
-        return DirectoryEntry.NewChild(_parent, name, schemaClassName);
+        return _authority.Checked(() => DirectoryEntry.NewChild(_parent, name, schemaClassName));
     }
 
     /// <summary>
     /// Gets the schema classes included when enumerating the children. An empty
     /// collection includes children of every class.
     /// </summary>
-    public SchemaNameCollection SchemaFilter => new(_parent);
+    public SchemaNameCollection SchemaFilter => _authority.Checked(() => new SchemaNameCollection(_parent, _authority));
 
     /// <summary>Finds a child by relative distinguished name.</summary>
     public DirectoryEntry Find(string name) => Find(name, null);
@@ -38,12 +43,15 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// <summary>Finds a child by relative distinguished name and optional schema class.</summary>
     public DirectoryEntry Find(string name, string? schemaClassName)
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        var child = _parent.CreateEntryForDn($"{name},{_parent.DistinguishedName}");
+        var child = _authority.Checked(() => _parent.CreateEntryForDn($"{name},{_parent.DistinguishedName}"));
         try
         {
+            BeforeChildLookup?.Invoke(child);
+            _authority.Validate();
             child.RefreshCache();
             if (!string.IsNullOrEmpty(schemaClassName)
                 && !string.Equals(child.SchemaClassName, schemaClassName, StringComparison.OrdinalIgnoreCase))
@@ -52,6 +60,7 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
                     $"Child '{name}' does not have schema class '{schemaClassName}'.");
             }
 
+            _authority.Validate();
             return child;
         }
         catch
@@ -64,40 +73,48 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
     /// <summary>Deletes a child object without recursively deleting its descendants.</summary>
     public void Remove(DirectoryEntry entry)
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
         // Microsoft asks this collection's parent container to delete the
         // entry by schema class and relative name. Reading SchemaClassName
         // preserves the observable bind/error behavior even though LDAP's
         // DeleteRequest does not carry the schema class.
-        _ = entry.SchemaClassName;
-        _parent.DeleteChild(entry.Name);
+        using var sameParent = ReferenceEquals(entry, _parent) ? _parent.CopyBinding(_authority) : null;
+        var target = sameParent ?? entry;
+        _ = target.SchemaClassName;
+        _parent.DeleteChild(target.Name, _authority);
     }
 
     public IEnumerator GetEnumerator()
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
         return new ChildEnumerator(this);
     }
 
     IEnumerator<DirectoryEntry> IEnumerable<DirectoryEntry>.GetEnumerator()
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
         return new ChildEnumerator(this);
     }
 
     private IEnumerable<DirectoryEntry> Enumerate()
     {
+        _authority.Validate();
         _parent.ThrowIfDisposed();
-        using var searcher = new DirectorySearcher(_parent, BuildSchemaFilter())
+        using var searcher = _authority.Checked(() => new DirectorySearcher(_parent, BuildSchemaFilter())
         {
             SearchScope = SearchScope.OneLevel,
             PageSize = _parent.Options.PageSize,
             ReferralChasing = _parent.Options.Referral,
-        };
+        });
 
+        SearcherCreated?.Invoke(searcher);
         using var results = searcher.FindAll();
         foreach (var result in results.Cast<SearchResult>())
         {
+            _authority.Validate();
             yield return result.GetDirectoryEntry();
         }
     }
@@ -114,6 +131,7 @@ public class DirectoryEntries : IEnumerable<DirectoryEntry>
 
         public bool MoveNext()
         {
+            owner._authority.Validate();
             _iterator ??= owner.Enumerate().GetEnumerator();
             return _positioned = _iterator.MoveNext();
         }

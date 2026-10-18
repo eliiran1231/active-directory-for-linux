@@ -13,6 +13,11 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public class AuthenticablePrincipal : Principal
 {
     // userAccountControl bits.
+    internal bool HasDeferredCrossContextEdits => _passwordToSet is not null || _enabledAfterPassword is not null
+        || _expirePasswordAfterSave || _userCannotChangePassword is not null || _unsavedEnabled is not null
+        || _unsavedDelegationPermitted is not null || _accountExpirationDateChanged || _changedAccountControlBits != 0
+        || _permittedLogonTimesLoaded || _certificates is not null || _permittedWorkstations is not null;
+
     private const int AccountDisabled = 0x2;
     private const int PasswordNotRequiredFlag = 0x20;
     private const int ReversiblePasswordEncryption = 0x80;
@@ -354,13 +359,26 @@ public class AuthenticablePrincipal : Principal
     }
 
     /// <summary>
-    /// Whether the account is locked out right now. An account stays stamped
-    /// with a lockout time after the lockout has expired, so we compare it with
-    /// the domain's lockout duration, like Microsoft does.
+    /// Whether the account is locked out right now, using fresh server-computed
+    /// state when available (including the account's effective password policy).
     /// </summary>
     public bool IsAccountLockedOut()
+        => AccountManagementExceptionTranslator.Execute(IsAccountLockedOutCore);
+
+    private bool IsAccountLockedOutCore()
     {
         CheckDisposedOrDeleted();
+        if (Entry is null) return false;
+        // Establish the ordinary lazy cache after Close/rebind before a targeted
+        // refresh marks it loaded. This does not discard any staged properties.
+        _ = Entry.Properties["lockoutTime"];
+        Entry.RefreshCache(new[] { "msDS-User-Account-Control-Computed", "lockoutTime" });
+        var computed = Entry.Properties["msDS-User-Account-Control-Computed"];
+        if (computed.Count != 0)
+            return (Convert.ToInt32(computed[0], System.Globalization.CultureInfo.InvariantCulture) & 0x10) != 0;
+
+        // Downlevel servers omit the computed attribute. Only that case uses
+        // the historical domain policy fallback, as in Microsoft's AD store.
         var lockedAt = AccountLockoutTime;
         if (lockedAt is null)
         {
@@ -619,9 +637,9 @@ public class AuthenticablePrincipal : Principal
 
         if (_userCannotChangePassword is not null)
         {
-            var descriptor = Entry!.ReadSecurityDescriptorImmediate(SecurityMasks.Dacl);
-            var changed = ChangePasswordAcl.SetDenied(descriptor, _userCannotChangePassword.Value);
-            Entry.ReplaceSecurityDescriptorImmediate(changed, SecurityMasks.Dacl);
+            var security = Entry!.ObjectSecurity;
+            security.EditRawDacl(raw => ChangePasswordAcl.SetDenied(raw, _userCannotChangePassword.Value));
+            Entry.CommitChanges();
             if (!deferResetUntilInsertCompletes)
             {
                 _userCannotChangePassword = null;
@@ -784,10 +802,15 @@ public class AuthenticablePrincipal : Principal
             ? "(objectCategory=computer)"
             : typeof(T) == typeof(UserPrincipal)
                 ? "(objectCategory=person)(objectClass=user)"
-                : "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))";
+                : typeof(T) == typeof(AuthenticablePrincipal)
+                    ? "(|(&(objectCategory=person)(objectClass=user))(objectCategory=computer))"
+                    : $"(objectClass={LdapFilter.EscapeValue(
+                        PrincipalExtensionMetadata.GetDeclaredObjectClass(typeof(T))
+                        ?? throw new InvalidOperationException($"Custom principal type {typeof(T).FullName} must declare DirectoryObjectClassAttribute."))})";
         using var root = context.CreateDirectoryEntry(context.QueryContainer);
         using var searcher = new DirectorySearcher(root, $"(&{category}{condition})") { PageSize = 500 };
-        using var results = searcher.FindAll();
+        using var results = context.DateFinderSearchOverride is { } search
+            ? search(searcher) : searcher.FindAll();
         var rows = results.Cast<SearchResult>().ToArray();
         return new PrincipalSearchResult<T>(rows.Length, index =>
             (T)(object)PrincipalFactory.FromEntry(context, rows[index].GetDirectoryEntry())!);

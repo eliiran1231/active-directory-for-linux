@@ -491,14 +491,8 @@ public class PrincipalCompatibilityTests
             using var untyped = Principal.FindByIdentity(context, userName);
             Assert.IsType<UserPrincipal>(untyped);
             Assert.NotNull(untyped!.SidValue);
-            if (OperatingSystem.IsWindows())
-            {
-                Assert.NotNull(untyped.Sid);
-            }
-            else
-            {
-                Assert.Throws<PlatformNotSupportedException>(() => untyped.Sid);
-            }
+            Assert.NotNull(untyped.Sid);
+            Assert.Equal(untyped.SidValue, untyped.Sid.Value);
 
             Assert.Equal(found, untyped);
 

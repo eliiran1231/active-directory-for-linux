@@ -10,13 +10,16 @@ namespace AdForLinux.DirectoryServices;
 public class SearchResult
 {
     private readonly DirectoryEntry _searchRoot;
+    private readonly DirectoryEntry.BindingAuthority _authority;
 
     internal SearchResult(SearchResultEntry entry, DirectoryEntry searchRoot)
+        : this(entry, new SearchResultOrigin(searchRoot, searchRoot.CaptureBindingAuthority()), searchRoot) { }
+
+    internal SearchResult(SearchResultEntry entry, SearchResultOrigin origin, DirectoryEntry schemaRoot)
     {
-        // Capture credentials and transport configuration before callers can
-        // mutate or dispose the search root. This entry never opens a connection.
-        _searchRoot = searchRoot.CreateEntryForDn(entry.DistinguishedName);
-        var path = searchRoot.PathForDn(entry.DistinguishedName);
+        _authority = origin.Authority;
+        _searchRoot = origin.Copy(entry.DistinguishedName);
+        var path = _searchRoot.Path;
 
         var properties = new ResultPropertyCollection();
         var grouped = new Dictionary<string, List<object>>(StringComparer.OrdinalIgnoreCase);
@@ -27,7 +30,7 @@ public class SearchResult
             grouped[name] = new List<object>();
         }
 
-        foreach (var (name, value) in SearchEntryReader.Read(entry, searchRoot.GetSchemaConnection()))
+        foreach (var (name, value) in SearchEntryReader.Read(entry, schemaRoot.GetAuthorityConnection(_authority, schema: true)))
         {
             if (!grouped.TryGetValue(name, out var list))
             {
@@ -45,6 +48,7 @@ public class SearchResult
 
         // Microsoft also exposes the path as the "adspath" property.
         properties.Set("adspath", new object[] { path });
+        _authority.Validate();
         Properties = properties;
     }
 
@@ -57,14 +61,18 @@ public class SearchResult
     /// <summary>Opens this result as a full <see cref="DirectoryEntry"/>.</summary>
     public DirectoryEntry GetDirectoryEntry()
     {
-        return _searchRoot.CreateEntryForPath(Path);
+        return _authority.Checked(() => _searchRoot.CreateEntryForPath(Path));
     }
 
     internal SearchResult(DirectoryEntry searchRoot, ResultPropertyCollection properties)
     {
-        _searchRoot = searchRoot;
+        _authority = searchRoot.CaptureBindingAuthority();
+        _searchRoot = searchRoot.CopyBinding(_authority);
         Properties = properties;
     }
+
+    private SearchResult(DirectoryEntry capturedRoot, DirectoryEntry.BindingAuthority authority, ResultPropertyCollection properties)
+    { _searchRoot = capturedRoot; _authority = authority; Properties = properties; }
 
     internal SearchResult Snapshot()
     {
@@ -74,6 +82,19 @@ public class SearchResult
             properties.Set(name, Properties[name].Cast<object>()
                 .Select(value => value is byte[] bytes ? bytes.ToArray() : value).ToArray());
         }
-        return new SearchResult(_searchRoot, properties);
+        return new SearchResult(_searchRoot, _authority, properties);
     }
+}
+
+// Captured before dispatch. Result construction never consults a mutable root
+// for endpoint credentials. Its schema connection is admitted by the same token.
+internal sealed class SearchResultOrigin
+{
+    private readonly DirectoryEntry template;
+    internal DirectoryEntry.BindingAuthority Authority { get; }
+    internal string DistinguishedName => template.DistinguishedName;
+    internal SearchResultOrigin(DirectoryEntry root, DirectoryEntry.BindingAuthority authority)
+    { Authority = authority; template = root.CopyBinding(authority); }
+    internal DirectoryEntry Copy(string? dn = null)
+        => Authority.Checked(() => template.CreateEntryForDn(dn ?? DistinguishedName));
 }

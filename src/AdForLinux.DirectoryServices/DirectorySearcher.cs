@@ -103,7 +103,31 @@ public class DirectorySearcher : Component
 
     /// <summary>The entry the search starts from. Required before searching.</summary>
     [DefaultValue(null)]
-    public DirectoryEntry? SearchRoot { get; set; }
+    public DirectoryEntry? SearchRoot
+    {
+        get => _rootReference?.Root;
+        set => _rootReference = value is null ? null : new RootReference(value, value.CaptureBindingAuthority());
+    }
+    private sealed record RootReference(DirectoryEntry Root, DirectoryEntry.BindingAuthority Authority);
+    private RootReference? _rootReference;
+    internal Action<LdapConnection>? ConfigureConnectionOverride { get; set; }
+    internal Action<DirectoryEntry>? StreamingRootCreated { get; set; }
+
+    private sealed class SearchOperation : IDisposable
+    {
+        internal DirectoryEntry Root { get; }
+        internal SearchResultOrigin Origin { get; }
+        private readonly DirectoryEntry? rebound;
+        internal SearchOperation(RootReference reference)
+        {
+            Origin = new SearchResultOrigin(reference.Root, reference.Authority);
+            rebound = reference.Root.IsDisposed ? Origin.Copy() : null;
+            Root = rebound ?? reference.Root;
+        }
+        public void Dispose() => rebound?.Dispose();
+    }
+    private SearchOperation CaptureSearch() => new(_rootReference ?? throw new InvalidOperationException(
+        "SearchRoot must be set before searching. Serverless search is not supported on Linux."));
 
     /// <summary>The LDAP filter, e.g. <c>(&amp;(objectClass=user)(cn=jeff))</c>.</summary>
     [AllowNull]
@@ -395,28 +419,25 @@ public class DirectorySearcher : Component
     /// <summary>Returns the first match, or null if there is none.</summary>
     public SearchResult? FindOne()
     {
-        var configuredRoot = RequireRoot();
-        using var reboundRoot = configuredRoot.IsDisposed
-            ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
-            : null;
-        var root = reboundRoot ?? configuredRoot;
-        root.BindEntry();
+        using var operation = CaptureSearch();
+        var root = operation.Root;
+        root.BindAuthority(operation.Origin.Authority);
         if (HasAttributeScopeQuery)
         {
-            return FindAttributeScoped(root, maximumResults: 1).FirstOrDefault();
+            return FindAttributeScoped(operation, maximumResults: 1).FirstOrDefault();
         }
 
-        var request = BuildRequest();
+        var request = BuildRequestForDn(operation.Origin.DistinguishedName);
         request.SizeLimit = 1;
 
         CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
 
-        var connection = root.GetConnection();
+        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
         ConfigureConnection(connection);
-        var response = SendSearch(connection, request);
+        var response = SendSearch(connection, request, operation.Origin.Authority);
         UpdateControlState(response);
         return response.Entries.Count > 0
-            ? new SearchResult(response.Entries[0], root)
+            ? new SearchResult(response.Entries[0], operation.Origin, root)
             : null;
     }
 
@@ -444,25 +465,22 @@ public class DirectorySearcher : Component
 
     private SearchResultCollection FindAllCore()
     {
-        var configuredRoot = RequireRoot();
-        using var reboundRoot = configuredRoot.IsDisposed
-            ? configuredRoot.CreateEntryForDn(configuredRoot.DistinguishedName)
-            : null;
-        var root = reboundRoot ?? configuredRoot;
-        root.BindEntry();
+        using var operation = CaptureSearch();
+        var root = operation.Root;
+        root.BindAuthority(operation.Origin.Authority);
         if (HasAttributeScopeQuery)
         {
             var maximumResults = SizeLimit > 0 ? SizeLimit : int.MaxValue;
             return new SearchResultCollection(
-                FindAttributeScoped(root, maximumResults), CacheResults, GetPropertiesLoaded());
+                FindAttributeScoped(operation, maximumResults), CacheResults, GetPropertiesLoaded());
         }
 
         if (Asynchronous || !CacheResults)
         {
-            return FindAllStreaming(root);
+            return FindAllStreaming(operation);
         }
 
-        var connection = root.GetConnection();
+        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
         ConfigureConnection(connection);
         var results = new List<SearchResult>();
         var timeLimitBudget = CreateServerTimeLimitBudget(PageSize > 0);
@@ -472,19 +490,19 @@ public class DirectorySearcher : Component
             var pageControl = new PageResultRequestControl(PageSize);
             while (true)
             {
-                var request = BuildRequest();
+                var request = BuildRequestForDn(operation.Origin.DistinguishedName);
                 request.Controls.Add(pageControl);
                 if (!timeLimitBudget.TryApply(request))
                 {
                     break;
                 }
 
-                var response = SendSearch(connection, request);
+                var response = SendSearch(connection, request, operation.Origin.Authority);
                 UpdateControlState(response);
 
                 foreach (SearchResultEntry entry in response.Entries)
                 {
-                    results.Add(new SearchResult(entry, root));
+                    results.Add(new SearchResult(entry, operation.Origin, root));
                 }
 
                 var cookie = response.Controls
@@ -501,31 +519,33 @@ public class DirectorySearcher : Component
         }
         else
         {
-            var request = BuildRequest();
+            var request = BuildRequestForDn(operation.Origin.DistinguishedName);
             timeLimitBudget.TryApply(request);
-            var response = SendSearch(connection, request);
+            var response = SendSearch(connection, request, operation.Origin.Authority);
             UpdateControlState(response);
             foreach (SearchResultEntry entry in response.Entries)
             {
-                results.Add(new SearchResult(entry, root));
+                results.Add(new SearchResult(entry, operation.Origin, root));
             }
         }
 
         return new SearchResultCollection(results, GetPropertiesLoaded());
     }
 
-    private SearchResultCollection FindAllStreaming(DirectoryEntry root)
+    private SearchResultCollection FindAllStreaming(SearchOperation operation)
     {
         // Use a separate connection because a result collection can outlive the searcher/root,
         // and an in-flight request must not share mutable timeout/referral state with callers.
-        var resultRoot = root.CreateEntryForDn(root.DistinguishedName);
+        var resultRoot = operation.Origin.Copy();
+        var origin = operation.Origin;
         LdapConnection connection;
         SearchRequest request;
         try
         {
-            connection = resultRoot.GetConnection();
+            StreamingRootCreated?.Invoke(resultRoot);
+            connection = resultRoot.GetAuthorityConnection(origin.Authority);
             ConfigureConnection(connection);
-            request = BuildRequest();
+            request = BuildRequestForDn(origin.DistinguishedName);
         }
         catch
         {
@@ -553,7 +573,7 @@ public class DirectorySearcher : Component
                     }
 
                     var response = SendSearchAsynchronously(
-                        connection, request, resultRoot, returnPartialResults, timeout, add, cancellationToken);
+                        connection, request, resultRoot, origin, returnPartialResults, timeout, add, cancellationToken);
                     UpdateControlState(response);
 
                     if (pageControl is null)
@@ -585,6 +605,7 @@ public class DirectorySearcher : Component
         LdapConnection connection,
         SearchRequest request,
         DirectoryEntry resultRoot,
+        SearchResultOrigin origin,
         bool returnPartialResults,
         TimeSpan timeout,
         Action<SearchResult> add,
@@ -601,19 +622,21 @@ public class DirectorySearcher : Component
             {
                 if (item is SearchResultEntry entry && returnedDns.Add(entry.DistinguishedName))
                 {
-                    add(new SearchResult(entry, resultRoot));
+                    add(new SearchResult(entry, origin, resultRoot));
                 }
             }
         }
 
         try
         {
+            origin.Authority.Validate();
             var asyncResult = timeout >= TimeSpan.Zero
                 ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
                 : connection.BeginSendRequest(request, partialMode, null, null);
 
             while (!asyncResult.IsCompleted)
             {
+                origin.Authority.Validate();
                 if (cancellationToken.IsCancellationRequested)
                 {
                     connection.Abort(asyncResult);
@@ -633,6 +656,7 @@ public class DirectorySearcher : Component
                 AddEntries(connection.GetPartialResults(asyncResult));
             }
 
+            origin.Authority.Validate();
             var response = (SearchResponse)connection.EndSendRequest(asyncResult);
             AddEntries(response.Entries);
             return response;
@@ -642,6 +666,7 @@ public class DirectorySearcher : Component
                   partial.ResultCode == ResultCode.SizeLimitExceeded)
         {
             AddEntries(partial.Entries);
+            origin.Authority.Validate();
             return partial;
         }
         catch (LdapException ex) when (ex.ErrorCode == 87)
@@ -658,7 +683,12 @@ public class DirectorySearcher : Component
 
     private SearchRequest BuildRequest()
     {
-        var root = RequireRoot();
+        var reference = _rootReference ?? throw new InvalidOperationException("SearchRoot must be set before searching. Serverless search is not supported on Linux.");
+        return BuildRequestForDn(reference.Authority.Checked(() => reference.Root.DistinguishedName));
+    }
+
+    private SearchRequest BuildRequestForDn(string distinguishedName)
+    {
         // ADSI adds the canonical spelling to nonempty projections, even when
         // another casing is already present. StringCollection is case-sensitive.
         if (PropertiesToLoad.Count > 0 && !PropertiesToLoad.Contains("ADsPath"))
@@ -687,7 +717,7 @@ public class DirectorySearcher : Component
             : Array.Empty<string>();
 
         var request = new SearchRequest(
-            root.DistinguishedName,
+            distinguishedName,
             effectiveFilter,
             ToProtocolScope(SearchScope),
             attributes);
@@ -747,9 +777,10 @@ public class DirectorySearcher : Component
 
     private bool HasAttributeScopeQuery => _attributeScopeQuery.Length > 0;
 
-    private List<SearchResult> FindAttributeScoped(DirectoryEntry root, int maximumResults)
+    private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults)
     {
-        var connection = root.GetConnection();
+        var root = operation.Root;
+        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
         ConfigureConnection(connection);
 
         // Samba accepts ASQ controls for non-DN attributes instead of returning
@@ -758,7 +789,7 @@ public class DirectorySearcher : Component
         AdForLinux.DirectoryServices.Ldap.LdapAttributeSchema
             .EnsureDistinguishedNameAttribute(connection, _attributeScopeQuery);
 
-        var nativeResults = TryNativeAttributeScopeQuery(connection, root, maximumResults);
+        var nativeResults = TryNativeAttributeScopeQuery(connection, operation, maximumResults);
         if (nativeResults is not null)
         {
             return nativeResults;
@@ -768,7 +799,7 @@ public class DirectorySearcher : Component
         // compatibility fallback follows each reference separately. The schema
         // validation above prevents ordinary strings from being treated as DNs.
 
-        var referencedDns = ReadAttributeScopeDns(connection, root.DistinguishedName);
+        var referencedDns = ReadAttributeScopeDns(connection, operation.Origin);
         if (referencedDns.Count == 0 || maximumResults == 0)
         {
             return new List<SearchResult>();
@@ -784,7 +815,7 @@ public class DirectorySearcher : Component
             SearchResponse response;
             try
             {
-                response = SendSearch(connection, request);
+                response = SendSearch(connection, request, operation.Origin.Authority);
             }
             catch (DirectoryServicesCOMException ex)
                 when (ex.ErrorCode == unchecked((int)0x80072030))
@@ -800,7 +831,7 @@ public class DirectorySearcher : Component
                 continue;
             }
 
-            results.Add(new SearchResult(response.Entries[0], root));
+            results.Add(new SearchResult(response.Entries[0], operation.Origin, root));
             if (results.Count >= maximumResults)
             {
                 break;
@@ -812,10 +843,11 @@ public class DirectorySearcher : Component
 
     private List<SearchResult>? TryNativeAttributeScopeQuery(
         LdapConnection connection,
-        DirectoryEntry root,
+        SearchOperation operation,
         int maximumResults)
     {
-        var request = BuildRequest();
+        var root = operation.Root;
+        var request = BuildRequestForDn(operation.Origin.DistinguishedName);
         request.Scope = ProtocolScope.Base;
         if (maximumResults != int.MaxValue)
         {
@@ -830,7 +862,7 @@ public class DirectorySearcher : Component
         SearchResponse response;
         try
         {
-            response = SendSearch(connection, request);
+            response = SendSearch(connection, request, operation.Origin.Authority);
         }
         catch (DirectoryServicesCOMException ex)
             when (ex.ErrorCode == unchecked((int)0x8007202C))
@@ -860,11 +892,11 @@ public class DirectorySearcher : Component
         return response.Entries
             .Cast<SearchResultEntry>()
             .Take(maximumResults)
-            .Select(entry => new SearchResult(entry, root))
+            .Select(entry => new SearchResult(entry, operation.Origin, root))
             .ToList();
     }
 
-    private List<string> ReadAttributeScopeDns(LdapConnection connection, string rootDistinguishedName)
+    private List<string> ReadAttributeScopeDns(LdapConnection connection, SearchResultOrigin origin)
     {
         var values = new List<string>();
         var requestedAttribute = _attributeScopeQuery;
@@ -872,11 +904,11 @@ public class DirectorySearcher : Component
         while (true)
         {
             var request = new SearchRequest(
-                rootDistinguishedName,
+                origin.DistinguishedName,
                 "(objectClass=*)",
                 ProtocolScope.Base,
                 requestedAttribute);
-            var response = SendSearch(connection, request);
+            var response = SendSearch(connection, request, origin.Authority);
             if (response.Entries.Count == 0)
             {
                 break;
@@ -919,18 +951,7 @@ public class DirectorySearcher : Component
         return values;
     }
 
-    private SearchRequest BuildRequest(string distinguishedName)
-    {
-        var request = BuildRequest();
-        request.DistinguishedName = distinguishedName;
-        return request;
-    }
-
-    private DirectoryEntry RequireRoot()
-    {
-        return SearchRoot ?? throw new InvalidOperationException(
-            "SearchRoot must be set before searching. Serverless search is not supported on Linux.");
-    }
+    private SearchRequest BuildRequest(string distinguishedName) => BuildRequestForDn(distinguishedName);
 
 #if NET10_0_OR_GREATER
     private static bool IsStructurallyValidFilter(string filter)
@@ -998,7 +1019,7 @@ public class DirectorySearcher : Component
     }
 #endif
 
-    private SearchResponse SendSearch(LdapConnection connection, SearchRequest request)
+    private SearchResponse SendSearch(LdapConnection connection, SearchRequest request, DirectoryEntry.BindingAuthority authority)
     {
         var originalTimeout = connection.Timeout;
         try
@@ -1008,7 +1029,10 @@ public class DirectorySearcher : Component
                 connection.Timeout = ClientTimeout;
             }
 
-            return (SearchResponse)connection.SendRequest(request);
+            authority.Validate();
+            var response = (SearchResponse)connection.SendRequest(request);
+            authority.Validate();
+            return response;
         }
         catch (DirectoryOperationException ex)
             when (ex.Response is SearchResponse partial &&
@@ -1016,6 +1040,7 @@ public class DirectorySearcher : Component
         {
             // FindOne / SizeLimit ask for fewer results than exist; the server
             // returns what it has plus this code. That is expected, not an error.
+            authority.Validate();
             return partial;
         }
         catch (LdapException ex) when (ex.ErrorCode == 87)
@@ -1034,7 +1059,8 @@ public class DirectorySearcher : Component
 
     private void ConfigureConnection(LdapConnection connection)
     {
-        LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
+        if (ConfigureConnectionOverride is { } configure) configure(connection);
+        else LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
     }
 
     private void UpdateControlState(SearchResponse response)

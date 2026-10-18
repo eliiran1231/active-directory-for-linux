@@ -8,24 +8,30 @@ namespace AdForLinux.FunctionalTests;
 /// </summary>
 public static class TestSettings
 {
+    private static string? ReadLiveSetting(string name)
+    {
+        AdForLinux.DirectoryServices.Ldap.OfflineTestGuard.RequireLiveAccess();
+        return Environment.GetEnvironmentVariable(name);
+    }
+
     public static string Host =>
-        Environment.GetEnvironmentVariable("AD_HOST") ?? "host.docker.internal";
+        ReadLiveSetting("AD_HOST") ?? "host.docker.internal";
 
     public static int Port =>
-        int.TryParse(Environment.GetEnvironmentVariable("AD_PORT"), out var p) ? p : 636;
+        int.TryParse(ReadLiveSetting("AD_PORT"), out var p) ? p : 636;
 
     public static bool UseTls =>
-        (Environment.GetEnvironmentVariable("AD_USE_TLS") ?? "true")
+        (ReadLiveSetting("AD_USE_TLS") ?? "true")
             .Equals("true", StringComparison.OrdinalIgnoreCase);
 
     public static string BindDn =>
-        Environment.GetEnvironmentVariable("AD_BIND_DN") ?? "administrator@samdom.example.com";
+        ReadLiveSetting("AD_BIND_DN") ?? "administrator@samdom.example.com";
 
     public static string BindPassword =>
-        Environment.GetEnvironmentVariable("AD_BIND_PW") ?? "Passw0rd";
+        ReadLiveSetting("AD_BIND_PW") ?? "Passw0rd";
 
     public static string BaseDn =>
-        Environment.GetEnvironmentVariable("AD_BASE_DN") ?? "DC=samdom,DC=example,DC=com";
+        ReadLiveSetting("AD_BASE_DN") ?? "DC=samdom,DC=example,DC=com";
 
     /// <summary>Server name in <c>host:port</c> form, for PrincipalContext.</summary>
     public static string ServerName => $"{Host}:{Port}";

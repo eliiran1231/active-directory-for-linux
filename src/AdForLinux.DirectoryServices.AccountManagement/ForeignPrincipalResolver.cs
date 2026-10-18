@@ -16,24 +16,23 @@ internal static class ForeignPrincipalResolver
 
         return AccountManagementExceptionTranslator.Execute(() =>
         {
-            if (entry.Properties["objectSid"].Value is not byte[] sid)
-            {
-                entry.Dispose();
-                throw new PrincipalOperationException(
-                    "The security identifier for the cross-store group member could not be read.");
-            }
-
-            var issuer = FindIssuerDomain(context, sid);
-            if (issuer is null)
-            {
-                // LookupSid returns no issuer for well-known and genuinely
-                // unknown SIDs. Microsoft's enumerator returns a fake/unknown
-                // principal in that case; retain our store-local wrapper.
-                return new ForeignSecurityPrincipal(context, entry);
-            }
-
             try
             {
+                if (entry.Properties["objectSid"].Value is not byte[] sid)
+                {
+                    throw new PrincipalOperationException(
+                        "The security identifier for the cross-store group member could not be read.");
+                }
+
+                var issuer = FindIssuerDomain(context, sid);
+                if (issuer is null)
+                {
+                    // LookupSid returns no issuer for well-known and genuinely
+                    // unknown SIDs. Microsoft returns a fake/unknown principal;
+                    // this wrapper takes ownership only after construction succeeds.
+                    return new ForeignSecurityPrincipal(context, entry);
+                }
+
                 var remoteContext = context.GetForeignDomainContext(issuer);
                 var principal = Principal.FindByIdentity(
                     remoteContext,

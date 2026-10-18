@@ -30,10 +30,10 @@ public sealed class SecurityRuleValidationComparisonTests
         var actual = Record.Exception(() =>
         {
             if (audit)
-                _ = new Ours.ActiveDirectoryAuditRule(identity, Ours.ActiveDirectoryRights.ReadProperty,
+                _ = new Ours.ActiveDirectoryAuditRule(new AdForLinux.Security.Principal.SecurityIdentifier(identity.Value), Ours.ActiveDirectoryRights.ReadProperty,
                     AuditFlags.Success, (Ours.ActiveDirectorySecurityInheritance)inheritance);
             else
-                _ = new Ours.ActiveDirectoryAccessRule(identity, Ours.ActiveDirectoryRights.ReadProperty,
+                _ = new Ours.ActiveDirectoryAccessRule(new AdForLinux.Security.Principal.SecurityIdentifier(identity.Value), Ours.ActiveDirectoryRights.ReadProperty,
                     AccessControlType.Allow, (Ours.ActiveDirectorySecurityInheritance)inheritance);
         });
 

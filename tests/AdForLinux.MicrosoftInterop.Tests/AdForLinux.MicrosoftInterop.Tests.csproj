@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <ProjectReference Include="../../src/AdForLinux.DirectoryServices.MicrosoftInterop/AdForLinux.DirectoryServices.MicrosoftInterop.csproj" />
+    <ProjectReference Include="../../src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj" />
+    <Compile Include="../AdForLinux.FunctionalTests/SecurityDescriptorFixtures.cs" Link="SecurityDescriptorFixtures.cs" />
+    <Compile Include="../../docs/examples/MicrosoftInteropUsage.cs" Link="MicrosoftInteropUsage.cs" />
+    <Compile Include="../../docs/examples/IdentityResolverUsage.cs" Link="IdentityResolverUsage.cs" />
+    <Compile Include="../Shared/LayoutRelocationCases.cs" Link="LayoutRelocationCases.cs" />
+    <Compile Include="../Shared/IdenticalAssignmentCases.cs" Link="IdenticalAssignmentCases.cs" />
+    <Compile Include="../Shared/DetachedCoverageCases.cs" Link="DetachedCoverageCases.cs" />
+  </ItemGroup>
+</Project>

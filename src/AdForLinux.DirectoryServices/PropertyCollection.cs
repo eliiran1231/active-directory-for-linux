@@ -21,6 +21,13 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
         _validateOwner = validateOwner;
     }
 
+    private volatile bool _revoked;
+    internal PropertyValueCollection[] CachedLedgers => _cachedValues.Values.ToArray();
+    internal void Revoke()
+    {
+        _revoked = true;
+        foreach (var property in _cachedValues.Values) property.Revoke();
+    }
     private Func<PropertyCollection>? _load;
     private readonly Action? _validateOwner;
 
@@ -35,8 +42,13 @@ public class PropertyCollection : IDictionary, IEnumerable<PropertyValueCollecti
     // attributes through a previously created, still-unloaded wrapper.
     internal void MarkLoaded() => _load = null;
 
+    // Read-only evidence must not invoke a deferred load or populate this cache.
+    internal object[] CachedValues(string name) => _byName.TryGetValue(name, out var values)
+        ? values.Select(value => value is byte[] bytes ? (object)bytes.Clone() : value!).ToArray() : [];
+
     internal void EnsureLoaded()
     {
+        if (_revoked) throw new InvalidOperationException("This property cache belongs to a revoked entry binding.");
         if (_load is null) return;
         // Keep the loader on failure so the same wrapper can retry binding.
         var loaded = _load();
