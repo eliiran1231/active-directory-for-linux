@@ -1,47 +1,67 @@
-# Explicit portable identity translation
+# 3. Use portable identities and permissions
 
-Use the approved helper for standalone SID/name lookup with an existing entry or context.
-Normal `DirectoryEntry.ObjectSecurity` operations already use their entry context.
+[Connect](getting-started.md) → [Migrate](migration.md) → Identities and permissions
+
+## Use portable types end to end
+
+`Principal.Sid` returns `AdForLinux.Security.Principal.SecurityIdentifier` and
+works on Linux. `SidValue` is a string convenience. `DirectoryEntry.ObjectSecurity`
+returns a portable `ActiveDirectorySecurity`; use portable rules and identity
+types when reading or changing its permissions.
+
+Microsoft security objects are not interchangeable with these types. Shared
+framework enums such as `AccessControlType` remain in `System.Security.AccessControl`.
+
+## Translate account names with an explicit owner
 
 ```csharp
 using AdForLinux.DirectoryServices;
 using AdForLinux.Security.Principal;
 
-// entry is an existing caller-owned DirectoryEntry.
+// entry is an existing caller-owned, authenticated DirectoryEntry.
 var resolver = DirectoryIdentityResolver.ForEntry(entry);
 var sid = (SecurityIdentifier)resolver.Translate(
     new NTAccount("EXAMPLE", "alice"), typeof(SecurityIdentifier));
 
-// Or borrow an existing PrincipalContext:
+// Or use an existing PrincipalContext:
 var contextResolver = context.CreateIdentityResolver();
 var name = (NTAccount)contextResolver.Translate(sid, typeof(NTAccount));
-
-var inputs = new IdentityReferenceCollection { sid };
-var partial = resolver.Translate(inputs, typeof(NTAccount));
-var complete = resolver.Translate(inputs, typeof(NTAccount), forceSuccess: true);
 ```
 
-Factories perform no connection or lookup. Keep the original owner alive: the helper holds
-a weak revocable binding. Cross-kind operations borrow that owner's existing configuration
-for an operation-local checked session. Closing, rebinding, refreshing the entry descriptor
-or disposing the owner invalidates cross-kind use; reacquire a helper explicitly afterward.
-Same-kind conversion and empty collections remain offline, even after revocation.
+Creating a resolver performs no lookup. Keep its entry/context alive. Reacquire
+it after closing or rebinding the owner, refreshing the entry's descriptor, or
+otherwise invalidating its binding. Returned identities are data: they do not
+carry credentials or inherit that resolver through their own `Translate` method.
 
-The collection overload preserves input order and takes a snapshot. Its default
-`forceSuccess=false` retains unmapped input identities in their original positions;
-`true` throws `IdentityNotMappedException` containing the unmapped inputs. The single-value
-overload throws for an unmapped identity. Transport, timeout, ambiguity and lifetime failures
-propagate instead of masquerading as unmapped results.
+A single missing identity throws `IdentityNotMappedException`. For collections,
+`resolver.Translate(identities, targetType)` leaves unmapped values in place;
+use `forceSuccess: true` if every identity must resolve. Connection, timeout and
+lifetime failures still throw, so they cannot be mistaken for a missing account.
 
-Returned identities contain data only. Their own `Translate(Type)` method does not inherit
-this helper, and identity/descriptor copies or Microsoft export do not carry resolver access,
-credentials or connection ownership. The sealed helper has no public constructor, credential
-options, provider interface or public `Bind` operation.
+Lookup is scoped to the owner's verified domain. Name-to-SID lookup requires
+explicit authenticated credentials. Global Catalog and cross-forest/trust routing
+are not supported by this helper.
 
-The existing verified single-domain boundary remains: GC/cross-forest routing, foreign
-issuing-domain lookup and ambient name-to-SID mutation without identity proof are not enabled.
-Name-to-SID translation still requires explicit authenticated owner credentials. This helper
-does not select authentication modes or weaken TLS, signing, sealing or referral policy.
+## Change permissions without discarding unrelated data
 
-[Compiled public consumer example](examples/IdentityResolverUsage.cs) ·
-[Current identity boundaries](implementation/issue-226-identity-next.md)
+Read `entry.ObjectSecurity`, edit it using the portable rule APIs, then use
+`entry.CommitChanges()` to persist cached changes. Request the security sections
+you need through `entry.Options.SecurityMasks`; reading or writing the SACL may
+require additional directory privileges.
+
+The library preserves unrelated descriptor data. An edit or export can be refused
+when it cannot safely preserve an unusual descriptor. Do not work around such a
+refusal by replacing the entire ACL with an empty or newly constructed descriptor:
+that can change permissions unrelated to your intended edit.
+
+Validate permission changes on a disposable object and read them back before
+rolling them out. Offline compatibility tests do not establish your server's
+inheritance behavior, privileges, or creation defaults.
+
+## If a Windows consumer still needs Microsoft objects
+
+The optional Windows-only [MicrosoftInterop companion](../src/AdForLinux.DirectoryServices.MicrosoftInterop/README.md)
+exports independent copies. It cannot import Microsoft edits or apply them back.
+Keep directory edits on the portable side and export only at that integration boundary.
+
+[Compiled identity example](examples/IdentityResolverUsage.cs) · [Limitations](limitations.md)
