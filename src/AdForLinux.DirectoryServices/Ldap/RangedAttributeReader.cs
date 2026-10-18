@@ -15,7 +15,10 @@ internal static class RangedAttributeReader
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentException.ThrowIfNullOrWhiteSpace(attributeName);
 
-        using var lease = entry.AcquireConnection();
+        var generation = entry.IdentityLifetime.Capture(entry.ThrowIfDisposed);
+        void Validate() => entry.IdentityLifetime.Checked(generation, entry.ThrowIfDisposed, () => true);
+        var distinguishedName = entry.IdentityLifetime.Checked(generation, entry.ThrowIfDisposed, () => entry.DistinguishedName);
+        using var lease = entry.AcquireConnection(Validate);
         var values = new List<object>();
         var nextStart = 0;
 
@@ -23,11 +26,13 @@ internal static class RangedAttributeReader
         {
             var requestedName = $"{attributeName};range={nextStart}-*";
             var request = new SearchRequest(
-                entry.DistinguishedName,
+                distinguishedName,
                 "(objectClass=*)",
                 ProtocolScope.Base,
                 requestedName);
+            Validate();
             var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
+            Validate();
             if (response.Entries.Count == 0)
             {
                 return values;
@@ -43,6 +48,7 @@ internal static class RangedAttributeReader
             }
 
             AddValues(entry.SchemaConnectionForOperation(lease.Connection), returned.Value.Attribute, attributeName, values);
+            Validate();
             if (returned.Value.IsTerminal)
             {
                 return values;

@@ -31,6 +31,7 @@ public class ConnectionPoolOperationTests
         internal readonly List<Connection> Connections = [];
         internal readonly List<DirectoryRequest> Requests = [];
         internal Exception? Failure;
+        internal Action<DirectoryRequest>? OnRequest;
         internal Fixture(int capacity = 1) => Pool = new(capacity, capacity, startTimer: false,
             acquisitionTimeout: TimeSpan.FromMilliseconds(100));
         internal Entry Entry(string name = "first")
@@ -52,6 +53,7 @@ public class ConnectionPoolOperationTests
                 var connection = Connection.Create(request =>
                 {
                     Requests.Add(request);
+                    OnRequest?.Invoke(request);
                     if (Failure is { } failure) throw failure;
                     var search = Assert.IsType<SearchRequest>(request);
                     return Response(search.DistinguishedName ?? string.Empty,
@@ -187,6 +189,16 @@ public class ConnectionPoolOperationTests
         fixture.Failure = new DirectoryOperationException(Response("CN=first", [], ResultCode.InsufficientAccessRights));
         Assert.ThrowsAny<System.Runtime.InteropServices.COMException>(() => search.FindAll());
         Assert.Equal(1, fixture.Pool.Snapshot.Total); Assert.Equal(0, fixture.Connections[0].Disposals);
+    }
+
+    [Fact]
+    public void Ranged_read_rejects_rebind_during_request_before_publishing_values()
+    {
+        using var fixture = new Fixture(); using var entry = fixture.Entry();
+        fixture.OnRequest = _ => entry.Username = "different reader";
+        Assert.Throws<InvalidOperationException>(() => RangedAttributeReader.Read(entry, "description"));
+        Assert.Single(fixture.Requests);
+        Assert.Equal(0, fixture.Pool.Snapshot.Waiting);
     }
 
 }
