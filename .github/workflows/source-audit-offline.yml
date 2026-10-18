@@ -1,5 +1,7 @@
 name: Source audit offline
 on:
+  pull_request:
+    branches: [dev]
   push:
     branches: [fix/audit-property-replacement-date-filters, audit/security-quality, dev]
 permissions:

@@ -1,0 +1,312 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.DirectoryServices.Protocols;
+using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.Ldap;
+using Xunit;
+
+namespace AdForLinux.FunctionalTests;
+
+public class ConnectionPoolTests
+{
+    private sealed class Resource : IDisposable
+    {
+        internal int Disposals;
+        internal int Users;
+        internal Action? OnDispose;
+        public void Dispose() { Interlocked.Increment(ref Disposals); OnDispose?.Invoke(); }
+    }
+    private sealed class Clock : TimeProvider
+    {
+        private long ticks;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref ticks);
+        internal void Advance(int seconds) => Interlocked.Add(ref ticks, TimeSpan.FromSeconds(seconds).Ticks);
+    }
+    private static BoundedConnectionPool<string, Resource> Pool(int perKey = 1, int total = 2, Clock? clock = null,
+        TimeSpan? timeout = null) => new(perKey, total, clock: clock, acquisitionTimeout: timeout, startTimer: false);
+    private static Task<T> Start<T>(Func<T> operation) => Task.Factory.StartNew(operation,
+        CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+    private static void Until(Func<bool> condition) => Assert.True(SpinWait.SpinUntil(condition, TimeSpan.FromSeconds(10)));
+
+    [Fact]
+    public void Reuses_exclusively_and_double_return_is_harmless()
+    {
+        using var pool = Pool();
+        var first = pool.Acquire("directory", () => new Resource());
+        var resource = first.Value;
+        first.Dispose(); first.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => first.Value);
+        using var second = pool.Acquire("directory", () => throw new Exception("Unexpected creation"));
+        Assert.Same(resource, second.Value);
+        Assert.Equal(1, pool.Snapshot.Total);
+        Assert.Equal(1, pool.Snapshot.Reused);
+    }
+
+    [Fact]
+    public void Idle_age_starts_at_return_and_active_connections_do_not_expire()
+    {
+        var clock = new Clock();
+        using var pool = Pool(clock: clock);
+        var first = pool.Acquire("directory", () => new Resource());
+        var resource = first.Value;
+        clock.Advance(600); pool.Sweep();
+        Assert.Equal(0, resource.Disposals);
+        first.Dispose(); clock.Advance(59); pool.Sweep();
+        var second = pool.Acquire("directory", () => throw new Exception("Unexpected creation"));
+        Assert.Same(resource, second.Value);
+        second.Dispose(); clock.Advance(59); pool.Sweep();
+        Assert.Equal(0, resource.Disposals);
+        clock.Advance(1); pool.Sweep();
+        Assert.Equal(1, resource.Disposals);
+        Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public void Acquire_rejects_expired_idle_without_waiting_for_sweep()
+    {
+        var clock = new Clock();
+        using var pool = Pool(clock: clock);
+        var first = pool.Acquire("directory", () => new Resource());
+        var old = first.Value; first.Dispose(); clock.Advance(60);
+        using var second = pool.Acquire("directory", () => new Resource());
+        Assert.NotSame(old, second.Value); Assert.Equal(1, old.Disposals);
+    }
+
+    [Fact]
+    public async Task Capacity_waiter_receives_returned_connection_without_extra_creation()
+    {
+        using var pool = Pool();
+        var first = pool.Acquire("directory", () => new Resource());
+        var old = first.Value;
+        var waiting = Start(() => pool.Acquire("directory", () => throw new Exception("Cap exceeded")));
+        Until(() => pool.Snapshot.Waiting == 1);
+        Assert.Equal(1, pool.Snapshot.Total);
+        first.Dispose();
+        using var second = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Same(old, second.Value);
+    }
+
+    [Fact]
+    public async Task Cancelled_waiter_has_no_key_or_reservation_and_does_not_consume_a_return()
+    {
+        using var pool = Pool(total: 1);
+        using var first = pool.Acquire("first", () => new Resource());
+        using var cancellation = new CancellationTokenSource();
+        var waiting = Start(() => pool.Acquire("second", () => new Resource(), cancellation.Token));
+        Until(() => pool.Snapshot.Waiting == 1);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await waiting);
+        Assert.Equal(1, pool.Snapshot.Total); Assert.Equal(1, pool.Snapshot.Keys); Assert.Equal(0, pool.Snapshot.Waiting);
+    }
+
+    [Fact]
+    public void Timeout_is_bounded_and_does_not_allocate()
+    {
+        using var pool = Pool(timeout: TimeSpan.FromMilliseconds(30));
+        using var first = pool.Acquire("directory", () => new Resource());
+        Assert.Throws<TimeoutException>(() => pool.Acquire("directory", () => throw new Exception("Cap exceeded")));
+        Assert.Equal(1, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Waiting);
+    }
+
+    [Fact]
+    public void Global_capacity_reclaims_incompatible_idle_keys()
+    {
+        using var pool = Pool(total: 1);
+        var first = pool.Acquire("first", () => new Resource());
+        var old = first.Value; first.Dispose();
+        using var second = pool.Acquire("second", () => new Resource());
+        Assert.Equal(1, old.Disposals); Assert.Equal(1, pool.Snapshot.Total); Assert.Equal(1, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public void Failed_initialization_and_invalidated_returns_release_capacity()
+    {
+        using var pool = Pool();
+        Assert.Throws<InvalidOperationException>(() => pool.Acquire("directory", () => throw new InvalidOperationException()));
+        Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Keys);
+        var lease = pool.Acquire("directory", () => new Resource());
+        var old = lease.Value; lease.Invalidate(); lease.Dispose();
+        Assert.Equal(1, old.Disposals); Assert.Equal(0, pool.Snapshot.Total);
+        using var next = pool.Acquire("directory", () => new Resource()); Assert.NotSame(old, next.Value);
+    }
+
+    [Fact]
+    public async Task Creation_reservation_counts_toward_caps_and_shutdown_rejects_late_creation()
+    {
+        using var pool = Pool(total: 1);
+        using var entered = new ManualResetEventSlim(); using var finish = new ManualResetEventSlim();
+        var resource = new Resource();
+        var creation = Start(() => pool.Acquire("directory", () => { entered.Set(); Assert.True(finish.Wait(10000)); return resource; }));
+        Assert.True(entered.Wait(10000)); Assert.Equal(1, pool.Snapshot.Total);
+        var waiting = Start(() => pool.Acquire("other", () => new Resource()));
+        Until(() => pool.Snapshot.Waiting == 1);
+        pool.Dispose(); finish.Set();
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await creation);
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await waiting);
+        Assert.Equal(1, resource.Disposals); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public async Task Cancelled_creation_disposes_before_releasing_its_reservation()
+    {
+        using var pool = Pool(total: 1); using var token = new CancellationTokenSource();
+        using var entered = new ManualResetEventSlim(); using var finish = new ManualResetEventSlim();
+        var resource = new Resource();
+        var task = Start(() => pool.Acquire("directory", () => { entered.Set(); Assert.True(finish.Wait(10000)); return resource; }, token.Token));
+        Assert.True(entered.Wait(10000)); token.Cancel(); finish.Set();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await task);
+        Assert.Equal(1, resource.Disposals); Assert.Equal(0, pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public void Shutdown_drains_idle_and_defers_active_disposal_until_return()
+    {
+        var pool = Pool(perKey: 2);
+        var first = pool.Acquire("directory", () => new Resource());
+        var second = pool.Acquire("directory", () => new Resource());
+        var idle = first.Value; var active = second.Value; first.Dispose();
+        pool.Dispose(); pool.Dispose();
+        Assert.Equal(1, idle.Disposals); Assert.Equal(0, active.Disposals);
+        Assert.Throws<ObjectDisposedException>(() => pool.Acquire("directory", () => new Resource()));
+        second.Dispose(); Assert.Equal(1, active.Disposals); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public void Disposal_failure_does_not_leak_capacity()
+    {
+        using var pool = Pool();
+        var lease = pool.Acquire("directory", () => new Resource { OnDispose = () => throw new Exception("Synthetic disposal failure") });
+        lease.Invalidate(); lease.Dispose();
+        Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(1, pool.Snapshot.Failures);
+    }
+
+    [Fact]
+    public async Task Adversarial_acquire_return_sweep_and_shutdown_never_share_or_double_dispose()
+    {
+        var clock = new Clock(); using var pool = Pool(perKey: 3, total: 5, clock: clock);
+        var resources = new ConcurrentBag<Resource>();
+        var workers = Enumerable.Range(0, 12).Select(worker => Start(() =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                try
+                {
+                    using var lease = pool.Acquire("directory-" + worker % 3, () => { var value = new Resource(); resources.Add(value); return value; });
+                    var value = lease.Value;
+                    Assert.Equal(1, Interlocked.Increment(ref value.Users));
+                    Assert.Equal(0, value.Disposals); Assert.InRange(pool.Snapshot.Total, 1, 5);
+                    Thread.Yield();
+                    Assert.Equal(0, Interlocked.Decrement(ref value.Users));
+                    if (i % 7 == 0) lease.Invalidate();
+                }
+                catch (ObjectDisposedException) { break; }
+                if (i % 11 == 0) { clock.Advance(60); pool.Sweep(); }
+            }
+            return true;
+        })).ToArray();
+        await Task.WhenAll(workers).WaitAsync(TimeSpan.FromSeconds(30));
+        pool.Dispose();
+        Assert.All(resources, value => Assert.Equal(1, value.Disposals));
+        Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public void Key_isolates_every_setting_and_has_no_entry_identifier()
+    {
+        static LdapConnectionProvider.ConnectionKey Key(LdapConnectionOptions options) => LdapConnectionProvider.ConnectionKey.Create(options, ReferralChasingOption.None);
+        var original = new LdapConnectionOptions { Host = "directory.example", BindDn = "reader", BindPassword = "first password" };
+        Assert.Equal(Key(original), Key(original.Clone()));
+        var alternatives = new[]
+        {
+            new LdapConnectionOptions { Host = "another.example", BindDn = "reader", BindPassword = "first password" },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "second password" },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "another reader", BindPassword = "first password" },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", Port = 389 },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", UseSsl = false },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", UseStartTls = true },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", SkipCertificateCheck = true },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", AuthenticationType = AuthType.Negotiate },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", Signing = true },
+            new LdapConnectionOptions { Host = original.Host, BindDn = "reader", BindPassword = "first password", Sealing = true },
+            original.Clone(timeout: TimeSpan.FromSeconds(20)),
+        };
+        Assert.All(alternatives, alternative => Assert.NotEqual(Key(original), Key(alternative)));
+        Assert.NotEqual(Key(original), LdapConnectionProvider.ConnectionKey.Create(original, ReferralChasingOption.All));
+        Assert.DoesNotContain("reader", Key(original).ToString());
+        Assert.DoesNotContain("password", Key(original).ToString());
+        Assert.DoesNotContain(original.Host, Key(original).ToString());
+    }
+
+    [Fact]
+    public void Only_explicit_basic_credentials_are_reusable()
+    {
+        Assert.True(LdapConnectionProvider.CanReuse(new() { Host = "directory.example", BindDn = "reader", BindPassword = "password" }));
+        foreach (var auth in Enum.GetValues<AuthType>().Where(auth => auth != AuthType.Basic))
+            Assert.False(LdapConnectionProvider.CanReuse(new() { Host = "directory.example", AuthenticationType = auth, BindDn = "reader", BindPassword = "password" }));
+        Assert.False(LdapConnectionProvider.CanReuse(new() { Host = "directory.example" }));
+        Assert.False(LdapConnectionProvider.CanReuse(new() { Host = "directory.example", BindDn = "reader", BindPassword = "" }));
+    }
+
+    [Fact]
+    public void Nonreusable_lease_is_destroyed_even_after_success()
+    {
+        using var pool = Pool();
+        var lease = pool.Acquire("directory", () => new Resource(), reusable: false);
+        var value = lease.Value; lease.Dispose(); Assert.Equal(1, value.Disposals); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public async Task Shutdown_races_with_return_sweep_and_blocked_acquisition()
+    {
+        for (var round = 0; round < 25; round++)
+        {
+            var clock = new Clock(); using var pool = Pool(clock: clock, total: 1);
+            var lease = pool.Acquire("directory", () => new Resource()); var value = lease.Value;
+            using var start = new ManualResetEventSlim();
+            var waiter = Start(() =>
+            {
+                start.Wait();
+                try { using var next = pool.Acquire("directory", () => new Resource()); }
+                catch (ObjectDisposedException) { }
+                return true;
+            });
+            var returning = Start(() => { start.Wait(); lease.Dispose(); lease.Dispose(); return true; });
+            var sweep = Start(() => { start.Wait(); clock.Advance(60); pool.Sweep(); return true; });
+            var shutdown = Start(() => { start.Wait(); pool.Dispose(); return true; });
+            start.Set();
+            await Task.WhenAll(waiter, returning, sweep, shutdown).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(1, value.Disposals); Assert.Equal(0, pool.Snapshot.Total);
+        }
+    }
+
+    [Fact]
+    public async Task Destruction_keeps_capacity_reserved_until_physical_disposal_finishes()
+    {
+        using var pool = Pool(total: 1);
+        using var entered = new ManualResetEventSlim(); using var finish = new ManualResetEventSlim();
+        var lease = pool.Acquire("directory", () => new Resource { OnDispose = () => { entered.Set(); Assert.True(finish.Wait(10000)); } });
+        lease.Invalidate(); var disposing = Start(() => { lease.Dispose(); return true; });
+        Assert.True(entered.Wait(10000));
+        var acquiring = Start(() => pool.Acquire("other", () => new Resource()));
+        Until(() => pool.Snapshot.Waiting == 1); Assert.Equal(1, pool.Snapshot.Total);
+        finish.Set(); await disposing;
+        using var next = await acquiring.WaitAsync(TimeSpan.FromSeconds(10)); Assert.Equal(1, pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public void Ordinary_ldap_rejections_preserve_health_and_transport_failures_do_not()
+    {
+        static DirectoryOperationException Failure(ResultCode result) => new((SearchResponse)Activator.CreateInstance(
+            typeof(SearchResponse), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            null, new object?[] { null, Array.Empty<DirectoryControl>(), result, null, Array.Empty<Uri>() }, null)!);
+        foreach (var result in new[] { ResultCode.InsufficientAccessRights, ResultCode.NoSuchObject, ResultCode.ConstraintViolation })
+        {
+            Assert.False(LdapConnectionProvider.IsConnectionFailure(Failure(result)));
+            Assert.False(LdapConnectionProvider.IsConnectionFailure(LdapExceptionTranslator.Translate(Failure(result))));
+        }
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new LdapException(81)));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(Failure(ResultCode.Unavailable)));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new OperationCanceledException()));
+    }
+}
