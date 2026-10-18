@@ -19,23 +19,74 @@ internal static class LdapConnectionProvider
         options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
         !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword);
 
-    internal static Session Acquire(LdapConnectionOptions options, CancellationToken cancellationToken = default)
+    internal static long NewGeneration() => Pool.NewGeneration();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<LdapConnection, Session> Active = new();
+
+    internal static Session Acquire(LdapConnectionOptions options, CancellationToken cancellationToken = default,
+        ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
+        => AcquireBatch(options, 1, cancellationToken, referrals, preferFresh, minimumGeneration)[0];
+
+    internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
+        ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
     {
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
-        var reusable = CanReuse(snapshot);
-        // Sharing an accounting key never shares an authentication session when reuse is disabled.
-        var key = ConnectionKey.Create(snapshot, ReferralChasingOption.None);
-        var lease = Pool.Acquire(key, () =>
+        // Referral targets can retain native authentication/session state that the
+        // managed API cannot inspect or reset. Bound their handles but do not reuse.
+        var reusable = CanReuse(snapshot) && referrals == ReferralChasingOption.None;
+        var key = ConnectionKey.Create(snapshot, referrals);
+        var leases = Pool.AcquireBatch(key, count, () =>
         {
             var connection = LdapConnectionFactory.Create(snapshot);
             return LdapConnectionFactory.ConfigureOwned(connection, value =>
             {
-                LdapConnectionFactory.ConfigureReferralChasing(value, ReferralChasingOption.None);
+                LdapConnectionFactory.ConfigureReferralChasing(value, referrals);
                 value.Bind();
             });
-        }, cancellationToken, reusable);
-        return new Session(lease);
+        }, cancellationToken, reusable, preferFresh, minimumGeneration);
+        return leases.Select(lease => new Session(lease)).ToArray();
+    }
+
+    internal static Session AcquireValidation(LdapConnectionOptions options)
+    {
+        OfflineTestGuard.RequireLiveAccess();
+        var snapshot = options.Clone();
+        // Validation must perform the original fresh bind, even when a healthy
+        // session for exactly these credentials is idle. It still consumes capacity.
+        return new Session(Pool.Acquire(ConnectionKey.Create(snapshot, ReferralChasingOption.All),
+            () => LdapConnectionFactory.CreateBound(snapshot), reusable: false));
+    }
+
+    internal static Session[] AcquirePair(LdapConnectionOptions first, LdapConnectionOptions second,
+        Func<TimeSpan> remaining, CancellationToken cancellationToken)
+    {
+        OfflineTestGuard.RequireLiveAccess();
+        var requests = new[] { first.Clone(), second.Clone() }.Select(snapshot =>
+            new BoundedConnectionPool<ConnectionKey, LdapConnection>.Request(
+                ConnectionKey.Create(snapshot, ReferralChasingOption.None), () =>
+                {
+                    // The key uses stable configuration; the current deadline limits
+                    // this bind only and never fragments the pool into timeout keys.
+                    var connection = LdapConnectionFactory.Create(snapshot.Clone(remaining()));
+                    return LdapConnectionFactory.ConfigureOwned(connection, value =>
+                    {
+                        LdapConnectionFactory.ConfigureReferralChasing(value, ReferralChasingOption.None);
+                        value.Bind();
+                        value.Timeout = snapshot.Timeout;
+                    });
+                }, CanReuse(snapshot))).ToArray();
+        return Pool.AcquireMany(requests, cancellationToken).Select(lease => new Session(lease)).ToArray();
+    }
+
+    internal static void ReportFailure(LdapConnection connection, Exception error)
+    {
+        if (IsConnectionFailure(error) && Active.TryGetValue(connection, out var session)) session.Invalidate();
+    }
+
+    internal static DirectoryResponse SendRequestTracked(this LdapConnection connection, DirectoryRequest request)
+    {
+        try { return connection.SendRequest(request); }
+        catch (Exception error) { ReportFailure(connection, error); throw; }
     }
 
     internal static TResult Execute<TResult>(LdapConnectionOptions options, Func<LdapConnection, TResult> operation)
@@ -44,18 +95,26 @@ internal static class LdapConnectionProvider
         return session.Execute(operation);
     }
 
-    internal sealed class Session(BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease) : IDisposable
+    internal sealed class Session : IDisposable
     {
+        private readonly BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease;
+        private readonly LdapConnection connection;
+        private int disposed;
+        internal Session(BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease)
+        { this.lease = lease; connection = lease.Value; Active.Add(connection, this); }
+        internal LdapConnection Connection => lease.Value;
+        internal void Invalidate() => lease.Invalidate();
         internal TResult Execute<TResult>(Func<LdapConnection, TResult> operation)
         {
             try { return operation(lease.Value); }
-            catch (Exception error)
-            {
-                if (IsConnectionFailure(error)) lease.Invalidate();
-                throw;
-            }
+            catch (Exception error) { ReportFailure(connection, error); throw; }
         }
-        public void Dispose() => lease.Dispose();
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+            Active.Remove(connection);
+            lease.Dispose();
+        }
     }
 
     internal static bool IsConnectionFailure(Exception error)

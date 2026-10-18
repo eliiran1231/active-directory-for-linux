@@ -6,7 +6,7 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
     internal sealed class Bucket
     {
         internal int Count;
-        internal readonly List<(T Value, long Returned)> Idle = [];
+        internal readonly List<(T Value, long Returned, long Created)> Idle = [];
     }
 
     private readonly object gate = new();
@@ -17,6 +17,8 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
     private readonly ITimer? timer;
     private int total, waiting;
     private bool disposed;
+    private long generation;
+    internal long NewGeneration() { lock (gate) return ++generation; }
     private long created, reused, destroyed, failures, waits, timeouts;
 
     internal BoundedConnectionPool(int perKeyLimit = 8, int totalLimit = 64,
@@ -41,47 +43,88 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
         get { lock (gate) return (total, buckets.Count, waiting, created, reused, destroyed, failures, waits, timeouts); }
     }
 
-    internal Lease Acquire(TKey key, Func<T> create, CancellationToken cancellationToken = default, bool reusable = true)
+    internal Lease Acquire(TKey key, Func<T> create, CancellationToken cancellationToken = default,
+        bool reusable = true, bool preferFresh = false, long minimumGeneration = 0)
+        => AcquireBatch(key, 1, create, cancellationToken, reusable, preferFresh, minimumGeneration)[0];
+
+    // Reserve an entire operation before creating any handles. A streaming request
+    // and its concurrent schema reader must never each hold one slot while waiting
+    // for the other's slot. A configuration too small for the operation fails early.
+    internal Lease[] AcquireBatch(TKey key, int count, Func<T> create,
+        CancellationToken cancellationToken = default, bool reusable = true, bool preferFresh = false, long minimumGeneration = 0)
     {
-        ArgumentNullException.ThrowIfNull(create);
+        if (count < 1) throw new ArgumentOutOfRangeException(nameof(count));
+        return AcquireMany(Enumerable.Range(0, count).Select(_ =>
+            new Request(key, create, reusable, preferFresh, minimumGeneration)).ToArray(), cancellationToken);
+    }
+
+    internal sealed record Request(TKey Key, Func<T> Create, bool Reusable = true,
+        bool PreferFresh = false, long MinimumGeneration = 0);
+
+    // Multiple endpoints use the same atomic admission as a streaming pair. No
+    // operation holds a partial reservation while waiting for another endpoint.
+    internal Lease[] AcquireMany(IReadOnlyList<Request> requests, CancellationToken cancellationToken = default)
+    {
+        if (requests.Count == 0) throw new ArgumentException("An operation must request at least one connection.", nameof(requests));
+        foreach (var request in requests) ArgumentNullException.ThrowIfNull(request.Create);
+        var groups = requests.GroupBy(request => request.Key).ToDictionary(group => group.Key, group => group.ToArray());
+        if (requests.Count > totalLimit || groups.Values.Any(group => group.Length > perKeyLimit))
+            throw new InvalidOperationException("The configured LDAP connection capacity cannot accommodate this operation.");
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         using var registration = cancellationToken.Register(() => { lock (gate) Monitor.PulseAll(gate); });
         while (true)
         {
-            Bucket? reserved = null;
+            List<(Request Request, Bucket Bucket, T? Value, long Born)>? reserved = null;
             (TKey Key, Bucket Bucket, T Value)? retire = null;
             lock (gate)
             {
                 ObjectDisposedException.ThrowIf(disposed, this);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (elapsed.Elapsed >= acquisitionTimeout) { timeouts++; throw new TimeoutException("LDAP connection acquisition timed out."); }
-                buckets.TryGetValue(key, out var bucket);
-                if (reusable && bucket is not null && bucket.Idle.Count > 0)
+                foreach (var group in groups)
                 {
-                    var item = bucket.Idle[^1];
-                    bucket.Idle.RemoveAt(bucket.Idle.Count - 1);
-                    if (clock.GetElapsedTime(item.Returned) < idleTimeout)
+                    if (!buckets.TryGetValue(group.Key, out var bucket)) continue;
+                    var fresh = group.Value.Any(request => !request.Reusable || request.PreferFresh);
+                    var minimum = group.Value.Max(request => request.MinimumGeneration);
+                    var index = bucket.Idle.FindIndex(item => fresh || item.Created < minimum || clock.GetElapsedTime(item.Returned) >= idleTimeout);
+                    if (index < 0) continue;
+                    var item = bucket.Idle[index]; bucket.Idle.RemoveAt(index);
+                    retire = (group.Key, bucket, item.Value); break;
+                }
+                if (retire is null)
+                {
+                    var missing = groups.ToDictionary(group => group.Key, group =>
+                        Math.Max(0, group.Value.Length - (buckets.GetValueOrDefault(group.Key)?.Idle.Count ?? 0)));
+                    var keyCapacity = missing.All(pair => (buckets.GetValueOrDefault(pair.Key)?.Count ?? 0) + pair.Value <= perKeyLimit);
+                    if (keyCapacity && total + missing.Values.Sum() <= totalLimit)
                     {
-                        reused++;
-                        return new Lease(this, key, bucket, item.Value, true);
+                        reserved = [];
+                        foreach (var request in requests)
+                        {
+                            if (!buckets.TryGetValue(request.Key, out var bucket)) buckets.Add(request.Key, bucket = new Bucket());
+                            if (bucket.Idle.Count > 0)
+                            {
+                                var item = bucket.Idle[^1]; bucket.Idle.RemoveAt(bucket.Idle.Count - 1);
+                                reserved.Add((request, bucket, item.Value, item.Created)); reused++;
+                            }
+                            else
+                            {
+                                bucket.Count++; total++;
+                                reserved.Add((request, bucket, null, 0));
+                            }
+                        }
                     }
-                    retire = (key, bucket, item.Value);
-                }
-                else if ((bucket?.Count ?? 0) < perKeyLimit && total < totalLimit)
-                {
-                    if (bucket is null) buckets.Add(key, bucket = new Bucket());
-                    bucket.Count++; total++; reserved = bucket;
-                }
-                else if (total >= totalLimit)
-                {
-                    // An incompatible idle key must not monopolize global capacity.
-                    foreach (var pair in buckets)
+                    else if (keyCapacity)
                     {
-                        if (pair.Value.Idle.Count == 0) continue;
-                        var item = pair.Value.Idle[0];
-                        pair.Value.Idle.RemoveAt(0);
-                        retire = (pair.Key, pair.Value, item.Value);
-                        break;
+                        // Evict only capacity that can help this acquisition, retaining
+                        // the idle handles already needed by its requested endpoints.
+                        foreach (var pair in buckets)
+                        {
+                            var needed = groups.TryGetValue(pair.Key, out var group) ? group.Length : 0;
+                            if (pair.Value.Idle.Count <= needed) continue;
+                            var item = pair.Value.Idle[0]; pair.Value.Idle.RemoveAt(0);
+                            retire = (pair.Key, pair.Value, item.Value); break;
+                        }
                     }
                 }
                 if (reserved is null && retire is null)
@@ -96,23 +139,37 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
             }
             if (retire is { } victim) Destroy(victim.Key, victim.Bucket, victim.Value);
             if (reserved is null) continue;
-            T value;
-            try { value = create(); }
+            try
+            {
+                for (var i = 0; i < reserved.Count; i++)
+                {
+                    var item = reserved[i];
+                    if (item.Value is not null) continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    long born;
+                    lock (gate) born = ++generation;
+                    var value = item.Request.Create();
+                    reserved[i] = (item.Request, item.Bucket, value, born);
+                    lock (gate) created++;
+                }
+                lock (gate)
+                {
+                    ObjectDisposedException.ThrowIf(disposed, this);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return reserved.Select(item => new Lease(this, item.Request.Key, item.Bucket,
+                        item.Value!, item.Born, item.Request.Reusable)).ToArray();
+                }
+            }
             catch
             {
-                lock (gate) { failures++; ReleaseReservation(key, reserved); }
+                lock (gate)
+                {
+                    failures++;
+                    foreach (var item in reserved.Where(item => item.Value is null)) ReleaseReservation(item.Request.Key, item.Bucket);
+                }
+                foreach (var item in reserved.Where(item => item.Value is not null)) Destroy(item.Request.Key, item.Bucket, item.Value!);
                 throw;
             }
-            bool reject;
-            lock (gate)
-            {
-                created++;
-                reject = disposed || cancellationToken.IsCancellationRequested;
-                if (!reject) return new Lease(this, key, reserved, value, reusable);
-            }
-            Destroy(key, reserved, value);
-            cancellationToken.ThrowIfCancellationRequested();
-            throw new ObjectDisposedException(nameof(BoundedConnectionPool<TKey, T>));
         }
     }
 
@@ -135,13 +192,13 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
         foreach (var item in expired) Destroy(item.Key, item.Bucket, item.Value);
     }
 
-    private void Return(TKey key, Bucket bucket, T value, bool reusable)
+    private void Return(TKey key, Bucket bucket, T value, long born, bool reusable)
     {
         lock (gate)
         {
             if (!disposed && reusable)
             {
-                bucket.Idle.Add((value, clock.GetTimestamp()));
+                bucket.Idle.Add((value, clock.GetTimestamp(), born));
                 Monitor.PulseAll(gate);
                 return;
             }
@@ -177,11 +234,12 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
         private readonly TKey key;
         private readonly Bucket bucket;
         private readonly T value;
+        private readonly long born;
         private int reusable;
-        internal Lease(BoundedConnectionPool<TKey, T> owner, TKey key, Bucket bucket, T value, bool reusable)
-        { this.owner = owner; this.key = key; this.bucket = bucket; this.value = value; this.reusable = reusable ? 1 : 0; }
+        internal Lease(BoundedConnectionPool<TKey, T> owner, TKey key, Bucket bucket, T value, long born, bool reusable)
+        { this.owner = owner; this.key = key; this.bucket = bucket; this.value = value; this.born = born; this.reusable = reusable ? 1 : 0; }
         internal T Value => Volatile.Read(ref owner) is not null ? value : throw new ObjectDisposedException(nameof(Lease));
         internal void Invalidate() => Interlocked.Exchange(ref reusable, 0);
-        public void Dispose() => Interlocked.Exchange(ref owner, null)?.Return(key, bucket, value, Volatile.Read(ref reusable) != 0);
+        public void Dispose() => Interlocked.Exchange(ref owner, null)?.Return(key, bucket, value, born, Volatile.Read(ref reusable) != 0);
     }
 }

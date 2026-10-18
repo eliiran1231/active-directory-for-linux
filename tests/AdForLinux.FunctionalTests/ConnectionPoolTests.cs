@@ -325,4 +325,111 @@ public class ConnectionPoolTests
             Assert.Equal(values.Length, keys.Distinct().Count());
         }
     }
+
+    [Fact]
+    public void Per_key_saturation_does_not_evict_unrelated_idle_capacity()
+    {
+        using var pool = Pool(perKey: 1, total: 2, timeout: TimeSpan.FromMilliseconds(30));
+        using var active = pool.Acquire("A", () => new Resource());
+        var idleLease = pool.Acquire("B", () => new Resource()); var idle = idleLease.Value; idleLease.Dispose();
+        Assert.Throws<TimeoutException>(() => pool.Acquire("A", () => throw new Exception("Per-key cap exceeded")));
+        Assert.Equal(0, idle.Disposals);
+        using var reused = pool.Acquire("B", () => throw new Exception("Unrelated idle connection was evicted"));
+        Assert.Same(idle, reused.Value);
+    }
+
+    [Fact]
+    public void Batch_larger_than_capacity_fails_before_creating_or_reserving()
+    {
+        using var pool = Pool(perKey: 1, total: 2);
+        Assert.Throws<InvalidOperationException>(() => pool.AcquireBatch("directory", 2, () => throw new Exception("Unexpected creation")));
+        Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public async Task Batch_waits_without_holding_partial_capacity()
+    {
+        using var pool = Pool(perKey: 2, total: 2);
+        var active = pool.Acquire("directory", () => new Resource());
+        var batch = Start(() => pool.AcquireBatch("directory", 2, () => new Resource()));
+        Until(() => pool.Snapshot.Waiting == 1);
+        Assert.Equal(1, pool.Snapshot.Total);
+        active.Dispose();
+        var leases = await batch.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.NotSame(leases[0].Value, leases[1].Value);
+        Assert.Equal(2, pool.Snapshot.Total);
+        foreach (var lease in leases) lease.Dispose();
+    }
+
+    [Fact]
+    public void Partial_batch_initialization_failure_cleans_all_reserved_capacity()
+    {
+        using var pool = Pool(perKey: 2, total: 2);
+        var first = new Resource(); var creations = 0;
+        Assert.Throws<InvalidOperationException>(() => pool.AcquireBatch("directory", 2, () =>
+            ++creations == 1 ? first : throw new InvalidOperationException("Bind failed")));
+        Assert.Equal(1, first.Disposals); Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public void Fresh_checkout_reclaims_same_key_idle_and_rejects_late_old_returns()
+    {
+        using var pool = Pool(perKey: 2, total: 2);
+        var old = pool.Acquire("directory", () => new Resource()); var oldValue = old.Value;
+        var idle = pool.Acquire("directory", () => new Resource()); var idleValue = idle.Value; idle.Dispose();
+        var generation = pool.NewGeneration();
+        var fresh = pool.Acquire("directory", () => new Resource(), preferFresh: true, minimumGeneration: generation);
+        var freshValue = fresh.Value;
+        Assert.Equal(1, idleValue.Disposals); Assert.Equal(0, oldValue.Disposals);
+        fresh.Dispose(); old.Dispose();
+        using var next = pool.Acquire("directory", () => throw new Exception("Eligible fresh connection was lost"), minimumGeneration: generation);
+        Assert.Same(freshValue, next.Value); Assert.Equal(1, oldValue.Disposals);
+    }
+    [Fact]
+    public async Task Opposite_endpoint_order_never_holds_partial_capacity()
+    {
+        using var pool = Pool(perKey: 1, total: 2);
+        using var start = new ManualResetEventSlim();
+        var tasks = Enumerable.Range(0, 12).Select(worker => Start(() =>
+        {
+            start.Wait();
+            for (var round = 0; round < 40; round++)
+            {
+                var keys = worker % 2 == 0 ? new[] { "source", "destination" } : new[] { "destination", "source" };
+                var pair = pool.AcquireMany(keys.Select(key => new BoundedConnectionPool<string, Resource>.Request(key, () => new Resource())).ToArray());
+                foreach (var lease in pair) Assert.Equal(1, Interlocked.Increment(ref lease.Value.Users));
+                foreach (var lease in pair) { Assert.Equal(0, Interlocked.Decrement(ref lease.Value.Users)); lease.Dispose(); }
+            }
+            return true;
+        })).ToArray();
+        start.Set(); await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.Equal(2, pool.Snapshot.Total); Assert.Equal(2, pool.Snapshot.Created);
+    }
+
+    [Fact]
+    public void Pair_second_bind_failure_disposes_reused_first_endpoint()
+    {
+        using var pool = Pool(perKey: 1, total: 2);
+        var first = pool.Acquire("source", () => new Resource()); var value = first.Value; first.Dispose();
+        Assert.Throws<InvalidOperationException>(() => pool.AcquireMany([
+            new("source", () => throw new Exception("Expected reuse")),
+            new("destination", () => throw new InvalidOperationException("Bind failed"))]));
+        Assert.Equal(1, value.Disposals); Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Keys);
+    }
+
+    [Fact]
+    public async Task Cancelled_pair_waiter_does_not_reserve_other_endpoint()
+    {
+        using var pool = Pool(perKey: 1, total: 2);
+        using var source = pool.Acquire("source", () => new Resource());
+        using var cancel = new CancellationTokenSource();
+        var waiting = Start(() => Assert.Throws<OperationCanceledException>(() => pool.AcquireMany([
+            new("destination", () => throw new Exception("No partial reservation")),
+            new("source", () => throw new Exception("Source still occupied"))], cancel.Token)));
+        Until(() => pool.Snapshot.Waiting == 1);
+        Assert.Equal(1, pool.Snapshot.Total); Assert.Equal(1, pool.Snapshot.Keys);
+        cancel.Cancel(); await waiting.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, pool.Snapshot.Waiting);
+    }
+
 }

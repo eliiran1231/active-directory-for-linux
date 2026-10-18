@@ -307,7 +307,8 @@ public partial class DirectoryEntry : Component
                     "The directory entry did not expose an objectClass to resolve in the schema.");
             }
 
-            var connection = GetSchemaConnection();
+            using var lease = AcquireConnection(schema: true);
+            var connection = lease.Connection;
             var rootDse = RootDse.Read(connection, "schemaNamingContext");
             if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
                 || string.IsNullOrEmpty(schemaNamingContext))
@@ -368,7 +369,8 @@ public partial class DirectoryEntry : Component
             Options.ValidatePasswordOperation();
         }
 
-        var connection = GetConnection();
+        using var lease = AcquireConnection();
+        var connection = lease.Connection;
         var modification = new DirectoryAttributeModification
         {
             Name = attributeName,
@@ -406,7 +408,8 @@ public partial class DirectoryEntry : Component
         var request = new ModifyRequest(_path.DistinguishedName);
         request.Modifications.Add(deletion);
         request.Modifications.Add(addition);
-        GetConnection().SendRequestCompatible(request);
+        using var lease = AcquireConnection();
+        lease.Connection.SendRequestCompatible(request);
     }
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
@@ -421,7 +424,8 @@ public partial class DirectoryEntry : Component
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
 
-        var response = (SearchResponse)GetConnection().SendRequestCompatible(request);
+        using var lease = AcquireConnection();
+        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
         if (response.Entries.Count == 0
             || response.Entries[0].Attributes["nTSecurityDescriptor"] is not { Count: > 0 } attribute
             || attribute[0] is not byte[] binaryForm)
@@ -479,13 +483,15 @@ public partial class DirectoryEntry : Component
             request.Modifications.Add(addition);
         }
 
-        GetConnection().SendRequestCompatible(request);
+        using var lease = AcquireConnection();
+        lease.Connection.SendRequestCompatible(request);
     }
 
     /// <summary>Deletes this object and everything under it.</summary>
     public void DeleteTree()
     {
-        var connection = GetConnection();
+        using var lease = AcquireConnection();
+        var connection = lease.Connection;
         var delete = new DeleteRequest(_path.DistinguishedName);
         // Ask the server to delete the whole subtree (OID 1.2.840.113556.1.4.805).
         delete.Controls.Add(new TreeDeleteControl());
@@ -499,7 +505,8 @@ public partial class DirectoryEntry : Component
         var distinguishedName = authority.Checked(() => string.IsNullOrEmpty(_path.DistinguishedName)
             ? relativeName
             : $"{relativeName},{_path.DistinguishedName}");
-        var connection = GetAuthorityConnection(authority);
+        using var lease = AcquireConnection(authority.Validate);
+        var connection = lease.Connection;
         authority.Validate();
         connection.SendRequestCompatible(new DeleteRequest(distinguishedName));
     }
@@ -757,7 +764,8 @@ public partial class DirectoryEntry : Component
             "(objectClass=*)",
             ProtocolScope.Base,
             "1.1");
-        var response = (SearchResponse)GetOwnedConnection(false, ValidateRead).SendRequestCompatible(request);
+        using var lease = AcquireConnection(ValidateRead);
+        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
         if (response.Entries.Count == 0)
         {
             throw LdapExceptionTranslator.Translate(
@@ -781,7 +789,8 @@ public partial class DirectoryEntry : Component
             var controlled = read(requestedProperties, loadDefaultProperties);
             return IdentityLifetime.Checked(generation, ValidateBinding, () => controlled);
         }
-        var connection = GetOwnedConnection(false, ValidateRead);
+        using var lease = AcquireConnection(ValidateRead);
+        var connection = lease.Connection;
         var request = new SearchRequest(
             IdentityLifetime.Checked(generation, ValidateBinding, () => _path.DistinguishedName),
             "(objectClass=*)",
@@ -805,7 +814,7 @@ public partial class DirectoryEntry : Component
 
         if (response.Entries.Count > 0)
         {
-            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties, ValidateRead);
+            LoadEntry(response.Entries[0], properties, requestedProperties, loadDefaultProperties, ValidateRead, connection);
         }
         return IdentityLifetime.Checked(generation, ValidateBinding, () =>
         {
@@ -874,9 +883,10 @@ public partial class DirectoryEntry : Component
     SearchResultEntry entry,
     PropertyCollection properties,
     string[] requestedProperties,
-    bool normalizeRangedNames, Action validateBinding)
+    bool normalizeRangedNames, Action validateBinding, LdapConnection connection)
     {
-        foreach (var (name, value) in SearchEntryReader.Read(entry, GetOwnedConnection(true, validateBinding)))
+        validateBinding();
+        foreach (var (name, value) in SearchEntryReader.Read(entry, SchemaConnectionForOperation(connection)))
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
@@ -930,6 +940,12 @@ public partial class DirectoryEntry : Component
             lock (_entryWriteGate)
             {
                 update();
+                if (_hasOperationConnection || _connection is not null || _schemaConnection is not null)
+                {
+                    _minimumConnectionGeneration = LdapConnectionProvider.NewGeneration();
+                    _freshConnectionRequired = true;
+                }
+                _hasOperationConnection = false;
                 SchemaFilterNames = []; _boundDistinguishedName = null;
                 var detached = new[] { _connection, _schemaConnection }.Where(c => c is not null).Distinct().ToArray();
                 _connection = null; _schemaConnection = null;
@@ -960,9 +976,9 @@ public partial class DirectoryEntry : Component
     internal DirectoryEntry CreateEntryForPath(string path)
     {
         ThrowIfDisposed();
-        return _connectionOptionsOverride is null
+        return CopyConnectionFreshnessTo(_connectionOptionsOverride is null
             ? new DirectoryEntry(path, _username, _password, _authenticationType)
-            : new DirectoryEntry(path, _connectionOptionsOverride.Clone());
+            : new DirectoryEntry(path, _connectionOptionsOverride.Clone()));
     }
 
     /// <summary>Builds the LDAP path for a DN on this entry's server.</summary>
@@ -1107,7 +1123,8 @@ public partial class DirectoryEntry : Component
         {
             DeleteOldRdn = true,
         };
-        GetConnection().SendRequestCompatible(request);
+        using var lease = AcquireConnection();
+        lease.Connection.SendRequestCompatible(request);
         var retainedProperties = _usePropertyCache ? null : _properties;
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
         if (!_usePropertyCache) _properties = retainedProperties;
@@ -1196,6 +1213,9 @@ public partial class DirectoryEntry : Component
     private void ResetConnection()
     {
         using var identityChange = IdentityLifetime.Change();
+        _minimumConnectionGeneration = LdapConnectionProvider.NewGeneration();
+        _freshConnectionRequired = true;
+        _hasOperationConnection = false;
         SchemaFilterNames = Array.Empty<string?>();
         _boundDistinguishedName = null;
         _connection?.Dispose();

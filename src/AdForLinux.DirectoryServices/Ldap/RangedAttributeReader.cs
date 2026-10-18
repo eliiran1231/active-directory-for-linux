@@ -15,6 +15,7 @@ internal static class RangedAttributeReader
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentException.ThrowIfNullOrWhiteSpace(attributeName);
 
+        using var lease = entry.AcquireConnection();
         var values = new List<object>();
         var nextStart = 0;
 
@@ -26,7 +27,7 @@ internal static class RangedAttributeReader
                 "(objectClass=*)",
                 ProtocolScope.Base,
                 requestedName);
-            var response = (SearchResponse)entry.GetConnection().SendRequestCompatible(request);
+            var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
             if (response.Entries.Count == 0)
             {
                 return values;
@@ -41,7 +42,7 @@ internal static class RangedAttributeReader
                 return values;
             }
 
-            AddValues(entry.GetSchemaConnection(), returned.Value.Attribute, attributeName, values);
+            AddValues(entry.SchemaConnectionForOperation(lease.Connection), returned.Value.Attribute, attributeName, values);
             if (returned.Value.IsTerminal)
             {
                 return values;

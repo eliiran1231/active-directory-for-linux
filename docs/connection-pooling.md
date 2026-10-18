@@ -17,16 +17,24 @@ net10.0). `CreateBound` owns setup/bind failure cleanup. There are four owners:
   separate copied entry alive for streaming work, including native async Abort.
   Close and even same-value credential setters explicitly invalidate bindings.
 
-The initial pooling boundary is context discovery and identity search sessions.
-Cross-context preflight remains directly owned: it retains two simultaneous
-sessions and applies a changing remaining deadline at creation. Pooling this path
-requires atomic multi-connection reservation or a sequencing redesign; simply
-wrapping it would fragment keys and introduce capacity starvation. Retained
-entry/searcher connections remain directly owned: treating entry disposal as a
-pool return would allow untracked in-flight requests, explicit rebinds, abandoned
-page cookies and mutable referral state to escape into another caller. This is a
-conservative limitation, not evidence that entry/search workloads are accelerated.
-Their existing disposal and offline guards remain intact. No writes are retried.
+The integration uses operation ownership rather than returning retained entry
+handles on entry disposal:
+
+| Consumer | Lease boundary |
+| --- | --- |
+| Context discovery | One request sequence; nested default-NC lookup before acquisition |
+| Identity lookup | Entire domain discovery / translation sequence |
+| Entry read, configuration, mutation, security persistence | Request and dependent decoding; release before separate readback |
+| Ranged attributes | Entire range loop, with sequential schema decoding |
+| Buffered search | All pages and result materialization, including sequential schema decoding |
+| Streaming search | Producer lifetime; atomic pair for native search and concurrent schema requests |
+| Cross-context preflight | Atomic source/destination pair; stable configured keys, per-bind/request deadlines |
+| Credential validation | Capacity-accounted fresh bind, always disposed, never reused |
+
+The existing internal raw entry getters remain directly owned for controlled test
+transports and native compatibility fixtures; production call sites use leases.
+Public APIs are unchanged. Live cross-context writes remain disabled. No request,
+including a write, is automatically replayed.
 
 ## ObjectPool evaluation, before implementation
 
@@ -51,51 +59,101 @@ lifecycle work. No new package dependency.
 
 `BoundedConnectionPool<TKey,T>` reserves per-key/global capacity under one gate,
 creates outside that gate, and returns an exclusive idempotent lease. The cap
-includes connections being created and destroyed. Waiting has a monotonic deadline
-and cancellation; waiters do not register new keys. Idle slots are timestamped on
-return, swept on acquire and by a periodic timer, and never evicted while leased.
-Shutdown rejects acquisition and drains idle resources; outstanding leases dispose
-on return. Empty key records are removed. Factory failures release reservations.
+includes connections being created and destroyed. An operation needing multiple
+connections reserves all of them atomically, including different endpoint keys;
+it never holds a partial reservation while waiting. A cap smaller than the entire
+operation fails before native work. Streaming needs two slots even when no schema
+lookup ultimately occurs; this avoids deadlock during partial-result decoding.
+
+Waiting has a monotonic deadline and cancellation; waiters do not register new
+keys. Idle slots are timestamped on return, checked on acquisition and swept by
+a timer. Active leases never expire. Shutdown rejects acquisition and drains idle
+resources; outstanding leases dispose on return. Empty key records are removed.
+Factory failures release all reservations, including partially created pairs.
 
 `LdapConnectionProvider` maps immutable configuration to an opaque keyed HMAC,
-with length-delimited inputs including the password and all transport/session
-settings. No entry DN appears in the key. Neither keys nor identities are logged.
-Only explicit Basic credentials are initially reusable. Ambient/default, anonymous,
-Negotiate/Kerberos and other mechanisms use fresh owned connections because their
-effective native authentication identity cannot be established reliably here.
-Validation bypasses the provider entirely. No checkout rebind or probe is added.
+with exact length-delimited UTF-16 inputs including the password and all
+transport/session settings. No entry DN appears in the key. Neither keys nor
+identities are logged. Internal snapshots expose only aggregate creation, reuse,
+destruction, failure, wait/timeout counts and current resources/keys/waiters.
+There is no checkout rebind or artificial health probe.
 
-Sessions disable referrals before bind; referral policy participates in the key.
-Borrowers cannot return raw connections themselves. Real transport failures mark
-the lease unusable; ordinary LDAP operation results do not imply a broken socket.
-All acquisition paths retain the pre-native offline guard. Nested discovery is
-resolved before acquiring, or after releasing, its outer connection.
+Only explicit nonempty Basic credentials with referrals disabled are reused.
+Ambient/default, anonymous, Negotiate/Kerberos and other mechanisms receive fresh
+capacity-accounted sessions: the native effective identity, impersonation and
+credential-cache changes cannot be reliably established here. Referral-enabled
+sessions also remain fresh because native referral authentication/session state
+cannot be inspected or reset safely. These conservative paths gain no bind-reuse
+speedup. In particular, default referral-enabled entry/search configurations do
+not gain reuse; callers' existing referral behavior is preserved. Validation
+always executes the original fresh bind and disposes it, even for credentials
+matching a warm connection.
 
-Defaults: 8 connections per key, 64 total pool-managed connections, 256 concurrent waiters, 60 seconds idle
-from return, 30 seconds acquisition wait, 5-second cleanup interval. These are
-internal constructor settings, distinct from operation timeouts. No maximum age
-is imposed on active requests. FIFO fairness is not promised. Capacity limits
-cover this manager; legacy directly owned connections remain outside its bounds.
+Close and explicit credential/configuration rebinds advance a freshness generation
+and require a fresh checkout. Binding copies carry the generation floor. A late
+return from an older operation cannot undo that floor. Generations are lease
+metadata, never per-entry pool keys. Closing/disposing an entry does not close a
+physical connection still held by another operation.
 
-Acquisition timeout bounds capacity waiting, not an in-progress native bind. Bind
-uses the existing LDAP timeout; native cancellation is not introduced. Cleanup
-disposes idle resources synchronously unless an already-running sweep owns them;
-that sweep finishes their disposal. Shutdown never closes active caller resources.
+Referral policy participates in the key and is applied before bind. Temporary
+request timeouts are restored or passed to the per-request overload. DirSync/VLV
+sessions are conservatively discarded. Transport/unknown failures poison leases;
+ordinary LDAP operation rejections do not establish a broken connection. Schema
+helpers report failures even when their compatibility fallback swallows them.
+Abandoned page cookies and interrupted async requests cause discard. Native Abort
+is attempted before disposal; it does not prove all runtime background work has
+completed. See the versioned [Protocols 9.0.0 implementation](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.Protocols/src/System/DirectoryServices/Protocols/ldap/LdapConnection.cs).
+An interrupted connection is never handed to another borrower. Result collection
+Dispose cancels the producer; the producer owns both leases until its cleanup.
+
+## Settings and limits
+
+Internal constructor defaults: **8 per key, 64 total managed connections, 256
+concurrent waiters, 60 seconds idle from return, 30 seconds acquisition wait,
+5-second sweep interval**. Eight accommodates ordinary concurrency and paired
+streaming/preflight work without an unbounded registry; these are initial limits,
+not production tuning claims. Tests inject smaller limits and a monotonic clock.
+FIFO fairness is not promised. Maximum connection lifetime was considered but is
+not imposed: it is separate from idle age and must never interrupt active work.
+
+The acquisition timeout bounds capacity waiting, not an in-progress native bind.
+Bind retains the existing LDAP timeout; cancellation is checked before/after
+creation but cannot interrupt synchronous native bind. Existing synchronous APIs
+have no new cancellation parameter. Cross-context deadlines cancel admission;
+streaming cancellation is handled by the producer after admission.
+
+Caps cover managed connection objects, including fresh validation and conservative
+authentication bypasses. They do not count sockets created internally by native
+referral chasing, external callers' Protocols objects or internal raw test fixtures.
+Cleanup disposes idle resources synchronously unless a concurrent sweep already
+owns them; that sweep completes disposal. Process exit/assembly unload stops the
+shared manager. Active native operations are not forcibly closed at shutdown.
+All production acquisition retains the pre-native offline guard.
 
 ## Validation and review
 
-`ConnectionPoolTests` is allowlisted by `tests/run-offline-tests.py`: fake resources
-and a monotonic clock cover expiry, hard limits, cancellation, delayed creation,
-blocked disposal, failure classification, exact credential-key isolation and
-concurrent return/sweep/shutdown. No native LDAP handles are created by these tests.
-Independent review caught and corrected capacity accounting for bypassed sessions,
-nested preflight starvation, and UTF-8 replacement collisions in malformed UTF-16
-credentials. Keys now encode exact UTF-16 units before HMAC hashing.
+`ConnectionPoolTests` and `ConnectionPoolOperationTests` are allowlisted by
+`tests/run-offline-tests.py`. Fake resources/connections and a monotonic clock
+cover expiry, exact key isolation, hard caps, cancellation, delayed creation and
+destruction, partial pair failure, opposing endpoint acquisition order,
+concurrent return/sweep/shutdown, entry reuse, no write retry, and copied freshness
+floors. These tests create no native LDAP handles. Use the guarded runner, e.g.:
 
-`ConnectionPoolSambaTests` is deliberately not offline-allowlisted. Disposable CI
-compares twenty direct factory/bind/rootDSE operations with the same pooled sequence
-and records creation/bind counts and elapsed time. This is a narrow before/after
-comparison, not throughput, network-fault, live AD, Kerberos or TLS parity evidence.
-Existing Linux/Windows offline workflows and the existing disposable Samba workflow
-run for PRs targeting dev. Remaining entry/searcher and cross-context integration
-requires its own operation ownership design and tests before issue 15 can close.
+```sh
+python tests/run-offline-tests.py functional --framework net10.0 --class ConnectionPoolTests --class ConnectionPoolOperationTests
+```
+
+Independent review corrected bypass capacity accounting, timeout-key fragmentation,
+UTF-8 replacement collisions, inappropriate cross-key eviction under per-key
+saturation, and loss of freshness when copying a search binding. Pair tests exercise
+all-or-none admission rather than assuming the single-connection tests suffice.
+
+`ConnectionPoolSambaTests` is deliberately excluded from offline runs. Disposable
+CI records direct versus pooled rootDSE and entry-read creation/explicit-bind
+counts and elapsed time, plus concurrent entry reads, buffered/streaming page
+agreement, early cursor disposal and invalid credentials after warm discovery.
+The entry comparison includes public schema/materialization overhead; it is not
+an identical wire-request benchmark. Both existing Linux/Windows offline CI and
+disposable Samba CI run for PRs targeting dev. These checks do not establish lab AD,
+Kerberos identity-switch, native referral, production TLS, network-partition,
+throughput or tail-latency parity. No lab AD testing is authorized for this work.

@@ -32,9 +32,9 @@ public partial class DirectoryEntry
         => authority.Checked(() =>
         {
             var path = new Ldap.LdapPath(_path.Host, _path.Port, dn ?? _path.DistinguishedName).ToString();
-            return _connectionOptionsOverride is null
+            return CopyConnectionFreshnessTo(_connectionOptionsOverride is null
                 ? new DirectoryEntry(path, _username, _password, _authenticationType)
-                : new DirectoryEntry(path, _connectionOptionsOverride.Clone());
+                : new DirectoryEntry(path, _connectionOptionsOverride.Clone()));
         });
 
     internal System.DirectoryServices.Protocols.LdapConnection GetAuthorityConnection(BindingAuthority authority, bool schema = false)

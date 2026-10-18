@@ -495,7 +495,7 @@ public partial class PrincipalContext : IDisposable
     }
 
     internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
-        = static options => new CrossContextSaveSession(options);
+        = CrossContextSaveSession.DefaultFactory;
 
     // Offline request-contract tests intercept execution, not context construction.
     internal Func<DirectorySearcher, SearchResultCollection>? DateFinderSearchOverride { get; set; }
@@ -792,7 +792,7 @@ public partial class PrincipalContext : IDisposable
         string? password,
         ContextOptions options)
     {
-        using var connection = LdapConnectionFactory.CreateBound(
+        using var session = LdapConnectionProvider.AcquireValidation(
             BuildOptions(userName, password, options, useContextPort: false));
     }
 

@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using System.DirectoryServices.Protocols;
+using ReferralChasingOption = AdForLinux.DirectoryServices.ReferralChasingOption;
+using Entry = AdForLinux.DirectoryServices.DirectoryEntry;
+using Searcher = AdForLinux.DirectoryServices.DirectorySearcher;
+using SearchScope = AdForLinux.DirectoryServices.SearchScope;
 using AdForLinux.DirectoryServices.AccountManagement;
 using AdForLinux.DirectoryServices.Ldap;
 using Xunit;
@@ -49,4 +54,84 @@ public class ConnectionPoolSambaTests(ITestOutputHelper output)
         Assert.False(context.ValidateCredentials(TestSettings.BindDn, "deliberately incorrect test password", TestSettings.PrincipalContextOptions));
         Assert.True(context.ValidateCredentials(TestSettings.BindDn, TestSettings.BindPassword, TestSettings.PrincipalContextOptions));
     }
+    [Fact]
+    public void Retained_entry_read_sequence_records_creation_and_bind_reduction()
+    {
+        using var context = TestSettings.CreatePrincipalContext();
+        var options = context.BuildOptions().Clone(TimeSpan.FromSeconds(27));
+        const int operations = 20;
+        var direct = Stopwatch.StartNew();
+        for (var i = 0; i < operations; i++)
+        {
+            using var connection = LdapConnectionFactory.CreateBound(options);
+            var response = (SearchResponse)connection.SendRequest(new SearchRequest(TestSettings.BaseDn,
+                "(objectClass=*)", System.DirectoryServices.Protocols.SearchScope.Base, "distinguishedName"));
+            Assert.Single(response.Entries.Cast<SearchResultEntry>());
+        }
+        direct.Stop();
+        var before = LdapConnectionProvider.Snapshot;
+        var pooled = Stopwatch.StartNew();
+        for (var i = 0; i < operations; i++)
+        {
+            using var entry = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options.Clone());
+            entry.Options.Referral = ReferralChasingOption.None;
+            entry.RefreshCache(["distinguishedName"]);
+            Assert.NotNull(entry.Properties["distinguishedName"].Value);
+        }
+        pooled.Stop();
+        var after = LdapConnectionProvider.Snapshot;
+        var creations = after.Created - before.Created;
+        Assert.InRange(creations, 0, 1);
+        Assert.True(after.Reused - before.Reused >= operations - 1);
+        output.WriteLine($"Entry reads {operations} operations: direct creation/bind={operations}/{operations}, elapsed={direct.Elapsed.TotalMilliseconds:F2}ms; pooled creation/bind={creations}/{creations}, reuse={after.Reused - before.Reused}, elapsed={pooled.Elapsed.TotalMilliseconds:F2}ms.");
+        output.WriteLine("Direct raw LDAP versus public entry materialization (including schema work); explicit successful factory binds, not wire-bind instrumentation or general AD performance parity.");
+    }
+
+    [Fact]
+    public void Buffered_and_streaming_pages_match_and_early_disposal_releases_capacity()
+    {
+        using var context = TestSettings.CreatePrincipalContext();
+        var options = context.BuildOptions().Clone(TimeSpan.FromSeconds(26));
+        using var root = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options);
+        root.Options.Referral = ReferralChasingOption.None;
+        using var search = new Searcher(root)
+        {
+            ReferralChasing = ReferralChasingOption.None, SearchScope = SearchScope.OneLevel, PageSize = 2,
+        };
+        search.PropertiesToLoad.Add("distinguishedName");
+        using var buffered = search.FindAll();
+        var expected = buffered.Cast<AdForLinux.DirectoryServices.SearchResult>().Select(result => result.Path).Order().ToArray();
+        Assert.NotEmpty(expected);
+        search.Asynchronous = true;
+        using (var streaming = search.FindAll())
+            Assert.Equal(expected, streaming.Cast<AdForLinux.DirectoryServices.SearchResult>().Select(result => result.Path).Order().ToArray());
+        using (var abandoned = search.FindAll())
+        {
+            using var iterator = abandoned.Cast<AdForLinux.DirectoryServices.SearchResult>().GetEnumerator();
+            Assert.True(iterator.MoveNext());
+        }
+        // Admission of the entire same-key cap proves the producer returned or
+        // discarded both leases after early collection disposal, without a sleep.
+        var all = LdapConnectionProvider.AcquireBatch(options, 8);
+        foreach (var session in all) session.Dispose();
+    }
+
+    [Fact]
+    public void Concurrent_entry_reads_respect_managed_per_key_capacity()
+    {
+        using var context = TestSettings.CreatePrincipalContext();
+        var options = context.BuildOptions().Clone(TimeSpan.FromSeconds(25));
+        var before = LdapConnectionProvider.Snapshot;
+        Parallel.For(0, 24, new ParallelOptions { MaxDegreeOfParallelism = 12 }, _ =>
+        {
+            using var entry = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options.Clone());
+            entry.Options.Referral = ReferralChasingOption.None;
+            entry.RefreshCache(["distinguishedName"]);
+            Assert.NotNull(entry.Properties["distinguishedName"].Value);
+        });
+        var after = LdapConnectionProvider.Snapshot;
+        Assert.InRange(after.Created - before.Created, 1, 8);
+        output.WriteLine($"Concurrent entry reads: 24 operations, up to 12 workers, creation/bind={after.Created - before.Created}/{after.Created - before.Created}, reuse={after.Reused - before.Reused}.");
+    }
+
 }
