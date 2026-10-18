@@ -538,7 +538,13 @@ public class DirectorySearcher : Component
 
             return new SearchResultCollection(results, GetPropertiesLoaded());
         }
-        catch { connectionLease.Invalidate(); throw; }
+        catch (Exception error)
+        {
+            // A failed page sequence may leave a server cookie. An ordinary
+            // rejection of a single completed request does not poison a session.
+            if (PageSize > 0 || LdapConnectionProvider.IsConnectionFailure(error)) connectionLease.Invalidate();
+            throw;
+        }
     }
 
     private SearchResultCollection FindAllStreaming(SearchOperation operation)
@@ -1114,7 +1120,9 @@ public class DirectorySearcher : Component
     private void ConfigureConnection(LdapConnection connection)
     {
         if (ConfigureConnectionOverride is { } configure) configure(connection);
-        else LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
+        // Managed sessions were configured for this keyed policy before bind.
+        else if (!LdapConnectionProvider.IsManagedSession(connection))
+            LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
     }
 
     private void UpdateControlState(SearchResponse response)

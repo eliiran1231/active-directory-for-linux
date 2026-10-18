@@ -98,7 +98,6 @@ public class ConnectionPoolOperationTests
     {
         using var fixture = new Fixture(); using var root = fixture.Entry();
         using var search = new Searcher(root) { ReferralChasing = ReferralChasingOption.None };
-        search.ConfigureConnectionOverride = _ => { }; // No native SessionOptions on controlled handles.
         search.PropertiesToLoad.Add("description");
         using var results = search.FindAll();
         Assert.Single(results.Cast<SearchResult>());
@@ -177,6 +176,17 @@ public class ConnectionPoolOperationTests
         Assert.Equal(0, fixture.Pool.Snapshot.Waiting);
         Assert.All(fixture.Requests, request => Assert.IsType<SearchRequest>(request));
         Assert.Equal(1, fixture.Pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public void Unpaged_search_permission_rejection_preserves_healthy_session()
+    {
+        using var fixture = new Fixture(); using var root = fixture.Entry();
+        using var search = new Searcher(root) { ReferralChasing = ReferralChasingOption.None };
+        using (var initial = search.FindAll()) Assert.Single(initial.Cast<SearchResult>());
+        fixture.Failure = new DirectoryOperationException(Response("CN=first", [], ResultCode.InsufficientAccessRights));
+        Assert.ThrowsAny<System.Runtime.InteropServices.COMException>(() => search.FindAll());
+        Assert.Equal(1, fixture.Pool.Snapshot.Total); Assert.Equal(0, fixture.Connections[0].Disposals);
     }
 
 }

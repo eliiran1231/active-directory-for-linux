@@ -78,6 +78,8 @@ internal static class LdapConnectionProvider
         return Pool.AcquireMany(requests, cancellationToken).Select(lease => new Session(lease)).ToArray();
     }
 
+    internal static bool IsManagedSession(LdapConnection connection) => Active.TryGetValue(connection, out _);
+
     internal static void ReportFailure(LdapConnection connection, Exception error)
     {
         if (IsConnectionFailure(error) && Active.TryGetValue(connection, out var session)) session.Invalidate();
