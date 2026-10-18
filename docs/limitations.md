@@ -19,7 +19,7 @@
 
 ## Windows features that do not carry over
 
-Use `LDAP://` paths. `WinNT://`, `IIS://`, `GC://`, and `LDAPS://` provider prefixes
+Use `LDAP://` paths. `WinNT://`, `IIS://`, and `GC://` provider prefixes
 are unsupported. For ordinary Global Catalog searches, use explicit LDAP port
 3268, or 3269 with SSL; this does not enable GC identity translation.
 
