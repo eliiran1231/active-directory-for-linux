@@ -4,7 +4,7 @@ namespace AdForLinux.FunctionalTests;
 
 /// <summary>
 /// Builds security-descriptor bytes directly, independent of the codec under test.
-/// Mirrors the inputs used by the offline Windows oracle (docs/research/acl-windows-oracle).
+/// Mirrors the inputs used by the offline Windows oracle (tests/acl-windows-oracle).
 /// </summary>
 internal static class SecurityDescriptorFixtures
 {

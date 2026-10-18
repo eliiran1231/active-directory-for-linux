@@ -13,7 +13,7 @@ $total = if ($Mode -eq 'replacement-states') { 24 } elseif ($Mode -eq 'replaceme
 $option = if ($Mode -eq 'replacement-states') { '--sddl-replacement-states-jsonl' } elseif ($Mode -eq 'replacement') { '--sddl-replacement-jsonl' } elseif ($Mode -eq 'alarm') { '--sddl-alarm-jsonl' } elseif ($Mode -eq 'raw-contract') { '--sddl-raw-contract-jsonl' } elseif ($Mode -eq 'composition') { '--sddl-composition-jsonl' } elseif ($Mode -eq 'retained-export') { '--sddl-retained-export-jsonl' } elseif ($Mode -eq 'mixed') { '--sddl-mixed-jsonl' } elseif ($Mode -eq 'size') { '--sddl-size-followup-jsonl' } else { '--sddl-boundary-jsonl' }
 if ($Mode -in @('mixed', 'retained-export', 'composition', 'raw-contract', 'alarm', 'replacement', 'replacement-states')) { $env:DOTNET_GCHeapHardLimit = '0x10000000'; $env:DOTNET_PROCESSOR_COUNT = '2' }
 New-Item -ItemType Directory -Force $directory | Out-Null
-$assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
+$assembly = "tests/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
 for ($start = 0; $start -lt $total; $start += 16) {
     $stem = "$directory/boundary-$('{0:D3}' -f $start)"
     $process = Start-Process dotnet -ArgumentList @($assembly, $option, "$stem.jsonl", $start, 16) -PassThru -NoNewWindow -RedirectStandardOutput "$stem.stdout.log" -RedirectStandardError "$stem.stderr.log"

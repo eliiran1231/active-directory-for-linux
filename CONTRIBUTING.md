@@ -31,7 +31,7 @@ Do not aim either suite at production.
 
 ## Test assets and historical evidence
 
-- [Windows descriptor oracle](docs/research/acl-windows-oracle/README.md): detached
+- [Windows descriptor oracle](tests/acl-windows-oracle/README.md): detached
   recordings used by compatibility tests; no directory access.
 - [Two-controller probe](docs/research/cross-dc-save-probe/README.md): opt-in research,
   not public cross-controller save support. Its fixture requirements still apply.

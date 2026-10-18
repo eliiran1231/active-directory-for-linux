@@ -3,7 +3,7 @@ param([Parameter(Mandatory = $true)][ValidateSet('net8.0', 'net10.0')][string] $
 $ErrorActionPreference = 'Stop'
 $directory = "artifacts/$Mode/$Framework"
 New-Item -ItemType Directory -Force $directory | Out-Null
-$assembly = "docs/research/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
+$assembly = "tests/acl-windows-oracle/bin/Release/$Framework/AclWindowsOracle.dll"
 $countArgument = if ($Mode -eq 'ace-size') { '--sddl-ace-size-count' } else { '--sddl-layer-count' }
 $jsonArgument = if ($Mode -eq 'ace-size') { '--sddl-ace-size-jsonl' } else { '--sddl-layer-jsonl' }
 $total = [int] (& dotnet $assembly $countArgument)
