@@ -379,4 +379,67 @@ public partial class V1PrincipalAuditTests
         if (matches) Assert.DoesNotContain(f.Writes.Last().Modifications.Cast<DirectoryAttributeModification>(),
             modification => modification.Name == "servicePrincipalName");
     }
+    [Fact]
+    public void Foreign_context_creation_cannot_outlive_owner_disposal()
+    {
+        using var context = new PrincipalContext(ContextType.Domain, "offline.invalid");
+        var fields = BindingFlags.NonPublic | BindingFlags.Instance;
+        typeof(PrincipalContext).GetField("_defaultNamingContext", fields)!
+            .SetValue(context, "DC=example,DC=test");
+        var gate = typeof(PrincipalContext).GetField("_foreignContextLock", fields)!.GetValue(context)!;
+        Exception? failure = null;
+        PrincipalContext? returned = null;
+        using var started = new ManualResetEventSlim();
+        var worker = new Thread(() =>
+        {
+            started.Set();
+            try { returned = context.GetForeignDomainContext("foreign.example.test"); }
+            catch (Exception error) { failure = error; }
+        }) { IsBackground = true };
+        try
+        {
+            lock (gate)
+            {
+                worker.Start();
+                Assert.True(started.Wait(TimeSpan.FromSeconds(5)));
+                // Cached discovery performs no I/O. The worker can block only
+                // at the held cache lock, after its original disposal checks.
+                Assert.True(SpinWait.SpinUntil(
+                    () => (worker.ThreadState & ThreadState.WaitSleepJoin) != 0,
+                    TimeSpan.FromSeconds(5)));
+                context.Dispose();
+            }
+            Assert.True(worker.Join(TimeSpan.FromSeconds(5)));
+            Assert.IsType<ObjectDisposedException>(failure);
+            Assert.Null(returned);
+            var contexts = (System.Collections.IDictionary)typeof(PrincipalContext)
+                .GetField("_foreignContexts", fields)!.GetValue(context)!;
+            Assert.Empty(contexts);
+        }
+        finally
+        {
+            worker.Join(TimeSpan.FromSeconds(5));
+            returned?.Dispose();
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Foreign_resolution_disposes_owned_entry_when_read_or_discovery_fails(bool discovery)
+    {
+        using var context = new PrincipalContext(ContextType.Domain, "offline.invalid");
+        using var entry = new DirectoryEntry("LDAP://offline.invalid/CN=foreign,DC=example,DC=test");
+        entry.PropertyReadOverride = (_, _) =>
+        {
+            if (!discovery) throw new InvalidOperationException("controlled read failure");
+            var properties = new PropertyCollection();
+            properties.ReplaceLoaded("objectSid", [SecurityDescriptorFixtures.U1]);
+            return properties;
+        };
+        if (discovery) context.Dispose();
+        Assert.ThrowsAny<Exception>(() => ForeignPrincipalResolver.ResolveOrCreateFallback(context, entry));
+        Assert.True(entry.IsDisposed);
+    }
+
 }

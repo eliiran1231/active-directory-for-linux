@@ -543,6 +543,9 @@ public partial class PrincipalContext : IDisposable
 
         lock (_foreignContextLock)
         {
+            // Disposal clears this cache under the same lock. A caller may have
+            // passed the initial check before disposal acquired it.
+            CheckDisposed();
             if (!_foreignContexts.TryGetValue(domainName, out var context))
             {
                 context = new PrincipalContext(

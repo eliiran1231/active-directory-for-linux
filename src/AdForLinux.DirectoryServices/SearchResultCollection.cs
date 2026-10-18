@@ -335,6 +335,7 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         private readonly IEnumerator<SearchResult> _source;
         private readonly List<SearchResult> _cache = new();
         private bool _complete;
+        private ExceptionDispatchInfo? _failure;
 
         internal ReplayableSearchResults(IEnumerable<SearchResult> source) =>
             _source = source.GetEnumerator();
@@ -373,12 +374,15 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
         {
             lock (_gate)
             {
-                if (!_complete)
-                {
-                    _complete = true;
-                    _source.Dispose();
-                }
+                Complete();
             }
+        }
+
+        private void Complete()
+        {
+            if (_complete) return;
+            _complete = true;
+            _source.Dispose();
         }
 
         private bool TryGet(int index, out SearchResult result)
@@ -391,17 +395,34 @@ public class SearchResultCollection : MarshalByRefObject, IReadOnlyList<SearchRe
                     return true;
                 }
 
-                if (_complete || !_source.MoveNext())
+                // Replay the cached prefix, then the original failure. A failed
+                // search must not become a successful partial result on retry.
+                _failure?.Throw();
+                if (_complete)
                 {
-                    _complete = true;
-                    _source.Dispose();
                     result = null!;
                     return false;
                 }
 
-                result = _source.Current;
-                _cache.Add(result);
-                return true;
+                try
+                {
+                    if (!_source.MoveNext())
+                    {
+                        Complete();
+                        result = null!;
+                        return false;
+                    }
+
+                    result = _source.Current;
+                    _cache.Add(result);
+                    return true;
+                }
+                catch (Exception exception)
+                {
+                    _failure = ExceptionDispatchInfo.Capture(exception);
+                    Complete();
+                    throw;
+                }
             }
         }
     }
