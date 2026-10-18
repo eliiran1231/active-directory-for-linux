@@ -1,7 +1,7 @@
 name: Source audit offline
 on:
   push:
-    branches: [fix/audit-property-replacement-date-filters, audit/security-quality]
+    branches: [fix/audit-property-replacement-date-filters, audit/security-quality, dev]
 permissions:
   contents: read
 jobs:

@@ -28,6 +28,63 @@ public partial class PortableSecurityFoundationTests
     }
 
     [Theory]
+    [InlineData(0x0001)] [InlineData(0x0002)] [InlineData(0x0008)]
+    [InlineData(0x0020)] [InlineData(0x0040)] [InlineData(0x0080)]
+    [InlineData(0x0100)] [InlineData(0x0200)] [InlineData(0x4000)]
+    public void Principal_password_acl_preserves_retained_header_flags(int flags)
+    {
+        using var fixture = new EntryWriteFixture();
+        fixture.Raw = Build(U1, U1, Acl(4));
+        var control = (ushort)(System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(fixture.Raw.AsSpan(2)) | flags);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(fixture.Raw.AsSpan(2), control);
+        if (flags == 0x4000) fixture.Raw[1] = 0x5a;
+        var original = (byte[])fixture.Raw.Clone();
+        fixture.Entry.WriteRequestOverride = request =>
+        {
+            fixture.Writes.Add(request);
+            var modify = Assert.IsType<ModifyRequest>(request);
+            fixture.Raw = (byte[])modify.Modifications[0][0];
+            return ResultCode.Success;
+        };
+        using var context = new PrincipalContext(ContextType.Domain, "dc.example");
+        using var principal = PasswordPrincipal(fixture, context);
+        foreach (var denied in new[] { true, false })
+        {
+            principal.UserCannotChangePassword = denied;
+            principal.Save();
+            Assert.Equal(denied, ChangePasswordAcl.IsDenied(fixture.Raw));
+            Assert.Equal(original[..4], fixture.Raw[..4]);
+            Assert.Equal(EntryMasks.Dacl, C.SecurityDescriptor.Parse(fixture.Raw, AllEntrySections)
+                .NetChangedSections(C.SecurityDescriptor.Parse(original, AllEntrySections)));
+        }
+        Assert.Equal(2, fixture.Writes.Count);
+    }
+
+    [Theory]
+    [InlineData("control")] [InlineData("owner")] [InlineData("reserved")]
+    public void Raw_dacl_callback_cannot_change_other_retained_data(string field)
+    {
+        using var fixture = new EntryWriteFixture();
+        fixture.Raw = Build(U1, U1, Acl(4));
+        var security = fixture.Entry.ObjectSecurity;
+        var before = security._securityDescriptor.MutationState;
+        Assert.Throws<InvalidOperationException>(() => security.EditRawDacl(raw =>
+        {
+            if (field == "control") raw[2] ^= 1;
+            else if (field == "reserved") raw[1] = 1;
+            else
+            {
+                var owner = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(raw.AsSpan(4));
+                raw[owner + 8] ^= 1;
+            }
+            return raw;
+        }));
+        Assert.Same(before, security._securityDescriptor.MutationState);
+        Assert.Equal(EntryMasks.None, security.PendingWriteSections);
+        Assert.Empty(fixture.Writes);
+    }
+
+    [Theory]
     [InlineData(0x10)] [InlineData(0x20000)]
     public void Principal_password_acl_changes_only_intended_rights_through_raw_entry_planner(int otherRights)
     {

@@ -82,13 +82,29 @@ public class ActiveDirectorySecurity : DirectoryObjectSecurity
         byte[] raw;
         lock (AdForLinux.Security.AccessControl.FacadeMutation.Gate)
             raw = _securityDescriptor.MutationState.Descriptor.GetBinaryForm();
+        // This callback edits an existing DACL, not an imported descriptor. Keep
+        // the retained header and other sections on the owner; the public section
+        // setter deliberately refuses metadata it cannot import losslessly.
+        const SecurityMasks all = SecurityMasks.Owner | SecurityMasks.Group | SecurityMasks.Dacl | SecurityMasks.Sacl;
+        var original = Security.Core.SecurityDescriptor.Parse(raw, all);
         var changed = edit(raw);
+        var candidate = Security.Core.SecurityDescriptor.Parse(changed, all);
+        if (candidate.Revision != original.Revision || candidate.Sbz1 != original.Sbz1
+            || candidate.Control != original.Control
+            || (candidate.NetChangedSections(original) & ~SecurityMasks.Dacl) != 0)
+            throw new InvalidOperationException("A raw DACL edit cannot change descriptor metadata or other sections.");
+        var sectionInput = (byte[])changed.Clone();
+        // These fields are not imported by an Access-only assignment. They were
+        // proved unchanged above and remain in the owner's retained raw state.
+        sectionInput[1] = 0;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(
+            sectionInput.AsSpan(2), (ushort)(candidate.Control & 0xbc14));
         WriteLock();
         try
         {
             ValidateIdentityRead(read, () =>
             {
-                SetSecurityDescriptorBinaryForm(changed, AccessControlSections.Access);
+                SetSecurityDescriptorBinaryForm(sectionInput, AccessControlSections.Access);
                 return true;
             });
         }
