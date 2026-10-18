@@ -81,3 +81,21 @@ Acquisition timeout bounds capacity waiting, not an in-progress native bind. Bin
 uses the existing LDAP timeout; native cancellation is not introduced. Cleanup
 disposes idle resources synchronously unless an already-running sweep owns them;
 that sweep finishes their disposal. Shutdown never closes active caller resources.
+
+## Validation and review
+
+`ConnectionPoolTests` is allowlisted by `tests/run-offline-tests.py`: fake resources
+and a monotonic clock cover expiry, hard limits, cancellation, delayed creation,
+blocked disposal, failure classification, exact credential-key isolation and
+concurrent return/sweep/shutdown. No native LDAP handles are created by these tests.
+Independent review caught and corrected capacity accounting for bypassed sessions,
+nested preflight starvation, and UTF-8 replacement collisions in malformed UTF-16
+credentials. Keys now encode exact UTF-16 units before HMAC hashing.
+
+`ConnectionPoolSambaTests` is deliberately not offline-allowlisted. Disposable CI
+compares twenty direct factory/bind/rootDSE operations with the same pooled sequence
+and records creation/bind counts and elapsed time. This is a narrow before/after
+comparison, not throughput, network-fault, live AD, Kerberos or TLS parity evidence.
+Existing Linux/Windows offline workflows and the existing disposable Samba workflow
+run for PRs targeting dev. Remaining entry/searcher and cross-context integration
+requires its own operation ownership design and tests before issue 15 can close.

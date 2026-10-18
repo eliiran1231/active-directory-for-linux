@@ -1,6 +1,5 @@
 using System.DirectoryServices.Protocols;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
@@ -76,10 +75,11 @@ internal static class LdapConnectionProvider
         private ConnectionKey(string digest) => this.digest = digest;
         internal static ConnectionKey Create(LdapConnectionOptions options, ReferralChasingOption referrals)
         {
-            using var data = new MemoryStream();
-            using (var writer = new BinaryWriter(data, Encoding.UTF8, leaveOpen: true))
+            using var data = new MemoryStream(checked(100 + 2 * (options.Host.Length +
+                (options.BindDn?.Length ?? 0) + (options.BindPassword?.Length ?? 0))));
+            using (var writer = new BinaryWriter(data, System.Text.Encoding.UTF8, leaveOpen: true))
             {
-                writer.Write(options.Host); writer.Write(options.Port);
+                WriteNullable(writer, options.Host); writer.Write(options.Port);
                 writer.Write(options.UseSsl); writer.Write(options.UseStartTls); writer.Write(options.SkipCertificateCheck);
                 writer.Write((int)options.AuthenticationType); writer.Write(options.Signing); writer.Write(options.Sealing);
                 WriteNullable(writer, options.BindDn); WriteNullable(writer, options.BindPassword);
@@ -90,7 +90,14 @@ internal static class LdapConnectionProvider
             finally { CryptographicOperations.ZeroMemory(data.GetBuffer()); }
         }
         private static void WriteNullable(BinaryWriter writer, string? value)
-        { writer.Write(value is not null); if (value is not null) writer.Write(value); }
+        {
+            writer.Write(value is not null);
+            if (value is null) return;
+            // Preserve exact .NET strings. UTF-8 replacement fallback would collapse
+            // distinct malformed surrogate sequences into the same credential key.
+            writer.Write(value.Length);
+            foreach (var character in value) writer.Write((ushort)character);
+        }
         public bool Equals(ConnectionKey? other) => other is not null && digest == other.digest;
         public override bool Equals(object? obj) => obj is ConnectionKey key && Equals(key);
         public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(digest);

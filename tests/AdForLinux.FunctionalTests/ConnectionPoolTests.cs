@@ -309,4 +309,20 @@ public class ConnectionPoolTests
         Assert.True(LdapConnectionProvider.IsConnectionFailure(Failure(ResultCode.Unavailable)));
         Assert.True(LdapConnectionProvider.IsConnectionFailure(new OperationCanceledException()));
     }
+
+    [Fact]
+    public void Key_preserves_exact_utf16_in_credentials_and_endpoint()
+    {
+        var values = new[] { "\uD800", "\uD801", "\uFFFD", "\uDC00", "\uD800\uDC00" };
+        foreach (var field in new[] { "host", "user", "password" })
+        {
+            var keys = values.Select(value => LdapConnectionProvider.ConnectionKey.Create(new()
+            {
+                Host = field == "host" ? value : "directory.example",
+                BindDn = field == "user" ? value : "reader",
+                BindPassword = field == "password" ? value : "test password",
+            }, ReferralChasingOption.None)).ToArray();
+            Assert.Equal(values.Length, keys.Distinct().Count());
+        }
+    }
 }

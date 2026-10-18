@@ -45,6 +45,13 @@ jobs:
       - name: Run functional tests (net8.0 + net10.0)
         run: docker compose up --build --abort-on-container-exit --exit-code-from tests
 
+      - name: Record scoped connection-pool measurement
+        run: >-
+          docker compose run --rm tests dotnet test tests/AdForLinux.FunctionalTests
+          -f net10.0 --no-build
+          --filter FullyQualifiedName~AdForLinux.FunctionalTests.ConnectionPoolSambaTests.
+          --logger 'console;verbosity=detailed'
+
       - name: Tear down smblds
         if: always()
         run: docker rm -f smblds || true
