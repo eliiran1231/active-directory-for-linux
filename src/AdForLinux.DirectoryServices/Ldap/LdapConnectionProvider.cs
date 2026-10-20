@@ -15,9 +15,15 @@ internal static class LdapConnectionProvider
         System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(LdapConnectionProvider).Assembly)!.Unloading += _ => Pool.Dispose();
     }
 
-    internal static bool CanReuse(LdapConnectionOptions options) =>
+    internal static bool CanReuse(LdapConnectionOptions options,
+        ReferralChasingOption referrals = ReferralChasingOption.None) =>
         options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
-        !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword);
+        !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
+        // OpenLDAP keeps referral children on the owning handle and, without a
+        // rebind callback, binds them anonymously. Preserve that existing policy.
+        // WinLDAP referral identity propagation is not established for Basic;
+        // other backends also remain conservative until separately audited.
+        (referrals == ReferralChasingOption.None || OperatingSystem.IsLinux());
 
     internal static long NewGeneration() => Pool.NewGeneration();
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<LdapConnection, Session> Active = new();
@@ -31,9 +37,9 @@ internal static class LdapConnectionProvider
     {
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
-        // Referral targets can retain native authentication/session state that the
-        // managed API cannot inspect or reset. Bound their handles but do not reuse.
-        var reusable = CanReuse(snapshot) && referrals == ReferralChasingOption.None;
+        // Retain the entire native session, including referral children, only
+        // under its exact immutable credentials and referral/transport settings.
+        var reusable = CanReuse(snapshot, referrals);
         var key = ConnectionKey.Create(snapshot, referrals);
         var leases = Pool.AcquireBatch(key, count, () =>
         {

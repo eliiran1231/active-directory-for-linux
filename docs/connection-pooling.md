@@ -78,16 +78,30 @@ identities are logged. Internal snapshots expose only aggregate creation, reuse,
 destruction, failure, wait/timeout counts and current resources/keys/waiters.
 There is no checkout rebind or artificial health probe.
 
-Only explicit nonempty Basic credentials with referrals disabled are reused.
-Ambient/default, anonymous, Negotiate/Kerberos and other mechanisms receive fresh
-capacity-accounted sessions: the native effective identity, impersonation and
-credential-cache changes cannot be reliably established here. Referral-enabled
-sessions also remain fresh because native referral authentication/session state
-cannot be inspected or reset safely. These conservative paths gain no bind-reuse
-speedup. In particular, default referral-enabled entry/search configurations do
-not gain reuse; callers' existing referral behavior is preserved. Validation
-always executes the original fresh bind and disposes it, even for credentials
-matching a warm connection.
+Explicit nonempty Basic credentials are reusable with unchanged referral settings
+on Linux. The entire native session (including native referral children) remains
+under the exact immutable credential/configuration key. No checkout rebind,
+credential forwarding callback or referral-policy override is introduced.
+[OpenLDAP 2.6.8 request.c](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_8/libraries/libldap/request.c)
+keeps referral connections on the owning LDAP handle and binds them anonymously
+when there is no rebind callback, as in this library. Reuse preserves that behavior;
+it does not grant referral targets the primary Basic identity. External/Subordinate
+still map to All on Linux because Protocols cannot represent partial modes there.
+
+Windows and other backends retain fresh, capacity-accounted sessions when referrals
+are enabled. The WinLDAP contracts do not establish Basic referral identity
+propagation without potential ambient context; we do not infer safety from the
+primary bind credentials alone. Basic with referrals disabled remains reusable on
+those platforms. This platform limitation does not change caller referral settings.
+
+Ambient/default, anonymous, Negotiate/Kerberos and other mechanisms remain fresh
+and capacity-accounted. Current DirectoryEntry authentication defaults are Secure
+(Negotiate), and PrincipalContext defaults add signing/sealing: these fully default
+authentication workloads still gain no bind reuse. Explicit Basic workloads on
+Linux now gain reuse without changing default entry/search referrals (External).
+Kerberos pooling is tracked separately in [issue 236](https://github.com/eliiran1231/active-directory-for-linux/issues/236).
+Validation always executes the original fresh bind and disposes it, even for
+credentials matching a warm connection. No authentication fallback is introduced.
 
 Close and explicit credential/configuration rebinds advance a freshness generation
 and require a fresh checkout. Binding copies carry the generation floor. A late
@@ -152,8 +166,15 @@ all-or-none admission rather than assuming the single-connection tests suffice.
 CI records direct versus pooled rootDSE and entry-read creation/explicit-bind
 counts and elapsed time, plus concurrent entry reads, buffered/streaming page
 agreement, early cursor disposal and invalid credentials after warm discovery.
+Entry, paging and concurrent checks leave referral defaults unchanged. A small
+loopback LDAP source returns only referrals to the existing disposable Samba
+rootDSE: receiving actual target attributes proves native chasing occurred, and
+its bind counter proves primary-session reuse. This requires no second DC or
+changes to Samba security settings. It does not measure native child socket/bind
+counts or prove authenticated cross-domain referrals. The helper is used only with
+synthetic test credentials and is never part of the guarded offline suite.
 The entry comparison includes public schema/materialization overhead; it is not
 an identical wire-request benchmark. Both existing Linux/Windows offline CI and
 disposable Samba CI run for PRs targeting dev. These checks do not establish lab AD,
-Kerberos identity-switch, native referral, production TLS, network-partition,
+Kerberos identity-switch, Windows referral identity, production TLS, network-partition,
 throughput or tail-latency parity. No lab AD testing is authorized for this work.

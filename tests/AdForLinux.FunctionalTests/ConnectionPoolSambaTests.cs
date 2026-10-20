@@ -19,6 +19,48 @@ public sealed class ConnectionPoolMeasurementCollection;
 public class ConnectionPoolSambaTests(ITestOutputHelper output)
 {
     [Fact]
+    public async Task Default_referrals_reach_Samba_and_reuse_the_same_basic_session()
+    {
+        var scheme = TestSettings.UseTls ? "ldaps" : "ldap";
+        await using var source = new LoopbackReferralServer($"{scheme}://{TestSettings.Host}:{TestSettings.Port}/");
+        var options = new LdapConnectionOptions
+        {
+            Host = "127.0.0.1", Port = source.Port, UseSsl = false,
+            BindDn = "synthetic referral reader", BindPassword = "synthetic test password",
+            Timeout = TimeSpan.FromSeconds(10),
+        };
+        using var entry = new Entry($"LDAP://127.0.0.1:{source.Port}", options);
+        Assert.Equal(ReferralChasingOption.External, entry.Options.Referral);
+        LdapConnection? first = null;
+        for (var i = 0; i < 3; i++)
+        {
+            using var lease = entry.AcquireConnection();
+            try
+            {
+                if (first is not null) Assert.Same(first, lease.Connection);
+                first = lease.Connection;
+                // The source returns only a referral. This attribute must be read
+                // from the real disposable Samba target by native referral chasing.
+                Assert.Equal(TestSettings.BaseDn,
+                    RootDse.Read(lease.Connection, "defaultNamingContext")["defaultNamingContext"]);
+            }
+            catch
+            {
+                lease.Invalidate();
+                throw;
+            }
+            finally
+            {
+                if (i == 2) lease.Invalidate(); // Close fixture sockets before teardown.
+            }
+        }
+        Assert.Equal(1, source.Binds);
+        Assert.Equal(3, source.Searches);
+        Assert.Equal(ReferralChasingOption.External, entry.Options.Referral);
+        output.WriteLine("Three native referrals reached disposable Samba using one primary Basic bind; native child socket/bind counts are not measured.");
+    }
+
+    [Fact]
     public void RootDse_sequence_reuses_bound_connection_and_records_before_after_counts()
     {
         using var context = TestSettings.CreatePrincipalContext();
@@ -74,7 +116,7 @@ public class ConnectionPoolSambaTests(ITestOutputHelper output)
         for (var i = 0; i < operations; i++)
         {
             using var entry = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options.Clone());
-            entry.Options.Referral = ReferralChasingOption.None;
+            Assert.Equal(ReferralChasingOption.External, entry.Options.Referral);
             entry.RefreshCache(["distinguishedName"]);
             Assert.NotNull(entry.Properties["distinguishedName"].Value);
         }
@@ -93,11 +135,12 @@ public class ConnectionPoolSambaTests(ITestOutputHelper output)
         using var context = TestSettings.CreatePrincipalContext();
         var options = context.BuildOptions().Clone(TimeSpan.FromSeconds(26));
         using var root = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options);
-        root.Options.Referral = ReferralChasingOption.None;
+        Assert.Equal(ReferralChasingOption.External, root.Options.Referral);
         using var search = new Searcher(root)
         {
-            ReferralChasing = ReferralChasingOption.None, SearchScope = SearchScope.OneLevel, PageSize = 2,
+            SearchScope = SearchScope.OneLevel, PageSize = 2,
         };
+        Assert.Equal(ReferralChasingOption.External, search.ReferralChasing);
         search.PropertiesToLoad.Add("distinguishedName");
         using var buffered = search.FindAll();
         var expected = buffered.Cast<AdForLinux.DirectoryServices.SearchResult>().Select(result => result.Path).Order().ToArray();
@@ -112,7 +155,7 @@ public class ConnectionPoolSambaTests(ITestOutputHelper output)
         }
         // Admission of the entire same-key cap proves the producer returned or
         // discarded both leases after early collection disposal, without a sleep.
-        var all = LdapConnectionProvider.AcquireBatch(options, 8);
+        var all = LdapConnectionProvider.AcquireBatch(options, 8, referrals: ReferralChasingOption.External);
         foreach (var session in all) session.Dispose();
     }
 
@@ -125,7 +168,7 @@ public class ConnectionPoolSambaTests(ITestOutputHelper output)
         Parallel.For(0, 24, new ParallelOptions { MaxDegreeOfParallelism = 12 }, _ =>
         {
             using var entry = new Entry(TestSettings.PathFor(TestSettings.BaseDn), options.Clone());
-            entry.Options.Referral = ReferralChasingOption.None;
+            Assert.Equal(ReferralChasingOption.External, entry.Options.Referral);
             entry.RefreshCache(["distinguishedName"]);
             Assert.NotNull(entry.Properties["distinguishedName"].Value);
         });

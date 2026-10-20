@@ -34,12 +34,12 @@ public class ConnectionPoolOperationTests
         internal Action<DirectoryRequest>? OnRequest;
         internal Fixture(int capacity = 1) => Pool = new(capacity, capacity, startTimer: false,
             acquisitionTimeout: TimeSpan.FromMilliseconds(100));
-        internal Entry Entry(string name = "first")
+        internal Entry Entry(string name = "first", bool defaultReferrals = false)
         {
             var entry = new Entry("LDAP://directory.invalid/CN=" + name,
                 new LdapConnectionOptions { Host = "directory.invalid", BindDn = "reader", BindPassword = "test password" });
             entry.OperationSessionFactory = Open;
-            entry.Options.Referral = ReferralChasingOption.None;
+            if (!defaultReferrals) entry.Options.Referral = ReferralChasingOption.None;
             return entry;
         }
         private LdapConnectionProvider.Session[] Open(LdapConnectionOptions options, int count,
@@ -60,7 +60,7 @@ public class ConnectionPoolOperationTests
                         search.DistinguishedName is "" or null ? [] : new() { ["description"] = ["readable value"] });
                 });
                 Connections.Add(connection); return connection;
-            }, preferFresh: fresh, minimumGeneration: minimum).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
+            }, reusable: LdapConnectionProvider.CanReuse(options, referrals), preferFresh: fresh, minimumGeneration: minimum).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
         }
         public void Dispose() => Pool.Dispose();
     }
@@ -93,6 +93,30 @@ public class ConnectionPoolOperationTests
         Assert.True(fixture.Pool.Snapshot.Reused >= 2);
         Assert.Contains(fixture.Requests.OfType<SearchRequest>(), request => request.DistinguishedName == "CN=first");
         Assert.Contains(fixture.Requests.OfType<SearchRequest>(), request => request.DistinguishedName == "CN=second");
+    }
+
+    [Fact]
+    public void Basic_entries_with_unchanged_default_referrals_use_platform_reuse_policy()
+    {
+        using var fixture = new Fixture();
+        using var first = fixture.Entry(defaultReferrals: true);
+        using var second = fixture.Entry("second", defaultReferrals: true);
+        Assert.Equal(ReferralChasingOption.External, first.Options.Referral);
+        first.RefreshCache(["description"]);
+        second.RefreshCache(["description"]);
+        first.RefreshCache(["description"]);
+        if (OperatingSystem.IsLinux())
+        {
+            Assert.Single(fixture.Connections);
+            Assert.True(fixture.Pool.Snapshot.Reused >= 2);
+        }
+        else
+        {
+            Assert.Equal(0, fixture.Pool.Snapshot.Reused);
+            Assert.Equal(0, fixture.Pool.Snapshot.Total);
+        }
+        Assert.Equal(ReferralChasingOption.External, first.Options.Referral);
+        Assert.Equal(ReferralChasingOption.External, second.Options.Referral);
     }
 
     [Fact]

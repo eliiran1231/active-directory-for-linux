@@ -248,6 +248,44 @@ public class ConnectionPoolTests
         Assert.False(LdapConnectionProvider.CanReuse(new() { Host = "directory.example", BindDn = "reader", BindPassword = "" }));
     }
 
+    [Theory]
+    [InlineData(ReferralChasingOption.None)]
+    [InlineData(ReferralChasingOption.Subordinate)]
+    [InlineData(ReferralChasingOption.External)]
+    [InlineData(ReferralChasingOption.All)]
+    public void Referral_policy_never_makes_ambient_or_other_authentication_reusable(ReferralChasingOption referrals)
+    {
+        var basic = new LdapConnectionOptions { Host = "directory.example", BindDn = "reader", BindPassword = "password" };
+        Assert.Equal(referrals == ReferralChasingOption.None || OperatingSystem.IsLinux(),
+            LdapConnectionProvider.CanReuse(basic, referrals));
+        foreach (var auth in Enum.GetValues<AuthType>().Where(auth => auth != AuthType.Basic))
+        {
+            var other = new LdapConnectionOptions
+            {
+                Host = "directory.example", BindDn = "reader", BindPassword = "password", AuthenticationType = auth,
+            };
+            Assert.False(LdapConnectionProvider.CanReuse(other, referrals));
+        }
+        Assert.False(LdapConnectionProvider.CanReuse(new()
+            { Host = "directory.example", BindDn = "reader" }, referrals));
+        Assert.False(LdapConnectionProvider.CanReuse(new()
+            { Host = "directory.example", BindPassword = "password" }, referrals));
+    }
+
+    [Fact]
+    public void Referral_modes_and_explicit_identities_never_share_a_key()
+    {
+        var keys = new List<LdapConnectionProvider.ConnectionKey>();
+        foreach (var referrals in Enum.GetValues<ReferralChasingOption>())
+        foreach (var identity in new[] { "first reader", "second reader" })
+        foreach (var password in new[] { "original password", "replacement password" })
+            keys.Add(LdapConnectionProvider.ConnectionKey.Create(new()
+            {
+                Host = "directory.example", BindDn = identity, BindPassword = password,
+            }, referrals));
+        Assert.Equal(keys.Count, keys.Distinct().Count());
+    }
+
     [Fact]
     public void Nonreusable_lease_is_destroyed_even_after_success()
     {
