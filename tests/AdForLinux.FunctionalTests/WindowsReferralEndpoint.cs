@@ -38,24 +38,38 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal int TlsHandshakes => Volatile.Read(ref tlsHandshakes);
     internal ConcurrentQueue<string> BoundIdentities { get; } = new();
 
+    internal ConcurrentQueue<string> TransportFailures { get; } = new();
+
     internal WindowsReferralEndpoint(bool tls)
     {
         OfflineTestGuard.RequireLiveAccess();
         if (tls)
         {
-            using var key = RSA.Create(2048);
-            var request = new CertificateRequest("CN=localhost", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            var names = new SubjectAlternativeNameBuilder();
-            names.AddIpAddress(IPAddress.Loopback);
-            request.CertificateExtensions.Add(names.Build());
-            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
-                new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
-            using var generated = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
-            // Reimport for Schannel server use. Never install in a certificate store
-            // or change machine trust; the temporary key is deleted on disposal.
+            var diagnosticPfx = Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX");
+            if (!string.IsNullOrEmpty(diagnosticPfx))
+            {
+                if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")
+                    throw new InvalidOperationException("Diagnostic certificate is only for hosted Windows CI.");
 #pragma warning disable SYSLIB0057
-            certificate = new X509Certificate2(generated.Export(X509ContentType.Pfx));
+                certificate = new X509Certificate2(diagnosticPfx);
 #pragma warning restore SYSLIB0057
+            }
+            else
+            {
+                using var key = RSA.Create(2048);
+                var request = new CertificateRequest("CN=localhost", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                var names = new SubjectAlternativeNameBuilder();
+                names.AddIpAddress(IPAddress.Loopback);
+                request.CertificateExtensions.Add(names.Build());
+                request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+                    new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
+                using var generated = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
+                // Reimport for Schannel server use. Never install in a certificate store
+                // or change machine trust; the temporary key is deleted on disposal.
+#pragma warning disable SYSLIB0057
+                certificate = new X509Certificate2(generated.Export(X509ContentType.Pfx));
+#pragma warning restore SYSLIB0057
+            }
         }
         listener.Start();
         accepting = Accept();
@@ -147,7 +161,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             }
             catch (EndOfStreamException) { }
             catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
-            catch (IOException) { } // Peer reset or deliberate fixture disconnect.
+            catch (AuthenticationException error) { TransportFailures.Enqueue($"TLS {error.GetType().Name} HResult={error.HResult:X8}"); }
+            catch (IOException error) { TransportFailures.Enqueue($"IO {error.GetType().Name} HResult={error.HResult:X8}"); } // Peer reset or deliberate fixture disconnect.
             catch (ObjectDisposedException) { } // Deliberate fixture disconnect.
             finally
             {

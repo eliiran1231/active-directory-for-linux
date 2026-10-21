@@ -18,15 +18,26 @@ public sealed class WindowsReferralFactAttribute : FactAttribute
 
 // Deliberately excluded from the offline allowlist. The dedicated hosted Windows
 // job runs this exact class against loopback endpoints, never a configured domain.
+public sealed class WindowsReferralDiagnosticTheoryAttribute : TheoryAttribute
+{
+    public WindowsReferralDiagnosticTheoryAttribute()
+    {
+        if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is null)
+            Skip = "Opt-in hosted certificate-trust diagnostic only.";
+    }
+}
+
 public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
 {
     private int certificateCallbacks;
-    private static LdapConnectionOptions Options(WindowsReferralEndpoint source, string identity, bool tls = true) => new()
+    private bool diagnosticPrimaryCallback;
+    private string testHost = "127.0.0.1";
+    private LdapConnectionOptions Options(WindowsReferralEndpoint source, string identity, bool tls = true) => new()
     {
-        Host = "127.0.0.1", Port = source.Port, UseSsl = tls,
+        Host = testHost, Port = source.Port, UseSsl = tls,
         // Existing per-connection test option, scoped to this ephemeral loopback
-        // certificate. No machine trust settings or production defaults change.
-        SkipCertificateCheck = tls, BindDn = identity, BindPassword = WindowsReferralEndpoint.Password,
+        // certificate. The opt-in diagnostic uses normal validation by default.
+        SkipCertificateCheck = tls && (diagnosticPrimaryCallback || Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is null), BindDn = identity, BindPassword = WindowsReferralEndpoint.Password,
         Timeout = TimeSpan.FromSeconds(5),
     };
 
@@ -34,7 +45,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         => LdapConnectionFactory.ConfigureOwned(LdapConnectionFactory.Create(options), connection =>
         {
             LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasingOption.External);
-            if (options.UseSsl)
+            if (options.SkipCertificateCheck)
             {
                 var existing = connection.SessionOptions.VerifyServerCertificate;
                 connection.SessionOptions.VerifyServerCertificate = (owner, certificate) =>
@@ -58,7 +69,21 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
 
     [WindowsReferralFact]
     public async Task Native_basic_referrals_preserve_explicit_identity_across_primary_reuse_and_impersonation()
+        => await CheckTlsReferral("127.0.0.1", "ldaps");
+
+    [WindowsReferralDiagnosticTheory]
+    [InlineData("localhost", "ldaps", false)]
+    [InlineData("127.0.0.1", "ldaps", true)]
+    [InlineData("127.0.0.1", "ldap", false)]
+    [InlineData("localhost", "ldap", false)]
+    public async Task Diagnostic_transport_and_name_variants(string host, string scheme, bool primaryCallback)
+        => await CheckTlsReferral(host, scheme, primaryCallback);
+
+    private async Task CheckTlsReferral(string host, string scheme, bool primaryCallback = false)
     {
+        testHost = host;
+        diagnosticPrimaryCallback = primaryCallback;
+        output.WriteLine($"Primary LDAPS; referral scheme={scheme}; host={host}; primary callback={primaryCallback}; trusted diagnostic={Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is not null}.");
         await using var target = new WindowsReferralEndpoint(tls: true);
         await using var source = new WindowsReferralEndpoint(tls: true);
         // Load/JIT managed request and response dependencies before anonymous
@@ -66,28 +91,33 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         // This separate primary never follows a referral.
         using (var warmup = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
             Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(warmup));
-        // Explicit LDAPS URL: ldap:// to a custom port does not inherit TLS
-        // in WinLDAP. Never accept plaintext as a substitute for this check.
-        source.ReferralUrl = $"ldaps://127.0.0.1:{target.Port}/CN=target";
+        // The diagnostic also probes ldap:// URLs against a TLS-only target.
+        // Never accept plaintext as a substitute for successful TLS here.
+        source.ReferralUrl = $"{scheme}://{host}:{target.Port}/CN=target";
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
-            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}."); }
+            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, failures={string.Join(";", target.TransportFailures)}."); }
+        }
+        void Stage(string name, Action action)
+        {
+            try { action(); }
+            finally { output.WriteLine($"Phase={name}; primary binds={source.Binds}; target connections={target.Connections}; TLS={target.TlsHandshakes}; binds={target.Binds}; searches={target.Searches}; anonymous={target.AnonymousBinds}; credentialed={target.CredentialedSimpleBinds}; SASL={target.SaslBinds}; failures={string.Join(";", target.TransportFailures)}."); }
         }
         foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
         {
             var options = Options(source, identity);
             using var connection = Open(options);
             // First referred bind happens only after changing ambient identity.
-            AsAnonymous(() => Assert.Equal(identity, Read(connection)));
-            Assert.Equal(identity, Read(connection));
-            AsAnonymous(() => Assert.Equal(identity, Read(connection)));
+            Stage("first referral under anonymous impersonation", () => AsAnonymous(() => Assert.Equal(identity, Read(connection))));
+            Stage("reuse under original identity", () => Assert.Equal(identity, Read(connection)));
+            Stage("reuse under anonymous impersonation", () => AsAnonymous(() => Assert.Equal(identity, Read(connection))));
             // Fresh-primary baseline under the changed ambient identity.
-            AsAnonymous(() =>
+            Stage("fresh control under anonymous impersonation", () => AsAnonymous(() =>
             {
                 using var fresh = Open(options);
                 Assert.Equal(identity, Read(fresh));
-            });
+            }));
         }
         Assert.Equal(6, source.Binds); // Warmup, baseline, two retained, two fresh controls.
         Assert.Equal(10, source.Searches);
