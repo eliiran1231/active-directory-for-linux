@@ -61,3 +61,26 @@ The helper now uses a 60-second setup child, bounded process-output draining,
 and separate cleanup. If setup and default chain verification succeed in an
 independently authorized future run, it runs net8.0 then net10.0 sequentially,
 each with a 180-second process limit. The retained helper is not recurring CI.
+
+## Authorized CryptUI no-UI diagnostic
+
+A separately authorized single job used `CryptUIWizImport` with
+`CRYPTUI_WIZ_NO_UI`, a public-only certificate context and an explicitly opened
+CurrentUser Root store. [Run 39670664161](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39670664161)
+executed at `fbbfa0be67d60966c2e69b5087c7ed866a3653b5` using frozen tag
+`diagnostic/windows-basic-trust-cryptui-20261021-once`. PR #235 stayed at `9a6382c`.
+
+PowerShell parsing and both runtime builds passed. The setup child compiled the
+interop helper, generated and exported the certificate, wrote the thumbprint and
+PFX, and opened CurrentUser Root. `CryptUIWizImport` did not return: the last
+stage was `import:start`, and the parent terminated the child after 60 seconds
+(exit 124). Neither certificate-presence/default-chain verification nor the
+.NET 8 and .NET 10 tests were reached. The logs establish the import-call stall;
+they do not establish its underlying cause or Windows referral pooling safety.
+
+The parent finally and separate `always()` cleanup each found zero matches and
+verified exact thumbprint `DA79AA16962C3AAAFF41DA63B6BCBB8B81594D8D` absent from
+CurrentUser Root. Both also verified deletion of the temporary fixture PFX.
+No LocalMachine trust, registry or policy changes, or reruns were performed.
+The one-off trigger was removed after this run. The tag must not be recreated;
+the approval is consumed. Production Windows pooling eligibility remains unchanged.
