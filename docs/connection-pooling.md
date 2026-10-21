@@ -200,8 +200,10 @@ Neither callback non-nullness nor a primary-bind success proves referred identit
 `WindowsBasicReferralTests` uses real WinLDAP against loopback BER/TLS endpoints
 on hosted Windows, separately from the offline suite. It parses target binds and
 accepts only two synthetic Basic identities/passwords; SASL receives no challenge.
-TLS certificates exist only for the fixture lifetime, without trust-store changes.
-The test's existing SkipCertificateCheck option is confined to fixture connections.
+Ordinary CI certificates exist only for the fixture lifetime, without trust-store
+changes. The test's existing SkipCertificateCheck option is confined to fixture
+connections. The separately authorized, single-job trust diagnostic is described
+below; it does not change ordinary CI or production validation.
 This is native client integration evidence, not an AD server or domain trust test.
 Microsoft documents refusal to forward plaintext Basic credentials, while older
 material describes anonymous referral binds; preserve observed backend behavior
@@ -215,7 +217,33 @@ not applying to the referral child, but does not prove certificate trust caused 
 failure. The subsequent two-identity, impersonation and retained-primary assertions
 have not passed; Windows referral-enabled pooling remains disabled. Plaintext
 referrals did attempt an anonymous bind and forwarded no explicit Basic credentials.
-A temporary fixture-certificate import/removal in CurrentUser Root on isolated
-hosted Windows CI is a possible next diagnostic, requiring separate authorization
-under this task's prohibition on security-setting changes. It has not been attempted
-and is not guaranteed to resolve the TLS failure.
+
+At `7ce7bcc`, [native Windows CI](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39662334153)
+classified the referral target's first socket record as a TLS handshake on both
+.NET 8 and .NET 10. After endpoint shutdown, each recorded one closed connection,
+zero completed TLS handshakes, zero binds/searches, and IOException HRESULT
+`0x80131620`. No payload bytes or exception messages were logged. This rules out
+plaintext transport on that observed LDAPS connection; it does not identify the
+TLS failure cause. The plaintext safeguard still passed, with one anonymous bind
+and no credentialed Simple or SASL binds.
+
+One explicitly authorized [trust diagnostic job](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39661592499)
+was launched at `31ae9c0538a061a71672e4994b3f87a37c66a4e0` on a disposable hosted
+Windows runner, using one short-lived public TEST certificate in CurrentUser Root.
+The helper records the exact thumbprint before import, removes and verifies it in
+`finally`, and is followed by an `always()` cleanup step. Runner destruction is the
+final isolation boundary if termination interrupts cleanup. Consult the run logs
+for the actual import, test and cleanup outcomes; launching a job is not evidence
+that these actions succeeded. This authorization applies to that one job only.
+The trigger workflow has been removed from the PR branch. The retained
+[opt-in helper documentation](../tests/windows-referral-diagnostic/README.md)
+requires new authorization before any further trust job.
+
+A possible additional diagnostic infrastructure limitation is Windows displaying
+an interactive confirmation for CurrentUser Root `X509Store.Add`, as documented in
+[dotnet/runtime #24160](https://github.com/dotnet/runtime/issues/24160). A long-running
+step alone does not prove that this dialog appeared. CurrentUser Root visibility
+under anonymous impersonation is also a separate confounder. Neither a stalled
+import nor a TLS failure establishes unsafe credential substitution. Windows
+referral-enabled pooling remains disabled until successful native identity,
+reuse, isolation and failure-cleanup evidence supports a precise transport scope.
