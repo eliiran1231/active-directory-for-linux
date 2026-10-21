@@ -38,6 +38,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal int TlsHandshakes => Volatile.Read(ref tlsHandshakes);
     internal ConcurrentQueue<string> BoundIdentities { get; } = new();
 
+    internal ConcurrentQueue<string> FirstRecords { get; } = new();
     internal ConcurrentQueue<string> TransportFailures { get; } = new();
 
     internal WindowsReferralEndpoint(bool tls)
@@ -98,6 +99,13 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             {
                 if (certificate is not null)
                 {
+                    // Observe protocol selection without consuming or logging LDAP payloads.
+                    var first = new byte[1];
+                    var count = await client.Client.ReceiveAsync(first.AsMemory(), SocketFlags.Peek, stop.Token);
+                    FirstRecords.Enqueue(count == 0 ? "EOF" : first[0] switch
+                    {
+                        0x16 => "TLS handshake", 0x15 => "TLS alert", 0x30 => "LDAP BER", _ => "other",
+                    });
                     var secure = new SslStream(stream, leaveInnerStreamOpen: false);
                     stream = secure;
                     await secure.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
@@ -161,8 +169,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             }
             catch (EndOfStreamException) { }
             catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
-            catch (AuthenticationException error) { TransportFailures.Enqueue($"TLS {error.GetType().Name} HResult={error.HResult:X8}"); }
-            catch (IOException error) { TransportFailures.Enqueue($"IO {error.GetType().Name} HResult={error.HResult:X8}"); } // Peer reset or deliberate fixture disconnect.
+            catch (AuthenticationException error) { TransportFailures.Enqueue(DescribeFailure(error)); }
+            catch (IOException error) { TransportFailures.Enqueue(DescribeFailure(error)); } // Peer reset or deliberate fixture disconnect.
+            catch (SocketException error) { TransportFailures.Enqueue(DescribeFailure(error)); }
             catch (ObjectDisposedException) { } // Deliberate fixture disconnect.
             finally
             {
@@ -170,6 +179,15 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                 Interlocked.Increment(ref closed);
             }
         }
+    }
+
+    private static string DescribeFailure(Exception error)
+    {
+        var details = new List<string>();
+        for (Exception? current = error; current is not null; current = current.InnerException)
+            details.Add($"{current.GetType().Name}:HResult={current.HResult:X8}" +
+                (current is System.ComponentModel.Win32Exception native ? $":Native={native.NativeErrorCode}" : ""));
+        return string.Join("/", details); // Never include exception messages or received bytes.
     }
 
     private async Task<byte[]> ReadMessage(Stream stream)

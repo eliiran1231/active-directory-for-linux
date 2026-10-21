@@ -84,7 +84,9 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         testHost = host;
         diagnosticPrimaryCallback = primaryCallback;
         output.WriteLine($"Primary LDAPS; referral scheme={scheme}; host={host}; primary callback={primaryCallback}; trusted diagnostic={Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is not null}.");
-        await using var target = new WindowsReferralEndpoint(tls: true);
+        var target = new WindowsReferralEndpoint(tls: true);
+        using var report = new FinalReport(() => output.WriteLine($"Final target: connections={target.Connections}; closed={target.Closed}; TLS={target.TlsHandshakes}; binds={target.Binds}; searches={target.Searches}; first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."));
+        await using var targetLifetime = target;
         await using var source = new WindowsReferralEndpoint(tls: true);
         // Load/JIT managed request and response dependencies before anonymous
         // impersonation, which cannot read assemblies from the runner workspace.
@@ -97,12 +99,12 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
-            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, failures={string.Join(";", target.TransportFailures)}."); }
+            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."); }
         }
         void Stage(string name, Action action)
         {
             try { action(); }
-            finally { output.WriteLine($"Phase={name}; primary binds={source.Binds}; target connections={target.Connections}; TLS={target.TlsHandshakes}; binds={target.Binds}; searches={target.Searches}; anonymous={target.AnonymousBinds}; credentialed={target.CredentialedSimpleBinds}; SASL={target.SaslBinds}; failures={string.Join(";", target.TransportFailures)}."); }
+            finally { output.WriteLine($"Phase={name}; primary binds={source.Binds}; target connections={target.Connections}; TLS={target.TlsHandshakes}; binds={target.Binds}; searches={target.Searches}; anonymous={target.AnonymousBinds}; credentialed={target.CredentialedSimpleBinds}; SASL={target.SaslBinds}; first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."); }
         }
         foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
         {
@@ -146,6 +148,11 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         Assert.Equal(0, target.SaslBinds);
         Assert.Equal(0, target.Searches);
         output.WriteLine($"Native plaintext Basic referral rejected; target anonymous binds={target.AnonymousBinds}, credentialed Simple binds={target.CredentialedSimpleBinds}, SASL binds={target.SaslBinds}.");
+    }
+
+    private sealed class FinalReport(Action write) : IDisposable
+    {
+        public void Dispose() => write();
     }
 
     private static void AsAnonymous(Action action)
