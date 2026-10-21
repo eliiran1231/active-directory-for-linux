@@ -95,7 +95,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         Assert.Equal(0, target.SaslBinds);
         Assert.Contains(WindowsReferralEndpoint.FirstIdentity, target.BoundIdentities);
         Assert.Contains(WindowsReferralEndpoint.SecondIdentity, target.BoundIdentities);
-        output.WriteLine($"Native TLS referrals: primary binds={source.Binds}, target searches={target.Searches}, target binds={target.Binds}, SASL binds={target.SaslBinds}. Two synthetic identities and six successful anonymous impersonation scopes; no callback overrides.");
+        output.WriteLine($"Native TLS referrals: primary binds={source.Binds}, target searches={target.Searches}, target binds={target.Binds}, SASL binds={target.SaslBinds}. Two synthetic identities and six successful anonymous impersonation scopes; no referral callback overrides.");
     }
 
     [WindowsReferralFact]

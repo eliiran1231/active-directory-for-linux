@@ -89,10 +89,9 @@ it does not grant referral targets the primary Basic identity. External/Subordin
 still map to All on Linux because Protocols cannot represent partial modes there.
 
 Windows and other backends retain fresh, capacity-accounted sessions when referrals
-are enabled. The WinLDAP contracts do not establish Basic referral identity
-propagation without potential ambient context; we do not infer safety from the
-primary bind credentials alone. Basic with referrals disabled remains reusable on
-those platforms. This platform limitation does not change caller referral settings.
+are enabled. MS-ADTS supports fixed Basic credential propagation, but native
+Windows TLS referral identity and reuse validation remains incomplete. Basic with
+referrals disabled remains reusable on those platforms. This platform limitation does not change caller referral settings.
 
 Ambient/default, anonymous, Negotiate/Kerberos and other mechanisms remain fresh
 and capacity-accounted. Current DirectoryEntry authentication defaults are Secure
@@ -208,3 +207,15 @@ Microsoft documents refusal to forward plaintext Basic credentials, while older
 material describes anonymous referral binds; preserve observed backend behavior
 rather than add forwarding to make a test pass. StartTLS has separate documented
 referral/autoreconnect restrictions and must not be treated as LDAPS.
+
+The Windows .NET 8/10 native baseline at `2243542` reached the LDAPS referral
+target but completed zero TLS handshakes and sent zero binds. Only the two primary
+connections invoked the certificate callback. This is consistent with the callback
+not applying to the referral child, but does not prove certificate trust caused the
+failure. The subsequent two-identity, impersonation and retained-primary assertions
+have not passed; Windows referral-enabled pooling remains disabled. Plaintext
+referrals did attempt an anonymous bind and forwarded no explicit Basic credentials.
+A temporary fixture-certificate import/removal in CurrentUser Root on isolated
+hosted Windows CI is a possible next diagnostic, requiring separate authorization
+under this task's prohibition on security-setting changes. It has not been attempted
+and is not guaranteed to resolve the TLS failure.
