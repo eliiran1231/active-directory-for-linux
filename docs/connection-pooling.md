@@ -178,3 +178,33 @@ an identical wire-request benchmark. Both existing Linux/Windows offline CI and
 disposable Samba CI run for PRs targeting dev. These checks do not establish lab AD,
 Kerberos identity-switch, Windows referral identity, production TLS, network-partition,
 throughput or tail-latency parity. No lab AD testing is authorized for this work.
+
+## Windows Basic referral investigation
+
+The Windows eligibility extension is gated on native Windows tests, not only the
+managed pool tests. The initial investigation commit leaves eligibility unchanged.
+The [MS-ADTS referral task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/b2edefdd-16f9-413d-88c5-a2f5c137bafe)
+associates referred connections with the containing ADConnection; the
+[bind task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7a6dad48-8a6f-4704-8308-e3367ab7440a)
+constructs authentication from that connection's LDAP_OPT_AUTH_INFO. Its ambient
+thread-identity behavior is in the SASL branch. This supports whole-handle reuse
+under fixed explicit Basic credentials without changing native referral callbacks.
+
+The intended integration boundary remains `LdapConnectionProvider.CanReuse`:
+retain the exact existing credentials, transport, referral mode and other settings
+in the key; retain exclusive operation ownership and failure disposal. Do not
+introduce credential-forwarding callbacks or cache borrowed callback wrappers.
+Protocols 9.0.0 only takes ownership of a notified referral handle when its callback
+returns true; native null credentials become an empty managed NetworkCredential.
+Neither callback non-nullness nor a primary-bind success proves referred identity.
+
+`WindowsBasicReferralTests` uses real WinLDAP against loopback BER/TLS endpoints
+on hosted Windows, separately from the offline suite. It parses target binds and
+accepts only two synthetic Basic identities/passwords; SASL receives no challenge.
+TLS certificates exist only for the fixture lifetime, without trust-store changes.
+The test's existing SkipCertificateCheck option is confined to fixture connections.
+This is native client integration evidence, not an AD server or domain trust test.
+Microsoft documents refusal to forward plaintext Basic credentials, while older
+material describes anonymous referral binds; preserve observed backend behavior
+rather than add forwarding to make a test pass. StartTLS has separate documented
+referral/autoreconnect restrictions and must not be treated as LDAPS.

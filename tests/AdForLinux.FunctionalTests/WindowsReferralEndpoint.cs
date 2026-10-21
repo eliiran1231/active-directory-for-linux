@@ -21,7 +21,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal const string Password = "synthetic fixture password";
     private readonly TcpListener listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource stop = new();
-    private readonly List<Task> clients = [];
+    private readonly List<(TcpClient Client, Task Serving)> clients = [];
     private readonly Task accepting;
     private readonly X509Certificate2? certificate;
     private int binds, searches, connections, closed, saslBinds;
@@ -66,7 +66,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             {
                 var client = await listener.AcceptTcpClientAsync(stop.Token);
                 Interlocked.Increment(ref connections);
-                clients.Add(Serve(client));
+                lock (clients) clients.Add((client, Serve(client)));
             }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
@@ -139,7 +139,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             }
             catch (EndOfStreamException) { }
             catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
-            catch (IOException) when (stop.IsCancellationRequested) { }
+            catch (IOException) { } // Peer reset or deliberate fixture disconnect.
+            catch (ObjectDisposedException) { } // Deliberate fixture disconnect.
             finally
             {
                 stream.Dispose();
@@ -157,7 +158,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         if ((length & 0x80) != 0)
         {
             var count = length & 0x7f;
-            if (count is < 1 or > 3) throw new InvalidDataException("Invalid LDAP length.");
+            if (count is < 1 or > 4) throw new InvalidDataException("Invalid LDAP length.");
             var bytes = new byte[count];
             await stream.ReadExactlyAsync(bytes, stop.Token);
             length = 0;
@@ -214,10 +215,18 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
 
     private enum ResultCode { Success = 0, AuthMethodNotSupported = 7, Referral = 10, InvalidCredentials = 49 }
 
+    internal async Task DisconnectClients()
+    {
+        (TcpClient Client, Task Serving)[] current;
+        lock (clients) current = clients.ToArray();
+        foreach (var item in current) item.Client.Dispose();
+        await Task.WhenAll(current.Select(item => item.Serving));
+    }
+
     public async ValueTask DisposeAsync()
     {
         stop.Cancel();
-        try { await accepting; await Task.WhenAll(clients); }
+        try { await accepting; await Task.WhenAll(clients.Select(item => item.Serving)); }
         finally { listener.Stop(); certificate?.Dispose(); stop.Dispose(); }
     }
 }
