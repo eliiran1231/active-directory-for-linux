@@ -56,9 +56,9 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         // This separate primary never follows a referral.
         using (var warmup = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
             Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(warmup));
-        // AD-style LDAP referral URLs inherit the primary TLS transport. The
-        // target accepts TLS only, so this cannot pass via cleartext forwarding.
-        source.ReferralUrl = $"ldap://127.0.0.1:{target.Port}/CN=target";
+        // Explicit LDAPS URL: ldap:// to a custom port does not inherit TLS
+        // in WinLDAP. Never accept plaintext as a substitute for this check.
+        source.ReferralUrl = $"ldaps://127.0.0.1:{target.Port}/CN=target";
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
