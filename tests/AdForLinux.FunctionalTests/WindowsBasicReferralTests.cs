@@ -40,7 +40,9 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     {
         var response = (SearchResponse)connection.SendRequest(new SearchRequest("CN=source", "(objectClass=*)",
             SearchScope.Base, "description"));
-        var entry = Assert.Single(response.Entries.Cast<SearchResultEntry>());
+        Assert.True(response.Entries.Count == 1,
+            $"Native response: result={response.ResultCode}, entries={response.Entries.Count}, referrals={response.Referral.Length}, references={response.References.Count}.");
+        var entry = response.Entries[0];
         return Assert.IsType<string>(entry.Attributes["description"][0]);
     }
 
@@ -54,7 +56,14 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         // This separate primary never follows a referral.
         using (var warmup = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
             Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(warmup));
-        source.ReferralUrl = $"ldaps://127.0.0.1:{target.Port}/CN=target";
+        // AD-style LDAP referral URLs inherit the primary TLS transport. The
+        // target accepts TLS only, so this cannot pass via cleartext forwarding.
+        source.ReferralUrl = $"ldap://127.0.0.1:{target.Port}/CN=target";
+        using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
+        {
+            try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
+            finally { output.WriteLine($"Baseline target connections={target.Connections}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}."); }
+        }
         foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
         {
             var options = Options(source, identity);
@@ -70,9 +79,9 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 Assert.Equal(identity, Read(fresh));
             });
         }
-        Assert.Equal(5, source.Binds); // Warmup, two retained primaries, two fresh controls.
-        Assert.Equal(9, source.Searches);
-        Assert.Equal(8, target.Searches);
+        Assert.Equal(6, source.Binds); // Warmup, baseline, two retained, two fresh controls.
+        Assert.Equal(10, source.Searches);
+        Assert.Equal(9, target.Searches);
         Assert.Equal(0, target.SaslBinds);
         Assert.Contains(WindowsReferralEndpoint.FirstIdentity, target.BoundIdentities);
         Assert.Contains(WindowsReferralEndpoint.SecondIdentity, target.BoundIdentities);
@@ -88,7 +97,10 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
             ReferralUrl = $"ldap://127.0.0.1:{target.Port}/CN=target",
         };
         using var connection = Open(Options(source, WindowsReferralEndpoint.FirstIdentity, tls: false));
-        Assert.ThrowsAny<DirectoryException>(() => Read(connection));
+        var response = (SearchResponse)connection.SendRequest(new SearchRequest("CN=source", "(objectClass=*)",
+            SearchScope.Base, "description"));
+        Assert.Empty(response.Entries.Cast<SearchResultEntry>());
+        Assert.NotEmpty(response.Referral);
         Assert.Empty(target.BoundIdentities);
         Assert.Equal(0, target.CredentialedSimpleBinds);
         Assert.Equal(0, target.SaslBinds);
