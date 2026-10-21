@@ -20,6 +20,7 @@ public sealed class WindowsReferralFactAttribute : FactAttribute
 // job runs this exact class against loopback endpoints, never a configured domain.
 public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
 {
+    private int certificateCallbacks;
     private static LdapConnectionOptions Options(WindowsReferralEndpoint source, string identity, bool tls = true) => new()
     {
         Host = "127.0.0.1", Port = source.Port, UseSsl = tls,
@@ -29,10 +30,19 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         Timeout = TimeSpan.FromSeconds(5),
     };
 
-    private static LdapConnection Open(LdapConnectionOptions options)
+    private LdapConnection Open(LdapConnectionOptions options)
         => LdapConnectionFactory.ConfigureOwned(LdapConnectionFactory.Create(options), connection =>
         {
             LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasingOption.External);
+            if (options.UseSsl)
+            {
+                var existing = connection.SessionOptions.VerifyServerCertificate;
+                connection.SessionOptions.VerifyServerCertificate = (owner, certificate) =>
+                {
+                    Interlocked.Increment(ref certificateCallbacks);
+                    return existing(owner, certificate);
+                };
+            }
             connection.Bind();
         });
 
@@ -62,7 +72,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
-            finally { output.WriteLine($"Baseline target connections={target.Connections}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}."); }
+            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}."); }
         }
         foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
         {

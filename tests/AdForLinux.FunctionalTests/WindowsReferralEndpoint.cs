@@ -24,7 +24,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private readonly List<(TcpClient Client, Task Serving)> clients = [];
     private readonly Task accepting;
     private readonly X509Certificate2? certificate;
-    private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds;
+    private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
     internal int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
@@ -35,6 +35,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal int SaslBinds => Volatile.Read(ref saslBinds);
     internal int CredentialedSimpleBinds => Volatile.Read(ref credentialedSimpleBinds);
     internal int AnonymousBinds => Volatile.Read(ref anonymousBinds);
+    internal int TlsHandshakes => Volatile.Read(ref tlsHandshakes);
     internal ConcurrentQueue<string> BoundIdentities { get; } = new();
 
     internal WindowsReferralEndpoint(bool tls)
@@ -90,6 +91,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         ServerCertificate = certificate, EnabledSslProtocols = SslProtocols.Tls12,
                         ClientCertificateRequired = false,
                     }, stop.Token);
+                    Interlocked.Increment(ref tlsHandshakes);
                 }
                 var identity = "unbound";
                 while (!stop.IsCancellationRequested)
