@@ -68,6 +68,80 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     }
 
     [WindowsReferralFact]
+    public Task Direct_target_tls_under_original_identity()
+        => CheckDirectTargetTls(anonymous: false);
+
+    [WindowsReferralFact]
+    public Task Direct_target_tls_under_anonymous_impersonation()
+        => CheckDirectTargetTls(anonymous: true);
+
+    private async Task CheckDirectTargetTls(bool anonymous)
+    {
+        // Independent direct controls, not referral or pool-safety assertions.
+        // Warm the same client/callback path before impersonation: anonymous
+        // threads cannot load assemblies from the runner workspace.
+        int callbacks = 0;
+        string phase = "initialization";
+        Action CreateRead(WindowsReferralEndpoint endpoint)
+        {
+            var pin = endpoint.PublicCertificateBytes;
+            var options = new LdapConnectionOptions
+            {
+                Host = "127.0.0.1", Port = endpoint.Port, UseSsl = true,
+                BindDn = WindowsReferralEndpoint.FirstIdentity,
+                BindPassword = WindowsReferralEndpoint.Password,
+                Timeout = TimeSpan.FromSeconds(5),
+            };
+            return () =>
+            {
+                phase = "create";
+                using var connection = LdapConnectionFactory.Create(options);
+                // Exact DER pin on this client only; no trust-store changes and
+                // no callback attached to native referral children.
+                connection.SessionOptions.VerifyServerCertificate = (_, presented) =>
+                {
+                    Interlocked.Increment(ref callbacks);
+                    return presented is not null && pin.AsSpan().SequenceEqual(presented.GetRawCertData());
+                };
+                phase = "bind";
+                connection.Bind();
+                phase = "search";
+                Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(connection));
+                phase = "complete";
+            };
+        }
+        var warmup = new WindowsReferralEndpoint(tls: true);
+        using (var warmupReport = new FinalReport(() => output.WriteLine(
+            $"Direct warmup: phase={phase}; TLS={warmup.TlsHandshakes}; binds={warmup.Binds}; " +
+            $"searches={warmup.Searches}; pin callbacks={callbacks}; failures={string.Join(";", warmup.TransportFailures)}.")))
+        {
+            await using var warmupLifetime = warmup;
+            CreateRead(warmup)();
+        }
+        callbacks = 0;
+        var target = new WindowsReferralEndpoint(tls: true);
+        using var report = new FinalReport(() => output.WriteLine(
+            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; phase={phase}; " +
+            $"connections={target.Connections}; closed={target.Closed}; TLS={target.TlsHandshakes}; " +
+            $"binds={target.Binds}; searches={target.Searches}; credentialed={target.CredentialedSimpleBinds}; " +
+            $"anonymous binds={target.AnonymousBinds}; SASL={target.SaslBinds}; pin callbacks={callbacks}; " +
+            $"first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."));
+        await using var lifetime = target;
+        var read = CreateRead(target);
+        phase = "enter identity scope";
+        if (anonymous) AsAnonymous(read);
+        else read();
+        Assert.Equal(1, target.Connections);
+        Assert.Equal(1, target.TlsHandshakes);
+        Assert.Equal(1, target.Binds);
+        Assert.Equal(1, target.CredentialedSimpleBinds);
+        Assert.Equal(1, target.Searches);
+        Assert.Equal(0, target.AnonymousBinds);
+        Assert.Equal(0, target.SaslBinds);
+        Assert.True(callbacks > 0, "The direct client must validate the exact test certificate.");
+    }
+
+    [WindowsReferralFact]
     public async Task Native_basic_referrals_preserve_explicit_identity_across_primary_reuse_and_impersonation()
         => await CheckTlsReferral("127.0.0.1", "ldaps");
 

@@ -36,6 +36,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal int CredentialedSimpleBinds => Volatile.Read(ref credentialedSimpleBinds);
     internal int AnonymousBinds => Volatile.Read(ref anonymousBinds);
     internal int TlsHandshakes => Volatile.Read(ref tlsHandshakes);
+    internal byte[] PublicCertificateBytes => certificate?.RawData
+        ?? throw new InvalidOperationException("TLS endpoint required for certificate pinning.");
     internal ConcurrentQueue<string> BoundIdentities { get; } = new();
 
     internal ConcurrentQueue<string> FirstRecords { get; } = new();
