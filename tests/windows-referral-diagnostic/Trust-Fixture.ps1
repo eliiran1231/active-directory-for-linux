@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
     throw 'Only a disposable GitHub-hosted Windows runner is permitted.'
 }
-$directory = Join-Path $env:RUNNER_TEMP 'adfl-referral-trust-stages-once'
+$directory = Join-Path $env:RUNNER_TEMP 'adfl-referral-trust-cryptui-once'
 $manifest = Join-Path $directory 'thumbprint.txt'
 $pfx = Join-Path $directory 'loopback.pfx'
 $stageFile = Join-Path $directory 'stage.txt'
@@ -42,6 +42,44 @@ if ($Cleanup) { Remove-Fixture; exit 0 }
 if ($SetupWorker) {
     $key = $null; $generated = $null; $public = $null; $store = $null; $chain = $null
     try {
+        Stage 'interop-compile:start'
+        Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+public static class FixtureCryptUI {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ImportSource {
+        public uint Size;
+        public uint SubjectChoice;
+        public IntPtr CertificateContext;
+        public uint Flags;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string Password;
+    }
+    [DllImport("cryptui.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CryptUIWizImport(uint flags, IntPtr parent,
+        IntPtr title, ref ImportSource source, IntPtr destination);
+    public static void ImportPublic(X509Certificate2 certificate, X509Store store) {
+        if (certificate.HasPrivateKey) throw new InvalidOperationException("Public certificate required.");
+        var source = new ImportSource {
+            Size = (uint)Marshal.SizeOf<ImportSource>(),
+            SubjectChoice = 2, // CRYPTUI_WIZ_IMPORT_SUBJECT_CERT_CONTEXT
+            CertificateContext = certificate.Handle,
+            Password = string.Empty
+        };
+        // CRYPTUI_WIZ_NO_UI; destination is the explicitly opened CurrentUser Root.
+        bool imported = CryptUIWizImport(0x0001, IntPtr.Zero, IntPtr.Zero, ref source, store.StoreHandle);
+        int error = Marshal.GetLastWin32Error();
+        GC.KeepAlive(certificate);
+        GC.KeepAlive(store);
+        if (!imported) throw new Win32Exception(error, "CryptUIWizImport failed.");
+    }
+}
+'@
+        Stage 'interop-compile:done'
         Stage 'generate:start'
         $key = [System.Security.Cryptography.RSA]::Create(2048)
         $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
@@ -78,8 +116,7 @@ if ($SetupWorker) {
         if ($store.Certificates.Find('FindByThumbprint', $public.Thumbprint, $false).Count -ne 0) { throw 'Certificate already exists.' }
         Stage 'store-open:done'
         Stage 'import:start'
-        # Preserve the previous import API so this diagnostic identifies its exact failing stage.
-        $store.Add($public)
+        [FixtureCryptUI]::ImportPublic($public, $store)
         Stage 'import:done'
         $store.Dispose(); $store = $null
         Stage 'verify-trust:start'
