@@ -1,0 +1,63 @@
+name: Bro workflow commands
+run-name: Bro command on PR #${{ github.event.issue.number }}
+
+# Active after this workflow is merged into the default branch.
+# Commands: [bro] run ci or [bro] run differential (optional text on later lines).
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+concurrency:
+  group: bro-comment-${{ github.event.comment.id }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.user.login == 'yazanbaroud' &&
+      startsWith(github.event.comment.body, '[bro]')
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout: PR code never executes in the listener's privileged context.
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea9 # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const { issue, comment } = context.payload;
+            if (!issue.pull_request || comment.user.login !== 'yazanbaroud') return;
+            const command = comment.body.split(/\r?\n/, 1)[0].trimEnd();
+            const workflows = {
+              '[bro] run ci': 'ci.yml',
+              '[bro] run differential': 'differential.yml',
+            };
+            const workflow_id = workflows[command];
+            if (!workflow_id) {
+              core.info('No recognized Bro command. Use [bro] run ci or [bro] run differential.');
+              return;
+            }
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner, repo, username: comment.user.login,
+            });
+            if (!['admin', 'maintain', 'write'].includes(permission.permission)) {
+              throw new Error('The command author must have repository write permission.');
+            }
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: issue.number,
+            });
+            if (pr.state !== 'open' || pr.head.repo?.full_name !== `${owner}/${repo}`) {
+              throw new Error('Commands require an open PR with a branch in this repository. Fork PRs are not dispatched.');
+            }
+            const inputs = workflow_id === 'differential.yml' ? {
+              reason: `Bro request on PR #${issue.number}, comment ${comment.id}, head ${pr.head.sha}`,
+              pr_number: String(issue.number),
+            } : {};
+            await github.rest.actions.createWorkflowDispatch({
+              owner, repo, workflow_id, ref: pr.head.ref, inputs,
+            });
+            core.info(`Dispatched ${workflow_id} on ${pr.head.ref} (${pr.head.sha}).`);
