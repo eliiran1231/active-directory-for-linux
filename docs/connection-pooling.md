@@ -247,3 +247,28 @@ under anonymous impersonation is also a separate confounder. Neither a stalled
 import nor a TLS failure establishes unsafe credential substitution. Windows
 referral-enabled pooling remains disabled until successful native identity,
 reuse, isolation and failure-cleanup evidence supports a precise transport scope.
+
+### Direct Windows TLS controls
+
+[Control-only run 39680706941](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39680706941)
+at `dd368f5c519b8ec62c06a939fca36fa5d4fc93e5` passed both direct-to-target tests
+on .NET 8 and .NET 10. Each runtime tested the original Windows identity and
+anonymous impersonation independently, after a separate warmup endpoint loaded
+the client code. Each target recorded one connection, completed TLS handshake,
+explicit synthetic Basic bind, search, pin-callback invocation and closed
+connection; no anonymous LDAP bind, SASL bind or transport failure occurred.
+
+The callback accepts only the exact DER certificate generated for that direct
+target. It is attached only to that test client before binding, with no system
+trust import or native referral callback changes. The earlier native referral
+baseline had one target connection but zero completed TLS handshakes, binds or
+searches on both runtimes. These results narrow the blocker: the target and direct
+client can work under either ambient identity with pinning, but native referral
+children and their default certificate-validation path remain unvalidated.
+The controls are not evidence that referral pooling is safe; eligibility is unchanged.
+
+The next diagnostic should compare an unpinned direct control using normal
+certificate validation with the pinned result, then collect available native TLS
+failure status before changing any referral behavior. Pinning success alone does
+not prove certificate trust caused the referral failure. StartTLS, referral identity
+propagation, isolation, reuse and failure eviction remain separate requirements.
