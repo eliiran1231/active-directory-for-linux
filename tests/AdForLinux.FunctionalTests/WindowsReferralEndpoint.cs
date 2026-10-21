@@ -24,7 +24,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private readonly List<(TcpClient Client, Task Serving)> clients = [];
     private readonly Task accepting;
     private readonly X509Certificate2? certificate;
-    private int binds, searches, connections, closed, saslBinds;
+    private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
     internal int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
@@ -33,6 +33,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal int Connections => Volatile.Read(ref connections);
     internal int Closed => Volatile.Read(ref closed);
     internal int SaslBinds => Volatile.Read(ref saslBinds);
+    internal int CredentialedSimpleBinds => Volatile.Read(ref credentialedSimpleBinds);
+    internal int AnonymousBinds => Volatile.Read(ref anonymousBinds);
     internal ConcurrentQueue<string> BoundIdentities { get; } = new();
 
     internal WindowsReferralEndpoint(bool tls)
@@ -102,6 +104,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     if (tag.TagValue == 0)
                     {
                         Interlocked.Increment(ref binds);
+                        identity = "unbound";
                         _ = operation.ReadInteger();
                         var name = Encoding.UTF8.GetString(operation.ReadOctetString());
                         var auth = operation.PeekTag();
@@ -109,6 +112,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         if (auth.HasSameClassAndValue(new Asn1Tag(TagClass.ContextSpecific, 0)))
                         {
                             var password = Encoding.UTF8.GetString(operation.ReadOctetString(auth));
+                            if (name.Length != 0 || password.Length != 0)
+                                Interlocked.Increment(ref credentialedSimpleBinds);
+                            else Interlocked.Increment(ref anonymousBinds);
                             if (!RejectBinds && password == Password && name is FirstIdentity or SecondIdentity)
                             {
                                 identity = name;

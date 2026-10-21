@@ -48,10 +48,13 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     public async Task Native_basic_referrals_preserve_explicit_identity_across_primary_reuse_and_impersonation()
     {
         await using var target = new WindowsReferralEndpoint(tls: true);
-        await using var source = new WindowsReferralEndpoint(tls: true)
-        {
-            ReferralUrl = $"ldaps://127.0.0.1:{target.Port}/CN=target",
-        };
+        await using var source = new WindowsReferralEndpoint(tls: true);
+        // Load/JIT managed request and response dependencies before anonymous
+        // impersonation, which cannot read assemblies from the runner workspace.
+        // This separate primary never follows a referral.
+        using (var warmup = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
+            Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(warmup));
+        source.ReferralUrl = $"ldaps://127.0.0.1:{target.Port}/CN=target";
         foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
         {
             var options = Options(source, identity);
@@ -67,8 +70,8 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 Assert.Equal(identity, Read(fresh));
             });
         }
-        Assert.Equal(4, source.Binds); // Two retained primaries plus two fresh controls.
-        Assert.Equal(8, source.Searches);
+        Assert.Equal(5, source.Binds); // Warmup, two retained primaries, two fresh controls.
+        Assert.Equal(9, source.Searches);
         Assert.Equal(8, target.Searches);
         Assert.Equal(0, target.SaslBinds);
         Assert.Contains(WindowsReferralEndpoint.FirstIdentity, target.BoundIdentities);
@@ -87,8 +90,10 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         using var connection = Open(Options(source, WindowsReferralEndpoint.FirstIdentity, tls: false));
         Assert.ThrowsAny<DirectoryException>(() => Read(connection));
         Assert.Empty(target.BoundIdentities);
+        Assert.Equal(0, target.CredentialedSimpleBinds);
+        Assert.Equal(0, target.SaslBinds);
         Assert.Equal(0, target.Searches);
-        output.WriteLine("Native plaintext Basic referral rejected without forwarding synthetic credentials.");
+        output.WriteLine($"Native plaintext Basic referral rejected; target anonymous binds={target.AnonymousBinds}, credentialed Simple binds={target.CredentialedSimpleBinds}, SASL binds={target.SaslBinds}.");
     }
 
     private static void AsAnonymous(Action action)
