@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.DirectoryServices.Protocols;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using AdForLinux.DirectoryServices.Ldap;
 using Xunit;
 using Xunit.Abstractions;
@@ -91,6 +93,51 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     [WindowsReferralFact]
     public Task Direct_target_tls_normal_validation_under_anonymous_impersonation()
         => CheckDirectTargetTls(anonymous: true, pinned: false);
+
+    [WindowsReferralFact]
+    public void Native_chain_engine_probe_under_original_and_anonymous_identity()
+    {
+        // Independent of LDAP, system trust changes and the diagnostic PFX.
+        // Generate only in memory; pass public DER to the native probe.
+        using var key = RSA.Create(2048);
+        var request = new CertificateRequest($"CN=ADFL chain probe {Guid.NewGuid():N}", key,
+            HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        using var generated = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
+#pragma warning disable SYSLIB0057
+        using var publicCertificate = new X509Certificate2(generated.Export(X509ContentType.Cert));
+#pragma warning restore SYSLIB0057
+        // Warm the exact native/managed path before the existing anonymous scope.
+        var original = WindowsChainProbe.Read(publicCertificate);
+        WindowsChainProbe.Result anonymous = default;
+        AsAnonymous(() => anonymous = WindowsChainProbe.Read(publicCertificate));
+        // Log only after reverting identity. Native error and trust flags are
+        // mutually exclusive: TRUE means a chain was built, not that it is trusted.
+        foreach (var (identity, result) in new[] { ("original", original), ("anonymous", anonymous) })
+        {
+            var detail = result.ApiSucceeded
+                ? $"trust-errors={result.TrustErrors:X8}; trust-info={result.TrustInfo:X8}"
+                : $"native-error={result.NativeError:X8}";
+            output.WriteLine($"Chain probe: identity={identity}; engine=current-user; flags={WindowsChainProbe.Flags:X8}; API-success={result.ApiSucceeded}; {detail}.");
+        }
+        Assert.True(original.ApiSucceeded, "Original identity must build a chain for the synthetic untrusted certificate.");
+        foreach (var result in new[] { original, anonymous })
+        {
+            if (result.ApiSucceeded)
+            {
+                Assert.Null(result.NativeError);
+                Assert.NotNull(result.TrustErrors);
+                Assert.NotNull(result.TrustInfo);
+                Assert.NotEqual(0u, result.TrustErrors!.Value & 0x20u); // CERT_TRUST_IS_UNTRUSTED_ROOT
+            }
+            else
+            {
+                Assert.NotNull(result.NativeError);
+                Assert.NotEqual(0u, result.NativeError!.Value);
+                Assert.Null(result.TrustErrors);
+                Assert.Null(result.TrustInfo);
+            }
+        }
+    }
 
     [WindowsReferralDiagnosticFact]
     public Task Diagnostic_normal_trust_original_identity()

@@ -525,3 +525,38 @@ could capture an immediate numeric native error under each identity without
 importing a certificate. That would diagnose chain-engine access separately,
 not replace normal TLS validation or prove referral safety. No engine override,
 validation bypass, policy change or further trust operation was performed.
+
+### Separate native chain infrastructure probe
+
+The ordinary Windows fixture now includes an independent `CertGetCertificateChain`
+probe using a unique in-memory self-signed certificate. Only its public DER is
+passed to native code; no certificate/PFX files, stores, custom roots, imports,
+accounts or tokens are created. It uses the existing synchronous anonymous
+impersonation scope after warming the same path under the original identity.
+Private signing material stays in memory and is disposed, never logged/exported
+to artifacts. WinLDAP options and production eligibility are unchanged.
+
+Per-call flags `0xC0002104` combine cache-only URL and revocation access, disabled
+AIA/root auto-update, and revocation checking excluding the root. These documented
+flags apply only to this offline chain probe, not LDAP/TLS or system settings.
+The engine and additional-store arguments are NULL: default current-user engine,
+no supplied trust store. No policy verification, TLS hostname or server-purpose
+decision is made by this infrastructure probe.
+
+As specified by
+[CertGetCertificateChain](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certgetcertificatechain),
+API FALSE reports the immediately captured numeric `GetLastError`; no chain
+status is read in that branch. API TRUE reads only the size-checked
+[`CERT_CHAIN_CONTEXT`](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-cert_chain_context)
+header's trust-error/info masks, with no last-error interpretation. TRUE means
+construction succeeded, not that the certificate is trusted. The synthetic
+certificate must still report `CERT_TRUST_IS_UNTRUSTED_ROOT` (`0x20`) when a chain
+is returned, per
+[`CERT_TRUST_STATUS`](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-cert_trust_status).
+The full
+[`CERT_CHAIN_PARA`](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-cert_chain_para)
+layout is checked before native invocation; returned contexts are freed in a
+finally block while the public certificate remains alive. Logs contain only
+identity labels, fixed engine/flags, API success and numeric error/status fields,
+after restoring the original identity. This is chain-infrastructure evidence,
+not a substitute for WinLDAP/referral or production-pool safety evidence.
