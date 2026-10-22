@@ -477,3 +477,51 @@ cases and parses the helper without executing it. Setup, public-certificate
 ownership, watchdog, worker termination and both cleanup protections are
 unchanged. This preparation performs no trust import or trusted run; another
 such run requires fresh approval. The production guard remains unchanged.
+
+### Original-identity referral and primary reuse evidence
+
+With fresh authorization for one disposable hosted Windows job,
+[run 39855984179](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39855984179)
+at `d6dd66545475225c395217646dcb401acadd30a1` executed the reviewed `ba4da02`
+stage split. Setup/import/default trust verification completed without timeout.
+The runtime logs identify .NET 8.0.32 and .NET 10.0.13. Both produced the same
+distinct stage outcomes:
+
+| Stage | Outcome | Evidence |
+| --- | --- | --- |
+| Original direct | Passed | Normal TLS, explicit Basic bind and search; zero certificate callbacks. |
+| Anonymous direct | Failed | Native bind error 81; one closed target connection, zero completed TLS/binds/searches. Managed HResult `80131501` was non-gating. |
+| Original referral baseline | Passed | One target TLS handshake, explicit Basic bind and search; zero certificate callbacks or SASL binds. |
+| Original primary reuse | Passed | Two synthetic explicit identities, two searches on each retained primary; source binds/searches 4/6 including warmup/baseline. Target connections/TLS/binds/searches all 5, all closed, with zero anonymous/SASL binds. |
+| Impersonation safety | Skipped | Anonymous direct prerequisite failed. |
+
+This establishes normal native TLS referral authentication and retained-primary
+reuse under the original identity in this fixture. Each referred search opened
+a fresh target connection, including searches on retained primaries: it does
+not demonstrate referral-target connection reuse. Two explicit identities were
+observed without cross-identity results in these sequential tests, but production
+pool-key isolation, exclusive leases, ambient-identity transitions, transport
+coverage and failure eviction remain unvalidated on Windows. Original-only
+success does not justify removing the production guard. The overall diagnostic
+correctly failed rather than treating skipped impersonation evidence as success.
+
+Finally cleanup removed owned public certificate
+`5E4EA08F5B443562CD77098604EA4FAF26D80D6F` and verified its absence from
+LocalMachine Root and temporary PFX deletion. Independent always cleanup found
+zero matches and repeated both absence checks. Only TRX results were uploaded.
+The one-off workflow was removed; this approval is consumed and no rerun occurred.
+
+A read-only source review identifies a narrower next diagnostic question.
+[Microsoft documents](https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certgetcertificatechain)
+that `CertGetCertificateChain` defaults to the current-user chain engine and
+exposes API failure details through `GetLastError`. The
+[.NET 10.0.0 Windows chain builder](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/ChainPal.Windows.BuildChain.cs)
+returns no chain object when that native call fails; the
+[managed Build implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/X509Chain.cs)
+can then throw a generic chain-building exception. These reference sources are
+not the exact tested patch binaries and do not identify WinLDAP's TLS failure.
+A separate read-only chain-engine probe with synthetic public certificate data
+could capture an immediate numeric native error under each identity without
+importing a certificate. That would diagnose chain-engine access separately,
+not replace normal TLS validation or prove referral safety. No engine override,
+validation bypass, policy change or further trust operation was performed.
