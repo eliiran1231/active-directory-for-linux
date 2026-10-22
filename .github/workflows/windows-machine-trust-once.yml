@@ -18,6 +18,13 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
+      - name: Parse reviewed helper before any trust operation
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path tests/windows-referral-diagnostic/Machine-Trust-Fixture.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
       - name: Build both runtimes before any trust operation
         run: dotnet build tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj --configuration Release
       - name: Single bounded LocalMachine public certificate import and sequential runtime tests

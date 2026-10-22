@@ -22,6 +22,10 @@ function Stop-OwnedWorker {
             if (!$worker.WaitForExit(10000)) { throw 'Owned worker termination not confirmed; cleanup must not race it.' }
         }
         Write-Host 'Owned worker stopped before cleanup.'
+    } catch [System.InvalidOperationException], [System.ComponentModel.Win32Exception] {
+        # Exit can race StartTime or Kill. Only a confirmed exit is benign;
+        # access/identity errors on a live worker must still block cleanup.
+        if (!$worker.HasExited) { throw }
     } finally { $worker.Dispose() }
 }
 function Stage([string]$Name) {
@@ -199,7 +203,7 @@ try {
         }
         if (!$trustPassed) {
             $failed = $true
-            Write-Host "Skipping native referrals for $framework: normal trust under both identities not verified."
+            Write-Host "Skipping native referrals for ${framework}: normal trust under both identities not verified."
             continue
         }
         Write-Host "Normal trust verified in original and anonymous identities for $framework; exactly two controls passed."

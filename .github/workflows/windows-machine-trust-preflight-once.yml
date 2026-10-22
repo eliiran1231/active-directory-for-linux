@@ -1,7 +1,7 @@
 name: Windows machine trust diagnostic preflight without trust changes
 on:
   push:
-    tags: [diagnostic/windows-machine-trust-preflight-20261022-once]
+    tags: [diagnostic/windows-machine-trust-preflight-20261022-parserfix]
 permissions:
   contents: read
 jobs:
