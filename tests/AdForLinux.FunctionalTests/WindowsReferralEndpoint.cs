@@ -43,12 +43,12 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal ConcurrentQueue<string> FirstRecords { get; } = new();
     internal ConcurrentQueue<string> TransportFailures { get; } = new();
 
-    internal WindowsReferralEndpoint(bool tls)
+    internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true)
     {
         OfflineTestGuard.RequireLiveAccess();
         if (tls)
         {
-            var diagnosticPfx = Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX");
+            var diagnosticPfx = allowDiagnosticCertificate ? Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") : null;
             if (!string.IsNullOrEmpty(diagnosticPfx))
             {
                 if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")

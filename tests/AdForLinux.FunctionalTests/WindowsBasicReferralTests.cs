@@ -75,14 +75,22 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     public Task Direct_target_tls_under_anonymous_impersonation()
         => CheckDirectTargetTls(anonymous: true);
 
-    private async Task CheckDirectTargetTls(bool anonymous)
+    [WindowsReferralFact]
+    public Task Direct_target_tls_normal_validation_under_original_identity()
+        => CheckDirectTargetTls(anonymous: false, pinned: false);
+
+    [WindowsReferralFact]
+    public Task Direct_target_tls_normal_validation_under_anonymous_impersonation()
+        => CheckDirectTargetTls(anonymous: true, pinned: false);
+
+    private async Task CheckDirectTargetTls(bool anonymous, bool pinned = true)
     {
         // Independent direct controls, not referral or pool-safety assertions.
         // Warm the same client/callback path before impersonation: anonymous
         // threads cannot load assemblies from the runner workspace.
         int callbacks = 0;
         string phase = "initialization";
-        Action CreateRead(WindowsReferralEndpoint endpoint)
+        Action CreateRead(WindowsReferralEndpoint endpoint, bool usePin)
         {
             var pin = endpoint.PublicCertificateBytes;
             var options = new LdapConnectionOptions
@@ -98,7 +106,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 using var connection = LdapConnectionFactory.Create(options);
                 // Exact DER pin on this client only; no trust-store changes and
                 // no callback attached to native referral children.
-                connection.SessionOptions.VerifyServerCertificate = (_, presented) =>
+                if (usePin) connection.SessionOptions.VerifyServerCertificate = (_, presented) =>
                 {
                     Interlocked.Increment(ref callbacks);
                     return presented is not null && pin.AsSpan().SequenceEqual(presented.GetRawCertData());
@@ -110,28 +118,55 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 phase = "complete";
             };
         }
-        var warmup = new WindowsReferralEndpoint(tls: true);
+        var warmup = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: false);
         using (var warmupReport = new FinalReport(() => output.WriteLine(
             $"Direct warmup: phase={phase}; TLS={warmup.TlsHandshakes}; binds={warmup.Binds}; " +
             $"searches={warmup.Searches}; pin callbacks={callbacks}; failures={string.Join(";", warmup.TransportFailures)}.")))
         {
             await using var warmupLifetime = warmup;
-            CreateRead(warmup)();
+            CreateRead(warmup, usePin: true)();
         }
         callbacks = 0;
-        var target = new WindowsReferralEndpoint(tls: true);
+        var target = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: false);
         using var report = new FinalReport(() => output.WriteLine(
-            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; phase={phase}; " +
+            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; validation={(pinned ? "exact pin" : "normal")}; phase={phase}; " +
             $"connections={target.Connections}; closed={target.Closed}; TLS={target.TlsHandshakes}; " +
             $"binds={target.Binds}; searches={target.Searches}; credentialed={target.CredentialedSimpleBinds}; " +
             $"anonymous binds={target.AnonymousBinds}; SASL={target.SaslBinds}; pin callbacks={callbacks}; " +
             $"first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."));
-        await using var lifetime = target;
-        var read = CreateRead(target);
-        phase = "enter identity scope";
-        if (anonymous) AsAnonymous(read);
-        else read();
+        Exception? failure;
+        {
+            await using var lifetime = target;
+            var read = CreateRead(target, pinned);
+            phase = "enter identity scope";
+            failure = Record.Exception(() =>
+            {
+                if (anonymous) AsAnonymous(read);
+                else read();
+            });
+            // Quiesce server tasks before checking negative counters: a failed
+            // client request alone does not synchronize server processing.
+        }
+        if (failure is not null)
+            output.WriteLine($"Direct client failure: {DescribeClientFailure(failure)}");
+        if (!pinned)
+        {
+            // A freshly generated self-signed certificate is not trusted. Normal
+            // WinLDAP validation must fail before any synthetic credentials or
+            // searches reach this target. Do not attach a validation callback.
+            Assert.IsType<LdapException>(failure);
+            Assert.Equal("bind", phase);
+            Assert.Equal(1, target.Connections);
+            Assert.Equal(1, target.Closed);
+            Assert.Equal(0, target.TlsHandshakes);
+            Assert.Equal(0, target.Binds);
+            Assert.Equal(0, target.Searches);
+            Assert.Equal(0, callbacks);
+            return;
+        }
+        Assert.Null(failure);
         Assert.Equal(1, target.Connections);
+        Assert.Equal(1, target.Closed);
         Assert.Equal(1, target.TlsHandshakes);
         Assert.Equal(1, target.Binds);
         Assert.Equal(1, target.CredentialedSimpleBinds);
@@ -139,6 +174,16 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         Assert.Equal(0, target.AnonymousBinds);
         Assert.Equal(0, target.SaslBinds);
         Assert.True(callbacks > 0, "The direct client must validate the exact test certificate.");
+    }
+
+    private static string DescribeClientFailure(Exception error)
+    {
+        var details = new List<string>();
+        for (Exception? current = error; current is not null; current = current.InnerException)
+            details.Add($"{current.GetType().Name}:HResult={current.HResult:X8}" +
+                (current is LdapException ldap ? $":LdapError={ldap.ErrorCode}" : "") +
+                (current is Win32Exception native ? $":Native={native.NativeErrorCode}" : ""));
+        return string.Join("/", details); // No exception messages, identities or payloads.
     }
 
     [WindowsReferralFact]
@@ -173,6 +218,11 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
+            catch (Exception error)
+            {
+                output.WriteLine($"Referral client failure: {DescribeClientFailure(error)}");
+                throw;
+            }
             finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."); }
         }
         void Stage(string name, Action action)
