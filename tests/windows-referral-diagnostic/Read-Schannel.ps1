@@ -20,5 +20,9 @@ try {
         }
     }
 } catch {
-    Write-Host "Existing Schannel events unavailable: $($_.Exception.GetType().Name); HResult=$('{0:X8}' -f $_.Exception.HResult)"
+    if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') {
+        Write-Host 'Existing Schannel events: no matching events in test window.'
+    } else {
+        Write-Host "Existing Schannel events unavailable: category=$($_.CategoryInfo.Category); type=$($_.Exception.GetType().Name); HResult=$('{0:X8}' -f $_.Exception.HResult)"
+    }
 }

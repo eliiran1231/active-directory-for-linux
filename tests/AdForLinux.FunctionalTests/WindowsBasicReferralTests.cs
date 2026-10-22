@@ -220,7 +220,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
             catch (Exception error)
             {
-                output.WriteLine($"Referral client failure: {DescribeClientFailure(error)}");
+                output.WriteLine($"Referral operation/assertion failure: {DescribeClientFailure(error)}");
                 throw;
             }
             finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."); }

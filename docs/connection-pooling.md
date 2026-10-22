@@ -272,3 +272,39 @@ certificate validation with the pinned result, then collect available native TLS
 failure status before changing any referral behavior. Pinning success alone does
 not prove certificate trust caused the referral failure. StartTLS, referral identity
 propagation, isolation, reuse and failure eviction remain separate requirements.
+
+### Normal-validation comparison
+
+[Run 39698240874](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39698240874)
+at `188f48f0ad24e78900c555c2d9ef38572a49826b` compared fresh self-signed target
+certificates on .NET 8 and .NET 10. All four direct-control assertions passed per
+runtime: both pinned controls completed one TLS handshake, explicit Basic bind
+and search; both normal-validation controls rejected the connection at bind with
+`LdapException`, HResult `80131500`, LDAP error `81`. Each unpinned target recorded
+one closed connection, zero completed TLS handshakes/binds/searches and zero
+certificate callbacks. Negative counters are checked after endpoint teardown.
+No system trust changes or referral callback overrides were used.
+
+The unchanged referral baseline failed on both runtimes: the client received
+`ResultCode.Referral`, zero entries and one unresolved referral; the target
+recorded one closed connection, zero completed TLS handshakes/binds/searches and
+`IOException` HResult `80131620`. This was an assertion failure on an unresolved
+referral, not a native LDAP exception exposing the child TLS status. The one-off
+diagnostic workflow allowed that known failure to continue; its green job status
+does not mean the referral baseline passed. Its trigger was removed after the run.
+
+The initial read-only Schannel lookup reported only a generic exception; no
+specific TLS status was recovered. The retained reader distinguishes a missing
+event from other read errors, reports only event IDs and selected numeric status
+fields, and never enables logging or changes registry/policy. Existing events
+within a test window cannot automatically be attributed to a particular socket.
+[Microsoft documents the Schannel event categories](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn786445(v=ws.11)).
+
+The comparison supports certificate validation as a candidate for the referral
+TLS blocker and shows that direct pinned TLS works under both ambient identities.
+It does not establish the precise child TLS failure or native referral identity,
+reuse, isolation or eviction safety. Production eligibility remains unchanged.
+A successful native referral baseline with valid normal certificate trust is
+still needed before positive pooling tests can proceed; process-local pinning
+of a direct client cannot substitute for that evidence. Further trust changes
+require new authorization and are not part of ordinary disposable CI permission.
