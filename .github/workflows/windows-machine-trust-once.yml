@@ -1,0 +1,42 @@
+name: One-off Windows LocalMachine test certificate diagnostic
+on:
+  push:
+    tags: [diagnostic/windows-machine-trust-stages-20261022-once]
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    if: github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Parse reviewed helper before any trust operation
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path tests/windows-referral-diagnostic/Machine-Trust-Fixture.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+      - name: Build both runtimes before any trust operation
+        run: dotnet build tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj --configuration Release
+      - name: Single bounded LocalMachine public certificate import and sequential runtime tests
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Machine-Trust-Fixture.ps1
+      - name: Independent exact-thumbprint removal and PFX cleanup verification
+        if: always()
+        timeout-minutes: 2
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Machine-Trust-Fixture.ps1 -Cleanup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-machine-trust-results
+          path: artifacts/*.trx
