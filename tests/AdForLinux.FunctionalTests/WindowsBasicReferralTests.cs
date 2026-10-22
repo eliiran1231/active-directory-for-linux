@@ -96,6 +96,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         // threads cannot load assemblies from the runner workspace.
         int callbacks = 0;
         string phase = "initialization";
+        string managedOutcome = "not requested";
         Action CreateRead(WindowsReferralEndpoint endpoint, bool usePin)
         {
             var pin = endpoint.PublicCertificateBytes;
@@ -109,15 +110,19 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
             return () =>
             {
                 if (diagnosticCertificate)
-                {
-                    phase = "default chain validation";
+                    WindowsTlsDiagnosticControl.ObserveThenRun(() =>
+                    {
 #pragma warning disable SYSLIB0057
-                    using var publicCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(pin);
+                        using var publicCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(pin);
 #pragma warning restore SYSLIB0057
-                    using var chain = new System.Security.Cryptography.X509Certificates.X509Chain();
-                    Assert.True(chain.Build(publicCertificate), "Default certificate chain validation must succeed in this Windows identity.");
-                    Assert.Equal(publicCertificate.Thumbprint, chain.ChainElements[^1].Certificate.Thumbprint);
-                }
+                        using var chain = new System.Security.Cryptography.X509Certificates.X509Chain();
+                        return chain.Build(publicCertificate) &&
+                            publicCertificate.Thumbprint == chain.ChainElements[^1].Certificate.Thumbprint;
+                    }, NativeRead, out managedOutcome);
+                else NativeRead();
+            };
+            void NativeRead()
+            {
                 phase = "create";
                 using var connection = LdapConnectionFactory.Create(options);
                 // Exact DER pin on this client only; no trust-store changes and
@@ -132,20 +137,21 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 phase = "search";
                 Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(connection));
                 phase = "complete";
-            };
+            }
         }
         var warmup = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: diagnosticCertificate);
         using (var warmupReport = new FinalReport(() => output.WriteLine(
-            $"Direct warmup: phase={phase}; TLS={warmup.TlsHandshakes}; binds={warmup.Binds}; " +
+            $"Direct warmup: managed chain={managedOutcome}; phase={phase}; TLS={warmup.TlsHandshakes}; binds={warmup.Binds}; " +
             $"searches={warmup.Searches}; pin callbacks={callbacks}; failures={string.Join(";", warmup.TransportFailures)}.")))
         {
             await using var warmupLifetime = warmup;
             CreateRead(warmup, usePin: !diagnosticCertificate)();
         }
         callbacks = 0;
+        managedOutcome = "not requested";
         var target = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: diagnosticCertificate);
         using var report = new FinalReport(() => output.WriteLine(
-            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; validation={(pinned ? "exact pin" : "normal")}; diagnostic certificate={diagnosticCertificate}; phase={phase}; " +
+            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; validation={(pinned ? "exact pin" : "normal")}; diagnostic certificate={diagnosticCertificate}; managed chain={managedOutcome}; phase={phase}; " +
             $"connections={target.Connections}; closed={target.Closed}; TLS={target.TlsHandshakes}; " +
             $"binds={target.Binds}; searches={target.Searches}; credentialed={target.CredentialedSimpleBinds}; " +
             $"anonymous binds={target.AnonymousBinds}; SASL={target.SaslBinds}; pin callbacks={callbacks}; " +

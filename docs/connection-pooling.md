@@ -387,3 +387,28 @@ changing certificate validation or authentication semantics. Another trusted
 fixture execution requires fresh authorization. Windows referral-enabled pooling
 remains disabled; successful native referral, credential isolation, ambient
 identity, transport and failure-eviction evidence is still missing.
+
+### Prepared separation of managed and native validation
+
+The test-only control now records managed chain validation as `valid`, `not valid`
+or an exception HResult, without messages, certificate data or inner exceptions.
+It then attempts native WinLDAP TLS regardless of that managed outcome. Native
+creation, bind and search errors still propagate and fail the control; normal
+native certificate validation is unchanged, with no callback, pinning, custom
+roots or authentication override in the trusted diagnostic path.
+
+Six pure-delegate regression cases cover valid, invalid and throwing managed
+diagnostics followed by either successful or throwing native controls. They check
+that the native action executes once, diagnostic details are sanitized, and a
+native failure stops dependent assertions. These cases are safe offline tests;
+they do not establish actual Windows TLS or referral safety.
+
+For a future separately approved single disposable Windows job, the retained
+helper would use the same unique public certificate, ownership manifest,
+60-second setup watchdog, exact-thumbprint finally/independent cleanup and PFX
+deletion. It would run .NET 8 then .NET 10. Each runtime must pass both actual
+native normal-validation controls (original and anonymous identities), including
+TLS, explicit Basic bind, search and endpoint counters, before its native
+referral stages run. Managed chain observations would no longer block those
+native controls. No trusted job or certificate import is authorized or triggered
+by this preparation, and no recurring trust workflow is installed.
