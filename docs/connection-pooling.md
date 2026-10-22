@@ -343,3 +343,47 @@ behavior after trust succeeds. The production guard remains unchanged. Positive
 native TLS/referral validation still needs valid normal trust under the relevant
 identities; the consumed individual trust approvals do not authorize another
 import or broader trust, registry or policy changes.
+
+### Single LocalMachine trust diagnostic
+
+With separate authorization for one disposable hosted Windows job,
+[run 39832451191](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39832451191)
+at `cb87f519a988e23523a07024502768cbd740ef38` imported only a unique, one-hour
+public test certificate into LocalMachine Root. Setup completed within the
+60-second watchdog, including public/PFX export, file writing, ownership manifest,
+import, exact public-only presence check and default chain validation. There was
+no import hang. No other policy, registry or trust changes were made.
+
+The .NET 8 and .NET 10 controls ran sequentially in that VM. On each runtime:
+
+- The original-identity control passed default chain validation and normal native
+  TLS, one explicit Basic bind and one search, with zero certificate callbacks.
+- The anonymous-identity control failed in the additional managed
+  `X509Chain.Build` precheck with `CryptographicException`, HResult `80131501`
+  ("An unknown chain building error occurred"). It opened no target connection:
+  TLS, binds and searches were all zero.
+- The helper skipped native referral tests because the two-identity trust gate
+  did not pass. The job failed; no referral identity, reuse or pooling conclusion
+  can be drawn from it. In particular, this precheck failure does not establish
+  that native WinLDAP TLS would fail under anonymous impersonation.
+
+Finally cleanup removed the single owned public certificate with exact thumbprint
+`9EC4633FA217A333A655241B3CABC4F50EBE23DE` and verified its absence from
+LocalMachine Root and deletion of the temporary PFX. A separate always-run cleanup
+step found zero matches and independently repeated both absence checks. Only TRX
+results were uploaded; no certificate or private-key artifacts were uploaded.
+
+The reviewed helper remains opt-in with no workflow trigger. Both one-off
+workflows were removed after the run; this approval is consumed and no automatic
+rerun was attempted. The no-trust
+[preflight 39831920028](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39831920028)
+passed parsing, compilation and all four existing direct controls on each runtime.
+An earlier preflight caught a PowerShell interpolation error before executing any
+trust operation; it was corrected before the authorized diagnostic.
+
+The next investigation should distinguish the managed chain-precheck failure
+from native WinLDAP normal validation under anonymous impersonation, without
+changing certificate validation or authentication semantics. Another trusted
+fixture execution requires fresh authorization. Windows referral-enabled pooling
+remains disabled; successful native referral, credential isolation, ambient
+identity, transport and failure-eviction evidence is still missing.
