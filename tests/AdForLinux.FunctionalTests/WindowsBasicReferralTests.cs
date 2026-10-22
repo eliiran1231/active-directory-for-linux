@@ -217,13 +217,18 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         source.ReferralUrl = $"{scheme}://{host}:{target.Port}/CN=target";
         using (var baseline = Open(Options(source, WindowsReferralEndpoint.FirstIdentity)))
         {
+            var since = DateTime.UtcNow;
             try { Assert.Equal(WindowsReferralEndpoint.FirstIdentity, Read(baseline)); }
             catch (Exception error)
             {
                 output.WriteLine($"Referral operation/assertion failure: {DescribeClientFailure(error)}");
                 throw;
             }
-            finally { output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}."); }
+            finally
+            {
+                output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}.");
+                MatchExistingSchannelCertificate(target, since);
+            }
         }
         void Stage(string name, Action action)
         {
@@ -277,6 +282,61 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     private sealed class FinalReport(Action write) : IDisposable
     {
         public void Dispose() => write();
+    }
+
+    private void MatchExistingSchannelCertificate(WindowsReferralEndpoint target, DateTime since)
+    {
+        if (Environment.GetEnvironmentVariable("ADFL_REFERRAL_MATCH_EVENT") != "1") return;
+        if (Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted" ||
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" ||
+            Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is not null)
+            throw new InvalidOperationException("Attribution requires a hosted runner and a unique generated target certificate.");
+        using var process = new System.Diagnostics.Process();
+        process.StartInfo = new System.Diagnostics.ProcessStartInfo("pwsh")
+        {
+            UseShellExecute = false, RedirectStandardInput = true,
+            RedirectStandardOutput = true, RedirectStandardError = true,
+        };
+        foreach (var argument in new[] { "-NoLogo", "-NoProfile", "-NonInteractive", "-File",
+            Path.Combine(AppContext.BaseDirectory, "Match-SchannelCertificate.ps1") })
+            process.StartInfo.ArgumentList.Add(argument);
+        var started = false;
+        try
+        {
+            started = process.Start();
+            if (!started) throw new InvalidOperationException();
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            process.StandardInput.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Certificate = Convert.ToBase64String(target.PublicCertificateBytes), Since = since.ToString("O"),
+            }));
+            process.StandardInput.Close();
+            if (!process.WaitForExit(20000))
+            {
+                process.Kill(entireProcessTree: true);
+                if (!process.WaitForExit(10000)) throw new InvalidOperationException();
+                output.WriteLine("Schannel attribution: context=reader timeout; exact-target-match=False");
+                return;
+            }
+            if (!Task.WaitAll(new Task[] { stdout, stderr }, 5000)) throw new InvalidOperationException();
+            // The reviewed script emits only attribution metadata. Do not print
+            // stderr, which could contain source lines after a parser failure.
+            if (process.ExitCode == 0) output.WriteLine(stdout.Result);
+            else output.WriteLine("Schannel attribution: context=reader failed; exact-target-match=False");
+        }
+        catch
+        {
+            output.WriteLine("Schannel attribution: context=reader unavailable; exact-target-match=False");
+        }
+        finally
+        {
+            if (started && !process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                if (!process.WaitForExit(10000)) throw new InvalidOperationException("Attribution reader did not stop.");
+            }
+        }
     }
 
     private static void AsAnonymous(Action action)
