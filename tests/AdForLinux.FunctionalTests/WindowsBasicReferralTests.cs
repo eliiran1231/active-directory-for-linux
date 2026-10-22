@@ -27,6 +27,15 @@ public sealed class WindowsReferralDiagnosticTheoryAttribute : TheoryAttribute
     }
 }
 
+public sealed class WindowsReferralDiagnosticFactAttribute : FactAttribute
+{
+    public WindowsReferralDiagnosticFactAttribute()
+    {
+        if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is null)
+            Skip = "Opt-in hosted certificate-trust diagnostic only.";
+    }
+}
+
 public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
 {
     private int certificateCallbacks;
@@ -83,11 +92,25 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     public Task Direct_target_tls_normal_validation_under_anonymous_impersonation()
         => CheckDirectTargetTls(anonymous: true, pinned: false);
 
-    [WindowsReferralDiagnosticTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public Task Diagnostic_normal_trust_across_windows_identities(bool anonymous)
-        => CheckDirectTargetTls(anonymous, pinned: false, diagnosticCertificate: true);
+    [WindowsReferralDiagnosticFact]
+    public Task Diagnostic_normal_trust_original_identity()
+        => CheckDirectTargetTls(anonymous: false, pinned: false, diagnosticCertificate: true);
+
+    [WindowsReferralDiagnosticFact]
+    public Task Diagnostic_normal_trust_anonymous_identity()
+        => CheckDirectTargetTls(anonymous: true, pinned: false, diagnosticCertificate: true);
+
+    [WindowsReferralDiagnosticFact]
+    public Task Diagnostic_original_identity_referral_baseline()
+        => CheckTlsReferral("127.0.0.1", "ldaps", stage: ReferralStage.OriginalBaseline);
+
+    [WindowsReferralDiagnosticFact]
+    public Task Diagnostic_original_identity_referral_reuse()
+        => CheckTlsReferral("127.0.0.1", "ldaps", stage: ReferralStage.OriginalReuse);
+
+    [WindowsReferralDiagnosticFact]
+    public Task Diagnostic_impersonation_referral_safety()
+        => CheckTlsReferral("127.0.0.1", "ldaps");
 
     private async Task CheckDirectTargetTls(bool anonymous, bool pinned = true, bool diagnosticCertificate = false)
     {
@@ -221,8 +244,16 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     public async Task Diagnostic_transport_and_name_variants(string host, string scheme, bool primaryCallback)
         => await CheckTlsReferral(host, scheme, primaryCallback);
 
-    private async Task CheckTlsReferral(string host, string scheme, bool primaryCallback = false)
+    private enum ReferralStage { Impersonation, OriginalBaseline, OriginalReuse }
+
+    private async Task CheckTlsReferral(string host, string scheme, bool primaryCallback = false,
+        ReferralStage stage = ReferralStage.Impersonation)
     {
+        if (stage != ReferralStage.Impersonation)
+        {
+            Assert.NotNull(Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX"));
+            Assert.False(primaryCallback);
+        }
         testHost = host;
         diagnosticPrimaryCallback = primaryCallback;
         output.WriteLine($"Primary LDAPS; referral scheme={scheme}; host={host}; primary callback={primaryCallback}; trusted diagnostic={Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") is not null}.");
@@ -252,6 +283,34 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 output.WriteLine($"Baseline target connections={target.Connections}, TLS handshakes={target.TlsHandshakes}, binds={target.Binds}, searches={target.Searches}, SASL={target.SaslBinds}, certificate callbacks={certificateCallbacks}, first records={string.Join(";", target.FirstRecords)}; failures={string.Join(";", target.TransportFailures)}.");
                 MatchExistingSchannelCertificate(target, since);
             }
+        }
+        if (stage != ReferralStage.Impersonation)
+        {
+            Assert.Equal(0, certificateCallbacks);
+            Assert.Equal(1, target.TlsHandshakes);
+            Assert.Equal(1, target.Binds);
+            Assert.Equal(1, target.CredentialedSimpleBinds);
+            Assert.Equal(1, target.Searches);
+            Assert.Equal(0, target.AnonymousBinds);
+            Assert.Equal(0, target.SaslBinds);
+            Assert.Contains(WindowsReferralEndpoint.FirstIdentity, target.BoundIdentities);
+            output.WriteLine("Original-identity referral baseline passed: normal TLS, explicit Basic identity and search; no impersonation safety claim.");
+            if (stage == ReferralStage.OriginalBaseline) return;
+            foreach (var identity in new[] { WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.SecondIdentity })
+            {
+                using var retained = Open(Options(source, identity));
+                Stage("original identity first referral", () => Assert.Equal(identity, Read(retained)));
+                Stage("original identity primary reuse", () => Assert.Equal(identity, Read(retained)));
+            }
+            Assert.Equal(4, source.Binds);
+            Assert.Equal(6, source.Searches);
+            Assert.Equal(5, target.Searches);
+            Assert.Equal(0, target.AnonymousBinds);
+            Assert.Equal(0, target.SaslBinds);
+            Assert.Equal(0, certificateCallbacks);
+            Assert.Contains(WindowsReferralEndpoint.SecondIdentity, target.BoundIdentities);
+            output.WriteLine("Original-identity primary reuse passed with two explicit identities; no ambient-identity, eviction or full pooling safety claim.");
+            return;
         }
         void Stage(string name, Action action)
         {

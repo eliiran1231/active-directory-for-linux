@@ -188,37 +188,36 @@ try {
     }
     Write-Host "Trust verified before tests: $(Get-Content -Raw $verified)"
     $env:ADFL_REFERRAL_TEST_PFX = $pfx
+    . (Join-Path $PSScriptRoot 'Referral-Stages.ps1')
+    $methods = @{
+        'original-direct' = 'Diagnostic_normal_trust_original_identity'
+        'anonymous-direct' = 'Diagnostic_normal_trust_anonymous_identity'
+        'original-baseline' = 'Diagnostic_original_identity_referral_baseline'
+        'original-reuse' = 'Diagnostic_original_identity_referral_reuse'
+        'impersonation' = 'Diagnostic_impersonation_referral_safety'
+    }
     $failed = $false
     foreach ($framework in @('net8.0', 'net10.0')) {
-        Stage "trust-controls-${framework}:start"
-        $trustResults = Join-Path 'artifacts' "trust-controls-$framework.trx"
-        if (Test-Path $trustResults) { throw 'Trust-control results already exist; refusing to reuse them.' }
-        $code = Run-Bounded (Get-Command dotnet).Source @('test', 'tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj', '--no-build', '--no-restore', '--configuration', 'Release', '--framework', $framework, '--filter', 'FullyQualifiedName~AdForLinux.FunctionalTests.WindowsBasicReferralTests.Diagnostic_normal_trust_across_windows_identities', '--logger', 'console;verbosity=detailed', '--logger', "trx;LogFileName=trust-controls-$framework.trx", '--results-directory', 'artifacts') 120
-        Write-Host "TRUST-CONTROLS $framework exit=$code"
-        $trustPassed = $false
-        if ($code -eq 0 -and (Test-Path $trustResults)) {
-            [xml]$result = Get-Content -Raw $trustResults
+        $stageResults = Invoke-ReferralStages {
+            param($name)
+            Stage "${framework}-${name}:start"
+            $resultName = "${framework}-${name}.trx"
+            $resultPath = Join-Path 'artifacts' $resultName
+            if (Test-Path $resultPath) { throw 'Stage results already exist; refusing to reuse them.' }
+            $limit = if ($name -in @('original-direct', 'anonymous-direct')) { 120 } else { 180 }
+            $filter = "FullyQualifiedName=AdForLinux.FunctionalTests.WindowsBasicReferralTests.$($methods[$name])"
+            $code = Run-Bounded (Get-Command dotnet).Source @('test', 'tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj', '--no-build', '--no-restore', '--configuration', 'Release', '--framework', $framework, '--filter', $filter, '--logger', 'console;verbosity=detailed', '--logger', "trx;LogFileName=$resultName", '--results-directory', 'artifacts') $limit
+            Write-Host "NATIVE-STAGE $framework $name exit=$code"
+            if ($code -ne 0 -or !(Test-Path $resultPath)) { return $false }
+            [xml]$result = Get-Content -Raw $resultPath
             $counts = $result.TestRun.ResultSummary.Counters
-            $trustPassed = $counts.total -eq '2' -and $counts.executed -eq '2' -and $counts.passed -eq '2' -and $counts.failed -eq '0' -and $counts.notExecuted -eq '0'
+            return $counts.total -eq '1' -and $counts.executed -eq '1' -and $counts.passed -eq '1' -and $counts.failed -eq '0' -and $counts.notExecuted -eq '0'
         }
-        if (!$trustPassed) {
-            $failed = $true
-            Write-Host "Skipping native referrals for ${framework}: normal trust under both identities not verified."
-            continue
+        foreach ($name in $stageResults.Keys) {
+            Write-Host "NATIVE-STAGE-RESULT $framework $name=$($stageResults[$name])"
+            if ($stageResults[$name] -ne 'passed') { $failed = $true }
         }
-        Write-Host "Normal trust verified in original and anonymous identities for $framework; exactly two controls passed."
-        Stage "native-referrals-${framework}:start"
-        $code = Run-Bounded (Get-Command dotnet).Source @('test', 'tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj', '--no-build', '--no-restore', '--configuration', 'Release', '--framework', $framework, '--filter', 'FullyQualifiedName~AdForLinux.FunctionalTests.WindowsBasicReferralTests.Native_|FullyQualifiedName~AdForLinux.FunctionalTests.WindowsBasicReferralTests.Diagnostic_transport_and_name_variants', '--logger', 'console;verbosity=detailed', '--logger', "trx;LogFileName=machine-trusted-$framework.trx", '--results-directory', 'artifacts') 180
-        Write-Host "NATIVE-RESULT $framework exit=$code"
-        if ($code -ne 0) { $failed = $true }
-        $nativeResults = Join-Path 'artifacts' "machine-trusted-$framework.trx"
-        if (Test-Path $nativeResults) {
-            [xml]$result = Get-Content -Raw $nativeResults
-            $counts = $result.TestRun.ResultSummary.Counters
-            Write-Host "NATIVE-COUNTS $framework total=$($counts.total) executed=$($counts.executed) passed=$($counts.passed) failed=$($counts.failed) skipped=$($counts.notExecuted)"
-            if ($counts.total -ne '6' -or $counts.executed -ne '6' -or $counts.passed -ne '6') { $failed = $true }
-        } else { $failed = $true }
-        Stage "native-referrals-${framework}:done"
+        Write-Host "Original baseline/reuse and impersonation outcomes are separate; original-only success is not full pooling safety."
     }
     if ($failed) { throw 'Native diagnostic assertions failed; inspect both runtime results.' }
 } finally { Remove-Fixture }

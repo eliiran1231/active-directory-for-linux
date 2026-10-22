@@ -445,3 +445,35 @@ absence and temporary PFX deletion. Independent always cleanup found zero matche
 and repeated both absence checks. Only TRX files were uploaded. The one-off
 workflow was removed afterward; this approval is consumed, no rerun occurred,
 and another trusted-fixture execution needs fresh authorization.
+
+### Prepared independent referral stages
+
+The next opt-in helper now reports five separate native stages per runtime:
+original direct control, anonymous direct control, original referral baseline,
+original primary reuse, and impersonation safety. A successful original direct
+control permits the original referral baseline even when the anonymous direct
+control fails. A successful baseline permits original primary reuse with two
+explicit identities. Impersonation stages require both direct controls and both
+original referral stages to pass. Failed or skipped stages remain visible and
+keep the overall diagnostic unsuccessful; original-only success cannot be
+reported as full pooling safety.
+
+The original referral baseline requires normal callback-free TLS, an observed
+explicit Basic identity and search at the target, and no anonymous or SASL bind.
+The reuse stage separately observes two searches per retained primary and two
+synthetic explicit identities. These are primary-handle observations, not proof
+of physical target-connection reuse, production lease isolation or eviction.
+Each stage runs in its own test process and must produce exactly one passed,
+executed TRX result; stale, missing, failed or skipped results cannot open a gate.
+The future helper uses exact method filters rather than the historical combined
+transport/callback diagnostic theory. The historical ordinary fixture remains
+unchanged in scope; transport-specific safety remains outstanding.
+
+Pure PowerShell regression cases exercise the actual stage scheduler with
+injected outcomes, including anonymous failure allowing original evidence,
+original failure blocking dependent stages, baseline/reuse failure blocking
+impersonation, and invalid runner output. Ordinary Windows offline CI runs these
+cases and parses the helper without executing it. Setup, public-certificate
+ownership, watchdog, worker termination and both cleanup protections are
+unchanged. This preparation performs no trust import or trusted run; another
+such run requires fresh approval. The production guard remains unchanged.
