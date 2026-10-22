@@ -1,7 +1,7 @@
 name: Windows referral certificate event attribution
 on:
   push:
-    tags: [diagnostic/windows-referral-event-match-20261022-once]
+    tags: [diagnostic/windows-referral-event-match-20261022-parserfix]
 permissions:
   contents: read
 jobs:

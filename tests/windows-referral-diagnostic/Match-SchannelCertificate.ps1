@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. "$PSScriptRoot/Compare-CertificateDer.ps1"
 try {
     if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
         throw 'Hosted Windows required.'
@@ -24,31 +25,9 @@ try {
             $exact = $false
             $parsed = $false
             foreach ($property in $event.Properties) {
-                $bytes = $property.Value
-                if ($bytes -isnot [byte[]] -or $bytes.Length -gt 65536) { continue }
-                # Accept only an entire DER certificate binary property. No
-                # offset scanning, XML dumping or guessed payload envelopes.
-                $certificate = $null
-                try {
-                    if ([System.Security.Cryptography.X509Certificates.X509Certificate2]::GetCertContentType($bytes) -ne
-                        [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert) { continue }
-                    $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($bytes)
-                    $raw = $certificate.RawData
-                    if ($raw.Length -ne $bytes.Length) { continue }
-                    $wholeDer = $true
-                    for ($i = 0; $i -lt $raw.Length; $i++) {
-                        if ($raw[$i] -ne $bytes[$i]) { $wholeDer = $false; break }
-                    }
-                    if (!$wholeDer) { continue }
-                    $parsed = $true
-                    $equal = $raw.Length -eq $expected.Length
-                    for ($i = 0; $equal -and $i -lt $raw.Length; $i++) {
-                        if ($raw[$i] -ne $expected[$i]) { $equal = $false }
-                    }
-                    if ($equal) { $exact = $true }
-                } catch {
-                    # Unsupported binary fields are not interpreted or printed.
-                } finally { if ($null -ne $certificate) { $certificate.Dispose() } }
+                $comparison = Compare-CertificateDer -Bytes $property.Value -Expected $expected
+                if ($comparison.Parsed) { $parsed = $true }
+                if ($comparison.ExactMatch) { $exact = $true }
             }
             $context = if ($parsed) { 'whole-DER payload' } else { 'certificate payload unavailable or unsupported' }
             Write-Host "Schannel attribution: event=36882; utc=$($event.TimeCreated.ToUniversalTime().ToString('o')); context=$context; exact-target-match=$exact"

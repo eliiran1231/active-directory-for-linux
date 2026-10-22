@@ -322,7 +322,17 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
             if (!Task.WaitAll(new Task[] { stdout, stderr }, 5000)) throw new InvalidOperationException();
             // The reviewed script emits only attribution metadata. Do not print
             // stderr, which could contain source lines after a parser failure.
-            if (process.ExitCode == 0) output.WriteLine(stdout.Result);
+            if (process.ExitCode == 0)
+            {
+                foreach (var line in stdout.Result.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var safe = line.TrimEnd('\r');
+                    if (System.Text.RegularExpressions.Regex.IsMatch(safe,
+                        @"^Schannel attribution: (event=36882; utc=[0-9T:.Z+\-]+; context=(whole-DER payload|certificate payload unavailable or unsupported)|context=(no matching event in bounded observation window|read or parser unavailable)); exact-target-match=(True|False)$"))
+                        output.WriteLine(safe);
+                    else output.WriteLine("Schannel attribution: context=unexpected reader output withheld; exact-target-match=False");
+                }
+            }
             else output.WriteLine("Schannel attribution: context=reader failed; exact-target-match=False");
         }
         catch
