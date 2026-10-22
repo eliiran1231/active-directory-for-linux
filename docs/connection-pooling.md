@@ -412,3 +412,36 @@ TLS, explicit Basic bind, search and endpoint counters, before its native
 referral stages run. Managed chain observations would no longer block those
 native controls. No trusted job or certificate import is authorized or triggered
 by this preparation, and no recurring trust workflow is installed.
+
+### Native control outcome after separating the managed observation
+
+After fresh authorization for one disposable hosted job,
+[run 39840219714](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39840219714)
+at `d78db0aec35e908f12cde56ced831ea1ffd38ad4` used the reviewed `92f6537` test
+logic. Import and default setup trust verification completed without a timeout.
+The original-identity control passed normal native TLS, explicit Basic bind and
+search on both .NET 8 and .NET 10, with no certificate callback.
+
+Under anonymous impersonation on both runtimes, the managed diagnostic recorded
+HResult `80131501` but did not prevent native execution. Native WinLDAP reached
+bind and failed with `LdapException`, HResult `80131500`, LDAP error `81`. Each
+target recorded one closed connection, a first TLS handshake record, zero
+completed TLS handshakes, binds and searches, and `IOException` HResult `80131620`.
+No synthetic credentials, SASL bind or certificate callback were observed at the
+target. Both runtime referral stages were skipped because their actual native
+two-identity controls did not pass.
+
+This establishes a native direct-control failure under anonymous impersonation
+in this fixture, beyond the earlier managed-only failure. LDAP error 81 and the
+server disconnect do not establish the specific native certificate-chain error,
+nor do they prove referral pooling unsafe. Native referral identity, reuse,
+isolation and eviction evidence remains unavailable. The production guard stays.
+The next diagnostic question is the native TLS failure reason under this identity;
+it must not be addressed by suppressing validation or changing authentication.
+
+Finally cleanup removed exact owned public certificate
+`1073A50EB1C5D3596C9D20ED65F6E266B7EEE88D` from LocalMachine Root and verified
+absence and temporary PFX deletion. Independent always cleanup found zero matches
+and repeated both absence checks. Only TRX files were uploaded. The one-off
+workflow was removed afterward; this approval is consumed, no rerun occurred,
+and another trusted-fixture execution needs fresh authorization.
