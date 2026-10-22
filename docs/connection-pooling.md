@@ -560,3 +560,24 @@ finally block while the public certificate remains alive. Logs contain only
 identity labels, fixed engine/flags, API success and numeric error/status fields,
 after restoring the original identity. This is chain-infrastructure evidence,
 not a substitute for WinLDAP/referral or production-pool safety evidence.
+
+[Ordinary native run 39857874523](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39857874523)
+at `d66c9e712f8312a6becae0cea733f210abf6be25` passed the new probe on both
+.NET 8 and .NET 10. Original identity returned API TRUE, trust errors `0x00000020`
+(untrusted root), and trust info `0x00000100`. Anonymous identity returned API
+FALSE and immediate native error `0x00000005`, with no trust flags read or logged.
+Microsoft defines error 5 as
+[`ERROR_ACCESS_DENIED`](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-).
+Thus anonymous access to this default chain-construction operation failed before
+a usable chain was returned; it was not a returned-chain untrusted-root result.
+The original chain remained untrusted, as required. No certificates were imported
+or trust/settings modified, and no trusted-fixture job was run.
+
+This supplies a concrete chain-infrastructure access failure under the fixture's
+anonymous identity, consistent with the separate managed chain exception. It
+does not identify the denied resource, establish the exact call/error inside
+WinLDAP or Schannel, generalize to every impersonated user, or prove pooling
+safety/unsafety. The probe uses a different synthetic certificate and per-call
+offline restrictions, so it cannot substitute for native TLS/referral evidence.
+The prior successful original-referral tests still establish retained **primary**
+reuse with fresh target connections, not production pool-key or lease isolation.
