@@ -1,0 +1,35 @@
+name: Windows machine trust diagnostic preflight without trust changes
+on:
+  push:
+    tags: [diagnostic/windows-machine-trust-preflight-20261022-once]
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Parse helper without executing it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path tests/windows-referral-diagnostic/Machine-Trust-Fixture.ps1), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+      - name: Build both runtimes
+        run: dotnet build tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj --configuration Release
+      - name: Existing direct controls with no trust changes
+        shell: pwsh
+        run: |
+          foreach ($framework in @('net8.0', 'net10.0')) {
+            dotnet test tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj --configuration Release --no-build --no-restore --framework $framework --filter FullyQualifiedName~AdForLinux.FunctionalTests.WindowsBasicReferralTests.Direct_target_tls_ --logger 'console;verbosity=detailed'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }

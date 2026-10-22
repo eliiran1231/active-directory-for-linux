@@ -83,7 +83,13 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
     public Task Direct_target_tls_normal_validation_under_anonymous_impersonation()
         => CheckDirectTargetTls(anonymous: true, pinned: false);
 
-    private async Task CheckDirectTargetTls(bool anonymous, bool pinned = true)
+    [WindowsReferralDiagnosticTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Diagnostic_normal_trust_across_windows_identities(bool anonymous)
+        => CheckDirectTargetTls(anonymous, pinned: false, diagnosticCertificate: true);
+
+    private async Task CheckDirectTargetTls(bool anonymous, bool pinned = true, bool diagnosticCertificate = false)
     {
         // Independent direct controls, not referral or pool-safety assertions.
         // Warm the same client/callback path before impersonation: anonymous
@@ -102,6 +108,16 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
             };
             return () =>
             {
+                if (diagnosticCertificate)
+                {
+                    phase = "default chain validation";
+#pragma warning disable SYSLIB0057
+                    using var publicCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(pin);
+#pragma warning restore SYSLIB0057
+                    using var chain = new System.Security.Cryptography.X509Certificates.X509Chain();
+                    Assert.True(chain.Build(publicCertificate), "Default certificate chain validation must succeed in this Windows identity.");
+                    Assert.Equal(publicCertificate.Thumbprint, chain.ChainElements[^1].Certificate.Thumbprint);
+                }
                 phase = "create";
                 using var connection = LdapConnectionFactory.Create(options);
                 // Exact DER pin on this client only; no trust-store changes and
@@ -118,18 +134,18 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
                 phase = "complete";
             };
         }
-        var warmup = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: false);
+        var warmup = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: diagnosticCertificate);
         using (var warmupReport = new FinalReport(() => output.WriteLine(
             $"Direct warmup: phase={phase}; TLS={warmup.TlsHandshakes}; binds={warmup.Binds}; " +
             $"searches={warmup.Searches}; pin callbacks={callbacks}; failures={string.Join(";", warmup.TransportFailures)}.")))
         {
             await using var warmupLifetime = warmup;
-            CreateRead(warmup, usePin: true)();
+            CreateRead(warmup, usePin: !diagnosticCertificate)();
         }
         callbacks = 0;
-        var target = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: false);
+        var target = new WindowsReferralEndpoint(tls: true, allowDiagnosticCertificate: diagnosticCertificate);
         using var report = new FinalReport(() => output.WriteLine(
-            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; validation={(pinned ? "exact pin" : "normal")}; phase={phase}; " +
+            $"Direct target: ambient={(anonymous ? "anonymous" : "original")}; validation={(pinned ? "exact pin" : "normal")}; diagnostic certificate={diagnosticCertificate}; phase={phase}; " +
             $"connections={target.Connections}; closed={target.Closed}; TLS={target.TlsHandshakes}; " +
             $"binds={target.Binds}; searches={target.Searches}; credentialed={target.CredentialedSimpleBinds}; " +
             $"anonymous binds={target.AnonymousBinds}; SASL={target.SaslBinds}; pin callbacks={callbacks}; " +
@@ -149,7 +165,7 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         }
         if (failure is not null)
             output.WriteLine($"Direct client failure: {DescribeClientFailure(failure)}");
-        if (!pinned)
+        if (!pinned && !diagnosticCertificate)
         {
             // A freshly generated self-signed certificate is not trusted. Normal
             // WinLDAP validation must fail before any synthetic credentials or
@@ -173,7 +189,8 @@ public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
         Assert.Equal(1, target.Searches);
         Assert.Equal(0, target.AnonymousBinds);
         Assert.Equal(0, target.SaslBinds);
-        Assert.True(callbacks > 0, "The direct client must validate the exact test certificate.");
+        if (pinned) Assert.True(callbacks > 0, "The direct client must validate the exact test certificate.");
+        else Assert.Equal(0, callbacks); // Normal native validation, never a pinning bypass.
     }
 
     private static string DescribeClientFailure(Exception error)
