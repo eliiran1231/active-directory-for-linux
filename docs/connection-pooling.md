@@ -308,3 +308,38 @@ A successful native referral baseline with valid normal certificate trust is
 still needed before positive pooling tests can proceed; process-local pinning
 of a direct client cannot substitute for that evidence. Further trust changes
 require new authorization and are not part of ordinary disposable CI permission.
+
+### Rejected certificate attribution
+
+Microsoft's event 36882 description explicitly states that its attached data
+contains the rejected server certificate. An opt-in observer now compares only
+complete DER certificate binary properties from existing System/Schannel 36882
+events with the unique referral target certificate, in memory. Public target DER
+travels only over redirected process stdin; no certificate blobs, private keys,
+rendered event messages or unrelated fields are emitted. The C# caller also
+allowlists the observer's metadata-only output. Observation is bounded and does
+not enable logging, change trust or modify native referral callbacks.
+
+[Isolated run 39699983904](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39699983904)
+at `bc4fa069aeaf6b0d7e4622888c54528ff82d83e5` ran only the native referral baseline
+on each runtime. The shared parser's exact, different, invalid and prefixed DER
+self-tests passed before the native tests. Both runtimes observed event 36882
+with `context=whole-DER payload; exact-target-match=True`. Thus the untrusted-CA
+event is attributed to this fixture's referral-target certificate, rather than
+merely correlated by timestamp with several direct/referral tests. The baseline
+still failed: one target connection closed, zero completed TLS handshakes, binds
+or searches, and a client response containing one unresolved referral.
+
+The first attempt, [39699679998](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39699679998),
+failed its synthetic harness check before either native baseline ran. It supplied
+no attribution evidence. The corrected harness tests the shared pure comparison
+function directly, without mocked event-log lookup or redirected console input.
+The one-off trigger was removed after the corrected run; the observer remains
+opt-in through `ADFL_REFERRAL_MATCH_EVENT=1` on a disposable hosted runner only.
+
+This establishes rejection of the target certificate as untrusted in these runs.
+It does not establish successful referral authentication, pooling safety or the
+behavior after trust succeeds. The production guard remains unchanged. Positive
+native TLS/referral validation still needs valid normal trust under the relevant
+identities; the consumed individual trust approvals do not authorize another
+import or broader trust, registry or policy changes.
