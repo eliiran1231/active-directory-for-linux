@@ -38,7 +38,7 @@ public sealed class WindowsReferralDiagnosticFactAttribute : FactAttribute
     }
 }
 
-public sealed class WindowsBasicReferralTests(ITestOutputHelper output)
+public sealed partial class WindowsBasicReferralTests(ITestOutputHelper output)
 {
     private int certificateCallbacks;
     private bool diagnosticPrimaryCallback;
