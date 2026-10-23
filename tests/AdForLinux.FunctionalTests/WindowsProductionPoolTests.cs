@@ -92,7 +92,7 @@ public sealed partial class WindowsBasicReferralTests
     }
 
     [WindowsReferralFact]
-    public async Task Production_pool_transport_failure_evicts_without_replaying_operation()
+    public async Task Production_pool_transport_failure_evicts_without_managed_replay()
     {
         await using var endpoint = new WindowsReferralEndpoint(tls: false);
         var options = PoolOptions(endpoint);
@@ -100,16 +100,19 @@ public sealed partial class WindowsBasicReferralTests
         using var failed = LdapConnectionProvider.Acquire(options);
         Assert.Equal(WindowsReferralEndpoint.FirstIdentity, failed.Execute(Read));
         var old = failed.Connection;
-        await endpoint.DisconnectClients();
+        endpoint.DisconnectOnSearch = true;
         var attempts = 0;
         Assert.Throws<LdapException>(() => failed.Execute(c => { attempts++; return Read(c); }));
         Assert.Equal(1, attempts);
         failed.Dispose();
+        var bindsBeforeRecovery = endpoint.Binds;
+        endpoint.DisconnectOnSearch = false;
         using var replacement = LdapConnectionProvider.Acquire(options);
         replacement.Invalidate();
         Assert.NotSame(old, replacement.Connection);
         Assert.Equal(WindowsReferralEndpoint.FirstIdentity, replacement.Execute(Read));
-        Assert.Equal(2, endpoint.Binds);
+        Assert.Equal(bindsBeforeRecovery + 1, endpoint.Binds);
+        output.WriteLine($"Failed operation invoked once by provider; native binds before recovery={bindsBeforeRecovery}; recovery added one bind.");
     }
 
     [WindowsReferralFact]

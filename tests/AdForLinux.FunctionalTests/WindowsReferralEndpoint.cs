@@ -27,6 +27,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
+    internal volatile bool DisconnectOnSearch;
     internal int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
     internal int Binds => Volatile.Read(ref binds);
     internal int Searches => Volatile.Read(ref searches);
@@ -158,6 +159,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     else if (tag.TagValue == 3)
                     {
                         Interlocked.Increment(ref searches);
+                        if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
                         if (ReferralUrl is not null)
                             await stream.WriteAsync(Result(id, 5, ResultCode.Referral, ReferralUrl), stop.Token);
                         else
