@@ -22,8 +22,9 @@ authenticated user's behavior.
 
 The new real-provider plaintext loopback tests exercise eligible Basic + None:
 idle credential/password/configuration isolation, simultaneous exclusive leases,
-generation boundaries, referral-policy transitions and transport failure eviction.
-They do not cover referral-child identity, TLS, StartTLS or authenticated Windows
+generation boundaries, referral-policy transitions, full-key capacity cancellation,
+existing anonymous-scope transitions and transport failure eviction. They do not
+cover referral-child identity, TLS, StartTLS or authenticated Windows
 identity transitions. Existing fake-resource tests remain useful scheduling tests,
 but cannot supply missing native evidence.
 

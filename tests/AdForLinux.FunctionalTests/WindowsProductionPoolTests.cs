@@ -102,7 +102,9 @@ public sealed partial class WindowsBasicReferralTests
         var old = failed.Connection;
         endpoint.DisconnectOnSearch = true;
         var attempts = 0;
-        Assert.Throws<LdapException>(() => failed.Execute(c => { attempts++; return Read(c); }));
+        var error = Assert.Throws<DirectoryOperationException>(() => failed.Execute(c => { attempts++; return Read(c); }));
+        Assert.NotNull(error.Response);
+        Assert.Equal(ResultCode.Unavailable, error.Response.ResultCode);
         Assert.Equal(1, attempts);
         failed.Dispose();
         var bindsBeforeRecovery = endpoint.Binds;
@@ -113,6 +115,63 @@ public sealed partial class WindowsBasicReferralTests
         Assert.Equal(WindowsReferralEndpoint.FirstIdentity, replacement.Execute(Read));
         Assert.Equal(bindsBeforeRecovery + 1, endpoint.Binds);
         output.WriteLine($"Failed operation invoked once by provider; native binds before recovery={bindsBeforeRecovery}; recovery added one bind.");
+    }
+
+    [WindowsReferralFact]
+    public async Task Production_pool_plaintext_lease_survives_existing_anonymous_scope()
+    {
+        await using var endpoint = new WindowsReferralEndpoint(tls: false);
+        var options = PoolOptions(endpoint);
+        using var cleanup = new PoolKeyCleanup(options);
+        using var original = LdapConnectionProvider.Acquire(options);
+        var connection = original.Connection;
+        Assert.Equal(WindowsReferralEndpoint.FirstIdentity, original.Execute(Read));
+        original.Dispose();
+        AsAnonymous(() =>
+        {
+            using var anonymous = LdapConnectionProvider.Acquire(options);
+            Assert.Same(connection, anonymous.Connection);
+            Assert.Equal(WindowsReferralEndpoint.FirstIdentity, anonymous.Execute(Read));
+        });
+        using var restored = LdapConnectionProvider.Acquire(options);
+        restored.Invalidate();
+        Assert.Same(connection, restored.Connection);
+        Assert.Equal(WindowsReferralEndpoint.FirstIdentity, restored.Execute(Read));
+        Assert.Equal(1, endpoint.Binds);
+        Assert.Equal(3, endpoint.Searches);
+        Assert.Equal(0, endpoint.AnonymousBinds);
+        Assert.Equal(0, endpoint.SaslBinds);
+    }
+
+    [WindowsReferralFact]
+    public async Task Production_pool_full_key_capacity_honors_cancellation_without_sharing_a_lease()
+    {
+        await using var endpoint = new WindowsReferralEndpoint(tls: false);
+        var options = PoolOptions(endpoint);
+        using var cleanup = new PoolKeyCleanup(options);
+        var leases = LdapConnectionProvider.AcquireBatch(options, 8);
+        try
+        {
+            Assert.Equal(8, leases.Select(lease => lease.Connection).Distinct().Count());
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            Assert.Throws<OperationCanceledException>(() =>
+            {
+                using var unexpected = LdapConnectionProvider.Acquire(options, cancellation.Token);
+                unexpected.Invalidate();
+            });
+            Assert.Equal(8, endpoint.Binds);
+            var returned = leases[0].Connection;
+            leases[0].Dispose();
+            using var admitted = LdapConnectionProvider.Acquire(options);
+            admitted.Invalidate();
+            Assert.Same(returned, admitted.Connection);
+            Assert.Equal(WindowsReferralEndpoint.FirstIdentity, admitted.Execute(Read));
+            Assert.Equal(8, endpoint.Binds);
+        }
+        finally
+        {
+            foreach (var lease in leases) { lease.Invalidate(); lease.Dispose(); }
+        }
     }
 
     [WindowsReferralFact]
