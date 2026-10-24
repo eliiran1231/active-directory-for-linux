@@ -72,9 +72,11 @@ internal static class Program
             bool disconnected = scenario.EndsWith("disconnect");
             return new("passed", Checks: 3, PrimaryBinds: 2, TargetConnections: 2, TargetTls: untrusted ? 0 : 2,
                 TargetBinds: untrusted ? 0 : 2, TargetSearches: untrusted || rejected ? 0 : 2,
-                Closed: 2, ManagedAttempts: disconnected ? 3 : 1, Cleanup: true,
+                Closed: 2, ManagedAttempts: disconnected ? 3 : scenario == "concurrent" ? 2 : 1, Cleanup: true,
                 ObservedFailureKind: untrusted || rejected || disconnected ? "ldap" : "none",
-                ObservedFailureCode: untrusted || rejected || disconnected ? 81 : 0);
+                ObservedFailureCode: untrusted || rejected || disconnected ? 81 : 0,
+                WorkersReady: scenario == "concurrent" ? 2 : 0, OperationStarts: scenario == "concurrent" ? 2 : 0,
+                OverlapArrivals: scenario == "concurrent" ? 2 : 0);
         });
         Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsDiagnosticReport.Create(native, pool) }));
     }

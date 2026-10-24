@@ -1,8 +1,8 @@
 # Authenticated Windows referral investigation and diagnostic results
 
 The latest approved real-provider diagnostic completed on 2026-10-24 in run
-[40113617612](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40113617612):
-26/34 pool cases passed on .NET 8 and 25/34 on .NET 10. Both runtimes passed all 11
+[40115032176](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40115032176):
+31/34 pool cases passed on .NET 8 and 29/34 on .NET 10. Both runtimes passed all 11
 authenticated raw controls; anonymous TLS still failed. External security-object and
 temporary-file cleanup passed independently. Pool fixture cleanup failures are distinct
 and remain under investigation. Windows Basic with referrals remains ineligible for
@@ -697,3 +697,75 @@ cleanup. It would rerun the 34 cases on both runtimes to verify isolation setup 
 identify the remaining native/cleanup failures through the new fields. No such job
 is authorized or triggered here. Production Windows referral pooling remains guarded;
 Kerberos #236 remains deferred until actual Windows completion.
+
+
+## Corrected diagnostic completed; remaining fixture preparation
+
+Run [40115032176](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40115032176)
+executed source c293e013744cad84a5cc91f842111d841c077e98 once. The dedicated
+trigger was removed at 05c511c81007014168deeedcf37138bf1d42649e. This consumed
+the approval described in the preceding historical proposal.
+
+Both runtimes passed all 11 authenticated raw stages. Anonymous direct TLS
+still failed (LDAP 81; no TLS, bind or search). Pool results were:
+
+| Runtime | Passed | Failed cases |
+| --- | --- | --- |
+| .NET 8 | 31/34 | original/A/B mixed-referral |
+| .NET 10 | 29/34 | original/A/B mixed-referral; original/B concurrent |
+
+All other cases passed, including all A/B credential-isolation and
+target-disconnect cases. This verifies the previous fixture lifetime correction
+under these test conditions, not general Windows referral eligibility.
+
+Every mixed-referral failure had three TLS prefixes on the plaintext target,
+zero BER prefixes, TLS handshakes, binds and searches, PoolDelta=0 and target-only
+cleanup mask 16. The target cleanup code was -2146233087 (InvalidDataException);
+the observed native result was response 10. The plaintext endpoint tried to parse
+a TLS hello as BER. The new local fixture explicitly closes TLS-prefixed
+connections only on this designated plaintext negative control and counts those
+rejections. This preserves the failed-protocol behavior without manufacturing a
+fixture parser error. All other malformed protocol errors still fail. Raw versus
+pooled outcome/credential comparisons remain required. These new changes have
+not been executed against WinLDAP.
+
+The .NET 10 original/B concurrent failures had three target searches for two
+managed operation callbacks, three TLS connections but two binds, PoolDelta=0,
+and target-only cleanup mask 16 with -2146233083 (TimeoutException). Their original
+failure point was concurrent-counts. The fixture's three-second overlap wait
+timed out. Native reconnect/replay versus scheduling effects is unresolved;
+there is no evidence yet permitting the extra search to be accepted.
+
+Local preparation replaces ThreadPool client tasks with two dedicated workers,
+waits until both are ready, releases them together, verifies the actual Windows
+SID in each operation, and joins every started worker before leaving impersonation
+or disposing leases. The external watchdog remains the bound for hung native
+calls. Report fields now include worker readiness, operation starts, overlap
+arrivals/timeouts and intentional TLS rejections. Passing concurrent cases still
+require exactly two starts, two overlap arrivals, zero overlap timeouts, two
+managed callbacks and two target searches. No count assertion was relaxed.
+Pure tests cover context flow, dedicated-thread overlap, joining after failure,
+narrow TLS rejection and strict report rejection of duplicate/timeout evidence.
+
+Finally and independent cleanup both verified absence of the exact public
+certificate 9BA9A74B67ED3FD16612972771232BFC3BE6DE39, owned CNG key, accounts and
+PFX; independent cleanup also verified temporary files and directory absence.
+These security-object cleanup results are separate from the endpoint cleanup
+failures above.
+
+Independent static review found no blocker in the local preparation. No further
+security-changing job is authorized or started. The next evidence-producing
+proposal is one separately approved disposable job running the same 34 cases on
+both runtimes with the unchanged two standard accounts/one logon each, owned
+non-exportable runner-user key, public LocalMachine Root certificate, watchdogs
+and independent exact cleanup. It must resolve the remaining concurrent duplicate
+search evidence, not reinterpret it as success. Production Windows referral
+pooling remains guarded; LDAPS IPv4 loopback External referral evidence does not
+cover StartTLS, broader referral policies or domain delegation. Issue #236 remains
+deferred until Windows pooling is actually completed and validated.
+
+Local validation of this preparation: both runtime builds passed (zero errors),
+52 focused pool/preparation tests passed per runtime, both PowerShell invocation
+scopes passed, and both runtime pure worker and synthetic report contract checks
+passed. These checks perform no native account, token, trust or key setup and
+cannot validate the remaining WinLDAP behavior.

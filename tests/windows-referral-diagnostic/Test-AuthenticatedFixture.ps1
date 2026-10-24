@@ -171,13 +171,25 @@ foreach ($name in $poolNames) {
         TargetBinds = 2; TargetSearches = 2; Anonymous = 0; Sasl = 0; Closed = 2; ManagedAttempts = 1;
         BaselineCredentialed = 0; PooledCredentialed = 0; Cleanup = $true; FailureKind = 'none'; FailureCode = 0;
         ObservedFailureKind = 'none'; ObservedFailureCode = 0; CleanupMask = 0; LeaseCleanupCode = 0; KeyCleanupCode = 0;
-        OtherCleanupCode = 0; SourceCleanupCode = 0; TargetCleanupCode = 0; PoolDelta = 0; SourceAbandons = 0; TargetAbandons = 0; TargetTlsPrefixes = 0; TargetBerPrefixes = 0; FailurePoint = 'none' }
+        OtherCleanupCode = 0; SourceCleanupCode = 0; TargetCleanupCode = 0; PoolDelta = 0; SourceAbandons = 0; TargetAbandons = 0; TargetTlsPrefixes = 0; TargetBerPrefixes = 0; TargetRejectedTlsProbes = 0; WorkersReady = 0; OperationStarts = 0; OverlapArrivals = 0; OverlapTimeouts = 0; FailurePoint = 'none' }
+    if ($name -like '*-concurrent') { $pool[$name].WorkersReady = 2; $pool[$name].OperationStarts = 2; $pool[$name].OverlapArrivals = 2; $pool[$name].ManagedAttempts = 2 }
     if ($name -like '*-disconnect') { $pool[$name].ManagedAttempts = 3; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 52 }
     if ($name -like '*-untrusted-target') { $pool[$name].TargetBinds = 0; $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'ldap'; $pool[$name].ObservedFailureCode = 81 }
     if ($name -like '*-target-bind-rejection') { $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 49 }
 }
 $combined = @{ Native = $result; Pool = $pool; Supported = 'passed'; Adverse = 'passed'; AllPassed = $true }
 Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Pool.Count -eq 34) 'Pool report cases missing.'
+foreach ($field in @('WorkersReady', 'OperationStarts', 'OverlapArrivals', 'TargetSearches', 'ManagedAttempts')) {
+    $pool['original-concurrent'][$field] = 3
+    MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+    $pool['original-concurrent'][$field] = 2
+}
+$pool['original-concurrent'].OverlapTimeouts = 1
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['original-concurrent'].OverlapTimeouts = 0
+$pool['original-mixed-referral'].TargetRejectedTlsProbes = 1
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['original-mixed-referral'].TargetRejectedTlsProbes = 0
 $combined.Native['anonymous-direct'].Status = 'failed'; $combined.Adverse = 'failed'; $combined.AllPassed = $false
 Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Supported -ceq 'passed') 'Anonymous failure erased supported evidence.'
 $combined.AllPassed = $true

@@ -173,7 +173,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
     if (($value.Pool.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Unexpected pool cases.' }
     foreach ($name in $names) {
         $row = $value.Pool[$name]
-        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OtherCleanupCode,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetSearches,TargetTls,TargetTlsPrefixes') { throw 'Unexpected pool observation fields.' }
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OperationStarts,OtherCleanupCode,OverlapArrivals,OverlapTimeouts,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetRejectedTlsProbes,TargetSearches,TargetTls,TargetTlsPrefixes,WorkersReady') { throw 'Unexpected pool observation fields.' }
         if ($row.FailurePoint -notin @('none', 'setup', 'other', 'assertion', 'ambient-identity', 'concurrent-counts', 'search-shape', 'ldap-identity', 'native-response', 'native-operation', 'cleanup')) { throw 'Invalid fixed failure point.' }
         if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool]) { throw 'Invalid pool status.' }
         foreach ($field in @('FailureKind', 'ObservedFailureKind')) {
@@ -183,7 +183,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid pool failure code.' }
         }
         foreach ($field in @('Checks', 'PrimaryBinds', 'TargetConnections', 'TargetTls', 'TargetBinds', 'TargetSearches',
-            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes')) {
+            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes', 'TargetRejectedTlsProbes', 'WorkersReady', 'OperationStarts', 'OverlapArrivals', 'OverlapTimeouts')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid pool counter.' }
         }
         if (($row.CleanupMask -isnot [int] -and $row.CleanupMask -isnot [long]) -or $row.CleanupMask -lt 0 -or $row.CleanupMask -gt 63 -or
@@ -208,6 +208,9 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             } elseif ($name -like '*-target-bind-rejection') {
                 if ($row.TargetTls -lt 1 -or $row.TargetBinds -lt 1 -or $row.TargetSearches -ne 0 -or $row.ObservedFailureKind -eq 'none') { throw 'Rejected target evidence incomplete.' }
             } elseif ($name -notlike '*-mixed-referral' -and ($row.TargetTls -lt 1 -or $row.TargetSearches -lt 1)) { throw 'Native pool search evidence absent.' }
+            if ($name -like '*-concurrent' -and ($row.WorkersReady -ne 2 -or $row.OperationStarts -ne 2 -or
+                $row.OverlapArrivals -ne 2 -or $row.OverlapTimeouts -ne 0 -or $row.TargetSearches -ne 2 -or $row.ManagedAttempts -ne 2)) { throw 'Concurrent operation evidence incomplete.' }
+            if ($name -like '*-mixed-referral' -and $row.TargetRejectedTlsProbes -ne $row.TargetTlsPrefixes) { throw 'Protocol rejection evidence inconsistent.' }
             if ($name -like '*-disconnect' -and ($row.ManagedAttempts -ne 3 -or $row.ObservedFailureKind -eq 'none')) { throw 'Failure/replay evidence incomplete.' }
         }
     }

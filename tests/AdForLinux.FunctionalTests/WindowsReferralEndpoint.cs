@@ -24,11 +24,13 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private readonly List<(TcpClient Client, Task Serving)> clients = [];
     private readonly Task accepting;
     private readonly X509Certificate2? certificate;
-    private int abandons;
+    private int abandons, rejectedTlsProbes;
+    private readonly bool rejectTlsOnPlaintext;
     private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
     internal volatile bool DisconnectOnSearch;
+    internal int RejectedTlsProbes => Volatile.Read(ref rejectedTlsProbes);
     internal int Abandons => Volatile.Read(ref abandons);
     internal int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
     internal int Binds => Volatile.Read(ref binds);
@@ -49,9 +51,11 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     // Tests wait for simultaneous target operations before allowing either response.
     internal Func<Task>? BeforeSearchResponse { get; set; }
 
-    internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true, bool untrustedOwnedCertificate = false)
+    internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true, bool untrustedOwnedCertificate = false, bool rejectTlsOnPlaintext = false)
     {
         OfflineTestGuard.RequireLiveAccess();
+        if (tls && rejectTlsOnPlaintext) throw new ArgumentException("Plaintext negative control required.");
+        this.rejectTlsOnPlaintext = rejectTlsOnPlaintext;
         if (tls)
         {
             var ownedDirectory = allowDiagnosticCertificate ? Environment.GetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY") : null;
@@ -120,6 +124,11 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                 {
                     0x16 => "TLS handshake", 0x15 => "TLS alert", 0x30 => "LDAP BER", _ => "other",
                 });
+                if (ShouldRejectTlsProbe(rejectTlsOnPlaintext, certificate is not null, count == 0 ? null : first[0]))
+                {
+                    Interlocked.Increment(ref rejectedTlsProbes);
+                    return; // Deliberate plaintext negative control: no handshake, bind or response.
+                }
                 if (certificate is not null)
                 {
                     var secure = new SslStream(stream, leaveInnerStreamOpen: false);
@@ -199,6 +208,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             }
         }
     }
+
+    internal static bool ShouldRejectTlsProbe(bool enabled, bool tls, byte? first) => enabled && !tls && first == 0x16;
 
     internal static bool TryConsumeAbandon(AsnReader message)
     {

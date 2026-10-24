@@ -106,6 +106,50 @@ public sealed class WindowsReferralPoolPreparationTests
             () => { cleanups++; throw new IOException(); }));
         Assert.Equal(2, cleanups);
     }
+    [Fact]
+    public void Only_designated_plaintext_control_rejects_a_TLS_handshake_prefix()
+    {
+        Assert.True(WindowsReferralEndpoint.ShouldRejectTlsProbe(true, false, 0x16));
+        Assert.False(WindowsReferralEndpoint.ShouldRejectTlsProbe(false, false, 0x16));
+        Assert.False(WindowsReferralEndpoint.ShouldRejectTlsProbe(true, true, 0x16));
+        foreach (byte? prefix in new byte?[] { null, 0x30, 0x15, 0x01 })
+            Assert.False(WindowsReferralEndpoint.ShouldRejectTlsProbe(true, false, prefix));
+    }
+    [Fact]
+    public void Dedicated_workers_flow_context_overlap_and_join_before_return()
+    {
+        var context = new AsyncLocal<string> { Value = "synthetic-context" };
+        var runner = new WindowsDiagnosticConcurrent();
+        using var arrived = new CountdownEvent(2);
+        var ids = new int[2]; int completed = 0;
+        runner.Run(index =>
+        {
+            Assert.False(Thread.CurrentThread.IsThreadPoolThread);
+            Assert.Equal("synthetic-context", context.Value);
+            ids[index] = Environment.CurrentManagedThreadId;
+            arrived.Signal();
+            Assert.True(arrived.Wait(TimeSpan.FromSeconds(3)));
+            Interlocked.Increment(ref completed);
+        });
+        Assert.NotEqual(ids[0], ids[1]);
+        Assert.Equal(2, completed); Assert.Equal(2, runner.Ready); Assert.Equal(2, runner.Starts);
+    }
+    [Fact]
+    public void Worker_failure_does_not_leave_the_other_operation_running()
+    {
+        var runner = new WindowsDiagnosticConcurrent();
+        using var arrived = new CountdownEvent(2);
+        int completed = 0;
+        var error = Assert.Throws<AggregateException>(() => runner.Run(index =>
+        {
+            arrived.Signal();
+            Assert.True(arrived.Wait(TimeSpan.FromSeconds(3)));
+            if (index == 0) throw new SyntheticFailure(-123);
+            Interlocked.Increment(ref completed);
+        }));
+        Assert.Contains(error.InnerExceptions, e => e is SyntheticFailure);
+        Assert.Equal(1, completed); Assert.Equal(2, runner.Starts);
+    }
     private sealed class SyntheticFailure : Exception
     { internal SyntheticFailure(int code) { HResult = code; } }
 }

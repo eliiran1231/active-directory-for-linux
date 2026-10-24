@@ -15,7 +15,8 @@ public static class WindowsReferralPoolDiagnostic
         string FailureKind = "none", int FailureCode = 0, string ObservedFailureKind = "none", int ObservedFailureCode = 0,
         int CleanupMask = 0, int LeaseCleanupCode = 0, int KeyCleanupCode = 0, int OtherCleanupCode = 0,
         int SourceCleanupCode = 0, int TargetCleanupCode = 0, int PoolDelta = 0,
-        int SourceAbandons = 0, int TargetAbandons = 0, int TargetTlsPrefixes = 0, int TargetBerPrefixes = 0, string FailurePoint = "none");
+        int SourceAbandons = 0, int TargetAbandons = 0, int TargetTlsPrefixes = 0, int TargetBerPrefixes = 0, string FailurePoint = "none", int TargetRejectedTlsProbes = 0,
+        int WorkersReady = 0, int OperationStarts = 0, int OverlapArrivals = 0, int OverlapTimeouts = 0);
     public static readonly string[] Cases = ["isolation", "concurrent", "capacity", "generation", "failed-bind",
         "primary-disconnect", "target-disconnect", "target-bind-rejection", "untrusted-target", "mixed-referral"];
     public static readonly string[] Transitions = ["a-to-b", "b-to-a", "first-a-to-b", "first-b-to-a"];
@@ -77,7 +78,9 @@ public static class WindowsReferralPoolDiagnostic
             fixture?.CleanupDetail.OtherCode ?? 0, fixture?.CleanupDetail.SourceCode ?? 0, fixture?.CleanupDetail.TargetCode ?? 0,
             fixture?.CleanupDetail.PoolDelta ?? 0, fixture?.Source.Abandons ?? 0, fixture?.Target.Abandons ?? 0,
             fixture?.Target.FirstRecords.Count(x => x == "TLS handshake") ?? 0,
-            fixture?.Target.FirstRecords.Count(x => x == "LDAP BER") ?? 0, FailurePoint(failure, fixture is null));
+            fixture?.Target.FirstRecords.Count(x => x == "LDAP BER") ?? 0, FailurePoint(failure, fixture is null), fixture?.Target.RejectedTlsProbes ?? 0,
+            fixture?.Concurrent.Ready ?? 0, fixture?.Concurrent.Starts ?? 0,
+            fixture?.OverlapArrivals ?? 0, fixture?.OverlapTimeouts ?? 0);
     }
     private sealed class DiagnosticAssertionException(string point) : Exception
     { internal string Point { get; } = point; }
@@ -157,25 +160,27 @@ public static class WindowsReferralPoolDiagnostic
         var leases = f.Batch(f.Options(), 2);
         f.Require(!ReferenceEquals(leases[0].Connection, leases[1].Connection));
         var both = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        int arrived = 0;
         f.Target.BeforeSearchResponse = async () =>
         {
-            if (Interlocked.Increment(ref arrived) == 2) both.TrySetResult();
-            await both.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            if (Interlocked.Increment(ref f.OverlapArrivals) == 2) both.TrySetResult();
+            try { await both.Task.WaitAsync(TimeSpan.FromSeconds(3)); }
+            catch (TimeoutException) { Interlocked.Increment(ref f.OverlapTimeouts); throw; }
         };
         using var caller = WindowsIdentity.GetCurrent();
         string? sid = caller.User?.Value;
         f.Require(sid is not null);
-        // ExecutionContext flows into Task.Run. Assert actual identity in each task;
-        // wait for BOTH before returning from the existing synchronous token scope.
-        Task.WaitAll(leases.Select(lease => Task.Run(() =>
+        // LongRunning tasks get dedicated workers; execution context still flows.
+        // Both are ready before either starts. Join all before leaving this token scope.
+        f.Concurrent.Run(index =>
         {
+            if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
             using var current = WindowsIdentity.GetCurrent();
             f.Require(current.User?.Value == sid, "ambient-identity");
-            f.Read(lease);
-        })).ToArray());
+            f.Read(leases[index]);
+        });
         f.Target.BeforeSearchResponse = null;
-        f.Require(arrived == 2 && f.Target.Searches == 2 && f.Source.Binds == 2, "concurrent-counts");
+        f.Require(f.Concurrent.Ready == 2 && f.Concurrent.Starts == 2 && f.OverlapArrivals == 2 &&
+            f.OverlapTimeouts == 0 && f.ManagedAttempts == 2 && f.Target.Searches == 2 && f.Source.Binds == 2, "concurrent-counts");
     }
     private static void Capacity(Fixture f)
     {
@@ -263,6 +268,7 @@ public static class WindowsReferralPoolDiagnostic
             f.Require(sasl == 0 && f.Target.SaslBinds == 0);
             lease.Dispose();
         }
+        f.Require(f.Target.RejectedTlsProbes == f.Target.FirstRecords.Count(x => x == "TLS handshake"));
         // Report any native explicit forwarding; never reconfigure auth or referrals.
     }
     private static void Transition(Fixture f, Action<Action> first, Action<Action> second, bool firstAfterSwitch)
@@ -301,12 +307,14 @@ public static class WindowsReferralPoolDiagnostic
         private readonly Dictionary<LdapConnectionProvider.ConnectionKey, (LdapConnectionOptions Options, bool None)> keys = [];
         internal int Checks, ManagedAttempts, BaselineCredentialed, PooledCredentialed;
         internal bool Cleanup;
+        internal readonly WindowsDiagnosticConcurrent Concurrent = new();
+        internal int OverlapArrivals, OverlapTimeouts;
         internal readonly WindowsDiagnosticCleanup CleanupDetail = new();
         internal string ObservedFailureKind = "none";
         internal int ObservedFailureCode;
         internal Fixture(bool untrusted, bool mixed, bool isolation)
         {
-            Target = new WindowsReferralEndpoint(tls: !mixed, untrustedOwnedCertificate: untrusted);
+            Target = new WindowsReferralEndpoint(tls: !mixed, untrustedOwnedCertificate: untrusted, rejectTlsOnPlaintext: mixed);
             try
             {
                 Source = new WindowsReferralEndpoint(tls: true) { ReferralUrl = $"{(mixed ? "ldap" : "ldaps")}://127.0.0.1:{Target.Port}/CN=target??base?(objectClass=*)" };
