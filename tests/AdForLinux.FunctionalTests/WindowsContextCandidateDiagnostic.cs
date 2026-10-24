@@ -11,7 +11,7 @@ namespace AdForLinux.FunctionalTests;
 public static class WindowsContextCandidateDiagnostic
 {
     public sealed record Observation(string Status, int Checks, int Attempts, int SourceBinds, int SourceSearches,
-        int TargetBinds, int TargetSearches, int FailureCode, bool InstrumentationFailed, bool Cleanup, int PoolDelta, int FreshCode = 0, int WarmCode = 0, int ObservedCode = 0, string FailureKind = "success", string FreshKind = "success", string WarmKind = "success", string ObservedKind = "success");
+        int TargetBinds, int TargetSearches, int FailureCode, bool InstrumentationFailed, bool Cleanup, int PoolDelta, int FreshCode = 0, int WarmCode = 0, int ObservedCode = 0, string FailureKind = "success", string FreshKind = "success", string WarmKind = "success", string ObservedKind = "success", string QueryStage = "not-queried", string QueryKind = "none", int QueryCode = 0);
     public static readonly string[] PerIdentity = ["stable", "failed-bind", "primary-failure", "target-failure", "findone"];
     public static readonly string[] Boundaries = ["acquired", "send", "complete", "return"];
     public static string[] CaseNames => new[] { "original", "a", "b" }.SelectMany(i => PerIdentity.Select(c => i + "/" + c))
@@ -79,18 +79,18 @@ public static class WindowsContextCandidateDiagnostic
         cleanup &= delta == 0;
         return new(failure is null && cleanup ? "passed" : "failed", f?.Checks ?? 0, f?.Attempts ?? 0,
             f?.Source.Binds ?? 0, f?.Source.Searches ?? 0, f?.Target.Binds ?? 0, f?.Target.Searches ?? 0,
-            Code(failure), f?.InstrumentationFailed ?? false, cleanup, delta, f?.FreshCode ?? 0, f?.WarmCode ?? 0, f?.ObservedCode ?? 0, Kind(failure), f?.FreshKind ?? "success", f?.WarmKind ?? "success", f?.ObservedKind ?? "success");
+            Code(failure), f?.InstrumentationFailed ?? false, cleanup, delta, f?.FreshCode ?? 0, f?.WarmCode ?? 0, f?.ObservedCode ?? 0, Kind(failure), f?.FreshKind ?? "success", f?.WarmKind ?? "success", f?.ObservedKind ?? "success", f?.QueryStage ?? "not-queried", f?.QueryKind ?? "none", f?.QueryCode ?? 0);
     }
     private static string Kind(Exception? e) => e switch { null => "success", LdapException => "ldap", DirectoryOperationException { Response: not null } => "directory", DirectoryOperationException => "directory-no-response", _ => "fixture" };
     private static int Code(Exception? e) => e switch { null => 0, LdapException l => l.ErrorCode, DirectoryOperationException d when d.Response is not null => (int)d.Response.ResultCode, _ => e.HResult };
     private static void Execute(Fixture f, string scenario)
     {
-        var context = WindowsLdapContextQuery.Capture(); f.Require(context.HasValue);
+        var context = f.Context(); f.Require(context.HasValue);
         switch (scenario)
         {
             case "stable":
                 f.Read(); f.Read(); f.Read();
-                f.Require(context == WindowsLdapContextQuery.Capture());
+                f.Require(context == f.Context());
                 f.Require(f.Source.Binds == 1 && f.Target.Searches == 3); break;
             case "failed-bind":
                 f.Source.RejectBinds = true;
@@ -135,9 +135,9 @@ public static class WindowsContextCandidateDiagnostic
         f.SetBoundary((point, run) =>
         {
             if (point != stage) { run(); return; }
-            second(() => { changed = WindowsLdapContextQuery.Capture(); run(); });
+            second(() => { changed = f.Context(); run(); });
         });
-        first(() => { before = WindowsLdapContextQuery.Capture(); f.Require(before.HasValue); f.Read(); });
+        first(() => { before = f.Context(); f.Require(before.HasValue); f.Read(); });
         f.Require(changed.HasValue && before != changed);
         f.Require(f.Source.Searches == 1 && f.Target.Searches == 1 && f.Attempts == 1);
         f.Require(LdapConnectionProvider.Snapshot.Total == f.Initial);
@@ -149,9 +149,9 @@ public static class WindowsContextCandidateDiagnostic
         // created by separate RunImpersonated calls.
         a(() =>
         {
-            ca = WindowsLdapContextQuery.Capture(); f.Read();
-            b(() => { cb = WindowsLdapContextQuery.Capture(); f.Read(); });
-            f.Require(ca == WindowsLdapContextQuery.Capture()); f.Read();
+            ca = f.Context(); f.Read();
+            b(() => { cb = f.Context(); f.Read(); });
+            f.Require(ca == f.Context()); f.Read();
         });
         f.Require(ca.HasValue && cb.HasValue && ca != cb);
         f.Require(f.Source.Binds == 2 && f.Target.Searches == 3);
@@ -163,7 +163,7 @@ public static class WindowsContextCandidateDiagnostic
             f.SetBoundary((stage, run) =>
             {
                 if (stage == scenario) WindowsAuthenticatedDiagnostic.Anonymous(() =>
-                { f.Require(WindowsLdapContextQuery.Capture() is null); run(); });
+                { f.Require(f.Context() is null); run(); });
                 else run();
             });
             var error = Capture(() => f.Read());
@@ -192,7 +192,7 @@ public static class WindowsContextCandidateDiagnostic
         long reused = LdapConnectionProvider.Snapshot.Reused;
         var beforeWarm = (Source: f.Source.Binds, Target: f.Target.Binds, Searches: f.Target.Searches);
         WindowsAuthenticatedDiagnostic.Anonymous(() =>
-        { f.Require(WindowsLdapContextQuery.Capture() is null); warmError = Capture(() => f.Read()); });
+        { f.Require(f.Context() is null); warmError = Capture(() => f.Read()); });
         f.FreshCode = Code(freshError); f.WarmCode = Code(warmError); f.FreshKind = Kind(freshError); f.WarmKind = Kind(warmError);
         f.Require(IsNativeOrSuccess(freshError) && IsNativeOrSuccess(warmError) && Kind(freshError) == Kind(warmError) && Code(freshError) == Code(warmError));
         f.Require(LdapConnectionProvider.Snapshot.Reused == reused);
@@ -208,6 +208,14 @@ public static class WindowsContextCandidateDiagnostic
         internal readonly int Initial = LdapConnectionProvider.Snapshot.Total;
         internal int Checks, Attempts, FreshCode, WarmCode, ObservedCode;
         internal string FreshKind = "success", WarmKind = "success", ObservedKind = "success";
+        internal string QueryStage = "not-queried", QueryKind = "none";
+        internal int QueryCode;
+        internal WindowsLdapContext? Context()
+        {
+            var context = WindowsLdapContextQuery.Capture(out var detail);
+            QueryStage = detail.Stage; QueryKind = detail.Kind; QueryCode = detail.Code;
+            return context;
+        }
         internal ContextScopedReadDiagnostic Diagnostic = new();
         private readonly List<ContextScopedReadDiagnostic> diagnostics = [];
         internal bool InstrumentationFailed => Diagnostic.InstrumentationFailed || diagnostics.Any(d => d.InstrumentationFailed);

@@ -29,7 +29,7 @@ foreach ($framework in @('net8.0', 'net10.0')) {
         if (($wrapper.Keys | Sort-Object) -join ',' -cne 'Report,TestOnly' -or $wrapper.TestOnly -isnot [bool] -or !$wrapper.TestOnly) { throw 'Synthetic discriminator missing.' }
         $report = ConvertTo-ContextCandidateResult ($wrapper.Report | ConvertTo-Json -Depth 8 -Compress)
         if ($report.Candidate.Count -ne 31 -or $report.Supported -ne 'passed' -or $report.Adverse -ne 'failed' -or $report.AllPassed) { throw 'Candidate contract failed.' }
-        foreach ($mutation in @('instrumentation', 'cleanup', 'extra', 'missing', 'verdict', 'dependency', 'counts', 'outcome')) {
+        foreach ($mutation in @('instrumentation', 'cleanup', 'extra', 'missing', 'verdict', 'dependency', 'counts', 'outcome', 'query')) {
             $bad = $wrapper.Report | ConvertTo-Json -Depth 8 | ConvertFrom-Json -AsHashtable
             switch ($mutation) {
                 'instrumentation' { $bad.Candidate['a/stable'].InstrumentationFailed = $true }
@@ -40,6 +40,7 @@ foreach ($framework in @('net8.0', 'net10.0')) {
                 'dependency' { $bad.Candidate['a/stable'].Status = 'skipped' }
                 'counts' { $bad.Candidate['a/stable'].TargetSearches = 4 }
                 'outcome' { $bad.Candidate['anonymous/first'].WarmKind = 'directory' }
+                'query' { $bad.Candidate['a/stable'].QueryStage = 'unapproved raw detail' }
             }
             $rejected = $false
             try { $null = ConvertTo-ContextCandidateResult ($bad | ConvertTo-Json -Depth 8 -Compress) } catch { $rejected = $true }

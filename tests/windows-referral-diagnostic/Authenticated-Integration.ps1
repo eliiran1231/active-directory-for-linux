@@ -285,9 +285,9 @@ function ConvertTo-ContextCandidateResult([string]$Json) {
     if (($value.Candidate.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Candidate cases missing or unexpected.' }
     foreach ($name in $names) {
         $row = $value.Candidate[$name]
-        if (($row.Keys | Sort-Object) -join ',' -cne 'Attempts,Checks,Cleanup,FailureCode,FailureKind,FreshCode,FreshKind,InstrumentationFailed,ObservedCode,ObservedKind,PoolDelta,SourceBinds,SourceSearches,Status,TargetBinds,TargetSearches,WarmCode,WarmKind') { throw 'Unexpected candidate fields.' }
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Attempts,Checks,Cleanup,FailureCode,FailureKind,FreshCode,FreshKind,InstrumentationFailed,ObservedCode,ObservedKind,PoolDelta,QueryCode,QueryKind,QueryStage,SourceBinds,SourceSearches,Status,TargetBinds,TargetSearches,WarmCode,WarmKind') { throw 'Unexpected candidate fields.' }
         if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool] -or $row.InstrumentationFailed -isnot [bool]) { throw 'Invalid candidate status.' }
-        foreach ($field in @('Attempts', 'Checks', 'SourceBinds', 'SourceSearches', 'TargetBinds', 'TargetSearches', 'FailureCode', 'FreshCode', 'WarmCode', 'ObservedCode', 'PoolDelta')) {
+        foreach ($field in @('Attempts', 'Checks', 'SourceBinds', 'SourceSearches', 'TargetBinds', 'TargetSearches', 'FailureCode', 'FreshCode', 'WarmCode', 'ObservedCode', 'PoolDelta', 'QueryCode')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid candidate number.' }
         }
         foreach ($field in @('Attempts', 'Checks', 'SourceBinds', 'SourceSearches', 'TargetBinds', 'TargetSearches')) {
@@ -297,6 +297,8 @@ function ConvertTo-ContextCandidateResult([string]$Json) {
             if ($row[$prefix + 'Kind'] -notin @('success','ldap','directory','directory-no-response','fixture')) { throw 'Unexpected native outcome kind.' }
             if ($row[$prefix + 'Kind'] -eq 'success' -and $row[$prefix + 'Code'] -ne 0) { throw 'Success with failure code.' }
         }
+        if ($row.QueryKind -notin @('none','rejected','win32','managed','length') -or
+            $row.QueryStage -notin @('not-queried','guard','offline','platform','open-thread','open-process','statistics-before','statistics-before-length','restrictions','restrictions-length','restrictions-unwritten','restrictions-format','app-container','app-container-length','app-container-unwritten','app-container-format','token-user','token-user-length','token-user-read','token-user-read-length','token-user-complete','sid-bounds','statistics-after','statistics-after-length','token-changed','sid-unreadable','anonymous','restricted','app-container-token','token-id-unavailable','authentication-id-unavailable','modified-id-unavailable','token-type','impersonation-level','eligible')) { throw 'Unexpected query diagnostic.' }
         $owner = $name.Split('/')[0]
         $identities = if ($owner -in @('a-to-b','b-to-a','partition')) { @('a','b') } elseif ($owner -eq 'anonymous') { @('original') } else { @($owner) }
         $ready = $true

@@ -193,16 +193,20 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
-    public void Fixed_dword_candidate_never_accepts_an_unwritten_value_or_relaxes_classification()
+    public void Scalar_decoder_accepts_only_written_byte_or_dword_boolean_patterns()
     {
-        Assert.False(WindowsLdapContextQuery.AcceptDword(WindowsLdapContextQuery.QuerySentinel, 4, true));
-        Assert.False(WindowsLdapContextQuery.AcceptDword(0, WindowsLdapContextQuery.QuerySentinel, false));
-        Assert.True(WindowsLdapContextQuery.AcceptDword(0, WindowsLdapContextQuery.QuerySentinel, true));
-        Assert.True(WindowsLdapContextQuery.AcceptDword(1, 4, true));
-        var stats = new WindowsLdapContextQuery.Statistics { TokenId = 1, AuthenticationId = 2,
-            ModifiedId = 3, TokenType = 1 };
-        Assert.Null(WindowsLdapContextQuery.Classify(stats, false, false, 1, 0));
-        Assert.Null(WindowsLdapContextQuery.Classify(stats, false, false, 0, 1));
+        uint upper = WindowsLdapContextQuery.QuerySentinel & 0xffffff00u;
+        Assert.Equal(0u, WindowsLdapContextQuery.DecodeScalarFlag(upper, 1));
+        Assert.Equal(1u, WindowsLdapContextQuery.DecodeScalarFlag(upper | 1, 1));
+        Assert.Equal(0u, WindowsLdapContextQuery.DecodeScalarFlag(0, 4));
+        Assert.Equal(1u, WindowsLdapContextQuery.DecodeScalarFlag(1, 4));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(WindowsLdapContextQuery.QuerySentinel, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(upper | 2, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(upper, 4));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 2));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 0));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 8));
     }
 
     [Fact]

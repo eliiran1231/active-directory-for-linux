@@ -29,9 +29,9 @@ internal static class WindowsLdapContextQuery
     internal readonly record struct QueryDiagnostic(string Stage, string Kind, int Code);
     internal static WindowsLdapContext? Capture() => Capture(out _);
     internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic) => CaptureCore(false, out diagnostic);
-    internal static WindowsLdapContext? CaptureFixedDwordDiagnostic(out QueryDiagnostic diagnostic)
+    internal static WindowsLdapContext? CaptureScalarDiagnostic(out QueryDiagnostic diagnostic)
         => CaptureCore(true, out diagnostic);
-    private static WindowsLdapContext? CaptureCore(bool fixedDword, out QueryDiagnostic diagnostic)
+    private static WindowsLdapContext? CaptureCore(bool scalarLayout, out QueryDiagnostic diagnostic)
     {
         diagnostic = new("guard", "none", 0);
         if (OfflineTestGuard.Enabled) return Reject(out diagnostic, "offline");
@@ -63,15 +63,27 @@ internal static class WindowsLdapContextQuery
                 size = QuerySentinel;
                 if (!GetFlag(handle, 21, ref restricted, sizeof(uint), ref size))
                     return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
-                if (!AcceptDword(restricted, size, fixedDword))
-                    return Reject(out diagnostic, restricted == QuerySentinel ? "restrictions-unwritten" : "restrictions-length", "length", unchecked((int)size));
+                if (!scalarLayout && (size != 4 || restricted == QuerySentinel))
+                    return Reject(out diagnostic, "restrictions-length", "length", unchecked((int)size));
+                if (scalarLayout)
+                {
+                    var normalized = DecodeScalarFlag(restricted, size);
+                    if (!normalized.HasValue) return Reject(out diagnostic, "restrictions-format", "length", unchecked((int)size));
+                    restricted = normalized.Value;
+                }
                 stage = "app-container";
                 uint container = QuerySentinel;
                 size = QuerySentinel;
                 if (!GetFlag(handle, 29, ref container, sizeof(uint), ref size))
                     return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
-                if (!AcceptDword(container, size, fixedDword))
-                    return Reject(out diagnostic, container == QuerySentinel ? "app-container-unwritten" : "app-container-length", "length", unchecked((int)size));
+                if (!scalarLayout && (size != 4 || container == QuerySentinel))
+                    return Reject(out diagnostic, "app-container-length", "length", unchecked((int)size));
+                if (scalarLayout)
+                {
+                    var normalized = DecodeScalarFlag(container, size);
+                    if (!normalized.HasValue) return Reject(out diagnostic, "app-container-format", "length", unchecked((int)size));
+                    container = normalized.Value;
+                }
                 stage = "token-user";
                 bool? anonymous = IsAnonymous(handle, out diagnostic);
                 if (anonymous is null) return null;
@@ -89,8 +101,16 @@ internal static class WindowsLdapContextQuery
 
     private static WindowsLdapContext? Reject(out QueryDiagnostic diagnostic, string stage, string kind = "rejected", int code = 0)
     { diagnostic = new(stage, kind, code); return null; }
-    internal static bool AcceptDword(uint value, uint returned, bool fixedDword)
-        => value != QuerySentinel && (fixedDword || returned == sizeof(uint));
+    // The caller supplies a four-byte buffer. Accept only a fully written DWORD
+    // boolean or a reported one-byte BOOLEAN with the upper sentinel untouched.
+    // Unknown sizes/patterns are not interpreted as an unrestricted context.
+    internal static uint? DecodeScalarFlag(uint value, uint returned)
+    {
+        if (returned == 4 && value <= 1) return value;
+        if (returned == 1 && (value & 0xffffff00u) == (QuerySentinel & 0xffffff00u) && (value & 0xff) <= 1)
+            return value & 0xff;
+        return null;
+    }
     internal static bool CanUseProcessToken(int error) => error == NoToken;
 
     internal static WindowsLdapContext? Classify(Statistics value, bool thread, bool? anonymous, uint restricted, uint container)

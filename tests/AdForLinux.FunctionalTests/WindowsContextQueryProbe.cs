@@ -18,8 +18,8 @@ public static class WindowsContextQueryProbe
             throw new InvalidOperationException("Hosted Windows read-only token probe required.");
         var first = WindowsLdapContextQuery.Capture(out var a);
         var second = WindowsLdapContextQuery.Capture(out var b);
-        var fixedFirst = WindowsLdapContextQuery.CaptureFixedDwordDiagnostic(out var c);
-        var fixedSecond = WindowsLdapContextQuery.CaptureFixedDwordDiagnostic(out var d);
+        var fixedFirst = WindowsLdapContextQuery.CaptureScalarDiagnostic(out var c);
+        var fixedSecond = WindowsLdapContextQuery.CaptureScalarDiagnostic(out var d);
         return new(a.Stage, a.Kind, a.Code, b.Stage, b.Kind, b.Code,
             first.HasValue && second.HasValue, first.HasValue && first == second,
             c.Stage, c.Kind, c.Code, d.Stage, d.Kind, d.Code,
