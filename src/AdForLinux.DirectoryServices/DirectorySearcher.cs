@@ -432,12 +432,14 @@ public class DirectorySearcher : Component
 
         CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
 
-        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
+        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var connection = connectionLease.Connection;
+        if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
         var response = SendSearch(connection, request, operation.Origin.Authority);
         UpdateControlState(response);
         return response.Entries.Count > 0
-            ? new SearchResult(response.Entries[0], operation.Origin, root)
+            ? new SearchResult(response.Entries[0], operation.Origin, root, root.SchemaConnectionForOperation(connection))
             : null;
     }
 
@@ -480,56 +482,69 @@ public class DirectorySearcher : Component
             return FindAllStreaming(operation);
         }
 
-        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
+        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var connection = connectionLease.Connection;
+        if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
         var results = new List<SearchResult>();
         var timeLimitBudget = CreateServerTimeLimitBudget(PageSize > 0);
 
-        if (PageSize > 0)
+        try
         {
-            var pageControl = new PageResultRequestControl(PageSize);
-            while (true)
+            if (PageSize > 0)
+            {
+                var pageControl = new PageResultRequestControl(PageSize);
+                while (true)
+                {
+                    var request = BuildRequestForDn(operation.Origin.DistinguishedName);
+                    request.Controls.Add(pageControl);
+                    if (!timeLimitBudget.TryApply(request))
+                    {
+                        connectionLease.Invalidate();
+                        break;
+                    }
+
+                    var response = SendSearch(connection, request, operation.Origin.Authority);
+                    UpdateControlState(response);
+
+                    foreach (SearchResultEntry entry in response.Entries)
+                    {
+                        results.Add(new SearchResult(entry, operation.Origin, root, root.SchemaConnectionForOperation(connection)));
+                    }
+
+                    var cookie = response.Controls
+                        .OfType<PageResultResponseControl>()
+                        .FirstOrDefault()?.Cookie;
+
+                    if (cookie is null || cookie.Length == 0)
+                    {
+                        break;
+                    }
+
+                    pageControl.Cookie = cookie;
+                }
+            }
+            else
             {
                 var request = BuildRequestForDn(operation.Origin.DistinguishedName);
-                request.Controls.Add(pageControl);
-                if (!timeLimitBudget.TryApply(request))
-                {
-                    break;
-                }
-
+                timeLimitBudget.TryApply(request);
                 var response = SendSearch(connection, request, operation.Origin.Authority);
                 UpdateControlState(response);
-
                 foreach (SearchResultEntry entry in response.Entries)
                 {
-                    results.Add(new SearchResult(entry, operation.Origin, root));
+                    results.Add(new SearchResult(entry, operation.Origin, root, root.SchemaConnectionForOperation(connection)));
                 }
-
-                var cookie = response.Controls
-                    .OfType<PageResultResponseControl>()
-                    .FirstOrDefault()?.Cookie;
-
-                if (cookie is null || cookie.Length == 0)
-                {
-                    break;
-                }
-
-                pageControl.Cookie = cookie;
             }
+
+            return new SearchResultCollection(results, GetPropertiesLoaded());
         }
-        else
+        catch (Exception error)
         {
-            var request = BuildRequestForDn(operation.Origin.DistinguishedName);
-            timeLimitBudget.TryApply(request);
-            var response = SendSearch(connection, request, operation.Origin.Authority);
-            UpdateControlState(response);
-            foreach (SearchResultEntry entry in response.Entries)
-            {
-                results.Add(new SearchResult(entry, operation.Origin, root));
-            }
+            // A failed page sequence may leave a server cookie. An ordinary
+            // rejection of a single completed request does not poison a session.
+            if (PageSize > 0 || LdapConnectionProvider.IsConnectionFailure(error)) connectionLease.Invalidate();
+            throw;
         }
-
-        return new SearchResultCollection(results, GetPropertiesLoaded());
     }
 
     private SearchResultCollection FindAllStreaming(SearchOperation operation)
@@ -539,70 +554,98 @@ public class DirectorySearcher : Component
         var resultRoot = operation.Origin.Copy();
         var origin = operation.Origin;
         LdapConnection connection;
+        DirectoryEntry.ConnectionLease[]? leases = null;
         SearchRequest request;
         try
         {
             StreamingRootCreated?.Invoke(resultRoot);
-            connection = resultRoot.GetAuthorityConnection(origin.Authority);
+            leases = resultRoot.AcquireConnections(2, origin.Authority.Validate, ReferralChasing);
+            connection = leases[0].Connection;
+            if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null)
+                foreach (var lease in leases) lease.Invalidate();
             ConfigureConnection(connection);
             request = BuildRequestForDn(origin.DistinguishedName);
         }
         catch
         {
+            if (leases is not null) foreach (var lease in leases) { lease.Invalidate(); lease.Dispose(); }
             resultRoot.Dispose();
             throw;
         }
-        var pageControl = PageSize > 0 ? new PageResultRequestControl(PageSize) : null;
-        if (pageControl is not null)
+        StreamingSearchResultSource? source = null;
+        try
         {
-            request.Controls.Add(pageControl);
-        }
-
-        var returnPartialResults = Asynchronous;
-        var timeout = ClientTimeout;
-        var source = new StreamingSearchResultSource((add, cancellationToken) =>
-        {
-            try
+            var pageControl = PageSize > 0 ? new PageResultRequestControl(PageSize) : null;
+            if (pageControl is not null)
             {
-                var timeLimitBudget = CreateServerTimeLimitBudget(pageControl is not null);
-                while (true)
-                {
-                    if (!timeLimitBudget.TryApply(request))
-                    {
-                        break;
-                    }
-
-                    var response = SendSearchAsynchronously(
-                        connection, request, resultRoot, origin, returnPartialResults, timeout, add, cancellationToken);
-                    UpdateControlState(response);
-
-                    if (pageControl is null)
-                    {
-                        break;
-                    }
-
-                    var cookie = response.Controls
-                        .OfType<PageResultResponseControl>()
-                        .FirstOrDefault()?.Cookie;
-                    if (cookie is null || cookie.Length == 0)
-                    {
-                        break;
-                    }
-
-                    pageControl.Cookie = cookie;
-                }
+                request.Controls.Add(pageControl);
             }
-            finally
+
+            var returnPartialResults = Asynchronous;
+            var timeout = ClientTimeout;
+            source = new StreamingSearchResultSource((add, cancellationToken) =>
             {
+                try
+                {
+                    var timeLimitBudget = CreateServerTimeLimitBudget(pageControl is not null);
+                    while (true)
+                    {
+                        if (!timeLimitBudget.TryApply(request))
+                        {
+                            break;
+                        }
+
+                        var response = SendSearchAsynchronously(
+                            connection, leases[1].Connection, request, resultRoot, origin, returnPartialResults, timeout, add, cancellationToken);
+                        UpdateControlState(response);
+
+                        if (pageControl is null)
+                        {
+                            break;
+                        }
+
+                        var cookie = response.Controls
+                            .OfType<PageResultResponseControl>()
+                            .FirstOrDefault()?.Cookie;
+                        if (cookie is null || cookie.Length == 0)
+                        {
+                            pageControl.Cookie = Array.Empty<byte>();
+                            break;
+                        }
+
+                        pageControl.Cookie = cookie;
+                    }
+                }
+                catch
+                {
+                    foreach (var lease in leases) lease.Invalidate();
+                    throw;
+                }
+                finally
+                {
+                    if (pageControl?.Cookie is { Length: > 0 }) foreach (var lease in leases) lease.Invalidate();
+                    foreach (var lease in leases) lease.Dispose();
+                    resultRoot.Dispose();
+                }
+            });
+
+            return new SearchResultCollection(source, CacheResults, GetPropertiesLoaded());
+        }
+        catch
+        {
+            if (source is not null) source.Dispose(); // Producer owns the leases now.
+            else
+            {
+                foreach (var lease in leases) { lease.Invalidate(); lease.Dispose(); }
                 resultRoot.Dispose();
             }
-        });
-
-        return new SearchResultCollection(source, CacheResults, GetPropertiesLoaded());
+            throw;
+        }
     }
 
     private static SearchResponse SendSearchAsynchronously(
         LdapConnection connection,
+        LdapConnection schemaConnection,
         SearchRequest request,
         DirectoryEntry resultRoot,
         SearchResultOrigin origin,
@@ -622,15 +665,17 @@ public class DirectorySearcher : Component
             {
                 if (item is SearchResultEntry entry && returnedDns.Add(entry.DistinguishedName))
                 {
-                    add(new SearchResult(entry, origin, resultRoot));
+                    add(new SearchResult(entry, origin, resultRoot, schemaConnection));
                 }
             }
         }
 
+        IAsyncResult? asyncResult = null;
+        bool ended = false;
         try
         {
             origin.Authority.Validate();
-            var asyncResult = timeout >= TimeSpan.Zero
+            asyncResult = timeout >= TimeSpan.Zero
                 ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
                 : connection.BeginSendRequest(request, partialMode, null, null);
 
@@ -658,6 +703,7 @@ public class DirectorySearcher : Component
 
             origin.Authority.Validate();
             var response = (SearchResponse)connection.EndSendRequest(asyncResult);
+            ended = true;
             AddEntries(response.Entries);
             return response;
         }
@@ -675,7 +721,19 @@ public class DirectorySearcher : Component
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {
+            LdapConnectionProvider.ReportFailure(connection, exception);
             throw LdapExceptionTranslator.Translate(exception);
+        }
+        finally
+        {
+            if (asyncResult is not null && !ended)
+            {
+                LdapConnectionProvider.ReportFailure(connection, new OperationCanceledException());
+                // Protocols abandons the native request; its background response
+                // machinery need not have completed. Never reuse this connection.
+                try { connection.Abort(asyncResult); }
+                catch { /* Already ended/aborted; the lease is still discarded. */ }
+            }
         }
     }
 
@@ -780,7 +838,9 @@ public class DirectorySearcher : Component
     private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults)
     {
         var root = operation.Root;
-        var connection = root.GetAuthorityConnection(operation.Origin.Authority);
+        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var connection = connectionLease.Connection;
+        if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
 
         // Samba accepts ASQ controls for non-DN attributes instead of returning
@@ -831,7 +891,7 @@ public class DirectorySearcher : Component
                 continue;
             }
 
-            results.Add(new SearchResult(response.Entries[0], operation.Origin, root));
+            results.Add(new SearchResult(response.Entries[0], operation.Origin, root, root.SchemaConnectionForOperation(connection)));
             if (results.Count >= maximumResults)
             {
                 break;
@@ -892,7 +952,7 @@ public class DirectorySearcher : Component
         return response.Entries
             .Cast<SearchResultEntry>()
             .Take(maximumResults)
-            .Select(entry => new SearchResult(entry, operation.Origin, root))
+            .Select(entry => new SearchResult(entry, operation.Origin, root, root.SchemaConnectionForOperation(connection)))
             .ToList();
     }
 
@@ -1030,7 +1090,7 @@ public class DirectorySearcher : Component
             }
 
             authority.Validate();
-            var response = (SearchResponse)connection.SendRequest(request);
+            var response = (SearchResponse)connection.SendRequestTracked(request);
             authority.Validate();
             return response;
         }
@@ -1060,7 +1120,9 @@ public class DirectorySearcher : Component
     private void ConfigureConnection(LdapConnection connection)
     {
         if (ConfigureConnectionOverride is { } configure) configure(connection);
-        else LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
+        // Managed sessions were configured for this keyed policy before bind.
+        else if (!LdapConnectionProvider.IsManagedSession(connection))
+            LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasing);
     }
 
     private void UpdateControlState(SearchResponse response)

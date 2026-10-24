@@ -1,5 +1,7 @@
 name: Source audit offline
 on:
+  pull_request:
+    branches: [dev]
   push:
     branches: [fix/audit-property-replacement-date-filters, audit/security-quality, dev]
 permissions:
@@ -25,6 +27,10 @@ jobs:
       - run: dotnet build AdForLinux.sln --configuration Release
       - run: dotnet build tests/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }}
       - run: python tests/test_offline_runner.py
+      - if: runner.os == 'Windows'
+        name: Pure referral-stage regression and helper syntax checks (no trust changes)
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-ReferralStages.ps1
       - run: python tests/run-offline-tests.py functional --framework ${{ matrix.framework }} --results-directory artifacts/functional
       - if: runner.os == 'Windows'
         run: python tests/run-offline-tests.py surface --framework ${{ matrix.framework }} --results-directory artifacts/surface

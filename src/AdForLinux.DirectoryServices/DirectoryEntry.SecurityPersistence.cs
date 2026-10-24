@@ -248,7 +248,7 @@ public partial class DirectoryEntry
                 if (serviceNames is not null && _entryChangeVersion != serviceNameReadVersion)
                     throw new InvalidOperationException("Entry state changed while service names were being loaded.");
                 security = _objectSecurity; creating = _isNew;
-                if (!creating && _pendingPropertyChanges.Count == 0 && security is null && _connection is null && serviceNames is null) return;
+                if (!creating && _pendingPropertyChanges.Count == 0 && security is null && _connection is null && !_hasOperationConnection && serviceNames is null) return;
                 version = _entryChangeVersion;
                 properties = creating ? Array.Empty<PropertyValueCollection>() : _pendingPropertyChanges.ToArray();
             }
@@ -287,7 +287,7 @@ public partial class DirectoryEntry
             // rebind. No owner/facade lock is held during bind or SendRequest.
             var hasRequest = request is AddRequest || ((ModifyRequest)request).Modifications.Count != 0;
             var transport = WriteRequestOverride;
-            var connection = hasRequest && transport is null ? GetConnection() : null;
+            // Acquire only at dispatch, after dependent readback has released its lease.
             void CheckState()
             {
                 if (_entryChangeVersion != version || !ReferenceEquals(_objectSecurity, security) || _isNew != creating
@@ -339,12 +339,15 @@ public partial class DirectoryEntry
                 plan?.Sections ?? SecurityMasks.None, properties, propertyVersions, security, securityRead?.Version ?? 0, serviceNames);
             if (hasRequest)
             {
+                using var connectionLease = transport is null ? AcquireConnection(() => Checked(() => true)) : null;
+                var connection = connectionLease?.Connection;
+                Checked(() => true);
                 ResultCode result;
                 try
                 {
                     // Preserve the protocol response until its delivery outcome is
                     // classified; the public exception translation remains unchanged.
-                    result = transport is null ? connection!.SendRequest(request).ResultCode : transport(request);
+                    result = transport is null ? connection!.SendRequestTracked(request).ResultCode : transport(request);
                 }
                 catch (DirectoryOperationException error) when (error.Response is { ResultCode: not ResultCode.Success })
                 { throw LdapExceptionTranslator.Translate(error); }

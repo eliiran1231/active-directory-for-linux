@@ -151,7 +151,8 @@ public class DirectoryEntryConfiguration
     public string GetCurrentServerName()
     {
         ValidateOwner();
-        return Ldap.RootDse.GetConnectedServerName(_entry.GetConfigurationConnection(this));
+        using var lease = _entry.AcquireConfigurationConnection(this);
+        return Ldap.RootDse.GetConnectedServerName(lease.Connection);
     }
 
     /// <summary>
@@ -166,7 +167,7 @@ public class DirectoryEntryConfiguration
         ValidateOwner();
         // Bind first so this member cannot make an invalid configured endpoint
         // appear healthy merely because the protocol limitation is known.
-        _entry.GetConfigurationConnection(this);
+        using var lease = _entry.AcquireConfigurationConnection(this);
         throw new PlatformNotSupportedException(
             "System.DirectoryServices.Protocols does not expose whether the current LDAP bind negotiated mutual authentication.");
     }
