@@ -14,6 +14,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
+        if (args.SequenceEqual(new[] { "--pool-report-self-test" })) { PoolReportSelfTest(); return 0; }
         if (args.SequenceEqual(new[] { "--self-test" })) { SelfTest(); return 0; }
         if (args.SequenceEqual(new[] { "--certificate-material-self-test" })) return CertificateMaterialSelfTest();
         if (args.Length == 2 && args[0] == "--setup-e2e") return SetupEndToEnd(args[1]);
@@ -45,12 +46,37 @@ internal static class Program
                 if (certificate.HasPrivateKey || certificate.Thumbprint != request.Thumbprint) throw new InvalidDataException();
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX", null);
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY", request.Root);
-            var result = WindowsAuthenticatedDiagnostic.Run(a.Run, b.Run);
+            var native = WindowsAuthenticatedDiagnostic.Run(a.Run, b.Run);
+            var pool = WindowsReferralPoolDiagnostic.Run(native, a.Run, b.Run);
+            var result = WindowsDiagnosticReport.Create(native, pool);
             // Result keys/status/counters only. Never include input, handles or exceptions.
             Console.Out.Write(JsonSerializer.Serialize(result));
-            return result.Values.All(x => x.Status == "passed") ? 0 : 1;
+            return result.AllPassed ? 0 : 1;
         }
         catch { return 2; } // No raw errors or stack traces on either output stream.
+    }
+    private static void PoolReportSelfTest()
+    {
+        // Serialization/PowerShell-consumption contract only; no endpoint or OS calls.
+        var native = WindowsAuthenticatedDiagnostic.Schedule((identity, stage) =>
+        {
+            if (identity == "anonymous") return new("failed", 1, 0, 0, 0, 0, 0, Closed: 1, Phase: "bind", FailureKind: "ldap", FailureCode: 81);
+            bool repeated = stage is "retained-primary" or "transition";
+            int count = repeated ? 4 : 2;
+            return new("passed", count, count, count, count, 0, 0,
+                stage == "direct" ? 0 : 2, stage == "direct" ? 0 : count, count);
+        });
+        var pool = WindowsReferralPoolDiagnostic.Schedule(native, (_, scenario) =>
+        {
+            bool untrusted = scenario == "untrusted-target", rejected = scenario == "target-bind-rejection";
+            bool disconnected = scenario.EndsWith("disconnect");
+            return new("passed", Checks: 3, PrimaryBinds: 2, TargetConnections: 2, TargetTls: untrusted ? 0 : 2,
+                TargetBinds: untrusted ? 0 : 2, TargetSearches: untrusted || rejected ? 0 : 2,
+                Closed: 2, ManagedAttempts: disconnected ? 3 : 1, Cleanup: true,
+                ObservedFailureKind: untrusted || rejected || disconnected ? "ldap" : "none",
+                ObservedFailureCode: untrusted || rejected || disconnected ? 81 : 0);
+        });
+        Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsDiagnosticReport.Create(native, pool) }));
     }
     private static int CertificateMaterialSelfTest()
     {
@@ -195,6 +221,16 @@ internal static class Program
                 throw new Exception("Stage dependency failed.");
             if (failure == "original-direct" && result["a-to-b"].Status != "passed") throw new Exception("Independent stages blocked.");
         }
+        var rawPassing = WindowsAuthenticatedDiagnostic.Schedule((_, _) => new("passed", 0, 0, 0, 0, 0, 0));
+        rawPassing["anonymous-direct"] = new("failed", 0, 0, 0, 0, 0, 0);
+        var poolPassing = WindowsReferralPoolDiagnostic.Schedule(rawPassing, (_, _) => new("passed"));
+        var combined = WindowsDiagnosticReport.Create(rawPassing, poolPassing);
+        if (poolPassing.Count != 34 || combined.Supported != "passed" || combined.Adverse != "failed" || combined.AllPassed)
+            throw new Exception("Separate supported/adverse verdict failed.");
+        rawPassing["a-direct"] = new("failed", 0, 0, 0, 0, 0, 0);
+        var gated = WindowsReferralPoolDiagnostic.Schedule(rawPassing, (_, _) => new("passed"));
+        if (gated["a-isolation"].Status != "skipped" || gated["first-a-to-b"].Status != "skipped" || gated["b-concurrent"].Status != "passed")
+            throw new Exception("Pool native dependency failed.");
         using var memory = new MemoryStream();
         AdflPrivateFrame.Write(memory, "synthetic-private-payload"); memory.Position = 0;
         if (AdflPrivateFrame.Read(memory) != "synthetic-private-payload") throw new Exception("Frame mismatch.");

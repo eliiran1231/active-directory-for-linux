@@ -44,7 +44,10 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal ConcurrentQueue<string> FirstRecords { get; } = new();
     internal ConcurrentQueue<string> TransportFailures { get; } = new();
 
-    internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true)
+    // Tests wait for simultaneous target operations before allowing either response.
+    internal Func<Task>? BeforeSearchResponse { get; set; }
+
+    internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true, bool untrustedOwnedCertificate = false)
     {
         OfflineTestGuard.RequireLiveAccess();
         if (tls)
@@ -53,8 +56,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             var diagnosticPfx = allowDiagnosticCertificate ? Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") : null;
             if (!string.IsNullOrEmpty(ownedDirectory))
             {
-                certificate = WindowsDiagnosticOwnedCertificate.Load(ownedDirectory);
+                certificate = WindowsDiagnosticOwnedCertificate.Load(ownedDirectory, untrustedOwnedCertificate);
             }
+            else if (untrustedOwnedCertificate) throw new InvalidOperationException("Owned diagnostic key required.");
             else if (!string.IsNullOrEmpty(diagnosticPfx))
             {
                 if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")
@@ -165,6 +169,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     else if (tag.TagValue == 3)
                     {
                         Interlocked.Increment(ref searches);
+                        if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
                         if (ReferralUrl is not null)
                             await stream.WriteAsync(Result(id, 5, ResultCode.Referral, ReferralUrl), stop.Token);

@@ -210,7 +210,7 @@ if ($Mode -in @('Coordinator', 'E2ECoordinator')) {
                             $synthetic = $context.Capture.Result() | ConvertFrom-Json -AsHashtable
                             if (($synthetic.Keys | Sort-Object) -join ',' -cne 'Observations,TestOnly' -or $synthetic.TestOnly -isnot [bool] -or !$synthetic.TestOnly) { throw 'E2E output discriminator missing.' }
                             ConvertTo-DiagnosticResult ($synthetic.Observations | ConvertTo-Json -Depth 8 -Compress)
-                        } else { ConvertTo-DiagnosticResult ($context.Capture.Result()) }
+                        } else { ConvertTo-DiagnosticCombinedResult ($context.Capture.Result()) }
                     }
                     StopAndVerify = {
                         param($context)
@@ -228,7 +228,12 @@ if ($Mode -in @('Coordinator', 'E2ECoordinator')) {
                 }
                 $resultName = if ($testOnly) { "$framework-e2e-results.json" } else { "$framework-results.json" }
                 Save-DiagnosticJson $result (Join-Path $root $resultName)
-                if (@($result.Values | Where-Object Status -NE 'passed').Count -ne 0) { $allPassed = $false }
+                if ($testOnly) {
+                    if (@($result.Values | Where-Object Status -NE 'passed').Count -ne 0) { $allPassed = $false }
+                } else {
+                    if (!$result.AllPassed) { $allPassed = $false }
+                    Write-Host "$framework supported=$($result.Supported) adverse=$($result.Adverse)"
+                }
             } catch {
                 Save-DiagnosticJson @{ Worker = 'failed'; RawOutput = 'withheld' } (Join-Path $root "$framework-failure.json")
                 throw # Any infrastructure/termination failure aborts; supervisor verifies the whole job empty.

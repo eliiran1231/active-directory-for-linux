@@ -155,3 +155,59 @@ function ConvertTo-DiagnosticResult([string]$Json) {
     }
     return $value
 }
+
+function Get-DiagnosticPoolCases {
+    return @('isolation', 'concurrent', 'capacity', 'generation', 'failed-bind', 'primary-disconnect',
+        'target-disconnect', 'target-bind-rejection', 'untrusted-target', 'mixed-referral')
+}
+function ConvertTo-DiagnosticCombinedResult([string]$Json) {
+    if ($Json.Length -gt 65536) { throw 'Combined output limit exceeded.' }
+    $value = $Json | ConvertFrom-Json -AsHashtable
+    if (($value.Keys | Sort-Object) -join ',' -cne 'Adverse,AllPassed,Native,Pool,Supported') { throw 'Unexpected combined result fields.' }
+    $native = ConvertTo-DiagnosticResult ($value.Native | ConvertTo-Json -Depth 8 -Compress)
+    $names = @()
+    foreach ($identity in @('original', 'a', 'b')) {
+        foreach ($case in (Get-DiagnosticPoolCases)) { $names += "$identity-$case" }
+    }
+    $names += @('a-to-b', 'b-to-a', 'first-a-to-b', 'first-b-to-a')
+    if (($value.Pool.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Unexpected pool cases.' }
+    foreach ($name in $names) {
+        $row = $value.Pool[$name]
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,Closed,FailureCode,FailureKind,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,PooledCredentialed,PrimaryBinds,Sasl,Status,TargetBinds,TargetConnections,TargetSearches,TargetTls') { throw 'Unexpected pool observation fields.' }
+        if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool]) { throw 'Invalid pool status.' }
+        foreach ($field in @('FailureKind', 'ObservedFailureKind')) {
+            if ($row[$field] -notin @('none', 'ldap', 'directory', 'fixture', 'response')) { throw 'Invalid pool failure kind.' }
+        }
+        foreach ($field in @('FailureCode', 'ObservedFailureCode')) {
+            if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid pool failure code.' }
+        }
+        foreach ($field in @('Checks', 'PrimaryBinds', 'TargetConnections', 'TargetTls', 'TargetBinds', 'TargetSearches',
+            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed')) {
+            if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid pool counter.' }
+        }
+        $identities = if ($name -match '^(first-)?[ab]-to-[ab]$') { @('a', 'b') } else { @($name.Split('-')[0]) }
+        $ready = $true
+        foreach ($identity in $identities) {
+            if ($native["$identity-direct"].Status -ne 'passed' -or $native["$identity-referral"].Status -ne 'passed') { $ready = $false }
+        }
+        if ((!$ready -and $row.Status -ne 'skipped') -or ($ready -and $row.Status -eq 'skipped')) { throw 'Pool native dependency bypassed.' }
+        if ($row.Status -eq 'passed') {
+            if (!$row.Cleanup -or $row.Checks -lt 3 -or $row.PrimaryBinds -lt 1 -or $row.ManagedAttempts -lt 1 -or
+                $row.Closed -ne $row.TargetConnections -or $row.Sasl -ne 0 -or $row.FailureKind -ne 'none' -or $row.FailureCode -ne 0) { throw 'Incomplete passing pool evidence.' }
+            if ($name -notlike '*-mixed-referral' -and $row.Anonymous -ne 0) { throw 'Unexpected anonymous forwarding.' }
+            if ($name -like '*-untrusted-target') {
+                if ($row.TargetConnections -lt 1 -or $row.TargetBinds -ne 0 -or $row.TargetSearches -ne 0 -or $row.ObservedFailureKind -eq 'none') { throw 'Untrusted target evidence incomplete.' }
+            } elseif ($name -like '*-target-bind-rejection') {
+                if ($row.TargetTls -lt 1 -or $row.TargetBinds -lt 1 -or $row.TargetSearches -ne 0 -or $row.ObservedFailureKind -eq 'none') { throw 'Rejected target evidence incomplete.' }
+            } elseif ($name -notlike '*-mixed-referral' -and ($row.TargetTls -lt 1 -or $row.TargetSearches -lt 1)) { throw 'Native pool search evidence absent.' }
+            if ($name -like '*-disconnect' -and ($row.ManagedAttempts -ne 3 -or $row.ObservedFailureKind -eq 'none')) { throw 'Failure/replay evidence incomplete.' }
+        }
+    }
+    $supported = @($native.Keys | Where-Object { $_ -ne 'anonymous-direct' -and $native[$_].Status -ne 'passed' }).Count -eq 0 -and
+        @($value.Pool.Values | Where-Object Status -NE 'passed').Count -eq 0
+    $adverse = $native['anonymous-direct'].Status -eq 'passed'
+    if ($value.Supported -cne $(if ($supported) { 'passed' } else { 'failed' }) -or
+        $value.Adverse -cne $(if ($adverse) { 'passed' } else { 'failed' }) -or
+        $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Inconsistent diagnostic verdict.' }
+    return $value
+}

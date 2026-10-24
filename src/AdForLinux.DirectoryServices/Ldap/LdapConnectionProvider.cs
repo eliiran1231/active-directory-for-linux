@@ -34,12 +34,36 @@ internal static class LdapConnectionProvider
 
     internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
+        => AcquireBatchCore(options, count, cancellationToken, referrals, preferFresh, minimumGeneration, diagnosticCandidate: false);
+
+    // Standalone friend-test entry only. No mutable switch and no production caller.
+    // Uses the SAME pool/key/factory/session path, not a simulation or separate pool.
+    internal static Session[] AcquireWindowsReferralDiagnostic(LdapConnectionOptions options, int count = 1,
+        CancellationToken cancellationToken = default, bool preferFresh = false, long minimumGeneration = 0)
+    {
+        if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" ||
+            Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted" ||
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY")) ||
+            !IsWindowsReferralDiagnosticConfiguration(options))
+            throw new InvalidOperationException("Restricted standalone Windows referral diagnostic required.");
+        return AcquireBatchCore(options, count, cancellationToken, ReferralChasingOption.External,
+            preferFresh, minimumGeneration, diagnosticCandidate: true);
+    }
+
+    internal static bool IsWindowsReferralDiagnosticConfiguration(LdapConnectionOptions options) =>
+        options.Host == "127.0.0.1" && options.Port > 0 && options.Port <= 65535 && options.UseSsl &&
+        !options.UseStartTls && !options.SkipCertificateCheck && !options.Signing && !options.Sealing &&
+        options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
+        !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword);
+
+    private static Session[] AcquireBatchCore(LdapConnectionOptions options, int count, CancellationToken cancellationToken,
+        ReferralChasingOption referrals, bool preferFresh, long minimumGeneration, bool diagnosticCandidate)
     {
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only
         // under its exact immutable credentials and referral/transport settings.
-        var reusable = CanReuse(snapshot, referrals);
+        var reusable = diagnosticCandidate || CanReuse(snapshot, referrals);
         var key = ConnectionKey.Create(snapshot, referrals);
         var leases = Pool.AcquireBatch(key, count, () =>
         {

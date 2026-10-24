@@ -161,6 +161,44 @@ foreach ($name in @('original-direct', 'original-referral', 'original-retained-p
 }
 $validated = ConvertTo-DiagnosticResult ($result | ConvertTo-Json -Depth 8)
 Check ($validated.Count -eq 12) 'Wrong native result count.'
+# Combined report keeps raw/native, real-pool cases, and anonymous adverse verdict distinct.
+$pool = @{}
+$poolNames = @()
+foreach ($identity in @('original', 'a', 'b')) { foreach ($case in (Get-DiagnosticPoolCases)) { $poolNames += "$identity-$case" } }
+$poolNames += @('a-to-b', 'b-to-a', 'first-a-to-b', 'first-b-to-a')
+foreach ($name in $poolNames) {
+    $pool[$name] = @{ Status = 'passed'; Checks = 3; PrimaryBinds = 2; TargetConnections = 2; TargetTls = 2;
+        TargetBinds = 2; TargetSearches = 2; Anonymous = 0; Sasl = 0; Closed = 2; ManagedAttempts = 1;
+        BaselineCredentialed = 0; PooledCredentialed = 0; Cleanup = $true; FailureKind = 'none'; FailureCode = 0;
+        ObservedFailureKind = 'none'; ObservedFailureCode = 0 }
+    if ($name -like '*-disconnect') { $pool[$name].ManagedAttempts = 3; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 52 }
+    if ($name -like '*-untrusted-target') { $pool[$name].TargetBinds = 0; $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'ldap'; $pool[$name].ObservedFailureCode = 81 }
+    if ($name -like '*-target-bind-rejection') { $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 49 }
+}
+$combined = @{ Native = $result; Pool = $pool; Supported = 'passed'; Adverse = 'passed'; AllPassed = $true }
+Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Pool.Count -eq 34) 'Pool report cases missing.'
+$combined.Native['anonymous-direct'].Status = 'failed'; $combined.Adverse = 'failed'; $combined.AllPassed = $false
+Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Supported -ceq 'passed') 'Anonymous failure erased supported evidence.'
+$combined.AllPassed = $true
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$combined.AllPassed = $false
+$pool['a-isolation'].Password = 'synthetic-secret'
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].Remove('Password')
+$pool['a-isolation'].Cleanup = $false
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].Cleanup = $true
+$pool['a-isolation'].Status = 'skipped'
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].Status = 'passed'
+foreach ($name in @('a-generation', 'a-target-bind-rejection', 'a-untrusted-target')) {
+    $pool[$name].Checks = 2
+    MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+    $pool[$name].Checks = 3
+    Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Pool[$name].Status -eq 'passed') 'Meaningful per-case checks rejected.'
+}
+$result['anonymous-direct'].Status = 'passed'
+
 $result['a-direct'].Tls = 0
 MustThrow { ConvertTo-DiagnosticResult ($result | ConvertTo-Json -Depth 8) }
 $result['a-direct'].Tls = 2
@@ -211,7 +249,7 @@ $permission.Rules[0].Remove('SecurityIdentifier')
 $permission.DaclPresent = ($null -ne $null)
 Check (!((ConvertTo-DiagnosticPermissionJson $permission | ConvertFrom-Json).DaclPresent)) 'Null ACL presence incorrectly reported.'
 
-foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1', 'Read-DirectoryPermissions.ps1', 'Authenticated-E2E-Adapters.ps1', 'Test-AuthenticatedEndToEnd.ps1', 'Certificate-Material.ps1', 'Test-SetupPrerequisites.ps1', 'Owned-Key.ps1', 'Test-OwnedKey.ps1')) {
+foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1', 'Read-DirectoryPermissions.ps1', 'Authenticated-E2E-Adapters.ps1', 'Test-AuthenticatedEndToEnd.ps1', 'Certificate-Material.ps1', 'Test-SetupPrerequisites.ps1', 'Owned-Key.ps1', 'Test-OwnedKey.ps1', 'Show-AuthenticatedResults.ps1', 'Test-PoolReportContract.ps1')) {
     $tokens = $null; $errors = $null
     [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $file), [ref]$tokens, [ref]$errors) | Out-Null
     Check ($errors.Count -eq 0) "Parser failed: $file"
