@@ -81,8 +81,8 @@ function Remove-AuthenticatedObjects($State, $Operations) {
         } catch { $failures.Add("account:$($account.Name)") }
     }
     # Each callback must enforce its own exact manifest ownership and verify absence.
-    foreach ($kind in @('Certificate', 'Pfx')) {
-        try { & $Operations[$kind] } catch { $failures.Add($kind) }
+    foreach ($kind in @('Certificate', 'ProviderKey', 'Pfx')) {
+        try { if ($Operations.ContainsKey($kind)) { & $Operations[$kind] } } catch { $failures.Add($kind) }
     }
     return ,$failures.ToArray() # Sanitized identifiers only; never exception messages.
 }

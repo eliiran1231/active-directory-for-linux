@@ -38,12 +38,13 @@ internal static class Program
             AdflProcessJob.VerifyCurrentMembership("Local\\" + Path.GetFileName(request.Root));
             using var a = AdflAuthenticatedToken.Adopt(long.Parse(request.AHandle, CultureInfo.InvariantCulture), request.ASid);
             using var b = AdflAuthenticatedToken.Adopt(long.Parse(request.BHandle, CultureInfo.InvariantCulture), request.BSid);
-            string pfx = Path.Combine(request.Root, "loopback.pfx");
+            string publicCertificate = Path.Combine(request.Root, "loopback.cer");
 #pragma warning disable SYSLIB0057
-            using (var certificate = new X509Certificate2(pfx))
+            using (var certificate = new X509Certificate2(publicCertificate))
 #pragma warning restore SYSLIB0057
-                if (certificate.Thumbprint != request.Thumbprint) throw new InvalidDataException();
-            Environment.SetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX", pfx);
+                if (certificate.HasPrivateKey || certificate.Thumbprint != request.Thumbprint) throw new InvalidDataException();
+            Environment.SetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX", null);
+            Environment.SetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY", request.Root);
             var result = WindowsAuthenticatedDiagnostic.Run(a.Run, b.Run);
             // Result keys/status/counters only. Never include input, handles or exceptions.
             Console.Out.Write(JsonSerializer.Serialize(result));

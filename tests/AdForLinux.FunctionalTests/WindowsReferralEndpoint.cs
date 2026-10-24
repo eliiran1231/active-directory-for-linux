@@ -49,8 +49,13 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         OfflineTestGuard.RequireLiveAccess();
         if (tls)
         {
+            var ownedDirectory = allowDiagnosticCertificate ? Environment.GetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY") : null;
             var diagnosticPfx = allowDiagnosticCertificate ? Environment.GetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX") : null;
-            if (!string.IsNullOrEmpty(diagnosticPfx))
+            if (!string.IsNullOrEmpty(ownedDirectory))
+            {
+                certificate = WindowsDiagnosticOwnedCertificate.Load(ownedDirectory);
+            }
+            else if (!string.IsNullOrEmpty(diagnosticPfx))
             {
                 if (!OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")
                     throw new InvalidOperationException("Diagnostic certificate is only for hosted Windows CI.");
@@ -69,7 +74,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
                 using var generated = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddHours(1));
                 // Reimport for Schannel server use. Never install in a certificate store
-                // or change machine trust; the temporary key is deleted on disposal.
+                // or change machine trust. Default import relies on runtime key cleanup on
+                // disposal, which does not establish cleanup after process termination.
 #pragma warning disable SYSLIB0057
                 certificate = new X509Certificate2(generated.Export(X509ContentType.Pfx));
 #pragma warning restore SYSLIB0057

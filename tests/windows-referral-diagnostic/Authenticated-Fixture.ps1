@@ -11,6 +11,7 @@ if ($testOnly) { . (Join-Path $PSScriptRoot 'Authenticated-E2E-Adapters.ps1') }
 else { . (Join-Path $PSScriptRoot 'Authenticated-Windows-Adapters.ps1') }
 . (Join-Path $PSScriptRoot 'Authenticated-Integration.ps1')
 . (Join-Path $PSScriptRoot 'Certificate-Material.ps1')
+. (Join-Path $PSScriptRoot 'Owned-Key.ps1')
 if ($Mode -eq 'Preflight') { Write-Host 'No execution. Run Test-AuthenticatedFixture.ps1 for pure preflight.'; return }
 if (!$IsWindows -or ![Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne 'true' -or
     $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $RunId -cnotmatch '^[0-9a-f]{32}$') {
@@ -26,11 +27,13 @@ $ownerPath = Join-Path $root 'owner.json'
 $accountPath = Join-Path $root 'accounts.json'
 $certificatePath = Join-Path $root 'certificate.json'
 $pfxPath = Join-Path $root 'loopback.pfx'
+$keyPath = Join-Path $root 'provider-key.json'
+$publicPath = Join-Path $root 'loopback.cer'
 $stagePath = Join-Path $root 'stage.txt'
 $fixtureScriptPath = $PSCommandPath
 
 function Stage([string]$Name) {
-    if ($Name -notin @('accounts', 'logons', 'certificate-generate', 'certificate-export', 'pfx-write',
+    if ($Name -notin @('accounts', 'logons', 'provider-key-create', 'certificate-generate', 'certificate-export', 'pfx-write',
         'certificate-import', 'certificate-verify', 'managed-chain', 'setup-ready', 'net8', 'net10', 'complete')) { throw 'Unknown stage.' }
     [IO.File]::WriteAllText($stagePath, $Name)
     [IO.File]::AppendAllText((Join-Path $root 'stages.txt'), "$Name`n")
@@ -72,6 +75,13 @@ function Remove-Fixture {
     $operations = if ($testOnly) { New-E2EAccountOperations } else { New-AuthenticatedWindowsAccountOperations ([Collections.Generic.Dictionary[string, Security.SecureString]]::new()) }
     $operations.StopWorker = { } # Named job already terminated and verified empty above.
     $operations.Certificate = { Remove-OwnedCertificate }
+    $operations.ProviderKey = {
+        if ($testOnly) { return }
+        if (!(Test-Path -LiteralPath $keyPath)) { Write-Host 'CLEANUP provider key not created (no manifest)'; return }
+        $record = Get-Content -Raw -LiteralPath $keyPath | ConvertFrom-Json -AsHashtable
+        Remove-DiagnosticOwnedKey $record $RunId (New-DiagnosticKeyOperations $keyPath)
+        Write-Host 'CLEANUP verified owned provider key absent'
+    }
     $operations.Pfx = {
         if (Test-Path -LiteralPath $pfxPath) { Remove-Item -LiteralPath $pfxPath -Force }
         if (Test-Path -LiteralPath $pfxPath) { throw 'PFX remains.' }
@@ -84,12 +94,16 @@ function Remove-Fixture {
 }
 function New-FixtureCertificate {
     if ($testOnly) { return New-E2ECertificate }
-    $material = New-DiagnosticCertificateMaterial $RunId { param($name) Stage $name }
-    $public = $material.Public
+    $operations = New-DiagnosticKeyOperations $keyPath
+    $record = @{ Version = 1; RunId = $RunId; Name = "adfl-auth-$RunId"; Provider = $DiagnosticKeyProvider;
+        Sid = (& $operations.CurrentSid); State = 'creating'; PublicHash = $null }
+    Stage 'provider-key-create'
+    $ownedKey = New-DiagnosticOwnedKey $record $operations
+    $material = $null
     try {
-        $bytes = $material.Pfx
-        try { Stage 'pfx-write'; [IO.File]::WriteAllBytes($pfxPath, $bytes) }
-        finally { [Array]::Clear($bytes, 0, $bytes.Length) }
+        $material = New-DiagnosticCertificateMaterial $RunId { param($name) Stage $name } $ownedKey
+        $public = $material.Public
+        [IO.File]::WriteAllBytes($publicPath, $public.RawData) # Public DER only; no PFX or private-key export.
         $store = [Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
         try {
             $store.Open('ReadWrite')
@@ -114,7 +128,7 @@ function New-FixtureCertificate {
         finally { $chain.Dispose() }
         Save-DiagnosticJson @{ OriginalManagedChain = $managed; Interpretation = 'non-gating-native-controls-required' } (Join-Path $root 'chain.json')
         return $public.Thumbprint
-    } finally { Remove-DiagnosticCertificateMaterial $material }
+    } finally { Remove-DiagnosticCertificateMaterial $material; $ownedKey.Dispose() }
 }
 
 if ($Mode -in @('Cleanup', 'E2ECleanup')) {
@@ -303,7 +317,7 @@ try {
     } $context
 } catch {
     $stage = if (Test-Path $stagePath) { (Get-Content -Raw $stagePath) } else { 'not-started' }
-    if ($stage -notmatch '^(accounts|logons|certificate-(generate|export|import|verify)|managed-chain|pfx-write|setup-ready|net8|net10|complete|not-started)$') { $stage = 'withheld' }
+    if ($stage -notmatch '^(accounts|logons|provider-key-create|certificate-(generate|export|import|verify)|managed-chain|pfx-write|setup-ready|net8|net10|complete|not-started)$') { $stage = 'withheld' }
     Write-Host "Diagnostic failed at stage=$stage; raw output withheld."
     $exitCode = 2
 } finally {
@@ -312,7 +326,7 @@ try {
     $history = Join-Path $root 'stages.txt'
     if ((Test-Path $history) -and (Get-Item $history).Length -le 4096) {
         foreach ($line in Get-Content $history) {
-            if ($line -match '^(accounts|logons|certificate-(generate|export|import|verify)|managed-chain|pfx-write|setup-ready|net8|net10|complete)$') { Write-Host "STAGE $line" }
+            if ($line -match '^(accounts|logons|provider-key-create|certificate-(generate|export|import|verify)|managed-chain|pfx-write|setup-ready|net8|net10|complete)$') { Write-Host "STAGE $line" }
             else { Write-Host 'STAGE unexpected text withheld' }
         }
     }

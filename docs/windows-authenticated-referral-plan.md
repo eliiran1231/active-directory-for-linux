@@ -343,3 +343,85 @@ file is used. Public and private key agreement is checked by signing/verifying a
 source/worker PFX byte buffers are explicitly cleared. See the documented
 [EphemeralKeySet semantics](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509keystorageflags?view=net-10.0).
 The actual Root-store add/remove and native TLS paths remain outside these tests and are not enabled.
+
+Final hosted validation [40096818996](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40096818996)
+at `88c0cb0b8ab540f959987709c874406b2647d22c` passed the command/parameter metadata checks, both in-memory
+material round trips, both invocation scopes, all eleven E2E scenarios and independent cleanup. All owned dummy
+files and child directories were verified absent; builds had zero errors and 16 warnings. Independent review
+confirmed the results. No real account/group mutations, interactive logons, identity-token transfers or
+impersonation, certificate-store changes, or native TLS/referral operations ran. No further full-run approval
+is requested or implied by this evidence. Windows referral-enabled pooling remains guarded.
+
+The remaining approval-dependent tests concern actual account/group permissions and logons, token-specific
+transfer/impersonation, Root-store operations and native TLS/referrals. The memory-only material prerequisite
+is distinct from the unchanged real TLS fixture's DefaultKeySet loading: Windows may create temporary provider
+key containers. CLR disposal normally manages their lifetime; forced termination does not prove explicit key
+container deletion. Exact PFX-file deletion therefore must not be presented as proof of all provider-key cleanup;
+disposable VM destruction remains the final isolation boundary. No private keys are logged or uploaded. See
+[Microsoft's private-key lifetime documentation](https://learn.microsoft.com/en-us/dotnet/core/compatibility/cryptography/9.0/private-key-lifetime).
+A future explicitly approved full workflow must retain the same non-security prechecks on its own VM before
+account or trust operations; a prior passing VM is evidence, not permission to bypass those checks.
+
+### Prepared explicit provider-key ownership (not executed)
+
+The authenticated helper no longer imports private PFX material. Its former worker
+thumbprint check and each TLS endpoint used `DefaultKeySet`, which can persist
+provider keys under the executing identity; neither their exact provider nor their
+post-termination absence was measured. Endpoint construction precedes impersonation,
+so these loads ran as the original runner, not either test user. Ordinary legacy
+native fixtures retain their default imports and are outside this change.
+
+An ephemeral-only TLS replacement is not supported by the inspected Windows TLS
+implementation in [.NET 8](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Net.Security/src/System/Net/Security/SslStreamPal.Windows.cs)
+and [.NET 10](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Net.Security/src/System/Net/Security/SslStreamPal.Windows.cs).
+Preparation therefore uses one explicitly named RSA-2048 user key in Microsoft
+Software Key Storage Provider. Creation forbids overwrite and export, records the
+original runner SID and unique run-derived name before creation, and durably records
+ownership plus SHA-256 of the public SPKI before certificate preparation. No machine
+key, key ACL change, or access grant to test accounts is requested.
+
+The certificate is generated against that key. Only public DER is written or added
+to Root; the authenticated path exports no PFX/private key. Both workers open the same
+named key under the original identity, validate its recorded properties and public
+hash, and attach it to the matching public certificate. Native TLS validation and
+referral authentication are unchanged. Runtime's
+[persisted CNG attachment path](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/X509Certificates/CertificatePal.Windows.PrivateKey.cs)
+references the existing key before considering private export; this is source evidence,
+not a successful Schannel test.
+
+After workers are stopped, finally and independent cleanup each process the provider
+key separately from accounts, Root certificate and PFX absence. Only an `owned`
+manifest with matching SID/provider/name/properties/SPKI permits `CngKey.Delete`.
+An interrupted `creating` record is unresolved and is never grounds for deletion.
+Key-query/access errors are failures, not absence: runtime
+[CngKey.Exists](https://github.com/dotnet/runtime/blob/v8.0.0/src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/CngKey.Exists.cs)
+returns false only for `NTE_BAD_KEYSET`. Successful deletion is followed by an absence
+query and the distinct `CLEANUP verified owned provider key absent` line; failures
+emit `CLEANUP failed ProviderKey` and do not suppress other cleanup categories.
+PFX absence remains a separate check, never evidence of key deletion. An interruption
+between key creation and durable ownership can still require VM destruction as final
+isolation; it must be reported as unresolved cleanup rather than success.
+
+Pure fake tests cover preexisting keys, creation failure, failed ownership save,
+creating records, wrong SID/public hash, delete/query failures, a key remaining after
+delete, and already-absent keys. They also verify certificate/key failures cannot
+suppress PFX cleanup. The actual manifest-writer callback is exercised with dummy
+JSON in both invocation scopes. No test calls native key creation/open/delete.
+The existing memory-only material round trip remains ephemeral and does not validate
+this named-key path.
+
+Any future single full job needs explicit scope for this one persisted user-provider
+key in addition to the two standard accounts, two logons and public LocalMachine Root
+certificate. It must verify original-identity key creation/reopening, non-exportability,
+normal Schannel TLS on both runtimes, identity-specific native stage dependencies,
+and independent provider-key/account/certificate/PFX cleanup. No such job or trust
+trigger is added here. This preparation does not establish referral pooling safety;
+the production Windows referral guard remains unchanged.
+
+Local preparation validation passed: both exact invocation modes (including the real
+manifest-writer closure and fake ownership/cleanup regressions), fake-adapter tests,
+in-memory material checks on .NET 8/10, worker self-tests on both runtimes, and worker
+build (zero errors, 16 existing warnings). Independent static review found no remaining
+preparation blocker after callback-scope and explicit key-property fixes. No hosted job
+was launched for this change and no persistent key operation was executed. The earlier
+hosted E2E run predates this key implementation and must not be described as validating it.

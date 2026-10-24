@@ -211,7 +211,7 @@ $permission.Rules[0].Remove('SecurityIdentifier')
 $permission.DaclPresent = ($null -ne $null)
 Check (!((ConvertTo-DiagnosticPermissionJson $permission | ConvertFrom-Json).DaclPresent)) 'Null ACL presence incorrectly reported.'
 
-foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1', 'Read-DirectoryPermissions.ps1', 'Authenticated-E2E-Adapters.ps1', 'Test-AuthenticatedEndToEnd.ps1', 'Certificate-Material.ps1', 'Test-SetupPrerequisites.ps1')) {
+foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1', 'Read-DirectoryPermissions.ps1', 'Authenticated-E2E-Adapters.ps1', 'Test-AuthenticatedEndToEnd.ps1', 'Certificate-Material.ps1', 'Test-SetupPrerequisites.ps1', 'Owned-Key.ps1', 'Test-OwnedKey.ps1')) {
     $tokens = $null; $errors = $null
     [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $file), [ref]$tokens, [ref]$errors) | Out-Null
     Check ($errors.Count -eq 0) "Parser failed: $file"
@@ -221,3 +221,5 @@ Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Token.cs')
 Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Process.cs')
 Check ([AdflProcessJob]::ExtendedSize -eq 144 -and [AdflProcessJob]::AccountingSize -eq 48) 'x64 interop layout mismatch.'
 Write-Host 'Authenticated helper pure tests, syntax and token bridge compilation passed; no Windows operations executed.'
+
+& (Join-Path $PSScriptRoot 'Test-OwnedKey.ps1') 6> $null
