@@ -273,3 +273,11 @@ sequential .NET 8/10, and one temporary public LocalMachine Root certificate. Th
 watchdog, per-worker bounds, worker shutdown before cleanup, exact ownership/absence checks,
 and independent always cleanup/PFX deletion remain required. No ACL/policy/profile/admin changes,
 automatic retries or pooling eligibility changes are authorized by permission inspection.
+
+Corrected read-only/pure run [40093265557](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40093265557)
+at `0b110643a8d6de96017c4bca626d36217f9972f8` passed. All six permission records had scalar Boolean
+DaclPresent and no raw SIDs or SecurityIdentifier properties. LOCALAPPDATA/Temp again passed the unchanged
+guard; RUNNER_TEMP again failed with four unapproved allow entries. Both invocation scopes, both worker
+builds (zero errors, 16 warnings), and .NET 8/10 pure self-tests passed. No fixture child, account, logon,
+token acquisition or certificate import occurred. Runtime parent/child/reparse checks and authenticated
+native behavior remain unexecuted; the next full run requires fresh explicit approval.
