@@ -224,3 +224,52 @@ limits. The consumed full-workflow trigger was removed remotely in `391bf2ad21ca
 No retry is authorized by that consumed single-job approval. A next ordinary diagnostic could classify existing
 candidate directory ACLs read-only, without emitting unrelated machine data, changing the predicate, or editing ACLs.
 Windows referral-enabled pooling remains guarded.
+
+### Read-only permission evidence and prepared location change
+
+Read-only job [40092919907](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40092919907)
+at `276364e28027cd1054143ecdb03492331ed4cde4` found that RUNNER_TEMP and the workspace had
+an approved owner but unapproved allow entries: CREATOR_OWNER (inherit-only) and three
+standard-user entries, including inheritable read/execute and directory/file creation.
+There were no deny entries in those inspected ACLs. This is not merely rejection of an
+inherit-only creator placeholder: the standard-user grants present a real confidentiality
+concern for normally inherited fixture files. It supports, but cannot reconstruct exactly,
+the earlier failed child's rejection on a different destroyed VM.
+
+The existing process-temp, LOCALAPPDATA, and LOCALAPPDATA/Temp directories each passed
+the unchanged predicate: only runner/System/Administrators allow entries with full control,
+approved owner, container/object inheritance, and no reparse point at the inspected directory.
+The check is deliberately conservative, not an effective-access calculator. Windows evaluates
+ordered ACEs against a token; denying an earlier right may constrain a later allow. An
+inherit-only ACE affects descendants rather than the current object. We do not relax the
+predicate based on those possibilities. See [AccessCheck](https://learn.microsoft.com/en-us/windows/win32/secauthz/how-dacls-control-access-to-an-object),
+[ACE inheritance](https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-inheritance-rules), and
+[null versus empty DACLs](https://learn.microsoft.com/en-us/windows/win32/secauthz/dacls-and-aces).
+
+That first probe contained an output defect: a collection-left PowerShell comparison serialized
+raw ACL metadata, including machine SIDs, instead of the intended DaclPresent Boolean. No
+credentials, private keys or file contents were output. The correction compares null on the
+left and validates every emitted property type and allowed key before JSON serialization.
+Pure tests reject nested metadata and exercise collection/null inputs.
+
+The prepared fixture now uses only Get-DiagnosticRoot($env:LOCALAPPDATA, $runId), a fixed
+LOCALAPPDATA/Temp/adfl-auth-<id> location, shared by Supervisor/Coordinator/Cleanup and matched
+by worker envelope validation. It validates the existing parent and created child with the
+unchanged private ACL predicate, rejects reparse components, and stops rather than editing ACLs
+or choosing a fallback. Pure path tests cover absent/relative roots and wrong parent/nested paths.
+No new fixture directory or security object is created by the read-only/pure validation jobs.
+
+A future approved full workflow must use the same Get-DiagnosticRoot helper for its independent
+always ownership check and result reading; it must not retain the previous RUNNER_TEMP expression:
+
+```powershell
+. ./tests/windows-referral-diagnostic/Authenticated-Integration.ps1
+$root = Get-DiagnosticRoot $env:LOCALAPPDATA $runId
+```
+
+No full diagnostic trigger is present. Execution still requires approval for one disposable VM,
+two unique standard local accounts and one interactive logon each, token handle copies for
+sequential .NET 8/10, and one temporary public LocalMachine Root certificate. The 60-second setup
+watchdog, per-worker bounds, worker shutdown before cleanup, exact ownership/absence checks,
+and independent always cleanup/PFX deletion remain required. No ACL/policy/profile/admin changes,
+automatic retries or pooling eligibility changes are authorized by permission inspection.

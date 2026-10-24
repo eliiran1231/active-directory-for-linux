@@ -53,6 +53,48 @@ function Assert-DiagnosticDirectoryPrivate([string]$Path) {
         if (!(Test-DiagnosticPrivateAccess $owner $identity.User.Value $allow)) { throw 'Inherited directory ACL is not private; do not change it.' }
     } finally { $identity.Dispose() }
 }
+function Get-DiagnosticRoot([string]$LocalAppData, [string]$RunId) {
+    if (!$LocalAppData -or ![IO.Path]::IsPathFullyQualified($LocalAppData) -or $RunId -cnotmatch '^[0-9a-f]{32}$') {
+        throw 'Invalid fixed diagnostic location.'
+    }
+    return [IO.Path]::GetFullPath([IO.Path]::Combine($LocalAppData, 'Temp', "adfl-auth-$RunId"))
+}
+function Assert-DiagnosticNoReparsePath([string]$Path) {
+    $current = Get-Item -LiteralPath $Path -Force
+    while ($null -ne $current) {
+        if (!$current.PSIsContainer -or ($current.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw 'Diagnostic path must contain only existing ordinary directories.'
+        }
+        $current = $current.Parent
+    }
+}
+function ConvertTo-DiagnosticPermissionJson($Value) {
+    $keys = 'AllowCount,Candidate,Canonical,CurrentGuardPass,DaclPresent,InheritanceProtected,Owner,OwnerApproved,ReparsePoint,Rules,Status,UnapprovedAllowCount'
+    if (($Value.Keys | Sort-Object) -join ',' -cne $keys) { throw 'Unexpected permission fields.' }
+    if ($Value.Candidate -isnot [string] -or $Value.Status -isnot [string] -or
+        $Value.Candidate -notin @('runner-temp', 'process-temp', 'runner-profile', 'local-appdata', 'local-appdata-temp', 'workspace') -or
+        $Value.Status -cne 'read') { throw 'Invalid permission context.' }
+    $categories = @('runner', 'system', 'administrators', 'standard-users', 'authenticated-users', 'everyone', 'creator-owner', 'creator-group', 'owner-rights', 'other')
+    if ($Value.Owner -isnot [string] -or $Value.Owner -notin $categories) { throw 'Invalid owner category.' }
+    foreach ($field in @('Canonical', 'CurrentGuardPass', 'DaclPresent', 'InheritanceProtected', 'OwnerApproved', 'ReparsePoint')) {
+        if ($Value[$field] -isnot [bool]) { throw 'Non-scalar permission flag withheld.' }
+    }
+    foreach ($field in @('AllowCount', 'UnapprovedAllowCount')) {
+        if ($Value[$field] -isnot [int] -or $Value[$field] -lt 0 -or $Value[$field] -gt 64) { throw 'Invalid permission count.' }
+    }
+    if ($Value.Rules -isnot [array] -or $Value.Rules.Count -gt 64) { throw 'Invalid permission rules.' }
+    foreach ($row in $Value.Rules) {
+        if (($row.Keys | Sort-Object) -join ',' -cne 'ApprovedPrincipal,Index,Inheritance,Inherited,Principal,Propagation,Rights,Type' -or
+            $row.Principal -isnot [string] -or $row.Type -isnot [string] -or
+            $row.Principal -notin $categories -or $row.Type -notin @('Allow', 'Deny') -or
+            $row.ApprovedPrincipal -isnot [bool] -or $row.Inherited -isnot [bool]) { throw 'Invalid permission rule.' }
+        foreach ($field in @('Index', 'Inheritance', 'Propagation')) {
+            if ($row[$field] -isnot [int] -or $row[$field] -lt 0 -or $row[$field] -gt 64) { throw 'Invalid permission rule flags.' }
+        }
+        if ($row.Rights -isnot [long] -or $row.Rights -lt [int]::MinValue -or $row.Rights -gt [uint32]::MaxValue) { throw 'Invalid permission mask.' }
+    }
+    return ($Value | ConvertTo-Json -Depth 5 -Compress)
+}
 function Save-DiagnosticJson($Value, [string]$Path) {
     $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Depth 8 -Compress))
     $temporary = "$Path.new"

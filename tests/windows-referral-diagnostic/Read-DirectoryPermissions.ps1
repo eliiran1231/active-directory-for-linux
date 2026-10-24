@@ -56,16 +56,17 @@ try {
                     ApprovedPrincipal = ($rule.IdentityReference.Value -in $permitted)
                 }
             }
-            @{
+            $observation = @{
                 Candidate = $label; Status = 'read'; Owner = Get-PrincipalCategory $owner $runner
                 OwnerApproved = ($owner -in $permitted); AllowCount = $allowed.Count
                 UnapprovedAllowCount = @($allowed | Where-Object { $_ -notin $permitted }).Count
                 CurrentGuardPass = (Test-DiagnosticPrivateAccess $owner $runner $allowed)
-                DaclPresent = $descriptor.DiscretionaryAcl -ne $null
+                DaclPresent = ($null -ne $descriptor.DiscretionaryAcl)
                 Canonical = $acl.AreAccessRulesCanonical; InheritanceProtected = $acl.AreAccessRulesProtected
                 ReparsePoint = (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
                 Rules = $rows
-            } | ConvertTo-Json -Depth 5 -Compress | Write-Host
+            }
+            ConvertTo-DiagnosticPermissionJson $observation | Write-Host
         } catch {
             # No raw exception or path; inability to inspect is never interpreted as private.
             @{ Candidate = $label; Status = 'unavailable' } | ConvertTo-Json -Compress | Write-Host

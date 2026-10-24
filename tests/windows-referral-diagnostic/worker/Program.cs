@@ -22,7 +22,7 @@ internal static class Program
             // Child stays behind this bounded pipe barrier until handles are copied.
             var request = JsonSerializer.Deserialize<Envelope>(AdflPrivateFrame.Read(Console.OpenStandardInput()), Json)
                 ?? throw new InvalidDataException();
-            Validate(request);
+            Validate(request, Environment.GetEnvironmentVariable("LOCALAPPDATA"));
             AdflProcessJob.VerifyCurrentMembership("Local\\" + Path.GetFileName(request.Root));
             using var a = AdflAuthenticatedToken.Adopt(long.Parse(request.AHandle, CultureInfo.InvariantCulture), request.ASid);
             using var b = AdflAuthenticatedToken.Adopt(long.Parse(request.BHandle, CultureInfo.InvariantCulture), request.BSid);
@@ -39,13 +39,13 @@ internal static class Program
         }
         catch { return 2; } // No raw errors or stack traces on either output stream.
     }
-    internal static void Validate(Envelope value)
+    internal static void Validate(Envelope value, string? appData)
     {
+        if (!Path.IsPathFullyQualified(value.Root)) throw new InvalidDataException();
         string root = Path.GetFullPath(value.Root);
-        string? temp = Environment.GetEnvironmentVariable("RUNNER_TEMP");
-        if (value.Version != 1 || temp is null ||
+        if (value.Version != 1 || string.IsNullOrEmpty(appData) || !Path.IsPathFullyQualified(appData) ||
             !Regex.IsMatch(Path.GetFileName(root), "^adfl-auth-[0-9a-f]{32}$") ||
-            !string.Equals(Path.GetDirectoryName(root), Path.GetFullPath(temp).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetDirectoryName(root), Path.GetFullPath(Path.Combine(appData, "Temp")), StringComparison.OrdinalIgnoreCase) ||
             !Regex.IsMatch(value.Thumbprint, "^[0-9A-F]{40}$") || value.ASid == value.BSid || value.AHandle == value.BHandle)
             throw new InvalidDataException();
         foreach (var sid in new[] { value.ASid, value.BSid })
@@ -56,6 +56,23 @@ internal static class Program
     }
     private static void SelfTest()
     {
+        string appData = Path.Combine(Path.GetTempPath(), "synthetic-appdata");
+        string leaf = "adfl-auth-" + new string('a', 32);
+        var envelope = new Envelope(1, "123", "456", "S-1-5-21-1-2-3-4", "S-1-5-21-1-2-3-5",
+            Path.Combine(appData, "Temp", leaf), new string('A', 40));
+        Validate(envelope, appData);
+        foreach (string root in new[] { Path.Combine(appData, leaf), Path.Combine(appData, "Temp", "child", leaf), "relative" })
+        {
+            bool invalid = false;
+            try { Validate(envelope with { Root = root }, appData); } catch (InvalidDataException) { invalid = true; }
+            if (!invalid) throw new Exception("Unapproved diagnostic parent accepted.");
+        }
+        foreach (string? invalidAppData in new string?[] { null, "", "relative" })
+        {
+            bool invalid = false;
+            try { Validate(envelope, invalidAppData); } catch (InvalidDataException) { invalid = true; }
+            if (!invalid) throw new Exception("Invalid application-data root accepted.");
+        }
         foreach (var failure in new[] { "a-direct", "b-direct", "original-direct", "a-referral", "a-retained-primary" })
         {
             var result = WindowsAuthenticatedDiagnostic.Schedule((identity, stage) =>

@@ -13,7 +13,7 @@ if (!$IsWindows -or ![Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne '
 }
 Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Token.cs')
 Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Process.cs')
-$root = Join-Path $env:RUNNER_TEMP "adfl-auth-$RunId"
+$root = Get-DiagnosticRoot $env:LOCALAPPDATA $RunId
 $ownerPath = Join-Path $root 'owner.json'
 $accountPath = Join-Path $root 'accounts.json'
 $certificatePath = Join-Path $root 'certificate.json'
@@ -28,6 +28,7 @@ function Stage([string]$Name) {
     [IO.File]::AppendAllText((Join-Path $root 'stages.txt'), "$Name`n")
 }
 function Read-Owner {
+    Assert-DiagnosticNoReparsePath $root
     $record = Get-Content -Raw -LiteralPath $ownerPath | ConvertFrom-Json -AsHashtable
     if ($record.Version -ne 1 -or $record.RunId -cne $RunId -or
         $record.JobName -cne "Local\adfl-auth-$RunId" -or $record.JobOwned -isnot [bool]) { throw 'Invalid job ownership.' }
@@ -217,7 +218,11 @@ foreach ($framework in @('net8.0', 'net10.0')) {
     }
 }
 if (Test-Path -LiteralPath $root) { throw 'Run directory preexists; no setup or cleanup authorized.' }
+$parent = [IO.Path]::GetDirectoryName($root)
+Assert-DiagnosticNoReparsePath $parent
+Assert-DiagnosticDirectoryPrivate $parent
 [IO.Directory]::CreateDirectory($root) | Out-Null
+Assert-DiagnosticNoReparsePath $root
 Assert-DiagnosticDirectoryPrivate $root # Read-only ACL verification. Fail; never broaden or rewrite permissions.
 $owner = @{ Version = 1; RunId = $RunId; JobName = "Local\adfl-auth-$RunId"; JobOwned = $false }
 Save-DiagnosticJson $owner $ownerPath

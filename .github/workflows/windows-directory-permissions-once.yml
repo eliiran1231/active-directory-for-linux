@@ -9,11 +9,30 @@ jobs:
   inspect:
     if: github.run_attempt == 1
     runs-on: windows-2025
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Pure scope, permission serialization and path validation checks
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-AuthenticatedInvocationScopes.ps1
       - name: Read sanitized permission properties of fixed existing directories
         shell: pwsh
         run: ./tests/windows-referral-diagnostic/Read-DirectoryPermissions.ps1
+      - name: Compile prepared helpers without security setup
+        run: dotnet build tests/windows-referral-diagnostic/worker/AuthenticatedWorker.csproj --configuration Release
+      - name: Pure worker path and orchestration checks
+        shell: pwsh
+        run: |
+          foreach ($framework in @('net8.0', 'net10.0')) {
+            dotnet "tests/windows-referral-diagnostic/worker/bin/Release/$framework/AuthenticatedWorker.dll" --self-test
+            if ($LASTEXITCODE -ne 0) { throw "Pure worker self-test failed for $framework." }
+          }

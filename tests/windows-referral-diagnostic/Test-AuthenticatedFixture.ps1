@@ -175,7 +175,34 @@ Check ((ConvertTo-DiagnosticResult ($result | ConvertTo-Json -Depth 8))['b-refer
 $result['b-direct'].Binds = 'synthetic-secret'
 MustThrow { ConvertTo-DiagnosticResult ($result | ConvertTo-Json -Depth 8) }
 
-foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1')) {
+$appData = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'synthetic-appdata')
+$runId = 'a' * 32
+Check ((Get-DiagnosticRoot $appData $runId) -ceq [IO.Path]::Combine($appData, 'Temp', "adfl-auth-$runId")) 'Fixed private parent mismatch.'
+MustThrow { Get-DiagnosticRoot '' $runId }
+MustThrow { Get-DiagnosticRoot 'relative' $runId }
+MustThrow { Get-DiagnosticRoot $appData '../escape' }
+$permission = @{
+    Candidate = 'process-temp'; Status = 'read'; Owner = 'runner'; AllowCount = 1; UnapprovedAllowCount = 0
+    Canonical = $true; CurrentGuardPass = $true; DaclPresent = ($null -ne @(@{ Synthetic = 'never emit this object' }))
+    InheritanceProtected = $false; OwnerApproved = $true; ReparsePoint = $false
+    Rules = @(@{ Index = 0; Principal = 'runner'; Type = 'Allow'; Rights = [long]2032127; Inherited = $true;
+        Inheritance = 3; Propagation = 0; ApprovedPrincipal = $true })
+}
+$safePermission = ConvertTo-DiagnosticPermissionJson $permission | ConvertFrom-Json
+Check ($safePermission.DaclPresent -is [bool] -and $safePermission.DaclPresent) 'ACL collection did not become a scalar flag.'
+foreach ($field in @('Canonical', 'CurrentGuardPass', 'DaclPresent', 'InheritanceProtected', 'OwnerApproved', 'ReparsePoint')) {
+    $saved = $permission[$field]
+    $permission[$field] = @(@{ SecurityIdentifier = 'synthetic-private-metadata' })
+    MustThrow { ConvertTo-DiagnosticPermissionJson $permission }
+    $permission[$field] = $saved
+}
+$permission.Rules[0].SecurityIdentifier = 'synthetic-private-metadata'
+MustThrow { ConvertTo-DiagnosticPermissionJson $permission }
+$permission.Rules[0].Remove('SecurityIdentifier')
+$permission.DaclPresent = ($null -ne $null)
+Check (!((ConvertTo-DiagnosticPermissionJson $permission | ConvertFrom-Json).DaclPresent)) 'Null ACL presence incorrectly reported.'
+
+foreach ($file in @('Authenticated-Fixture-Core.ps1', 'Authenticated-Windows-Adapters.ps1', 'Authenticated-Integration.ps1', 'Authenticated-Fixture.ps1', 'Test-AuthenticatedFixture.ps1', 'Read-DirectoryPermissions.ps1')) {
     $tokens = $null; $errors = $null
     [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot $file), [ref]$tokens, [ref]$errors) | Out-Null
     Check ($errors.Count -eq 0) "Parser failed: $file"
