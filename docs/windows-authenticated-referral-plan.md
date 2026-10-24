@@ -1,8 +1,8 @@
 # Authenticated Windows referral investigation and diagnostic results
 
 The latest approved real-provider diagnostic completed on 2026-10-24 in run
-[40116076575](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40116076575):
-32/34 pool cases passed on each runtime. Both runtimes passed all 11
+[40117275357](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40117275357):
+37/37 comparison cases passed on .NET 8 and 35/37 on .NET 10. Both runtimes passed all 11
 authenticated raw controls; anonymous TLS still failed. External security-object and
 temporary-file cleanup passed independently. Pool fixture cleanup failures are distinct
 and remain under investigation. Windows Basic with referrals remains ineligible for
@@ -910,3 +910,95 @@ timeline to determine whether timeout/close precedes a repeated operation ID and
 whether the same pattern occurs without pooling. Do not accept extra searches,
 extend timeouts to manufacture a pass, or enable production eligibility on this
 preparation alone. No further trusted job is authorized.
+
+
+## Pooled/unpooled comparison completed; primary-overlap correction prepared
+
+One approved job ran candidate 8aa2682 at remote source
+b347607bb6279aeccea4de23d0508eb4c8538a59 (local equivalent 3dc54be,
+tree 5205639a7801addecf461b7fb5552a3073a9583d):
+[40117275357](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40117275357).
+All prior runs were completed before publication; no duplicate or rerun occurred.
+The consumed trigger was removed at remote
+5bb6fbe793d29f8c36f9b182ce2d23baa97172ba (local equivalent dd8b2a3).
+
+.NET 8 passed all 37 cases. .NET 10 passed 35/37; the failures were
+original-unpooled-concurrent and pooled B-concurrent. All authenticated raw stages
+passed, while anonymous direct TLS remained LDAP 81. No production eligibility
+changed.
+
+The failing .NET 10 timelines establish the following order. Times are milliseconds
+from each fixture's local monotonic origin, not synchronized wall-clock times.
+
+| Event | Original unpooled | B pooled |
+| --- | ---: | ---: |
+| Both managed calls entered | 13.178 | 12.118 |
+| First target request arrived | op 2 at 18.273 | op 1 at 17.136 |
+| Other TLS target connection closed without a bind | 18.725 | 17.327 |
+| Target overlap timeout | 3019.003 | 3025.145 |
+| Faulted target connection closed | 3019.068 | 3025.179 |
+| New target connection accepted | 3019.939 | 3026.134 |
+| Previously unseen operation searched on new connection | op 1 at 3024.091 | op 2 at 3031.548 |
+| Timed-out operation repeated on same new connection | op 2 at 3024.167 | op 1 at 3031.625 |
+
+Each trace had two managed calls, three parsed target searches, one overlap
+timeout, zero anonymous/SASL binds, target-only cleanup timeout mask 16 and
+PoolDelta=0. The repeated request retained its operation correlation ID and LDAP
+message ID. There was no third managed provider callback. The unpooled path has
+no provider session or retry loop, so this pattern is not specific to pool
+acquisition/reuse. The sequence places repetition after fixture-induced
+connection failure within the native calls; it does not prove why WinLDAP closed
+the unused connection or that every referral is shared/serialized.
+
+Source review exposes a test-design problem: the endpoint reads a connection's
+next LDAP request only after awaiting the current response callback. A target
+barrier waiting for a second request can therefore obstruct progress if native
+referral operations use that same target connection. The observed new connection
+indeed handled both operation IDs. Earlier target-barrier failures remain recorded
+as failed diagnostics, but they do not establish a provider defect or inability
+to overlap primary operations.
+
+The locally prepared correction explicitly tests overlapping operations on
+exclusive PRIMARY leases:
+- Both managed calls must enter before either returns.
+- Each operation must reach a distinct, nonzero source connection ID.
+- Both source requests must arrive before either source referral is released.
+- Source IDs must remain stable through each operation's search/arrival/release/
+  referral events; the full per-operation event order is validated.
+- The target immediately processes/replies to each search, with no barrier waiting
+  for another target request.
+- Exactly two managed calls and exactly one target search per operation remain
+  required, as do explicit LDAP identity and actual Windows SID checks.
+- Source timeout records a permanent failure, then permits a valid referral
+  response; it no longer throws to intentionally close a connection. Zero source
+  timeouts is mandatory for a pass.
+- All workers are joined and endpoints disposed before final duplicate checks;
+  operation errors and cleanup failures remain separately preserved.
+
+Both pooled and unpooled controls use this identical revised instrumentation.
+Report fields are explicitly renamed SourceOverlapArrivals/SourceOverlapTimeouts.
+This measures overlapping primary operations, not simultaneous target processing
+or independent referral-child connections. Shared target processing is permitted;
+duplicate requests, missing IDs, shared primary connections, sequential primary
+arrival/release, timeout, identity mismatch or truncated traces cannot pass.
+
+Finally and independent cleanup both verified public certificate
+6AA0904CBC93CD44F5DEB839AA1358155F0F063F, owned provider key, PFX and all owned
+accounts/objects absent. The independent final step verified temporary files and
+directory absent. Independent read-only review confirmed the run and cleanup.
+
+The revised source-barrier code passed both runtime builds, 57 focused tests per
+runtime, both invocation scopes, both pure worker self-tests and both full-size
+synthetic report contracts. Regressions permit shared target connections but
+reject shared/serial primary operations and duplicate correlation IDs; a timed-out
+barrier releases a response without erasing its failure or requesting connection
+closure. Independent static review found no blocker. The correction has not run
+against WinLDAP. No new security action or trigger publication occurred.
+
+The smallest useful next comparison remains the six pooled/unpooled concurrency
+cases under original/A/B, within the prepared 37-case harness on both runtimes,
+with actual identity-specific native control gates. A future single approved
+disposable job would retain the same two standard accounts/one logon each, owned
+non-exportable runner-user key, public LocalMachine Root certificate, watchdogs
+and exact cleanup. No such run is authorized now. Production remains guarded and
+Kerberos work remains deferred.

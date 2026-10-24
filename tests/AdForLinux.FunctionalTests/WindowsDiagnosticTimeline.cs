@@ -32,11 +32,35 @@ internal sealed class WindowsDiagnosticTimeline
         {
             if (dropped != 0) return false;
             var rows = events.Select(e => e.Split(':')).ToArray();
+            var sourceConnections = new HashSet<string>();
+            int lastArrival = 0, firstRelease = int.MaxValue;
+            int lastEnter = 0, firstExit = int.MaxValue;
             foreach (int operation in new[] { 1, 2 })
-                foreach (var pair in new[] { ("client", "native-enter"), ("client", "native-exit"),
-                    ("source", "search"), ("target", "search"), ("target", "arrive"), ("target", "release"), ("target", "response-send") })
-                    if (rows.Count(e => e[2] == pair.Item1 && e[5] == operation.ToString() && e[6] == pair.Item2) != 1) return false;
-            return !rows.Any(e => e[6] is "timeout" or "native-error" or "fault");
+            {
+                int previous = 0; string? sourceConnection = null;
+                foreach (var pair in new[] { ("client", "native-enter"), ("source", "search"),
+                    ("source", "arrive"), ("source", "release"), ("source", "referral-send"),
+                    ("target", "search"), ("target", "response-send"), ("client", "native-exit") })
+                {
+                    var matches = rows.Where(e => e[2] == pair.Item1 && e[5] == (operation == 1 ? "1" : "2") && e[6] == pair.Item2).ToArray();
+                    if (matches.Length != 1) return false;
+                    var row = matches[0]; int sequence = int.Parse(row[0], System.Globalization.CultureInfo.InvariantCulture);
+                    if (sequence <= previous) return false;
+                    previous = sequence;
+                    if (pair.Item1 == "source")
+                    {
+                        sourceConnection ??= row[3];
+                        if (row[3] == "0" || row[3] != sourceConnection) return false;
+                    }
+                    if (pair.Item2 == "arrive") lastArrival = Math.Max(lastArrival, sequence);
+                    if (pair.Item2 == "release") firstRelease = Math.Min(firstRelease, sequence);
+                    if (pair.Item2 == "native-enter") lastEnter = Math.Max(lastEnter, sequence);
+                    if (pair.Item2 == "native-exit") firstExit = Math.Min(firstExit, sequence);
+                }
+                sourceConnections.Add(sourceConnection!);
+            }
+            return sourceConnections.Count == 2 && lastArrival < firstRelease && lastEnter < firstExit &&
+                !rows.Any(e => e[6] is "timeout" or "native-error" or "fault");
         }
     }
     internal static string BaseDn(int operation) => operation switch
@@ -45,8 +69,9 @@ internal sealed class WindowsDiagnosticTimeline
         dn.AsSpan().SequenceEqual("CN=operation-2"u8) ? 2 : throw new InvalidDataException("Unknown synthetic operation.");
 }
 
-// The timeout is deliberately fail-closed: the endpoint preserves the exception and
-// closes that connection. This can provoke a native retry; timeline records precede it.
+// Failure is recorded permanently, but a timeout still releases a valid source
+// referral response. It never deliberately tears down a target or induces a retry.
+// The caller's zero-timeout and exact overlap assertions remain mandatory.
 internal sealed class WindowsDiagnosticOverlap(WindowsDiagnosticTimeline timeline, TimeSpan timeout)
 {
     private readonly TaskCompletionSource both = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -55,15 +80,15 @@ internal sealed class WindowsDiagnosticOverlap(WindowsDiagnosticTimeline timelin
     internal int Timeouts => Volatile.Read(ref timeouts);
     internal async Task Arrive(int connection, int message, int operation)
     {
-        timeline.Add("target", connection, message, operation, "arrive");
+        timeline.Add("source", connection, message, operation, "arrive");
         if (Interlocked.Increment(ref arrivals) == 2) both.TrySetResult();
         try { await both.Task.WaitAsync(timeout); }
         catch (TimeoutException)
         {
             Interlocked.Increment(ref timeouts);
-            timeline.Add("target", connection, message, operation, "timeout");
-            throw;
+            timeline.Add("source", connection, message, operation, "timeout");
+            // Continue the protocol; the diagnostic case still fails.
         }
-        timeline.Add("target", connection, message, operation, "release");
+        timeline.Add("source", connection, message, operation, "release");
     }
 }

@@ -173,7 +173,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
     if (($value.Pool.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Unexpected pool cases.' }
     foreach ($name in $names) {
         $row = $value.Pool[$name]
-        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OperationStarts,OtherCleanupCode,OverlapArrivals,OverlapTimeouts,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetRejectedTlsProbes,TargetSearches,TargetTls,TargetTlsPrefixes,Timeline,TimelineDropped,WorkersReady') { throw 'Unexpected pool observation fields.' }
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OperationStarts,OtherCleanupCode,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,SourceOverlapArrivals,SourceOverlapTimeouts,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetRejectedTlsProbes,TargetSearches,TargetTls,TargetTlsPrefixes,Timeline,TimelineDropped,WorkersReady') { throw 'Unexpected pool observation fields.' }
         if ($row.FailurePoint -notin @('none', 'setup', 'other', 'assertion', 'ambient-identity', 'concurrent-counts', 'search-shape', 'ldap-identity', 'native-response', 'native-operation', 'cleanup')) { throw 'Invalid fixed failure point.' }
         if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool]) { throw 'Invalid pool status.' }
         foreach ($field in @('FailureKind', 'ObservedFailureKind')) {
@@ -183,7 +183,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid pool failure code.' }
         }
         foreach ($field in @('Checks', 'PrimaryBinds', 'TargetConnections', 'TargetTls', 'TargetBinds', 'TargetSearches',
-            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes', 'TargetRejectedTlsProbes', 'WorkersReady', 'OperationStarts', 'OverlapArrivals', 'OverlapTimeouts', 'TimelineDropped')) {
+            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes', 'TargetRejectedTlsProbes', 'WorkersReady', 'OperationStarts', 'SourceOverlapArrivals', 'SourceOverlapTimeouts', 'TimelineDropped')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid pool counter.' }
         }
         if (($row.CleanupMask -isnot [int] -and $row.CleanupMask -isnot [long]) -or $row.CleanupMask -lt 0 -or $row.CleanupMask -gt 63 -or
@@ -226,15 +226,34 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             } elseif ($name -notlike '*-mixed-referral' -and ($row.TargetTls -lt 1 -or $row.TargetSearches -lt 1)) { throw 'Native pool search evidence absent.' }
             if ($name -like '*-concurrent') {
                 if ($row.TimelineDropped -ne 0 -or @($events | Where-Object { $_[6] -in @('timeout', 'fault', 'native-error') }).Count -ne 0) { throw 'Incomplete or failed timeline.' }
+                $connections = @(); $lastArrival = 0; $firstRelease = [int]::MaxValue
+                $lastEnter = 0; $firstExit = [int]::MaxValue
                 foreach ($operation in @('1', '2')) {
-                    foreach ($pair in @(@('client', 'native-enter'), @('client', 'native-exit'), @('source', 'search'),
-                        @('target', 'search'), @('target', 'arrive'), @('target', 'release'), @('target', 'response-send'))) {
-                        if (@($events | Where-Object { $_[2] -ceq $pair[0] -and $_[5] -ceq $operation -and $_[6] -ceq $pair[1] }).Count -ne 1) { throw 'Missing or duplicate correlated operation.' }
+                    $previous = 0; $sourceConnection = $null
+                    foreach ($pair in @(@('client', 'native-enter'), @('source', 'search'), @('source', 'arrive'),
+                        @('source', 'release'), @('source', 'referral-send'), @('target', 'search'),
+                        @('target', 'response-send'), @('client', 'native-exit'))) {
+                        $matching = @($events | Where-Object { $_[2] -ceq $pair[0] -and $_[5] -ceq $operation -and $_[6] -ceq $pair[1] })
+                        if ($matching.Count -ne 1) { throw 'Missing or duplicate correlated operation.' }
+                        $event = $matching[0]; $sequence = [int]$event[0]
+                        if ($sequence -le $previous) { throw 'Invalid operation order.' }; $previous = $sequence
+                        if ($pair[0] -ceq 'source') {
+                            if ($null -eq $sourceConnection) { $sourceConnection = $event[3] }
+                            if ($event[3] -ceq '0' -or $event[3] -cne $sourceConnection) { throw 'Source connection changed.' }
+                        }
+                        switch ($pair[1]) {
+                            'arrive' { $lastArrival = [Math]::Max($lastArrival, $sequence) }
+                            'release' { $firstRelease = [Math]::Min($firstRelease, $sequence) }
+                            'native-enter' { $lastEnter = [Math]::Max($lastEnter, $sequence) }
+                            'native-exit' { $firstExit = [Math]::Min($firstExit, $sequence) }
+                        }
                     }
+                    $connections += $sourceConnection
                 }
+                if ($connections[0] -ceq $connections[1] -or $lastArrival -ge $firstRelease -or $lastEnter -ge $firstExit) { throw 'Distinct primary operation overlap absent.' }
             }
             if ($name -like '*-concurrent' -and ($row.WorkersReady -ne 2 -or $row.OperationStarts -ne 2 -or
-                $row.OverlapArrivals -ne 2 -or $row.OverlapTimeouts -ne 0 -or $row.TargetSearches -ne 2 -or $row.ManagedAttempts -ne 2)) { throw 'Concurrent operation evidence incomplete.' }
+                $row.SourceOverlapArrivals -ne 2 -or $row.SourceOverlapTimeouts -ne 0 -or $row.TargetSearches -ne 2 -or $row.ManagedAttempts -ne 2)) { throw 'Concurrent operation evidence incomplete.' }
             if ($name -like '*-mixed-referral' -and $row.TargetRejectedTlsProbes -ne $row.TargetTlsPrefixes) { throw 'Protocol rejection evidence inconsistent.' }
             if ($name -like '*-disconnect' -and ($row.ManagedAttempts -ne 3 -or $row.ObservedFailureKind -eq 'none')) { throw 'Failure/replay evidence incomplete.' }
         }

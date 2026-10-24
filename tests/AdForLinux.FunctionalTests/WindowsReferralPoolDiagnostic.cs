@@ -16,7 +16,7 @@ public static class WindowsReferralPoolDiagnostic
         int CleanupMask = 0, int LeaseCleanupCode = 0, int KeyCleanupCode = 0, int OtherCleanupCode = 0,
         int SourceCleanupCode = 0, int TargetCleanupCode = 0, int PoolDelta = 0,
         int SourceAbandons = 0, int TargetAbandons = 0, int TargetTlsPrefixes = 0, int TargetBerPrefixes = 0, string FailurePoint = "none", int TargetRejectedTlsProbes = 0,
-        int WorkersReady = 0, int OperationStarts = 0, int OverlapArrivals = 0, int OverlapTimeouts = 0, string Timeline = "", int TimelineDropped = 0);
+        int WorkersReady = 0, int OperationStarts = 0, int SourceOverlapArrivals = 0, int SourceOverlapTimeouts = 0, string Timeline = "", int TimelineDropped = 0);
     public static readonly string[] Cases = ["isolation", "concurrent", "unpooled-concurrent", "capacity", "generation", "failed-bind",
         "primary-disconnect", "target-disconnect", "target-bind-rejection", "untrusted-target", "mixed-referral"];
     public static readonly string[] Transitions = ["a-to-b", "b-to-a", "first-a-to-b", "first-b-to-a"];
@@ -182,8 +182,11 @@ public static class WindowsReferralPoolDiagnostic
             f.Require(!ReferenceEquals(leases[0].Connection, leases[1].Connection));
             send = index => leases[index].Execute(connection => f.SendCorrelated(connection, index + 1));
         }
+        // Prove simultaneous operations on distinct primary leases. The native
+        // backend may share/serialize referral children; target replies never wait
+        // for a second request on the same sequential server connection.
         f.Overlap = new WindowsDiagnosticOverlap(f.Timeline!, TimeSpan.FromSeconds(3));
-        f.Target.BeforeCorrelatedSearchResponse = f.Overlap.Arrive;
+        f.Source.BeforeCorrelatedSearchResponse = f.Overlap.Arrive;
         using var caller = WindowsIdentity.GetCurrent();
         string? sid = caller.User?.Value;
         f.Require(sid is not null);
@@ -194,10 +197,10 @@ public static class WindowsReferralPoolDiagnostic
             f.Require(current.User?.Value == sid, "ambient-identity");
             ValidateResponse(send(index), WindowsReferralEndpoint.FirstIdentity);
         });
-        f.Target.BeforeCorrelatedSearchResponse = null;
+        f.Source.BeforeCorrelatedSearchResponse = null;
         f.Require(f.Concurrent.Ready == 2 && f.Concurrent.Starts == 2 && f.Overlap.Arrivals == 2 &&
             f.Overlap.Timeouts == 0 && f.ManagedAttempts == 2 && f.Target.Searches == 2 &&
-            f.Source.Binds == 2 && f.Timeline!.ExactOperations(), "concurrent-counts");
+            f.Source.Binds == 2 && f.Source.Connections == 2 && f.Timeline!.ExactOperations(), "concurrent-counts");
     }
     private static void Capacity(Fixture f)
     {
@@ -399,7 +402,7 @@ public static class WindowsReferralPoolDiagnostic
         public void Dispose()
         {
             Source.DisconnectOnSearch = Target.DisconnectOnSearch = false;
-            Target.RejectBinds = false; Target.BeforeSearchResponse = null; Target.BeforeCorrelatedSearchResponse = null;
+            Target.RejectBinds = false; Target.BeforeSearchResponse = null; Target.BeforeCorrelatedSearchResponse = null; Source.BeforeCorrelatedSearchResponse = null;
             foreach (var raw in rawConnections) CleanupDetail.Attempt(1, raw.Dispose);
             foreach (var lease in sessions) CleanupDetail.Attempt(1, () => { lease.Invalidate(); lease.Dispose(); });
             // Retire each exact idle key via existing provider freshness semantics.

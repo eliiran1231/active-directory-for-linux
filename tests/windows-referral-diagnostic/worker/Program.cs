@@ -72,22 +72,31 @@ internal static class Program
             bool disconnected = scenario.EndsWith("disconnect");
             var timeline = new List<string>();
             if (scenario.EndsWith("concurrent"))
+            {
+                var records = new List<(string Role, int Operation, string Stage)>();
+                foreach (int operation in new[] { 1, 2 }) records.Add(("client", operation, "native-enter"));
                 foreach (int operation in new[] { 1, 2 })
-                    foreach (var pair in new[] { ("client", "native-enter"), ("source", "search"), ("target", "search"),
-                        ("target", "arrive"), ("target", "release"), ("target", "response-send"), ("client", "native-exit") })
-                        timeline.Add($"{timeline.Count + 1}:999999999999:{pair.Item1}:2147483647:2147483647:{operation}:{pair.Item2}");
-            // Exercise all 64 events at maximum schema numeric widths and long labels
-            // through the WHOLE report transport, not just a per-timeline limit.
-            if (scenario.EndsWith("concurrent"))
-                for (int padding = 14; padding < 64; padding++)
+                { records.Add(("source", operation, "search")); records.Add(("source", operation, "arrive")); }
+                foreach (int operation in new[] { 1, 2 })
+                    foreach (var pair in new[] { ("source", "release"), ("source", "referral-send"),
+                        ("target", "search"), ("target", "response-send"), ("client", "native-exit") })
+                        records.Add((pair.Item1, operation, pair.Item2));
+                foreach (var record in records)
+                {
+                    int connection = record.Role == "source" ? int.MaxValue - 2 + record.Operation : int.MaxValue;
+                    timeline.Add($"{timeline.Count + 1}:999999999999:{record.Role}:{connection}:2147483647:{record.Operation}:{record.Stage}");
+                }
+                // Maximum-width whole-report capacity, including all six 64-event traces.
+                for (int padding = records.Count; padding < 64; padding++)
                     timeline.Add($"{timeline.Count + 1}:999999999999:target:2147483647:2147483647:0:response-send");
+            }
             return new("passed", Checks: 3, PrimaryBinds: 2, TargetConnections: 2, TargetTls: untrusted ? 0 : 2,
                 TargetBinds: untrusted ? 0 : 2, TargetSearches: untrusted || rejected ? 0 : 2,
                 Closed: 2, ManagedAttempts: disconnected ? 3 : scenario.EndsWith("concurrent") ? 2 : 1, Cleanup: true,
                 ObservedFailureKind: untrusted || rejected || disconnected ? "ldap" : "none",
                 ObservedFailureCode: untrusted || rejected || disconnected ? 81 : 0,
                 WorkersReady: scenario.EndsWith("concurrent") ? 2 : 0, OperationStarts: scenario.EndsWith("concurrent") ? 2 : 0,
-                OverlapArrivals: scenario.EndsWith("concurrent") ? 2 : 0, Timeline: string.Join(';', timeline));
+                SourceOverlapArrivals: scenario.EndsWith("concurrent") ? 2 : 0, Timeline: string.Join(';', timeline));
         });
         Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsDiagnosticReport.Create(native, pool) }));
     }

@@ -171,14 +171,21 @@ foreach ($name in $poolNames) {
         TargetBinds = 2; TargetSearches = 2; Anonymous = 0; Sasl = 0; Closed = 2; ManagedAttempts = 1;
         BaselineCredentialed = 0; PooledCredentialed = 0; Cleanup = $true; FailureKind = 'none'; FailureCode = 0;
         ObservedFailureKind = 'none'; ObservedFailureCode = 0; CleanupMask = 0; LeaseCleanupCode = 0; KeyCleanupCode = 0;
-        OtherCleanupCode = 0; SourceCleanupCode = 0; TargetCleanupCode = 0; PoolDelta = 0; SourceAbandons = 0; TargetAbandons = 0; TargetTlsPrefixes = 0; TargetBerPrefixes = 0; TargetRejectedTlsProbes = 0; WorkersReady = 0; OperationStarts = 0; OverlapArrivals = 0; OverlapTimeouts = 0; Timeline = ''; TimelineDropped = 0; FailurePoint = 'none' }
-    if ($name -like '*-concurrent') { $pool[$name].WorkersReady = 2; $pool[$name].OperationStarts = 2; $pool[$name].OverlapArrivals = 2; $pool[$name].ManagedAttempts = 2
-        $events = @(); $sequence = 0
+        OtherCleanupCode = 0; SourceCleanupCode = 0; TargetCleanupCode = 0; PoolDelta = 0; SourceAbandons = 0; TargetAbandons = 0; TargetTlsPrefixes = 0; TargetBerPrefixes = 0; TargetRejectedTlsProbes = 0; WorkersReady = 0; OperationStarts = 0; SourceOverlapArrivals = 0; SourceOverlapTimeouts = 0; Timeline = ''; TimelineDropped = 0; FailurePoint = 'none' }
+    if ($name -like '*-concurrent') { $pool[$name].WorkersReady = 2; $pool[$name].OperationStarts = 2; $pool[$name].SourceOverlapArrivals = 2; $pool[$name].ManagedAttempts = 2
+        $events = @(); $sequence = 0; $records = @()
+        foreach ($operation in @(1, 2)) { $records += ,@('client', $operation, 'native-enter') }
         foreach ($operation in @(1, 2)) {
-            foreach ($pair in @(@('client', 'native-enter'), @('source', 'search'), @('target', 'search'),
-                @('target', 'arrive'), @('target', 'release'), @('target', 'response-send'), @('client', 'native-exit'))) {
-                $sequence++; $events += "$($sequence):0:$($pair[0]):1:1:$($operation):$($pair[1])"
-            }
+            $records += ,@('source', $operation, 'search')
+            $records += ,@('source', $operation, 'arrive')
+        }
+        foreach ($operation in @(1, 2)) {
+            foreach ($pair in @(@('source', 'release'), @('source', 'referral-send'), @('target', 'search'),
+                @('target', 'response-send'), @('client', 'native-exit'))) { $records += ,@($pair[0], $operation, $pair[1]) }
+        }
+        foreach ($record in $records) {
+            $sequence++; $connection = if ($record[0] -ceq 'source') { $record[1] } else { 1 }
+            $events += "$($sequence):0:$($record[0]):$($connection):1:$($record[1]):$($record[2])"
         }
         $pool[$name].Timeline = $events -join ';'
     }
@@ -188,13 +195,13 @@ foreach ($name in $poolNames) {
 }
 $combined = @{ Native = $result; Pool = $pool; Supported = 'passed'; Adverse = 'passed'; AllPassed = $true }
 Check ((ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8)).Pool.Count -eq 37) 'Pool report cases missing.'
-foreach ($field in @('WorkersReady', 'OperationStarts', 'OverlapArrivals', 'TargetSearches', 'ManagedAttempts')) {
+foreach ($field in @('WorkersReady', 'OperationStarts', 'SourceOverlapArrivals', 'TargetSearches', 'ManagedAttempts')) {
     $pool['original-concurrent'][$field] = 3
     MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
     $pool['original-concurrent'][$field] = 2
 }
 $savedTimeline = $pool['original-concurrent'].Timeline
-foreach ($invalid in @('secret-unrecognized-data', $savedTimeline.Replace(':1:search', ':2:search'), $savedTimeline.Replace('1:0:', '2:0:'))) {
+foreach ($invalid in @('secret-unrecognized-data', $savedTimeline.Replace(':source:2:', ':source:1:'), $savedTimeline.Replace(':1:search', ':2:search'), $savedTimeline.Replace('1:0:', '2:0:'))) {
     $pool['original-concurrent'].Timeline = $invalid
     MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
 }
@@ -202,9 +209,9 @@ $pool['original-concurrent'].Timeline = $savedTimeline
 $pool['original-concurrent'].TimelineDropped = 1
 MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
 $pool['original-concurrent'].TimelineDropped = 0
-$pool['original-concurrent'].OverlapTimeouts = 1
+$pool['original-concurrent'].SourceOverlapTimeouts = 1
 MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
-$pool['original-concurrent'].OverlapTimeouts = 0
+$pool['original-concurrent'].SourceOverlapTimeouts = 0
 $pool['original-mixed-referral'].TargetRejectedTlsProbes = 1
 MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
 $pool['original-mixed-referral'].TargetRejectedTlsProbes = 0

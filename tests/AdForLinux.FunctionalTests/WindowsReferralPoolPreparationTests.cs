@@ -164,29 +164,51 @@ public sealed class WindowsReferralPoolPreparationTests
             Assert.Equal(operation, WindowsDiagnosticTimeline.Operation(System.Text.Encoding.UTF8.GetBytes(WindowsDiagnosticTimeline.BaseDn(operation))));
         Assert.Throws<InvalidDataException>(() => WindowsDiagnosticTimeline.Operation("CN=unexpected"u8.ToArray()));
     }
-    [Fact]
-    public void Correlation_rejects_a_duplicate_request_even_if_other_operation_is_missing()
+    private static WindowsDiagnosticTimeline OverlapTrace(bool duplicate = false, bool sharedSource = false, bool serialSource = false)
     {
         var trace = new WindowsDiagnosticTimeline();
+        foreach (int operation in new[] { 1, 2 }) trace.Add("client", 0, 0, operation, "native-enter");
+        foreach (int operation in serialSource ? Array.Empty<int>() : new[] { 1, 2 })
+        {
+            trace.Add("source", sharedSource ? 1 : operation, operation, operation, "search");
+            trace.Add("source", sharedSource ? 1 : operation, operation, operation, "arrive");
+        }
         foreach (int operation in new[] { 1, 2 })
-            foreach (var pair in new[] { ("client", "native-enter"), ("source", "search"), ("target", "search"),
-                ("target", "arrive"), ("target", "release"), ("target", "response-send"), ("client", "native-exit") })
-                trace.Add(pair.Item1, 1, operation, operation, pair.Item2);
-        Assert.True(trace.ExactOperations());
-        trace.Add("target", 2, 99, 1, "search");
-        Assert.False(trace.ExactOperations());
+        {
+            if (serialSource)
+            {
+                trace.Add("source", operation, operation, operation, "search");
+                trace.Add("source", operation, operation, operation, "arrive");
+            }
+            trace.Add("source", sharedSource ? 1 : operation, operation, operation, "release");
+            trace.Add("source", sharedSource ? 1 : operation, operation, operation, "referral-send");
+            // A shared sequential target connection is allowed; duplicate requests are not.
+            trace.Add("target", 1, operation, duplicate ? 1 : operation, "search");
+            trace.Add("target", 1, operation, operation, "response-send");
+            trace.Add("client", 0, 0, operation, "native-exit");
+        }
+        return trace;
     }
     [Fact]
-    public async Task Overlap_timeout_is_preserved_and_not_erased_by_later_arrivals()
+    public void Primary_overlap_allows_shared_target_but_rejects_duplicates_or_shared_primary()
+    {
+        Assert.True(OverlapTrace().ExactOperations());
+        Assert.False(OverlapTrace(duplicate: true).ExactOperations());
+        Assert.False(OverlapTrace(sharedSource: true).ExactOperations());
+        Assert.False(OverlapTrace(serialSource: true).ExactOperations());
+    }
+    [Fact]
+    public async Task Source_timeout_releases_response_without_erasing_failure_or_closing_connection()
     {
         var trace = new WindowsDiagnosticTimeline();
         var overlap = new WindowsDiagnosticOverlap(trace, TimeSpan.FromMilliseconds(20));
-        await Assert.ThrowsAsync<TimeoutException>(() => overlap.Arrive(1, 1, 1));
-        await overlap.Arrive(2, 2, 2);
-        await overlap.Arrive(3, 3, 1);
-        Assert.Equal(3, overlap.Arrivals); Assert.Equal(1, overlap.Timeouts);
+        int responses = 0;
+        await overlap.Arrive(1, 1, 1); responses++;
+        await overlap.Arrive(2, 2, 2); responses++;
+        Assert.Equal(2, responses); Assert.Equal(2, overlap.Arrivals); Assert.Equal(1, overlap.Timeouts);
         var rows = trace.Snapshot().Split(';');
         Assert.Contains(rows, e => e.EndsWith(":1:timeout"));
+        Assert.DoesNotContain(rows, e => e.EndsWith(":fault") || e.EndsWith(":close"));
         Assert.False(trace.ExactOperations());
     }
     [Fact]
