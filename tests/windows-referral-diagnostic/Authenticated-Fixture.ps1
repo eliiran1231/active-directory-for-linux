@@ -10,6 +10,7 @@ if (!$testOnly -and $E2ECase -ne 'Success') { throw 'Fault injection requires ex
 if ($testOnly) { . (Join-Path $PSScriptRoot 'Authenticated-E2E-Adapters.ps1') }
 else { . (Join-Path $PSScriptRoot 'Authenticated-Windows-Adapters.ps1') }
 . (Join-Path $PSScriptRoot 'Authenticated-Integration.ps1')
+. (Join-Path $PSScriptRoot 'Certificate-Material.ps1')
 if ($Mode -eq 'Preflight') { Write-Host 'No execution. Run Test-AuthenticatedFixture.ps1 for pure preflight.'; return }
 if (!$IsWindows -or ![Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne 'true' -or
     $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $RunId -cnotmatch '^[0-9a-f]{32}$') {
@@ -83,22 +84,10 @@ function Remove-Fixture {
 }
 function New-FixtureCertificate {
     if ($testOnly) { return New-E2ECertificate }
-    Stage 'certificate-generate'
-    $key = [Security.Cryptography.RSA]::Create(2048)
-    $generated = $null; $public = $null
+    $material = New-DiagnosticCertificateMaterial $RunId { param($name) Stage $name }
+    $public = $material.Public
     try {
-        $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new("CN=ADFL ephemeral $RunId", $key,
-            [Security.Cryptography.HashAlgorithmName]::SHA256, [Security.Cryptography.RSASignaturePadding]::Pkcs1)
-        $names = [Security.Cryptography.X509Certificates.SubjectAlternativeNameBuilder]::new()
-        $names.AddIpAddress([Net.IPAddress]::Loopback); $names.AddDnsName('localhost')
-        $request.CertificateExtensions.Add($names.Build())
-        $oids = [Security.Cryptography.OidCollection]::new(); $oids.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.1')) | Out-Null
-        $request.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($oids, $false))
-        $generated = $request.CreateSelfSigned([DateTimeOffset]::UtcNow.AddMinutes(-5), [DateTimeOffset]::UtcNow.AddHours(1))
-        Stage 'certificate-export'
-        $public = [Security.Cryptography.X509Certificates.X509Certificate2]::new($generated.Export('Cert'))
-        if ($public.HasPrivateKey) { throw 'Public certificate required.' }
-        $bytes = $generated.Export('Pfx')
+        $bytes = $material.Pfx
         try { Stage 'pfx-write'; [IO.File]::WriteAllBytes($pfxPath, $bytes) }
         finally { [Array]::Clear($bytes, 0, $bytes.Length) }
         $store = [Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
@@ -125,7 +114,7 @@ function New-FixtureCertificate {
         finally { $chain.Dispose() }
         Save-DiagnosticJson @{ OriginalManagedChain = $managed; Interpretation = 'non-gating-native-controls-required' } (Join-Path $root 'chain.json')
         return $public.Thumbprint
-    } finally { if ($public) { $public.Dispose() }; if ($generated) { $generated.Dispose() }; $key.Dispose() }
+    } finally { Remove-DiagnosticCertificateMaterial $material }
 }
 
 if ($Mode -in @('Cleanup', 'E2ECleanup')) {

@@ -31,6 +31,9 @@ jobs:
           ./tests/windows-referral-diagnostic/Test-AuthenticatedFakeAdapters.ps1
       - name: Build both workers
         run: dotnet build tests/windows-referral-diagnostic/worker/AuthenticatedWorker.csproj --configuration Release
+      - name: Command metadata and shared ephemeral material preparation without stores
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-SetupPrerequisites.ps1
       - name: Real filesystem, processes and IPC with FAKE security adapters only
         shell: pwsh
         run: ./tests/windows-referral-diagnostic/Test-AuthenticatedEndToEnd.ps1 -BatchId $env:ADFL_E2E_BATCH

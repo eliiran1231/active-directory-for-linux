@@ -327,3 +327,19 @@ and worker input are rejected. The full authenticated trigger remains absent.
 Hosted results are required before calling this complete. The E2E suite cannot establish real local account/
 group privileges, interactive-logon rights, token-specific copying/adoption/impersonation, certificate-store
 operations, or native TLS/referral behavior. Those operations remain outside the ordinary test authorization.
+
+Hosted E2E run [40096037926](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40096037926)
+at `773e24fc62b79c57894ce2dd6c2c9a61c3c4d8e8` passed all eleven scenarios. The setup-timeout scenario
+took approximately 62 seconds, exercising the unchanged 60-second watchdog. Independent cleanup verified
+all owned dummy files and child directories absent. Both invocation scopes, fake-adapter unit checks and
+worker builds passed (zero errors, 16 warnings). Independent result review confirmed the evidence.
+
+Review identified two additional non-mutating prerequisites: LocalAccounts command/parameter metadata and
+shared certificate-material generation/export. The prepared follow-up checks metadata without invoking any
+account command. It extracts the fixture's exact material construction/export into a shared helper and checks
+public-only DER plus PFX round trips in .NET 8/10 through a bounded pipe. Material is generated solely for this
+test, stays in memory, and is decoded with EphemeralKeySet; no certificate store, chain build or private-key
+file is used. Public and private key agreement is checked by signing/verifying a fixed dummy challenge, and
+source/worker PFX byte buffers are explicitly cleared. See the documented
+[EphemeralKeySet semantics](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509keystorageflags?view=net-10.0).
+The actual Root-store add/remove and native TLS paths remain outside these tests and are not enabled.

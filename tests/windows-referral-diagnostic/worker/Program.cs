@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,6 +15,7 @@ internal static class Program
     {
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
         if (args.SequenceEqual(new[] { "--self-test" })) { SelfTest(); return 0; }
+        if (args.SequenceEqual(new[] { "--certificate-material-self-test" })) return CertificateMaterialSelfTest();
         if (args.Length == 2 && args[0] == "--setup-e2e") return SetupEndToEnd(args[1]);
         if (args.Length == 2 && args[0] == "--e2e-wait" && E2EHost())
         {
@@ -48,6 +50,26 @@ internal static class Program
             return result.Values.All(x => x.Status == "passed") ? 0 : 1;
         }
         catch { return 2; } // No raw errors or stack traces on either output stream.
+    }
+    private static int CertificateMaterialSelfTest()
+    {
+        byte[]? bytes = null;
+        try
+        {
+            bytes = Convert.FromBase64String(AdflPrivateFrame.Read(Console.OpenStandardInput()));
+#pragma warning disable SYSLIB0057
+            using var certificate = new X509Certificate2(bytes, "", X509KeyStorageFlags.EphemeralKeySet);
+#pragma warning restore SYSLIB0057
+            using var key = certificate.GetRSAPrivateKey() ?? throw new InvalidDataException();
+            using var publicKey = certificate.GetRSAPublicKey() ?? throw new InvalidDataException();
+            byte[] payload = System.Text.Encoding.UTF8.GetBytes("ADFL synthetic material verification");
+            byte[] signature = key.SignData(payload, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            bool verified = publicKey.VerifyData(payload, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            Console.Write(JsonSerializer.Serialize(new { certificate.HasPrivateKey, SignatureVerified = verified, certificate.Thumbprint }));
+            return verified ? 0 : 2;
+        }
+        catch { return 2; }
+        finally { if (bytes is not null) Array.Clear(bytes); }
     }
     private static bool E2EHost() => OperatingSystem.IsWindows() && Environment.Is64BitProcess &&
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" &&
