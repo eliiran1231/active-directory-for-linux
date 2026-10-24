@@ -1,0 +1,33 @@
+name: One-off Windows private path PURE preflight
+on:
+  push:
+    branches: [diagnostic/windows-authenticated-20261024-once]
+    paths: [.github/workflows/windows-private-path-preflight-once.yml]
+permissions:
+  contents: read
+jobs:
+  pure-preflight:
+    if: github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pure invocation and directory-classification regressions
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-AuthenticatedInvocationScopes.ps1
+      - name: Exact parent and ancestor guards on existing private directory only
+        shell: pwsh
+        run: |
+          . ./tests/windows-referral-diagnostic/Authenticated-Integration.ps1
+          $candidate = Get-DiagnosticRoot $env:LOCALAPPDATA ('a' * 32)
+          $parent = [IO.Path]::GetDirectoryName($candidate)
+          try {
+            Assert-DiagnosticNoReparsePath $parent
+            Assert-DiagnosticDirectoryPrivate $parent
+            Write-Host 'Existing private parent and all ancestor checks passed; no child or security objects created.'
+          } catch {
+            Write-Host 'Existing private parent or ancestor check failed; raw path and exception withheld.'
+            exit 1
+          }

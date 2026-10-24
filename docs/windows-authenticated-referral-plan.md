@@ -281,3 +281,20 @@ guard; RUNNER_TEMP again failed with four unapproved allow entries. Both invocat
 builds (zero errors, 16 warnings), and .NET 8/10 pure self-tests passed. No fixture child, account, logon,
 token acquisition or certificate import occurred. Runtime parent/child/reparse checks and authenticated
 native behavior remain unexecuted; the next full run requires fresh explicit approval.
+
+### Ancestor-check defect and consumed private-path run
+
+The single approved full run [40094277415](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40094277415)
+at `39a5ceec536ca29385b763ae4fa7124b35e3e06b` passed pure preflight/builds but stopped in the ancestor
+check before fixture-child creation, ownership records or security setup. Independent always cleanup verified
+owner/object manifests and PFX absent. Neither runtime produced native results; no accounts, logons or
+certificate imports occurred. Its approval is consumed; no full retry was made.
+
+Local independent reproduction found a real defect consistent with that failure: Get-Item enriches its result
+with PowerShell's PSIsContainer property, but DirectoryInfo.Parent returns ordinary CLR objects without it.
+The prepared fix checks DirectoryInfo type, refreshed existence, Directory attribute and absence of ReparsePoint
+for every ancestor instead. The private ACL predicate is unchanged. Tests traverse an actual ordinary parent
+chain and reject files, missing paths and reparse attributes. Both invocation scopes pass locally. The hosted
+failure log does not identify the exact rejecting ancestor, so it does not rule out additional Windows path issues.
+The consumed full trigger is replaced only by pure/read-only checks that call the exact guards on the existing
+private parent without creating a fixture child or any security objects.

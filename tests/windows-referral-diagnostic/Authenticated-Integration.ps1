@@ -59,10 +59,16 @@ function Get-DiagnosticRoot([string]$LocalAppData, [string]$RunId) {
     }
     return [IO.Path]::GetFullPath([IO.Path]::Combine($LocalAppData, 'Temp', "adfl-auth-$RunId"))
 }
+function Test-DiagnosticDirectoryAttributes([bool]$Exists, [bool]$IsDirectory, [IO.FileAttributes]$Attributes) {
+    return ($Exists -and $IsDirectory -and (($Attributes -band [IO.FileAttributes]::Directory) -ne 0) -and
+        (($Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0))
+}
 function Assert-DiagnosticNoReparsePath([string]$Path) {
     $current = Get-Item -LiteralPath $Path -Force
     while ($null -ne $current) {
-        if (!$current.PSIsContainer -or ($current.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        # DirectoryInfo.Parent is a CLR object without PowerShell's PSIsContainer property.
+        $current.Refresh()
+        if (!(Test-DiagnosticDirectoryAttributes $current.Exists ($current -is [IO.DirectoryInfo]) $current.Attributes)) {
             throw 'Diagnostic path must contain only existing ordinary directories.'
         }
         $current = $current.Parent

@@ -176,6 +176,15 @@ $result['b-direct'].Binds = 'synthetic-secret'
 MustThrow { ConvertTo-DiagnosticResult ($result | ConvertTo-Json -Depth 8) }
 
 $appData = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'synthetic-appdata')
+Check (Test-DiagnosticDirectoryAttributes $true $true ([IO.FileAttributes]::Directory)) 'Ordinary directory attributes rejected.'
+Check (!(Test-DiagnosticDirectoryAttributes $false $true ([IO.FileAttributes]::Directory))) 'Missing directory accepted.'
+Check (!(Test-DiagnosticDirectoryAttributes $true $false ([IO.FileAttributes]::Normal))) 'File accepted as directory.'
+Check (!(Test-DiagnosticDirectoryAttributes $true $true ([IO.FileAttributes]::Normal))) 'Missing directory attribute accepted.'
+Check (!(Test-DiagnosticDirectoryAttributes $true $true ([IO.FileAttributes]::Directory -bor [IO.FileAttributes]::ReparsePoint))) 'Reparse directory accepted.'
+# Traverse real CLR Parent objects, not just Get-Item's provider-enriched first object.
+Assert-DiagnosticNoReparsePath $PSScriptRoot
+MustThrow { Assert-DiagnosticNoReparsePath (Join-Path $PSScriptRoot 'Test-AuthenticatedFixture.ps1') }
+MustThrow { Assert-DiagnosticNoReparsePath (Join-Path $PSScriptRoot ('absent-' + [Guid]::NewGuid().ToString('N'))) }
 $runId = 'a' * 32
 Check ((Get-DiagnosticRoot $appData $runId) -ceq [IO.Path]::Combine($appData, 'Temp', "adfl-auth-$runId")) 'Fixed private parent mismatch.'
 MustThrow { Get-DiagnosticRoot '' $runId }
