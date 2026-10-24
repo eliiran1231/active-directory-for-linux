@@ -138,7 +138,8 @@ foreach ($failure in @('', 'Start', 'Assign', 'Release', 'WaitSetup', 'WaitCompl
         $operations[$step] = {
             param($current, $milliseconds)
             $events.Add($stepName)
-            if ($stepName -eq 'WaitSetup') { Check ($milliseconds -eq 60000) 'Setup watchdog changed.' }
+            # GetNewClosure captures variables, not the script-local Check function.
+            if ($stepName -eq 'WaitSetup' -and $milliseconds -ne 60000) { throw 'Setup watchdog changed.' }
             if ($stepName -eq $failure) { throw [OperationCanceledException]::new('synthetic cancellation/death/timeout') }
             if ($stepName -eq 'Read') { return 0 }
         }.GetNewClosure()
