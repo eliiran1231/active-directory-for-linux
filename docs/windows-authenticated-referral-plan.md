@@ -95,3 +95,112 @@ tokens and one temporary public LocalMachine Root certificate with the above
 cleanup. No profile loading, trust-changing rerun, policy changes, live AD, user
 computer, merge or release is included. Implementation and independent review of
 the account/token helper must precede execution even after approval.
+
+## Integrated preparation (2026-10-24; not executed)
+
+The manual entry point is `tests/windows-referral-diagnostic/Authenticated-Fixture.ps1`.
+Its default mode is **Preflight**, which performs no Windows operations. No workflow
+was added and nothing was pushed or dispatched for this preparation. The explicit
+Supervisor/Coordinator/Cleanup modes must not be invoked before fresh approval.
+
+The supervisor checks both prebuilt runtime workers with `--self-test`, verifies
+restrictive inherited directory permissions without changing ACLs, and assigns a
+barrier-blocked coordinator to a named, non-inheritable kill-on-close job. A durable
+owner record precedes release. The coordinator verifies actual job membership before
+mutating anything. The setup deadline is 60 seconds from release, covering account
+creation, two logons, certificate export/file writing/import and exact readback.
+Stage logs contain fixed labels only.
+
+Exactly two standard local accounts receive only standard Users membership. Created
+SIDs are saved before the next mutation. Account passwords remain SecureStrings in
+the coordinator; byte buffers are cleared and credentials disposed after logon.
+`Authenticated-Token.cs` performs one interactive logon per account, checks expected
+SID and absence of the Administrators SID, and keeps those two original tokens until
+both runtime workers finish. No profiles or logon-right policies are changed.
+
+Each runtime worker starts behind a bounded private stdin pipe. The coordinator
+copies the two existing token handles into that exact process with only QUERY,
+IMPERSONATE and DUPLICATE access, non-inheritable. Decimal-string handle values and
+expected SIDs travel through the pipe; passwords never cross process boundaries.
+Partial handoff kills the contained worker; the OS closes any unadopted handles.
+Worker-owned copies are disposed after synchronous impersonation scopes. Restoration
+failure hard-terminates the child without FailFast/crash-report invocation. Runtime
+minidump/diagnostic collection is disabled per process; no global policy is changed.
+
+Each runtime has a nested containment job. All its descendants must be verified gone
+before the next runtime starts. Any infrastructure failure aborts to supervisor
+job-wide termination. Cleanup cannot run until process shutdown is confirmed. Finally
+and the independent Cleanup mode both remove exact owned accounts/certificate/PFX
+and verify absence, attempting independently owned objects even when another object
+or the account manifest fails validation. A missing or invalid SID never permits
+name-only account deletion. If creation completed but SID persistence was interrupted,
+report unresolved ownership; VM destruction remains the final isolation boundary.
+
+`WindowsAuthenticatedDiagnostic` supplies actual native callbacks: normal TLS,
+explicit Basic bind and search under original/A/B identity, then each identity's
+referral and retained-primary stages independently. A-to-B and B-to-A stages require
+both authenticated baselines. The existing anonymous-scope direct test is a separate
+negative control. Managed chain results are recorded but never gate native attempts.
+No certificate callback, auth fallback, custom trust or production eligibility override
+is introduced. All reads are sequential; this does not test concurrent referral-pool
+operations. Primary bind/search and target connection/TLS/bind/search/closed counters
+are reported separately. Production Windows referral pooling remains disabled.
+
+Output is capped and parsed against an exact schema; raw stdout/stderr and exception
+messages are never forwarded. Only sanitized runtime result JSON may be uploaded.
+Do not upload the fixture directory, owner/handle records, PFX, raw output, dumps,
+compiled binaries or arbitrary logs. The independent Cleanup step must run with the
+same run ID even if Supervisor fails. There is no automatic rerun.
+
+### Safe preflight performed
+
+- PowerShell pure tests exercise the actual lifecycle functions with fake Start,
+  Assign, partial handle copies, broken release, timeout/cancellation, malformed
+  result, stop and cleanup failures. They also cover manifest durability, SID-save
+  failures, preexisting names, lookup errors, invalid manifests, failed absence
+  verification, private-ACL classification and output field/gate validation.
+- All PowerShell files parse. Token/process interop compiles without invocation.
+- Both .NET 8 and 10 standalone workers compile. Their `--self-test` entry points
+  exercise native-stage scheduling with injected observations, bounded framing and
+  x64 interop layout sizes. No Windows security API or loopback fixture is invoked.
+
+### Remaining assumptions requiring the approved Windows execution
+
+Compilation and fake adapters cannot establish hosted Windows behavior. The future
+run may stop before mutation if inherited directory ACLs or nested job assignment are
+unsuitable. It must not repair them. It may stop during setup if standard Users lack
+interactive logon rights, if token copying/querying fails, or if certificate operations
+hang. It must not change policy, add privileges, load profiles or retry trust setup.
+Native TLS under authenticated users without loaded profiles remains the question
+being measured, not a promised result. Actual account/token lifecycle, Schannel results
+and independent Windows cleanup are unexecuted assumptions until that one run.
+
+### Exact proposed one-job execution scope
+
+One disposable GitHub-hosted Windows x64 VM; two distinct temporary standard local
+accounts with Users membership; exactly two interactive logons, plus non-inheritable
+copies of those existing tokens for sequential .NET 8 and 10 workers; the existing
+anonymous negative-control scope; one unique one-hour public certificate temporarily
+in LocalMachine Root, with the private key confined to the loopback fixture/PFX.
+Include the 60-second setup watchdog, contained process shutdown, finally and an
+independent always cleanup/absence check. No administrator membership, profiles,
+ACL edits, policy/registry changes, live AD, user computer, automatic reruns, merge
+or release. All earlier individual trust approvals are consumed.
+
+After fresh approval, a unique run ID must be fixed before Supervisor starts and
+reused by the independent Cleanup step. These command shapes describe the proposed
+manual job; they are not approval or an instruction to execute now:
+
+```powershell
+# Build and pure preflight happen before security-sensitive setup.
+dotnet build tests/windows-referral-diagnostic/worker/AuthenticatedWorker.csproj -c Release
+# Same preselected unique 32-character lowercase hex ID in both steps:
+./tests/windows-referral-diagnostic/Authenticated-Fixture.ps1 -Mode Supervisor -RunId $runId
+# Independent always step, even after Supervisor failure:
+./tests/windows-referral-diagnostic/Authenticated-Fixture.ps1 -Mode Cleanup -RunId $runId
+```
+
+Primary API references: [job object containment](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+[DuplicateHandle](https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-duplicatehandle),
+[RunImpersonated](https://learn.microsoft.com/en-us/dotnet/api/system.security.principal.windowsidentity.runimpersonated),
+and [standard local group membership](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.localaccounts/add-localgroupmember).
