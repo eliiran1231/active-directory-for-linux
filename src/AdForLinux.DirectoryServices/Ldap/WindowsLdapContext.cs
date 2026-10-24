@@ -25,9 +25,14 @@ internal static class WindowsLdapContextQuery
         internal ulong ModifiedId;
     }
 
-    internal static WindowsLdapContext? Capture()
+    internal readonly record struct QueryDiagnostic(string Stage, string Kind, int Code);
+    internal static WindowsLdapContext? Capture() => Capture(out _);
+    internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic)
     {
-        if (OfflineTestGuard.Enabled || !OperatingSystem.IsWindows()) return null;
+        diagnostic = new("guard", "none", 0);
+        if (OfflineTestGuard.Enabled) return Reject(out diagnostic, "offline");
+        if (!OperatingSystem.IsWindows()) return Reject(out diagnostic, "platform");
+        string stage = "open-thread";
         try
         {
             bool thread = true;
@@ -35,50 +40,84 @@ internal static class WindowsLdapContextQuery
             {
                 int error = Marshal.GetLastWin32Error();
                 handle?.Dispose();
-                if (!CanUseProcessToken(error)) return null; // Anonymous/access denied is NOT process identity.
-                thread = false;
+                if (!CanUseProcessToken(error)) return Reject(out diagnostic, stage, "win32", error);
+                thread = false; stage = "open-process";
                 if (!OpenProcessToken(new IntPtr(-1), TokenQuery, out handle))
-                { handle?.Dispose(); return null; }
+                {
+                    error = Marshal.GetLastWin32Error(); handle?.Dispose();
+                    return Reject(out diagnostic, stage, "win32", error);
+                }
             }
             using (handle)
             {
-                if (!GetStatistics(handle, 10, out var before, (uint)Marshal.SizeOf<Statistics>(), out var size) ||
-                    size != Marshal.SizeOf<Statistics>()) return null;
-                if (!GetFlag(handle, 21, out uint restricted, sizeof(uint), out size) || size != sizeof(uint) ||
-                    !GetFlag(handle, 29, out uint container, sizeof(uint), out size) || size != sizeof(uint)) return null;
-                bool? anonymous = IsAnonymous(handle);
-                // Auxiliary queries must not straddle a persistent token modification.
-                if (!GetStatistics(handle, 10, out var after, (uint)Marshal.SizeOf<Statistics>(), out size) ||
-                    size != Marshal.SizeOf<Statistics>() || before.TokenId != after.TokenId ||
-                    before.ModifiedId != after.ModifiedId) return null;
-                return Classify(after, thread, anonymous, restricted, container);
+                stage = "statistics-before";
+                if (!GetStatistics(handle, 10, out var before, (uint)Marshal.SizeOf<Statistics>(), out var size))
+                    return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
+                if (size != Marshal.SizeOf<Statistics>()) return Reject(out diagnostic, "statistics-before-length");
+                stage = "restrictions";
+                if (!GetFlag(handle, 21, out uint restricted, sizeof(uint), out size))
+                    return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
+                if (size != sizeof(uint)) return Reject(out diagnostic, "restrictions-length");
+                stage = "app-container";
+                if (!GetFlag(handle, 29, out uint container, sizeof(uint), out size))
+                    return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
+                if (size != sizeof(uint)) return Reject(out diagnostic, "app-container-length");
+                stage = "token-user";
+                bool? anonymous = IsAnonymous(handle, out diagnostic);
+                if (anonymous is null) return null;
+                stage = "statistics-after";
+                if (!GetStatistics(handle, 10, out var after, (uint)Marshal.SizeOf<Statistics>(), out size))
+                    return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
+                if (size != Marshal.SizeOf<Statistics>()) return Reject(out diagnostic, "statistics-after-length");
+                if (before.TokenId != after.TokenId || before.ModifiedId != after.ModifiedId)
+                    return Reject(out diagnostic, "token-changed");
+                return Classify(after, thread, anonymous, restricted, container, out diagnostic);
             }
         }
-        catch { return null; } // Query failure rejects reuse, not the caller's fresh LDAP operation.
+        catch (Exception error) { return Reject(out diagnostic, stage, "managed", error.HResult); }
     }
 
+    private static WindowsLdapContext? Reject(out QueryDiagnostic diagnostic, string stage, string kind = "rejected", int code = 0)
+    { diagnostic = new(stage, kind, code); return null; }
     internal static bool CanUseProcessToken(int error) => error == NoToken;
 
     internal static WindowsLdapContext? Classify(Statistics value, bool thread, bool? anonymous, uint restricted, uint container)
+        => Classify(value, thread, anonymous, restricted, container, out _);
+    internal static WindowsLdapContext? Classify(Statistics value, bool thread, bool? anonymous, uint restricted, uint container,
+        out QueryDiagnostic diagnostic)
     {
-        if (anonymous != false || restricted != 0 || container != 0 || value.TokenId == 0 ||
-            value.AuthenticationId == 0 || value.ModifiedId == 0) return null;
-        if (thread ? value.TokenType != 2 || value.ImpersonationLevel != 2 : value.TokenType != 1) return null;
+        if (anonymous is null) return Reject(out diagnostic, "sid-unreadable");
+        if (anonymous.Value) return Reject(out diagnostic, "anonymous");
+        if (restricted != 0) return Reject(out diagnostic, "restricted");
+        if (container != 0) return Reject(out diagnostic, "app-container-token");
+        if (value.TokenId == 0) return Reject(out diagnostic, "token-id-unavailable");
+        if (value.AuthenticationId == 0) return Reject(out diagnostic, "authentication-id-unavailable");
+        if (value.ModifiedId == 0) return Reject(out diagnostic, "modified-id-unavailable");
+        if (thread ? value.TokenType != 2 : value.TokenType != 1) return Reject(out diagnostic, "token-type");
+        if (thread && value.ImpersonationLevel != 2) return Reject(out diagnostic, "impersonation-level");
+        diagnostic = new("eligible", "none", 0);
         return new(value.TokenId, value.AuthenticationId, value.ModifiedId, value.TokenType,
             thread ? value.ImpersonationLevel : 0, thread);
     }
 
-    private static bool? IsAnonymous(SafeAccessTokenHandle token)
+    private static bool? IsAnonymous(SafeAccessTokenHandle token, out QueryDiagnostic diagnostic)
     {
-        if (GetBuffer(token, 1, IntPtr.Zero, 0, out uint required) ||
-            Marshal.GetLastWin32Error() != InsufficientBuffer || required < IntPtr.Size + sizeof(uint) || required > 4096)
-            return null;
+        diagnostic = new("token-user-length", "rejected", 0);
+        bool success = GetBuffer(token, 1, IntPtr.Zero, 0, out uint required);
+        int error = Marshal.GetLastWin32Error();
+        if (success || error != InsufficientBuffer)
+        { diagnostic = new("token-user-length", "win32", error); return null; }
+        if (required < IntPtr.Size + sizeof(uint) || required > 4096) return null;
         var buffer = Marshal.AllocHGlobal((int)required);
         try
         {
-            if (!GetBuffer(token, 1, buffer, required, out uint actual) || actual > required || actual < IntPtr.Size + sizeof(uint))
-                return null;
-            return ReadAnonymousSid(buffer, actual);
+            if (!GetBuffer(token, 1, buffer, required, out uint actual))
+            { diagnostic = new("token-user-read", "win32", Marshal.GetLastWin32Error()); return null; }
+            diagnostic = new("token-user-read-length", "rejected", 0);
+            if (actual > required || actual < IntPtr.Size + sizeof(uint)) return null;
+            var value = ReadAnonymousSid(buffer, actual);
+            diagnostic = new(value.HasValue ? "token-user-complete" : "sid-bounds", value.HasValue ? "none" : "rejected", 0);
+            return value;
         }
         finally { Marshal.FreeHGlobal(buffer); }
     }

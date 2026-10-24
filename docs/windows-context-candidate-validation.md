@@ -151,3 +151,66 @@ security setup and filesystem/ownership machinery are unchanged from the
 previously validated harness. No claim is made that static/pure preflight proves
 those native outcomes. The suite is prepared for one proposed bounded run;
 production remains disabled regardless of preparation results.
+
+
+## Executed candidate run: 40128116055
+
+[The single approved run](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40128116055)
+at `238dbbaedd7d10753108d71ad1385f00fb61fcfd` completed on 2026-10-24.
+Both runtimes emitted all 31 cases: five passed, 26 failed. All 11 raw authenticated
+controls passed; anonymous direct TLS remained LDAP 81 before TLS/bind/search.
+
+The 23 zero-attempt failures occur at the initial readable-context assertion.
+The token reader returned null for original, A and B; its then-unreported branch
+cannot be attributed to Windows permissions, a particular native query or an ABI
+check from this run. Partition used three fresh binds, not two pooled binds.
+The five anonymous passes therefore do not establish authenticated warming or
+reuse. Pre-send anonymous cases also failed parity; their warm outcome was a
+fixture/result assertion rather than the fresh control's LDAP 81.
+
+| Case | .NET 8 | .NET 10 | Attempts / source binds / target searches (both) |
+| --- | --- | --- | --- |
+| original/stable | failed | failed | 0 / 0 / 0 |
+| original/failed-bind | failed | failed | 0 / 0 / 0 |
+| original/primary-failure | failed | failed | 0 / 0 / 0 |
+| original/target-failure | failed | failed | 0 / 0 / 0 |
+| original/findone | failed | failed | 0 / 0 / 0 |
+| a/stable | failed | failed | 0 / 0 / 0 |
+| a/failed-bind | failed | failed | 0 / 0 / 0 |
+| a/primary-failure | failed | failed | 0 / 0 / 0 |
+| a/target-failure | failed | failed | 0 / 0 / 0 |
+| a/findone | failed | failed | 0 / 0 / 0 |
+| b/stable | failed | failed | 0 / 0 / 0 |
+| b/failed-bind | failed | failed | 0 / 0 / 0 |
+| b/primary-failure | failed | failed | 0 / 0 / 0 |
+| b/target-failure | failed | failed | 0 / 0 / 0 |
+| b/findone | failed | failed | 0 / 0 / 0 |
+| a-to-b/acquired | failed | failed | 0 / 0 / 0 |
+| a-to-b/send | failed | failed | 0 / 0 / 0 |
+| a-to-b/complete | failed | failed | 0 / 0 / 0 |
+| a-to-b/return | failed | failed | 0 / 0 / 0 |
+| b-to-a/acquired | failed | failed | 0 / 0 / 0 |
+| b-to-a/send | failed | failed | 0 / 0 / 0 |
+| b-to-a/complete | failed | failed | 0 / 0 / 0 |
+| b-to-a/return | failed | failed | 0 / 0 / 0 |
+| anonymous/first | passed | passed | 3 / 1 / 0 |
+| anonymous/repeated | passed | passed | 3 / 1 / 1 |
+| anonymous/primary | passed | passed | 3 / 1 / 0 |
+| partition/a-b-a | failed | failed | 3 / 3 / 3 |
+| anonymous/acquired | failed | failed | 2 / 1 / 0 |
+| anonymous/send | failed | failed | 2 / 1 / 0 |
+| anonymous/complete | passed | passed | 1 / 1 / 1 |
+| anonymous/return | passed | passed | 1 / 1 / 1 |
+
+Every case reported Cleanup=true and PoolDelta=0. Both external cleanup passes
+verified exact certificate `949D4D947C40DA65F31B28640E278358E8F7CBDE`, the owned CNG
+key, PFX and all owned objects absent. Independent final deletion verified all
+owned temporary files and the directory absent. Review independently confirmed
+these results. Trigger removal is remote `9f0605644ea291d024aebd8db96ce96b872be3f2`
+(local `a19f104`). No rerun occurred; production remains disabled.
+
+Next diagnosis is a query-only probe of the existing hosted runner token, emitting
+fixed stages and numeric errors without identifiers. It creates no accounts,
+logons, tokens, certificates or keys, performs no impersonation or LDAP, and makes
+no trust/policy changes. It cannot substitute for a later authenticated native
+candidate run, which would require fresh security-setup approval.

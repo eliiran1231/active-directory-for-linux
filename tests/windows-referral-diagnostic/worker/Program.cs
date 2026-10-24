@@ -13,6 +13,12 @@ internal static class Program
     private static readonly JsonSerializerOptions Json = new() { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
     public static int Main(string[] args)
     {
+        if (args.SequenceEqual(new[] { "--context-query-probe" }))
+        {
+            var result = WindowsContextQueryProbe.Run();
+            Console.Write(JsonSerializer.Serialize(result));
+            return result.Eligible && result.Stable ? 0 : 1;
+        }
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
         if (args.SequenceEqual(new[] { "--pool-report-self-test" })) { PoolReportSelfTest(); return 0; }
         if (args.SequenceEqual(new[] { "--context-report-self-test" }))

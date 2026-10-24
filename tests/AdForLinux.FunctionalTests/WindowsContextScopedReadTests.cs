@@ -193,6 +193,28 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
+    public void Query_diagnostics_preserve_classification_and_never_include_identifiers()
+    {
+        var stats = new WindowsLdapContextQuery.Statistics { TokenId = 123456789, AuthenticationId = 987654321,
+            ModifiedId = 99887766, TokenType = 2, ImpersonationLevel = 2 };
+        Assert.NotNull(WindowsLdapContextQuery.Classify(stats, true, false, 0, 0, out var good));
+        Assert.Equal("eligible", good.Stage);
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 1, 0, out var restricted));
+        Assert.Equal("restricted", restricted.Stage);
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, true, 0, 0, out var anonymous));
+        Assert.Equal("anonymous", anonymous.Stage);
+        var encoded = System.Text.Json.JsonSerializer.Serialize(new[] { good, restricted, anonymous });
+        Assert.DoesNotContain("123456789", encoded); Assert.DoesNotContain("987654321", encoded);
+        Assert.DoesNotContain("99887766", encoded);
+        if (OfflineTestGuard.Enabled || !OperatingSystem.IsWindows())
+        {
+            Assert.Null(WindowsLdapContextQuery.Capture(out var guarded));
+            Assert.Contains(guarded.Stage, new[] { "offline", "platform" });
+            Assert.Throws<InvalidOperationException>(() => WindowsContextQueryProbe.Run());
+        }
+    }
+
+    [Fact]
     public void Stable_context_reuses_and_context_changes_partition_actual_pool()
     {
         using var h = new Harness();
