@@ -1,8 +1,8 @@
 # Authenticated Windows referral investigation and diagnostic results
 
 The latest approved real-provider diagnostic completed on 2026-10-24 in run
-[40115032176](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40115032176):
-31/34 pool cases passed on .NET 8 and 29/34 on .NET 10. Both runtimes passed all 11
+[40116076575](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40116076575):
+32/34 pool cases passed on each runtime. Both runtimes passed all 11
 authenticated raw controls; anonymous TLS still failed. External security-object and
 temporary-file cleanup passed independently. Pool fixture cleanup failures are distinct
 and remain under investigation. Windows Basic with referrals remains ineligible for
@@ -769,3 +769,144 @@ Local validation of this preparation: both runtime builds passed (zero errors),
 scopes passed, and both runtime pure worker and synthetic report contract checks
 passed. These checks perform no native account, token, trust or key setup and
 cannot validate the remaining WinLDAP behavior.
+
+
+## Synchronized diagnostic executed once: remaining concurrent search failure
+
+The freshly approved run
+[40116076575](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40116076575)
+executed candidate 2f7d3ef plus its dedicated workflow at remote source
+ce45cb7bc65cb56163ab067351a9df9cfdf8e52c (local equivalent f1b547c;
+tree bd9563be6327c7322902fad4f001466df73dfcaa). No duplicate or pending run
+was present before publication. The trigger was removed at remote
+c1c6681d16bc33ed4322bd50cc3f4943d7b8921c (local equivalent f41513f).
+No automatic rerun occurred. This approval is consumed.
+
+Both runtime builds, pure invocation-scope/report checks and all eleven complete
+fake-adapter setup/containment scenarios passed on hosted Windows before real
+setup. Both runtime workers completed and emitted all 34 pool cases.
+
+| Runtime | Pool result | Failed cases |
+| --- | --- | --- |
+| .NET 8 | 32/34 | A-concurrent, B-concurrent |
+| .NET 10 | 32/34 | original-concurrent, B-concurrent |
+
+All other cases passed. In particular, all six mixed-referral cases now passed
+with three deliberately rejected TLS prefixes, zero BER, binds or searches,
+matching raw/pooled response 10, and clean fixture disposal. This verifies the
+narrow negative-control correction on this run; it does not establish general
+mixed-referral transport safety.
+
+Each of the four concurrent failures recorded:
+- WorkersReady=2, OperationStarts=2, ManagedAttempts=2;
+- OverlapArrivals=3, OverlapTimeouts=1, TargetSearches=3;
+- TargetConnections=3, TargetTls=3, TargetBinds=2, Closed=3;
+- Anonymous=0, Sasl=0, SourceAbandons=0, TargetAbandons=0;
+- FailurePoint=concurrent-counts; target-only cleanup mask=16,
+  TargetCleanupCode=-2146233083 (TimeoutException), PoolDelta=0.
+
+The endpoint increments its search counter once per decoded application-tag-3
+LDAP request and invokes the overlap callback once at that same point. Thus the
+three arrivals are three parsed requests, not a counter increment at both send
+and completion. The provider operation delegate ran exactly twice; no third
+managed callback was observed. This distinguishes the wire-observed extra search
+from managed replay, but does not identify which request was retried or why.
+Two worker starts do not establish when each native request entered WinLDAP or
+reached the target. A native reconnect/retry following the fixture's overlap
+timeout is plausible, not proved. Dedicated client workers did not eliminate the
+failure, and neither thread scheduling nor native serialization can be ruled in
+from aggregate counters. The passing concurrent cases had exactly two starts,
+callbacks, overlap arrivals and target searches, with no overlap timeout.
+
+All 11 authenticated raw stages passed on both runtimes. Anonymous direct TLS
+still failed with LDAP 81 before TLS/bind/search; both Supported and Adverse
+verdicts correctly remained failed.
+
+Finally and independent cleanup each verified the exact public certificate
+5E799F26C7117A59672892400A795D75E29667FE absent, owned provider key absent,
+PFX absent and all owned objects/accounts absent. The final independent step
+verified temporary files and directory absent. This is distinct from the target
+endpoint timeout failures. Independent read-only review confirms the results.
+
+The next useful preparation is a sanitized, bounded event timeline correlating
+synthetic operation IDs with managed entry/exit, source referral requests, target
+connection/bind/search, overlap timeout and close. A raw unpooled concurrent
+baseline using the same endpoint and scheduling would distinguish pool-specific
+behavior from native/fixture behavior. Preserve the strict two-operation/search
+gate and compare timing evidence before proposing a fix or extending timeouts.
+These additions are only a next-step proposal, not executed in this run. Any
+further account/key/trust setup requires a new approval. Production eligibility
+remains guarded, and no merge, release or Kerberos implementation occurred.
+
+
+## Correlated timelines and independent unpooled controls prepared locally
+
+The remaining concurrency failure now has a prepared comparison, without any
+additional native or security setup. The fixture's source confirms the original
+three-second overlap timeout escapes the search handler, reaches its finally
+block and closes that target connection. This provides a concrete possible
+trigger for native reconnect/retry. It does not prove that WinLDAP retried, which
+operation it retried, or whether the pool contributed.
+
+The prepared suite has 37 cases per runtime: the existing 34 plus an
+unpooled-concurrent case for original/A/B. Each unpooled case uses two explicit
+connections from the same production connection factory, options, External
+referral policy, synthetic LDAP identity, target/source endpoints, dedicated
+workers and three-second overlap barrier. It calls no provider acquisition,
+session execution, key or generation path. Both raw connections become owned
+before configure/bind so partial setup failures still dispose every created
+connection. Pooled and unpooled cases are independently gated on that identity's
+actual native direct/referral controls; failure in one comparison does not skip
+the other. The six comparisons retain exact two-worker, two-managed-operation,
+two-overlap-arrival and two-target-search requirements and actual SID checks.
+
+Only these six cases record timelines. Each operation uses a fixed synthetic
+base DN (CN=operation-1 or CN=operation-2), carried through the fixture-generated
+referral's base DN. The endpoint rejects unknown correlation DNs rather than
+logging them. It records fixed event labels and numeric IDs only; no credentials,
+raw LDAP bytes, host/user names, certificate material or exception text enters
+the timeline.
+
+Timeline encoding is:
+sequence:elapsedMicroseconds:role:connectionId:messageId:operationId:event
+with semicolon-separated events. Sequence and monotonic elapsed time are captured
+under one lock shared by client/source/target within the case. Connection IDs
+are endpoint-local; operation IDs 1/2 join source and target requests even when
+native LDAP message IDs change. Zero denotes no operation/message association.
+The events include accept, TLS completion, bind receipt, search receipt,
+referral-send, response-send, overlap arrival/release/timeout, fault/close, and
+native-enter/native-exit/native-error. Send events mark write attempts, not
+completed writes. Native-enter marks the managed SendRequest call boundary,
+not proof that WinLDAP internally began processing then.
+
+Each timeline is capped at 64 events; truncation is counted and cannot pass.
+The existing 65,536-byte whole-report cap is unchanged. Both local report-contract
+checks passed with all six 64-event timelines at maximum schema numeric widths
+and long labels: 52,437 bytes including the synthetic wrapper. Strict schema
+validation rejects unknown fields/labels, non-monotonic order, invalid IDs,
+missing or duplicate operation correlations, timeout/fault events in passing
+cases and dropped events. Successful comparisons require exactly one source
+search and one target search for each operation, not merely an aggregate of two.
+After endpoint teardown joins server tasks, the result is checked again so late
+duplicates become explicit case failures. Original operation failures and
+separate cleanup errors remain preserved.
+
+Local validation: both runtime builds, 57 focused pool/preparation tests per
+runtime, both PowerShell invocation scopes, both pure worker self-tests and both
+maximum-capacity synthetic report contracts passed. New pure regressions cover
+timeline bounds/allowlists, exact operation IDs, retained timeout evidence after
+later arrivals, simultaneous barrier release and independent unpooled scheduling.
+Independent static review found no remaining blocker. No security operation,
+native Windows run, permission change or trigger publication occurred.
+
+The smallest useful next native comparison is pooled versus unpooled concurrency
+under original/A/B on both runtimes, after each identity's native control gates.
+The prepared full harness reports those six comparisons within its 37-case suite;
+it does not yet provide a separate six-case-only execution mode. A future single
+approved job could use this existing harness with the unchanged two standard
+accounts, one logon each, one owned non-exportable runner-user key and one public
+LocalMachine Root certificate, watchdogs and exact independent cleanup. Use the
+timeline to determine whether timeout/close precedes a repeated operation ID and
+whether the same pattern occurs without pooling. Do not accept extra searches,
+extend timeouts to manufacture a pass, or enable production eligibility on this
+preparation alone. No further trusted job is authorized.

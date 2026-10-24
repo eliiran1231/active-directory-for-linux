@@ -49,6 +49,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal ConcurrentQueue<string> TransportFailures { get; } = new();
 
     // Tests wait for simultaneous target operations before allowing either response.
+    internal WindowsDiagnosticTimeline? Timeline { get; set; }
+    internal string TimelineRole { get; set; } = "target";
+    internal Func<int, int, int, Task>? BeforeCorrelatedSearchResponse { get; set; }
     internal Func<Task>? BeforeSearchResponse { get; set; }
 
     internal WindowsReferralEndpoint(bool tls, bool allowDiagnosticCertificate = true, bool untrustedOwnedCertificate = false, bool rejectTlsOnPlaintext = false)
@@ -102,20 +105,21 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             while (!stop.IsCancellationRequested)
             {
                 var client = await listener.AcceptTcpClientAsync(stop.Token);
-                Interlocked.Increment(ref connections);
-                lock (clients) clients.Add((client, Serve(client)));
+                int connection = Interlocked.Increment(ref connections);
+                lock (clients) clients.Add((client, Serve(client, connection)));
             }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
     }
 
-    private async Task Serve(TcpClient client)
+    private async Task Serve(TcpClient client, int connection)
     {
         using (client)
         {
             Stream stream = client.GetStream();
             try
             {
+                Timeline?.Add(TimelineRole, connection, 0, 0, "accept");
                 // Observe protocol selection on TLS AND plaintext targets. No bytes
                 // are consumed/logged; this cannot establish trust or identity by itself.
                 var first = new byte[1];
@@ -139,6 +143,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         ClientCertificateRequired = false,
                     }, stop.Token);
                     Interlocked.Increment(ref tlsHandshakes);
+                    Timeline?.Add(TimelineRole, connection, 0, 0, "tls");
                 }
                 var identity = "unbound";
                 while (!stop.IsCancellationRequested)
@@ -154,6 +159,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     if (tag.TagValue == 0)
                     {
                         Interlocked.Increment(ref binds);
+                        Timeline?.Add(TimelineRole, connection, id, 0, "bind");
                         identity = "unbound";
                         _ = operation.ReadInteger();
                         var name = Encoding.UTF8.GetString(operation.ReadOctetString());
@@ -182,12 +188,21 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     else if (tag.TagValue == 3)
                     {
                         Interlocked.Increment(ref searches);
+                        int synthetic = Timeline is null ? 0 : WindowsDiagnosticTimeline.Operation(operation.ReadOctetString());
+                        Timeline?.Add(TimelineRole, connection, id, synthetic, "search");
+                        if (BeforeCorrelatedSearchResponse is not null) await BeforeCorrelatedSearchResponse(connection, id, synthetic);
                         if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
                         if (ReferralUrl is not null)
-                            await stream.WriteAsync(Result(id, 5, ResultCode.Referral, ReferralUrl), stop.Token);
+                        {
+                            var referral = Timeline is null ? ReferralUrl :
+                                ReferralUrl.Replace("/CN=target?", "/" + WindowsDiagnosticTimeline.BaseDn(synthetic) + "?", StringComparison.Ordinal);
+                            Timeline?.Add(TimelineRole, connection, id, synthetic, "referral-send");
+                            await stream.WriteAsync(Result(id, 5, ResultCode.Referral, referral), stop.Token);
+                        }
                         else
                         {
+                            Timeline?.Add(TimelineRole, connection, id, synthetic, "response-send");
                             await stream.WriteAsync(Entry(id, identity), stop.Token);
                             await stream.WriteAsync(Result(id, 5, ResultCode.Success), stop.Token);
                         }
@@ -201,8 +216,10 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             catch (IOException error) { TransportFailures.Enqueue(DescribeFailure(error)); } // Peer reset or deliberate fixture disconnect.
             catch (SocketException error) { TransportFailures.Enqueue(DescribeFailure(error)); }
             catch (ObjectDisposedException) { } // Deliberate fixture disconnect.
+            catch { Timeline?.Add(TimelineRole, connection, 0, 0, "fault"); throw; }
             finally
             {
+                Timeline?.Add(TimelineRole, connection, 0, 0, "close");
                 stream.Dispose();
                 Interlocked.Increment(ref closed);
             }

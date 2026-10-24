@@ -36,7 +36,7 @@ public sealed class WindowsReferralPoolPreparationTests
             var calls = new List<string>();
             var pool = WindowsReferralPoolDiagnostic.Schedule(native, (identity, scenario) =>
             { calls.Add(identity + "-" + scenario); return new("passed"); });
-            Assert.Equal(34, pool.Count);
+            Assert.Equal(37, pool.Count);
             if (failure == "a-direct") { Assert.DoesNotContain(calls, n => n.StartsWith("a-") || n.Contains("to-a") || n.Contains("a-to")); Assert.Equal("passed", pool["b-isolation"].Status); }
             if (failure == "b-referral") Assert.Equal("skipped", pool["first-a-to-b"].Status);
             if (failure == "original-direct") Assert.Equal("passed", pool["a-to-b"].Status);
@@ -149,6 +149,63 @@ public sealed class WindowsReferralPoolPreparationTests
         }));
         Assert.Contains(error.InnerExceptions, e => e is SyntheticFailure);
         Assert.Equal(1, completed); Assert.Equal(2, runner.Starts);
+    }
+    [Fact]
+    public void Timeline_is_bounded_fixed_vocabulary_and_exact_synthetic_ids_only()
+    {
+        var trace = new WindowsDiagnosticTimeline();
+        Assert.Throws<ArgumentException>(() => trace.Add("private-user", 0, 0, 0, "accept"));
+        Assert.Throws<ArgumentException>(() => trace.Add("client", 0, 0, 0, "secret-payload"));
+        Assert.Throws<ArgumentException>(() => trace.Add("client", 0, 0, 3, "native-enter"));
+        for (int i = 0; i < WindowsDiagnosticTimeline.Limit + 2; i++) trace.Add("target", 1, 0, 0, "accept");
+        Assert.Equal(WindowsDiagnosticTimeline.Limit, trace.Snapshot().Split(';').Length);
+        Assert.Equal(2, trace.Dropped); Assert.False(trace.ExactOperations());
+        for (int operation = 1; operation <= 2; operation++)
+            Assert.Equal(operation, WindowsDiagnosticTimeline.Operation(System.Text.Encoding.UTF8.GetBytes(WindowsDiagnosticTimeline.BaseDn(operation))));
+        Assert.Throws<InvalidDataException>(() => WindowsDiagnosticTimeline.Operation("CN=unexpected"u8.ToArray()));
+    }
+    [Fact]
+    public void Correlation_rejects_a_duplicate_request_even_if_other_operation_is_missing()
+    {
+        var trace = new WindowsDiagnosticTimeline();
+        foreach (int operation in new[] { 1, 2 })
+            foreach (var pair in new[] { ("client", "native-enter"), ("source", "search"), ("target", "search"),
+                ("target", "arrive"), ("target", "release"), ("target", "response-send"), ("client", "native-exit") })
+                trace.Add(pair.Item1, 1, operation, operation, pair.Item2);
+        Assert.True(trace.ExactOperations());
+        trace.Add("target", 2, 99, 1, "search");
+        Assert.False(trace.ExactOperations());
+    }
+    [Fact]
+    public async Task Overlap_timeout_is_preserved_and_not_erased_by_later_arrivals()
+    {
+        var trace = new WindowsDiagnosticTimeline();
+        var overlap = new WindowsDiagnosticOverlap(trace, TimeSpan.FromMilliseconds(20));
+        await Assert.ThrowsAsync<TimeoutException>(() => overlap.Arrive(1, 1, 1));
+        await overlap.Arrive(2, 2, 2);
+        await overlap.Arrive(3, 3, 1);
+        Assert.Equal(3, overlap.Arrivals); Assert.Equal(1, overlap.Timeouts);
+        var rows = trace.Snapshot().Split(';');
+        Assert.Contains(rows, e => e.EndsWith(":1:timeout"));
+        Assert.False(trace.ExactOperations());
+    }
+    [Fact]
+    public async Task Overlapping_requests_release_without_timeout()
+    {
+        var overlap = new WindowsDiagnosticOverlap(new WindowsDiagnosticTimeline(), TimeSpan.FromSeconds(3));
+        await Task.WhenAll(overlap.Arrive(1, 1, 1), overlap.Arrive(2, 2, 2));
+        Assert.Equal(2, overlap.Arrivals); Assert.Equal(0, overlap.Timeouts);
+    }
+    [Fact]
+    public void Unpooled_control_runs_even_when_pool_concurrency_fails()
+    {
+        var native = WindowsAuthenticatedDiagnostic.Schedule((_, _) => new("passed", 0, 0, 0, 0, 0, 0));
+        var result = WindowsReferralPoolDiagnostic.Schedule(native, (_, scenario) => new(scenario == "concurrent" ? "failed" : "passed"));
+        foreach (string identity in new[] { "original", "a", "b" })
+        {
+            Assert.Equal("failed", result[identity + "-concurrent"].Status);
+            Assert.Equal("passed", result[identity + "-unpooled-concurrent"].Status);
+        }
     }
     private sealed class SyntheticFailure : Exception
     { internal SyntheticFailure(int code) { HResult = code; } }

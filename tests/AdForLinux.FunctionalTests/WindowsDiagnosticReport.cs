@@ -10,7 +10,7 @@ public sealed record WindowsDiagnosticReport(
     public static WindowsDiagnosticReport Create(Dictionary<string, WindowsAuthenticatedDiagnostic.Observation> native,
         Dictionary<string, WindowsReferralPoolDiagnostic.Observation> pool) => new(native, pool,
         native.Where(x => x.Key != "anonymous-direct").All(x => x.Value.Status == "passed") &&
-        pool.Count == 34 && pool.Values.All(x => x.Status == "passed") ? "passed" : "failed",
+        pool.Count == 3 * WindowsReferralPoolDiagnostic.Cases.Length + WindowsReferralPoolDiagnostic.Transitions.Length && pool.Values.All(x => x.Status == "passed") ? "passed" : "failed",
         native["anonymous-direct"].Status == "passed" ? "passed" : "failed");
     public bool AllPassed => Supported == "passed" && Adverse == "passed";
 }

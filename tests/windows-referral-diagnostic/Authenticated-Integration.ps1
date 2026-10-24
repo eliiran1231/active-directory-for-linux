@@ -157,7 +157,7 @@ function ConvertTo-DiagnosticResult([string]$Json) {
 }
 
 function Get-DiagnosticPoolCases {
-    return @('isolation', 'concurrent', 'capacity', 'generation', 'failed-bind', 'primary-disconnect',
+    return @('isolation', 'concurrent', 'unpooled-concurrent', 'capacity', 'generation', 'failed-bind', 'primary-disconnect',
         'target-disconnect', 'target-bind-rejection', 'untrusted-target', 'mixed-referral')
 }
 function ConvertTo-DiagnosticCombinedResult([string]$Json) {
@@ -173,7 +173,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
     if (($value.Pool.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Unexpected pool cases.' }
     foreach ($name in $names) {
         $row = $value.Pool[$name]
-        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OperationStarts,OtherCleanupCode,OverlapArrivals,OverlapTimeouts,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetRejectedTlsProbes,TargetSearches,TargetTls,TargetTlsPrefixes,WorkersReady') { throw 'Unexpected pool observation fields.' }
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OperationStarts,OtherCleanupCode,OverlapArrivals,OverlapTimeouts,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetRejectedTlsProbes,TargetSearches,TargetTls,TargetTlsPrefixes,Timeline,TimelineDropped,WorkersReady') { throw 'Unexpected pool observation fields.' }
         if ($row.FailurePoint -notin @('none', 'setup', 'other', 'assertion', 'ambient-identity', 'concurrent-counts', 'search-shape', 'ldap-identity', 'native-response', 'native-operation', 'cleanup')) { throw 'Invalid fixed failure point.' }
         if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool]) { throw 'Invalid pool status.' }
         foreach ($field in @('FailureKind', 'ObservedFailureKind')) {
@@ -183,7 +183,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid pool failure code.' }
         }
         foreach ($field in @('Checks', 'PrimaryBinds', 'TargetConnections', 'TargetTls', 'TargetBinds', 'TargetSearches',
-            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes', 'TargetRejectedTlsProbes', 'WorkersReady', 'OperationStarts', 'OverlapArrivals', 'OverlapTimeouts')) {
+            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes', 'TargetRejectedTlsProbes', 'WorkersReady', 'OperationStarts', 'OverlapArrivals', 'OverlapTimeouts', 'TimelineDropped')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid pool counter.' }
         }
         if (($row.CleanupMask -isnot [int] -and $row.CleanupMask -isnot [long]) -or $row.CleanupMask -lt 0 -or $row.CleanupMask -gt 63 -or
@@ -193,6 +193,22 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
         }
         if (($row.PoolDelta -ne 0) -ne (($row.CleanupMask -band 32) -ne 0) -or
             ($row.Cleanup -and $row.CleanupMask -ne 0)) { throw 'Cleanup verdict inconsistent.' }
+        if ($row.Timeline -isnot [string] -or $row.Timeline.Length -gt 8192) { throw 'Invalid timeline size.' }
+        $events = @()
+        if ($row.Timeline.Length -ne 0) {
+            $lines = $row.Timeline.Split(';')
+            if ($lines.Count -gt 64) { throw 'Too many timeline events.' }
+            $sequence = 0; [long]$previousTime = 0
+            foreach ($line in $lines) {
+                if ($line -cnotmatch '^[0-9]{1,2}:[0-9]{1,12}:(client|source|target):[0-9]{1,10}:[0-9]{1,10}:[0-2]:(accept|tls|bind|search|referral-send|response-send|arrive|release|timeout|close|fault|native-enter|native-exit|native-error)$') { throw 'Invalid fixed timeline event.' }
+                $fields = $line.Split(':'); $sequence++
+                if ([int]$fields[0] -ne $sequence -or [long]$fields[1] -lt $previousTime -or
+                    [long]$fields[3] -gt [int]::MaxValue -or [long]$fields[4] -gt [int]::MaxValue) { throw 'Invalid event ordering or ID.' }
+                $previousTime = [long]$fields[1]
+                $events += ,$fields
+            }
+        }
+        if ($name -notlike '*-concurrent' -and ($events.Count -ne 0 -or $row.TimelineDropped -ne 0)) { throw 'Unexpected timeline scope.' }
         $identities = if ($name -match '^(first-)?[ab]-to-[ab]$') { @('a', 'b') } else { @($name.Split('-')[0]) }
         $ready = $true
         foreach ($identity in $identities) {
@@ -208,6 +224,15 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
             } elseif ($name -like '*-target-bind-rejection') {
                 if ($row.TargetTls -lt 1 -or $row.TargetBinds -lt 1 -or $row.TargetSearches -ne 0 -or $row.ObservedFailureKind -eq 'none') { throw 'Rejected target evidence incomplete.' }
             } elseif ($name -notlike '*-mixed-referral' -and ($row.TargetTls -lt 1 -or $row.TargetSearches -lt 1)) { throw 'Native pool search evidence absent.' }
+            if ($name -like '*-concurrent') {
+                if ($row.TimelineDropped -ne 0 -or @($events | Where-Object { $_[6] -in @('timeout', 'fault', 'native-error') }).Count -ne 0) { throw 'Incomplete or failed timeline.' }
+                foreach ($operation in @('1', '2')) {
+                    foreach ($pair in @(@('client', 'native-enter'), @('client', 'native-exit'), @('source', 'search'),
+                        @('target', 'search'), @('target', 'arrive'), @('target', 'release'), @('target', 'response-send'))) {
+                        if (@($events | Where-Object { $_[2] -ceq $pair[0] -and $_[5] -ceq $operation -and $_[6] -ceq $pair[1] }).Count -ne 1) { throw 'Missing or duplicate correlated operation.' }
+                    }
+                }
+            }
             if ($name -like '*-concurrent' -and ($row.WorkersReady -ne 2 -or $row.OperationStarts -ne 2 -or
                 $row.OverlapArrivals -ne 2 -or $row.OverlapTimeouts -ne 0 -or $row.TargetSearches -ne 2 -or $row.ManagedAttempts -ne 2)) { throw 'Concurrent operation evidence incomplete.' }
             if ($name -like '*-mixed-referral' -and $row.TargetRejectedTlsProbes -ne $row.TargetTlsPrefixes) { throw 'Protocol rejection evidence inconsistent.' }
