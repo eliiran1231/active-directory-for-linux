@@ -298,3 +298,32 @@ chain and reject files, missing paths and reparse attributes. Both invocation sc
 failure log does not identify the exact rejecting ancestor, so it does not rule out additional Windows path issues.
 The consumed full trigger is replaced only by pure/read-only checks that call the exact guards on the existing
 private parent without creating a fixture child or any security objects.
+
+Hosted pure/read-only follow-up [40094550396](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40094550396)
+at `71401d373b0d250a1675d53bc569aa561a735727` passed both invocation scopes and the exact corrected
+ancestor/private-ACL checks against the existing LOCALAPPDATA/Temp parent. It created no child or security
+objects. The full workflow is absent at this head. Child creation/inheritance and authenticated native execution
+remain unverified; no additional full execution approval is available.
+
+### Complete non-security setup validation
+
+The prepared E2ESupervisor/E2ECoordinator/E2ECleanup modes exercise this same fixture orchestrator with
+explicit TestOnly manifests and envelopes. They never load the real account adapter or PowerShell token
+bridge. Fake account/trust state is durable JSON and dummy marker files; no account, logon, token, trust-store,
+LDAP or TLS operation runs. A harmless unnamed signaled event stands in for each identity handle: the real
+DuplicateHandle/pipe/worker/CloseHandle path is exercised without acquiring tokens. Synthetic observations
+have a TestOnly wrapper and separate filenames and must never be presented as authentication evidence.
+
+Filesystem creation, inherited ACL and ancestor checks, atomic ownership writes, parent/child ACL stability,
+nested process jobs, bounded frames/output, watchdog shutdown and independent cleanup remain real.
+Eleven scenarios cover success, coordinator early exit, partial fake account creation, the actual 60-second
+setup watchdog, runtime timeout with a live acknowledged descendant, partial handoff, malformed output,
+output overflow, early worker exit, truncated input, and simultaneous fake account/certificate cleanup faults.
+Each failure must prove its injection point and terminal stage; generic failure cannot count as a pass.
+Cleanup confirms all fake objects absent, checks inherited ACLs on remaining dummy files, and removes only
+allowlisted files plus the owned empty child. Batch ownership includes the GitHub run ID; cross-mode cleanup
+and worker input are rejected. The full authenticated trigger remains absent.
+
+Hosted results are required before calling this complete. The E2E suite cannot establish real local account/
+group privileges, interactive-logon rights, token-specific copying/adoption/impersonation, certificate-store
+operations, or native TLS/referral behavior. Those operations remain outside the ordinary test authorization.

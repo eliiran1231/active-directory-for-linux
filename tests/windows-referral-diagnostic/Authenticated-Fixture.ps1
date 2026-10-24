@@ -1,17 +1,24 @@
 param(
-    [ValidateSet('Preflight', 'Supervisor', 'Coordinator', 'Cleanup')][string]$Mode = 'Preflight',
-    [string]$RunId
+    [ValidateSet('Preflight', 'Supervisor', 'Coordinator', 'Cleanup', 'E2ESupervisor', 'E2ECoordinator', 'E2ECleanup')][string]$Mode = 'Preflight',
+    [string]$RunId,
+    [ValidateSet('Success', 'SetupEarlyExit', 'SecondCreateFailure', 'SetupTimeout', 'RuntimeTimeout', 'PartialHandoff', 'MalformedOutput', 'OutputOverflow', 'EarlyExit', 'TruncatedFrame', 'CleanupFailures')][string]$E2ECase = 'Success'
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Authenticated-Fixture-Core.ps1')
-. (Join-Path $PSScriptRoot 'Authenticated-Windows-Adapters.ps1')
+$testOnly = $Mode.StartsWith('E2E', [StringComparison]::OrdinalIgnoreCase)
+if (!$testOnly -and $E2ECase -ne 'Success') { throw 'Fault injection requires explicit E2E mode.' }
+if ($testOnly) { . (Join-Path $PSScriptRoot 'Authenticated-E2E-Adapters.ps1') }
+else { . (Join-Path $PSScriptRoot 'Authenticated-Windows-Adapters.ps1') }
 . (Join-Path $PSScriptRoot 'Authenticated-Integration.ps1')
 if ($Mode -eq 'Preflight') { Write-Host 'No execution. Run Test-AuthenticatedFixture.ps1 for pure preflight.'; return }
 if (!$IsWindows -or ![Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne 'true' -or
     $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $RunId -cnotmatch '^[0-9a-f]{32}$') {
     throw 'Disposable hosted Windows x64 and unique run ID required.'
 }
-Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Token.cs')
+if (!$testOnly) { Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Token.cs') }
+elseif (('AdflAuthenticatedToken' -as [type]) -or (Get-Command New-AuthenticatedWindowsAccountOperations -ErrorAction SilentlyContinue)) {
+    throw 'Real identity adapter must not be loaded in E2E mode.'
+}
 Add-Type -Path (Join-Path $PSScriptRoot 'Authenticated-Process.cs')
 $root = Get-DiagnosticRoot $env:LOCALAPPDATA $RunId
 $ownerPath = Join-Path $root 'owner.json'
@@ -31,10 +38,11 @@ function Read-Owner {
     Assert-DiagnosticNoReparsePath $root
     $record = Get-Content -Raw -LiteralPath $ownerPath | ConvertFrom-Json -AsHashtable
     if ($record.Version -ne 1 -or $record.RunId -cne $RunId -or
-        $record.JobName -cne "Local\adfl-auth-$RunId" -or $record.JobOwned -isnot [bool]) { throw 'Invalid job ownership.' }
+        $record.JobName -cne "Local\adfl-auth-$RunId" -or $record.JobOwned -isnot [bool] -or $record.TestOnly -isnot [bool] -or $record.TestOnly -ne $testOnly) { throw 'Invalid job ownership.' }
     return $record
 }
 function Remove-OwnedCertificate {
+    if ($testOnly) { Remove-E2ECertificate; return }
     if (!(Test-Path -LiteralPath $certificatePath)) { return }
     $record = Get-Content -Raw -LiteralPath $certificatePath | ConvertFrom-Json -AsHashtable
     if ($record.Version -ne 1 -or $record.RunId -cne $RunId -or $record.Thumbprint -cnotmatch '^[0-9A-F]{40}$' -or
@@ -60,7 +68,7 @@ function Remove-Fixture {
     if ($owner.JobOwned) { [AdflProcessJob]::StopRecorded($owner.JobName) }
     $state = $null
     try { $state = Read-AuthenticatedManifest $accountPath } catch { } # Independently owned cleanup must still run.
-    $operations = New-AuthenticatedWindowsAccountOperations ([Collections.Generic.Dictionary[string, Security.SecureString]]::new())
+    $operations = if ($testOnly) { New-E2EAccountOperations } else { New-AuthenticatedWindowsAccountOperations ([Collections.Generic.Dictionary[string, Security.SecureString]]::new()) }
     $operations.StopWorker = { } # Named job already terminated and verified empty above.
     $operations.Certificate = { Remove-OwnedCertificate }
     $operations.Pfx = {
@@ -74,6 +82,7 @@ function Remove-Fixture {
     Write-Host 'CLEANUP all owned objects verified absent'
 }
 function New-FixtureCertificate {
+    if ($testOnly) { return New-E2ECertificate }
     Stage 'certificate-generate'
     $key = [Security.Cryptography.RSA]::Create(2048)
     $generated = $null; $public = $null
@@ -119,12 +128,12 @@ function New-FixtureCertificate {
     } finally { if ($public) { $public.Dispose() }; if ($generated) { $generated.Dispose() }; $key.Dispose() }
 }
 
-if ($Mode -eq 'Cleanup') {
+if ($Mode -in @('Cleanup', 'E2ECleanup')) {
     try { Remove-Fixture; exit 0 } catch { Write-Host 'Independent cleanup incomplete; no raw exception output.'; exit 2 }
 }
-if ($Mode -eq 'Coordinator') {
+if ($Mode -in @('Coordinator', 'E2ECoordinator')) {
     $credentials = [Collections.Generic.Dictionary[string, Security.SecureString]]::new()
-    $tokens = [Collections.Generic.List[AdflAuthenticatedToken]]::new()
+    $tokens = [Collections.Generic.List[object]]::new()
     try {
         # No mutations before the supervisor assigns the process tree to its job.
         if ([AdflPrivateFrame]::Read([Console]::OpenStandardInput()) -cne $RunId) { throw 'Invalid release barrier.' }
@@ -133,12 +142,17 @@ if ($Mode -eq 'Coordinator') {
         [AdflProcessJob]::VerifyCurrentMembership($owner.JobName)
         $state = Read-AuthenticatedManifest $accountPath
         Stage 'accounts'
-        Initialize-AuthenticatedAccounts $state { Save-AuthenticatedManifest $state $accountPath } (New-AuthenticatedWindowsAccountOperations $credentials)
+        if ($testOnly -and $E2ECase -eq 'SetupEarlyExit') {
+            [IO.File]::WriteAllText((Join-Path $root 'e2e-fault.txt'), $E2ECase); exit 3
+        }
+        $accountOperations = if ($testOnly) { New-E2EAccountOperations } else { New-AuthenticatedWindowsAccountOperations $credentials }
+        Initialize-AuthenticatedAccounts $state { Save-AuthenticatedManifest $state $accountPath } $accountOperations
         Stage 'logons'
         foreach ($account in $state.Accounts) {
-            $tokens.Add([AdflAuthenticatedToken]::new($account.Name, $account.Sid, $credentials[$account.Name]))
+            if ($testOnly) { $tokens.Add((New-E2EToken ($tokens.Count + 1))) }
+            else { $tokens.Add([AdflAuthenticatedToken]::new($account.Name, $account.Sid, $credentials[$account.Name])) }
         }
-        Clear-AuthenticatedCredentials $credentials
+        foreach ($secret in $credentials.Values) { $secret.Dispose() }; $credentials.Clear()
         $thumbprint = New-FixtureCertificate
         Stage 'setup-ready'
         Save-DiagnosticJson @{ RunId = $RunId; Ready = $true } (Join-Path $root 'ready.json')
@@ -151,7 +165,8 @@ if ($Mode -eq 'Coordinator') {
                         param($context)
                         $context.Job = [AdflProcessJob]::new('Local\adfl-auth-' + [Guid]::NewGuid().ToString('N'))
                         $binary = Join-Path $PSScriptRoot "worker/bin/Release/$framework/AuthenticatedWorker.dll"
-                        $context.Process = Start-DiagnosticProcess 'dotnet' @($binary)
+                        $workerArguments = if ($testOnly) { @($binary, '--setup-e2e', $root) } else { @($binary) }
+                        $context.Process = Start-DiagnosticProcess 'dotnet' $workerArguments
                         $context.Capture = [AdflBoundedCapture]::new($context.Process)
                     }
                     Assign = { param($context) $context.Job.Assign($context.Process) }
@@ -160,15 +175,39 @@ if ($Mode -eq 'Coordinator') {
                     Release = {
                         param($context, $first, $second)
                         $envelope = @{ Version = 1; AHandle = $first; BHandle = $second; ASid = $state.Accounts[0].Sid;
-                            BSid = $state.Accounts[1].Sid; Root = $root; Thumbprint = $thumbprint }
+                            BSid = $state.Accounts[1].Sid; Root = $root; Thumbprint = $thumbprint; TestOnly = $testOnly }
+                        if ($testOnly -and $E2ECase -eq 'TruncatedFrame') {
+                            $startup = [Diagnostics.Stopwatch]::StartNew()
+                            while (!(Test-Path -LiteralPath (Join-Path $root "e2e-worker-ready-$framework.txt"))) {
+                                if ($context.Process.HasExited -or $startup.ElapsedMilliseconds -gt 15000) { throw 'E2E worker did not reach frame read.' }
+                                Start-Sleep -Milliseconds 50
+                            }
+                            $context.Process.StandardInput.BaseStream.Write([BitConverter]::GetBytes(100)); $context.Process.StandardInput.Close()
+                            [IO.File]::WriteAllText((Join-Path $root 'e2e-fault.txt'), $E2ECase); return
+                        }
                         [AdflPrivateFrame]::Write($context.Process.StandardInput.BaseStream, ($envelope | ConvertTo-Json -Compress))
                         $context.Process.StandardInput.Close()
                     }
-                    Wait = { param($context, $milliseconds) if (!$context.Process.WaitForExit($milliseconds)) { throw 'Runtime timeout.' } }
+                    Wait = {
+                        param($context, $milliseconds)
+                        if ($testOnly -and $E2ECase -eq 'RuntimeTimeout') {
+                            $startup = [Diagnostics.Stopwatch]::StartNew()
+                            while (!(Test-Path -LiteralPath (Join-Path $root 'e2e-fault.txt'))) {
+                                if ($context.Process.HasExited -or $startup.ElapsedMilliseconds -gt 15000) { throw 'E2E descendant startup failed.' }
+                                Start-Sleep -Milliseconds 50
+                            }
+                            $milliseconds = 1000 # Injected deadline only after the fake worker starts its real descendant.
+                        }
+                        if (!$context.Process.WaitForExit($milliseconds)) { throw 'Runtime timeout.' }
+                    }
                     Read = {
                         param($context)
                         if ($context.Process.ExitCode -notin @(0, 1)) { throw 'Worker failed before valid results.' }
-                        ConvertTo-DiagnosticResult ($context.Capture.Result())
+                        if ($testOnly) {
+                            $synthetic = $context.Capture.Result() | ConvertFrom-Json -AsHashtable
+                            if (($synthetic.Keys | Sort-Object) -join ',' -cne 'Observations,TestOnly' -or $synthetic.TestOnly -isnot [bool] -or !$synthetic.TestOnly) { throw 'E2E output discriminator missing.' }
+                            ConvertTo-DiagnosticResult ($synthetic.Observations | ConvertTo-Json -Depth 8 -Compress)
+                        } else { ConvertTo-DiagnosticResult ($context.Capture.Result()) }
                     }
                     StopAndVerify = {
                         param($context)
@@ -184,7 +223,8 @@ if ($Mode -eq 'Coordinator') {
                         if ($context.Job) { $context.Job.Dispose() }
                     }
                 }
-                Save-DiagnosticJson $result (Join-Path $root "$framework-results.json")
+                $resultName = if ($testOnly) { "$framework-e2e-results.json" } else { "$framework-results.json" }
+                Save-DiagnosticJson $result (Join-Path $root $resultName)
                 if (@($result.Values | Where-Object Status -NE 'passed').Count -ne 0) { $allPassed = $false }
             } catch {
                 Save-DiagnosticJson @{ Worker = 'failed'; RawOutput = 'withheld' } (Join-Path $root "$framework-failure.json")
@@ -199,7 +239,7 @@ if ($Mode -eq 'Coordinator') {
     }
     finally {
         foreach ($token in $tokens) { $token.Dispose() }
-        Clear-AuthenticatedCredentials $credentials
+        foreach ($secret in $credentials.Values) { $secret.Dispose() }; $credentials.Clear()
     }
 }
 
@@ -221,12 +261,22 @@ if (Test-Path -LiteralPath $root) { throw 'Run directory preexists; no setup or 
 $parent = [IO.Path]::GetDirectoryName($root)
 Assert-DiagnosticNoReparsePath $parent
 Assert-DiagnosticDirectoryPrivate $parent
+$parentAclBefore = if ($testOnly) { [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData((Get-Acl -LiteralPath $parent).GetSecurityDescriptorBinaryForm())) } else { $null }
 [IO.Directory]::CreateDirectory($root) | Out-Null
 Assert-DiagnosticNoReparsePath $root
 Assert-DiagnosticDirectoryPrivate $root # Read-only ACL verification. Fail; never broaden or rewrite permissions.
-$owner = @{ Version = 1; RunId = $RunId; JobName = "Local\adfl-auth-$RunId"; JobOwned = $false }
+if ($testOnly) {
+    $aclSnapshot = @{}
+    foreach ($entry in @{ Parent = $parent; Child = $root }.GetEnumerator()) {
+        $aclSnapshot[$entry.Key] = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData((Get-Acl -LiteralPath $entry.Value).GetSecurityDescriptorBinaryForm()))
+    }
+    if ($aclSnapshot.Parent -cne $parentAclBefore) { throw 'Parent ACL changed during child creation.' }
+    Save-DiagnosticJson $aclSnapshot (Join-Path $root 'e2e-acl-snapshot.json')
+}
+$owner = @{ Version = 1; RunId = $RunId; JobName = "Local\adfl-auth-$RunId"; JobOwned = $false; TestOnly = $testOnly }
 Save-DiagnosticJson $owner $ownerPath
 Save-AuthenticatedManifest (New-AuthenticatedManifest) $accountPath
+if ($testOnly) { [IO.File]::WriteAllText((Join-Path $root 'e2e-case.txt'), $E2ECase) }
 $context = @{}; $exitCode = 2
 try {
     $exitCode = Invoke-DiagnosticSupervisor @{
@@ -234,7 +284,8 @@ try {
             param($current)
             $current.Job = [AdflProcessJob]::new($owner.JobName)
             $owner.JobOwned = $true; Save-DiagnosticJson $owner $ownerPath
-            $current.Process = Start-DiagnosticProcess (Join-Path $PSHOME 'pwsh.exe') @('-NoProfile', '-NonInteractive', '-File', $fixtureScriptPath, '-Mode', 'Coordinator', '-RunId', $RunId)
+            $coordinatorMode = if ($testOnly) { 'E2ECoordinator' } else { 'Coordinator' }
+            $current.Process = Start-DiagnosticProcess (Join-Path $PSHOME 'pwsh.exe') @('-NoProfile', '-NonInteractive', '-File', $fixtureScriptPath, '-Mode', $coordinatorMode, '-RunId', $RunId, '-E2ECase', $E2ECase)
             $current.Capture = [AdflBoundedCapture]::new($current.Process)
         }
         Assign = { param($current) $current.Job.Assign($current.Process); $current.Timer = [Diagnostics.Stopwatch]::StartNew() }

@@ -162,3 +162,35 @@ public sealed class AdflBoundedCapture
         return text; // Caller must validate every field before writing any artifact.
     }
 }
+
+// E2E-only non-security stand-in: transfer an unnamed, signaled event, never a token.
+public sealed class AdflE2ETransfer : IDisposable
+{
+    private readonly System.Threading.EventWaitHandle signal;
+    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DuplicateHandle(IntPtr sourceProcess, IntPtr source, IntPtr destinationProcess,
+        out IntPtr destination, uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint options);
+    [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseHandle(IntPtr handle);
+    public AdflE2ETransfer()
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+        signal = new System.Threading.EventWaitHandle(true, System.Threading.EventResetMode.ManualReset);
+    }
+    public long CopyTo(Process process)
+    {
+        if (!DuplicateHandle(GetCurrentProcess(), signal.SafeWaitHandle.DangerousGetHandle(), process.Handle,
+            out IntPtr copy, 0x00100000, false, 0)) throw new Win32Exception(Marshal.GetLastWin32Error()); // SYNCHRONIZE only.
+        return copy.ToInt64();
+    }
+    public static void VerifyAndClose(long first, long second)
+    {
+        IntPtr a = new IntPtr(first), b = new IntPtr(second);
+        bool valid = false, closedA = false, closedB = false;
+        try { valid = first > 0 && second > 0 && first != second && WaitForSingleObject(a, 0) == 0 && WaitForSingleObject(b, 0) == 0; }
+        finally { closedA = CloseHandle(a); closedB = CloseHandle(b); }
+        if (!valid || !closedA || !closedB) throw new InvalidOperationException("Dummy event transfer verification failed.");
+    }
+    public void Dispose() { signal.Dispose(); }
+}

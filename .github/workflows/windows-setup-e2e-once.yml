@@ -1,0 +1,41 @@
+name: Windows setup end-to-end with FAKE identity and trust
+on:
+  push:
+    branches: [diagnostic/windows-authenticated-20261024-once]
+    paths: [.github/workflows/windows-setup-e2e-once.yml]
+permissions:
+  contents: read
+jobs:
+  setup-e2e:
+    if: github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      ADFL_E2E_BATCH: 7eb7dfb2bb7b48e4a0b5953a50af41b8
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      DOTNET_DbgEnableMiniDump: '0'
+      COMPlus_DbgEnableMiniDump: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Pure scope, path and cleanup regressions
+        shell: pwsh
+        run: |
+          ./tests/windows-referral-diagnostic/Test-AuthenticatedInvocationScopes.ps1
+          ./tests/windows-referral-diagnostic/Test-AuthenticatedFakeAdapters.ps1
+      - name: Build both workers
+        run: dotnet build tests/windows-referral-diagnostic/worker/AuthenticatedWorker.csproj --configuration Release
+      - name: Real filesystem, processes and IPC with FAKE security adapters only
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-AuthenticatedEndToEnd.ps1 -BatchId $env:ADFL_E2E_BATCH
+      - name: Independent owned dummy-file cleanup and absence verification
+        if: always()
+        timeout-minutes: 4
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Test-AuthenticatedEndToEnd.ps1 -CleanupOnly -BatchId $env:ADFL_E2E_BATCH

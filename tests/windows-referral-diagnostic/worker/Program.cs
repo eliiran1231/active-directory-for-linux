@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using AdForLinux.FunctionalTests;
 
 internal sealed record Envelope(int Version, string AHandle, string BHandle, string ASid, string BSid,
-    string Root, string Thumbprint);
+    string Root, string Thumbprint, bool TestOnly = false);
 internal static class Program
 {
     private static readonly JsonSerializerOptions Json = new() { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
@@ -14,6 +14,15 @@ internal static class Program
     {
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
         if (args.SequenceEqual(new[] { "--self-test" })) { SelfTest(); return 0; }
+        if (args.Length == 2 && args[0] == "--setup-e2e") return SetupEndToEnd(args[1]);
+        if (args.Length == 2 && args[0] == "--e2e-wait" && E2EHost())
+        {
+            ValidateE2ERoot(args[1]);
+            string ready = Path.Combine(args[1], "e2e-descendant-started.txt");
+            File.WriteAllText(ready + ".new", Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+            File.Move(ready + ".new", ready);
+            Thread.Sleep(Timeout.Infinite); return 2;
+        }
         if (args.Length != 0 || !OperatingSystem.IsWindows() || !Environment.Is64BitProcess ||
             Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" ||
             Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted") return 2;
@@ -23,6 +32,7 @@ internal static class Program
             var request = JsonSerializer.Deserialize<Envelope>(AdflPrivateFrame.Read(Console.OpenStandardInput()), Json)
                 ?? throw new InvalidDataException();
             Validate(request, Environment.GetEnvironmentVariable("LOCALAPPDATA"));
+            ValidateExecutionMode(request.TestOnly, false);
             AdflProcessJob.VerifyCurrentMembership("Local\\" + Path.GetFileName(request.Root));
             using var a = AdflAuthenticatedToken.Adopt(long.Parse(request.AHandle, CultureInfo.InvariantCulture), request.ASid);
             using var b = AdflAuthenticatedToken.Adopt(long.Parse(request.BHandle, CultureInfo.InvariantCulture), request.BSid);
@@ -39,6 +49,76 @@ internal static class Program
         }
         catch { return 2; } // No raw errors or stack traces on either output stream.
     }
+    private static bool E2EHost() => OperatingSystem.IsWindows() && Environment.Is64BitProcess &&
+        Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" &&
+        Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") == "github-hosted";
+    private static void ValidateE2ERoot(string root)
+    {
+        Validate(new Envelope(1, "101", "102", "S-1-5-21-1-2-3-1001", "S-1-5-21-1-2-3-1002", root, new string('A', 40), true),
+            Environment.GetEnvironmentVariable("LOCALAPPDATA"));
+        using var owner = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "owner.json")));
+        if (!owner.RootElement.GetProperty("TestOnly").GetBoolean()) throw new InvalidDataException();
+        AdflProcessJob.VerifyCurrentMembership("Local\\" + Path.GetFileName(root));
+    }
+    private static int SetupEndToEnd(string expectedRoot)
+    {
+        if (!E2EHost()) return 2;
+        try
+        {
+            ValidateE2ERoot(expectedRoot);
+#if NET8_0
+            const string framework = "net8.0";
+#else
+            const string framework = "net10.0";
+#endif
+            File.WriteAllText(Path.Combine(expectedRoot, $"e2e-worker-ready-{framework}.txt"), "ready for frame");
+            var request = JsonSerializer.Deserialize<Envelope>(AdflPrivateFrame.Read(Console.OpenStandardInput()), Json)
+                ?? throw new InvalidDataException();
+            Validate(request, Environment.GetEnvironmentVariable("LOCALAPPDATA"));
+            ValidateExecutionMode(request.TestOnly, true);
+            if (!string.Equals(request.Root, expectedRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException();
+            AdflE2ETransfer.VerifyAndClose(long.Parse(request.AHandle, CultureInfo.InvariantCulture), long.Parse(request.BHandle, CultureInfo.InvariantCulture));
+            File.WriteAllText(Path.Combine(expectedRoot, $"e2e-handles-closed-{framework}.txt"), "two events verified and closed");
+            using var owner = JsonDocument.Parse(File.ReadAllText(Path.Combine(request.Root, "owner.json")));
+            if (!owner.RootElement.GetProperty("TestOnly").GetBoolean()) throw new InvalidDataException();
+            AdflProcessJob.VerifyCurrentMembership("Local\\" + Path.GetFileName(request.Root));
+            string scenario = File.ReadAllText(Path.Combine(request.Root, "e2e-case.txt"));
+            if (scenario == "EarlyExit") { File.WriteAllText(Path.Combine(request.Root, "e2e-fault.txt"), scenario); return 3; }
+            if (scenario == "RuntimeTimeout")
+            {
+                var info = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+                info.ArgumentList.Add(typeof(Program).Assembly.Location);
+                info.ArgumentList.Add("--e2e-wait");
+                info.ArgumentList.Add(request.Root);
+                using var descendant = System.Diagnostics.Process.Start(info) ?? throw new InvalidOperationException();
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                string ready = Path.Combine(request.Root, "e2e-descendant-started.txt");
+                while (!File.Exists(ready))
+                {
+                    if (descendant.HasExited || timer.ElapsedMilliseconds > 10000) throw new InvalidOperationException();
+                    Thread.Sleep(25);
+                }
+                if (int.Parse(File.ReadAllText(ready), CultureInfo.InvariantCulture) != descendant.Id || descendant.HasExited)
+                    throw new InvalidOperationException();
+                File.WriteAllText(Path.Combine(request.Root, "e2e-fault.txt"), scenario);
+                Thread.Sleep(Timeout.Infinite);
+            }
+            if (scenario == "MalformedOutput") { File.WriteAllText(Path.Combine(request.Root, "e2e-fault.txt"), scenario); Console.Write("{malformed"); return 0; }
+            if (scenario == "OutputOverflow") { File.WriteAllText(Path.Combine(request.Root, "e2e-fault.txt"), scenario); Console.Write(new string('x', 70000)); return 0; }
+            if (File.ReadAllText(Path.Combine(request.Root, "loopback.pfx")) != "DUMMY NON-SECRET PAYLOAD; NOT A CERTIFICATE OR KEY")
+                throw new InvalidDataException();
+            // Explicitly synthetic observations: no token adoption, impersonation, TLS or LDAP.
+            var observations = WindowsAuthenticatedDiagnostic.Schedule((identity, stage) =>
+            {
+                bool direct = stage == "direct";
+                int searches = stage is "retained-primary" or "transition" ? 4 : 2;
+                return new("passed", 2, 2, 2, searches, 0, 0, direct ? 0 : 2, direct ? 0 : searches, 2);
+            });
+            Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Observations = observations }));
+            return 0;
+        }
+        catch { return 2; }
+    }
     internal static void Validate(Envelope value, string? appData)
     {
         if (!Path.IsPathFullyQualified(value.Root)) throw new InvalidDataException();
@@ -54,8 +134,19 @@ internal static class Program
             if (!Regex.IsMatch(handle, "^[1-9][0-9]{0,18}$") || !long.TryParse(handle, out long number) || number <= 0)
                 throw new InvalidDataException();
     }
+    internal static void ValidateExecutionMode(bool supplied, bool expected)
+    {
+        if (supplied != expected) throw new InvalidDataException();
+    }
     private static void SelfTest()
     {
+        ValidateExecutionMode(false, false); ValidateExecutionMode(true, true);
+        foreach (bool supplied in new[] { false, true })
+        {
+            bool invalid = false;
+            try { ValidateExecutionMode(supplied, !supplied); } catch (InvalidDataException) { invalid = true; }
+            if (!invalid) throw new Exception("Cross-mode input accepted.");
+        }
         string appData = Path.Combine(Path.GetTempPath(), "synthetic-appdata");
         string leaf = "adfl-auth-" + new string('a', 32);
         var envelope = new Envelope(1, "123", "456", "S-1-5-21-1-2-3-4", "S-1-5-21-1-2-3-5",
