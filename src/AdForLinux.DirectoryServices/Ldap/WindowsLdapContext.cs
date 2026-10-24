@@ -15,6 +15,7 @@ internal readonly record struct WindowsLdapContext(
 internal static class WindowsLdapContextQuery
 {
     private const uint TokenQuery = 8;
+    internal const uint QuerySentinel = 0x5a5a5a5a;
     private const int NoToken = 1008, InsufficientBuffer = 122;
     [StructLayout(LayoutKind.Sequential)]
     internal struct Statistics
@@ -27,7 +28,10 @@ internal static class WindowsLdapContextQuery
 
     internal readonly record struct QueryDiagnostic(string Stage, string Kind, int Code);
     internal static WindowsLdapContext? Capture() => Capture(out _);
-    internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic)
+    internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic) => CaptureCore(false, out diagnostic);
+    internal static WindowsLdapContext? CaptureFixedDwordDiagnostic(out QueryDiagnostic diagnostic)
+        => CaptureCore(true, out diagnostic);
+    private static WindowsLdapContext? CaptureCore(bool fixedDword, out QueryDiagnostic diagnostic)
     {
         diagnostic = new("guard", "none", 0);
         if (OfflineTestGuard.Enabled) return Reject(out diagnostic, "offline");
@@ -55,13 +59,19 @@ internal static class WindowsLdapContextQuery
                     return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
                 if (size != Marshal.SizeOf<Statistics>()) return Reject(out diagnostic, "statistics-before-length");
                 stage = "restrictions";
-                if (!GetFlag(handle, 21, out uint restricted, sizeof(uint), out size))
+                uint restricted = QuerySentinel;
+                size = QuerySentinel;
+                if (!GetFlag(handle, 21, ref restricted, sizeof(uint), ref size))
                     return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
-                if (size != sizeof(uint)) return Reject(out diagnostic, "restrictions-length");
+                if (!AcceptDword(restricted, size, fixedDword))
+                    return Reject(out diagnostic, restricted == QuerySentinel ? "restrictions-unwritten" : "restrictions-length", "length", unchecked((int)size));
                 stage = "app-container";
-                if (!GetFlag(handle, 29, out uint container, sizeof(uint), out size))
+                uint container = QuerySentinel;
+                size = QuerySentinel;
+                if (!GetFlag(handle, 29, ref container, sizeof(uint), ref size))
                     return Reject(out diagnostic, stage, "win32", Marshal.GetLastWin32Error());
-                if (size != sizeof(uint)) return Reject(out diagnostic, "app-container-length");
+                if (!AcceptDword(container, size, fixedDword))
+                    return Reject(out diagnostic, container == QuerySentinel ? "app-container-unwritten" : "app-container-length", "length", unchecked((int)size));
                 stage = "token-user";
                 bool? anonymous = IsAnonymous(handle, out diagnostic);
                 if (anonymous is null) return null;
@@ -79,6 +89,8 @@ internal static class WindowsLdapContextQuery
 
     private static WindowsLdapContext? Reject(out QueryDiagnostic diagnostic, string stage, string kind = "rejected", int code = 0)
     { diagnostic = new(stage, kind, code); return null; }
+    internal static bool AcceptDword(uint value, uint returned, bool fixedDword)
+        => value != QuerySentinel && (fixedDword || returned == sizeof(uint));
     internal static bool CanUseProcessToken(int error) => error == NoToken;
 
     internal static WindowsLdapContext? Classify(Statistics value, bool thread, bool? anonymous, uint restricted, uint container)
@@ -151,7 +163,7 @@ internal static class WindowsLdapContextQuery
     private static extern bool GetStatistics(SafeAccessTokenHandle token, int kind, out Statistics value, uint size, out uint returned);
     [DllImport("advapi32.dll", EntryPoint = "GetTokenInformation", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFlag(SafeAccessTokenHandle token, int kind, out uint value, uint size, out uint returned);
+    private static extern bool GetFlag(SafeAccessTokenHandle token, int kind, ref uint value, uint size, ref uint returned);
     [DllImport("advapi32.dll", EntryPoint = "GetTokenInformation", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetBuffer(SafeAccessTokenHandle token, int kind, IntPtr value, uint size, out uint returned);

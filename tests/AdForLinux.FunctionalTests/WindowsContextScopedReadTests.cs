@@ -193,6 +193,19 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
+    public void Fixed_dword_candidate_never_accepts_an_unwritten_value_or_relaxes_classification()
+    {
+        Assert.False(WindowsLdapContextQuery.AcceptDword(WindowsLdapContextQuery.QuerySentinel, 4, true));
+        Assert.False(WindowsLdapContextQuery.AcceptDword(0, WindowsLdapContextQuery.QuerySentinel, false));
+        Assert.True(WindowsLdapContextQuery.AcceptDword(0, WindowsLdapContextQuery.QuerySentinel, true));
+        Assert.True(WindowsLdapContextQuery.AcceptDword(1, 4, true));
+        var stats = new WindowsLdapContextQuery.Statistics { TokenId = 1, AuthenticationId = 2,
+            ModifiedId = 3, TokenType = 1 };
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, false, false, 1, 0));
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, false, false, 0, 1));
+    }
+
+    [Fact]
     public void Query_diagnostics_preserve_classification_and_never_include_identifiers()
     {
         var stats = new WindowsLdapContextQuery.Statistics { TokenId = 123456789, AuthenticationId = 987654321,

@@ -17,7 +17,7 @@ internal static class Program
         {
             var result = WindowsContextQueryProbe.Run();
             Console.Write(JsonSerializer.Serialize(result));
-            return result.Eligible && result.Stable ? 0 : 1;
+            return result.FixedEligible && result.FixedStable ? 0 : 1;
         }
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
         if (args.SequenceEqual(new[] { "--pool-report-self-test" })) { PoolReportSelfTest(); return 0; }
