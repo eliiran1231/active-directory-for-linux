@@ -1,0 +1,19 @@
+name: One-off read-only Windows directory permissions
+on:
+  push:
+    branches: [diagnostic/windows-authenticated-20261024-once]
+    paths: [.github/workflows/windows-directory-permissions-once.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.run_attempt == 1
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read sanitized permission properties of fixed existing directories
+        shell: pwsh
+        run: ./tests/windows-referral-diagnostic/Read-DirectoryPermissions.ps1

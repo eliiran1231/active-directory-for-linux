@@ -204,3 +204,23 @@ Primary API references: [job object containment](https://learn.microsoft.com/en-
 [DuplicateHandle](https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-duplicatehandle),
 [RunImpersonated](https://learn.microsoft.com/en-us/dotnet/api/system.security.principal.windowsidentity.runimpersonated),
 and [standard local group membership](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.localaccounts/add-localgroupmember).
+
+### Hosted preflight and corrected execution, 2026-10-24
+
+Hosted pure preflight [40092190133](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40092190133)
+at `8d1a4a79ea8fa3f263b580b8c22b3072dd754ec9` passed both exact-path invocation scopes on PowerShell 7.6.7,
+both worker builds, and .NET 8/10 pure self-tests. The preceding invocation-scope defect was fixed in local
+`014770a`: a `GetNewClosure()` callback now uses an inline assertion instead of looking up a script-local function.
+
+The separately approved corrected full job [40092502811](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40092502811)
+at `cc4d118076ec533e83656ed914a39cdcdb60df26` passed preflight/builds but stopped at
+`Assert-DiagnosticDirectoryPrivate` before ownership records or coordinator execution. Its inherited directory
+ACL did not satisfy the existing predicate. The logs do not identify the rejecting ACE or prove which alternate
+location would work. No permissions were changed and no fallback was attempted.
+
+Independent always cleanup verified owner/object manifests and PFX absent. No accounts, logons, token acquisition,
+certificate imports, or native tests ran. Both runtimes have no native results. Independent review confirmed these
+limits. The consumed full-workflow trigger was removed remotely in `391bf2ad21ca4bbb992eb7722a31de27b90f330d`.
+No retry is authorized by that consumed single-job approval. A next ordinary diagnostic could classify existing
+candidate directory ACLs read-only, without emitting unrelated machine data, changing the predicate, or editing ACLs.
+Windows referral-enabled pooling remains guarded.
