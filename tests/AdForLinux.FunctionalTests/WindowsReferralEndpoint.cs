@@ -29,6 +29,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
+    internal bool ServeSyntheticSchema { get; set; }
+    private int schemaReads;
+    internal int SchemaReads => Volatile.Read(ref schemaReads);
     internal volatile bool DisconnectOnSearch;
     internal int RejectedTlsProbes => Volatile.Read(ref rejectedTlsProbes);
     internal int Abandons => Volatile.Read(ref abandons);
@@ -188,12 +191,22 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     else if (tag.TagValue == 3)
                     {
                         Interlocked.Increment(ref searches);
-                        int synthetic = Timeline is null ? 0 : WindowsDiagnosticTimeline.Operation(operation.ReadOctetString());
+                        var baseDn = operation.ReadOctetString();
+                        int synthetic = Timeline is null ? 0 : WindowsDiagnosticTimeline.Operation(baseDn);
                         Timeline?.Add(TimelineRole, connection, id, synthetic, "search");
                         if (BeforeCorrelatedSearchResponse is not null) await BeforeCorrelatedSearchResponse(connection, id, synthetic);
                         if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
-                        if (ReferralUrl is not null)
+                        if (ServeSyntheticSchema && (baseDn.Length == 0 || Encoding.UTF8.GetString(baseDn) == "CN=synthetic-schema"))
+                        {
+                            Interlocked.Increment(ref schemaReads);
+                            var attributes = baseDn.Length == 0
+                                ? new Dictionary<string, string> { ["schemaNamingContext"] = "CN=synthetic-schema" }
+                                : new Dictionary<string, string> { ["lDAPDisplayName"] = "description", ["attributeSyntax"] = "2.5.5.12", ["oMSyntax"] = "64" };
+                            await stream.WriteAsync(Entry(id, identity, attributes), stop.Token);
+                            await stream.WriteAsync(Result(id, 5, ResultCode.Success), stop.Token);
+                        }
+                        else if (ReferralUrl is not null)
                         {
                             var referral = Timeline is null ? ReferralUrl :
                                 ReferralUrl.Replace("/CN=target?", "/" + WindowsDiagnosticTimeline.BaseDn(synthetic) + "?", StringComparison.Ordinal);
@@ -290,7 +303,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         return writer.Encode();
     }
 
-    private static byte[] Entry(int id, string identity)
+    internal static byte[] Entry(int id, string identity, IReadOnlyDictionary<string, string>? attributes = null)
     {
         var writer = new AsnWriter(AsnEncodingRules.BER);
         writer.PushSequence();
@@ -299,12 +312,15 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         writer.PushSequence(tag);
         writer.WriteOctetString("CN=target"u8);
         writer.PushSequence();
-        writer.PushSequence();
-        writer.WriteOctetString("description"u8);
-        writer.PushSetOf();
-        writer.WriteOctetString(Encoding.UTF8.GetBytes(identity));
-        writer.PopSetOf();
-        writer.PopSequence();
+        foreach (var pair in attributes ?? new Dictionary<string, string> { ["description"] = identity })
+        {
+            writer.PushSequence();
+            writer.WriteOctetString(Encoding.UTF8.GetBytes(pair.Key));
+            writer.PushSetOf();
+            writer.WriteOctetString(Encoding.UTF8.GetBytes(pair.Value));
+            writer.PopSetOf();
+            writer.PopSequence();
+        }
         writer.PopSequence();
         writer.PopSequence(tag);
         writer.PopSequence();

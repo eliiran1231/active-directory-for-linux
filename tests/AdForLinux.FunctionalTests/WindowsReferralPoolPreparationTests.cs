@@ -27,6 +27,18 @@ public sealed class WindowsReferralPoolPreparationTests
         Assert.False(LdapConnectionProvider.CanReuse(Options(auth: AuthType.Negotiate), ReferralChasingOption.External));
     }
     [Fact]
+    public void Primary_transport_and_referral_options_do_not_expand_production_guard()
+    {
+        // Primary settings alone cannot describe the native child graph or
+        // caller context over a lease. Diagnostic success must not enable them.
+        foreach (var options in new[] { Options(), Options(host: "localhost"), Options(host: "::1"),
+            Options(host: "directory.example"), Options(ssl: false), Options(ssl: false, startTls: true),
+            Options(startTls: true), Options(skip: true), Options(signing: true), Options(sealing: true) })
+        foreach (var referrals in Enum.GetValues<ReferralChasingOption>())
+            Assert.Equal(referrals == ReferralChasingOption.None || OperatingSystem.IsLinux(),
+                LdapConnectionProvider.CanReuse(options, referrals));
+    }
+    [Fact]
     public void Pool_scheduler_keeps_each_native_dependency_and_anonymous_adverse_outcome_separate()
     {
         foreach (var failure in new[] { "", "original-direct", "a-direct", "b-referral", "anonymous-direct" })

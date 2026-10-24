@@ -180,8 +180,14 @@ throughput or tail-latency parity. No lab AD testing is authorized for this work
 
 ## Windows Basic referral investigation
 
-The Windows eligibility extension is gated on native Windows tests, not only the
-managed pool tests. The initial investigation commit leaves eligibility unchanged.
+The Windows eligibility extension is gated on native evidence and an enforceable
+production boundary. The latest
+[verification run](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40123894559)
+passed all 37 explicit-Basic comparison cases per runtime in the restricted
+authenticated LDAPS/External loopback fixture. Anonymous direct TLS still failed;
+production Windows referral pooling remains guarded. See the
+[eligibility boundary assessment](windows-basic-pooling-boundary.md) for the
+evidence matrix and concrete remaining gap. Earlier results below are historical.
 The [MS-ADTS referral task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/b2edefdd-16f9-413d-88c5-a2f5c137bafe)
 associates referred connections with the containing ADConnection; the
 [bind task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7a6dad48-8a6f-4704-8308-e3367ab7440a)
@@ -214,8 +220,10 @@ The Windows .NET 8/10 native baseline at `2243542` reached the LDAPS referral
 target but completed zero TLS handshakes and sent zero binds. Only the two primary
 connections invoked the certificate callback. This is consistent with the callback
 not applying to the referral child, but does not prove certificate trust caused the
-failure. The subsequent two-identity, impersonation and retained-primary assertions
-have not passed; Windows referral-enabled pooling remains disabled. Plaintext
+failure. At that historical commit the subsequent two-identity, impersonation and
+retained-primary assertions had not passed. Later authenticated tests passed as
+reported above; Windows referral-enabled pooling remains disabled for the stated
+production-boundary gaps. Plaintext
 referrals did attempt an anonymous bind and forwarded no explicit Basic credentials.
 
 At `7ce7bcc`, [native Windows CI](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/39662334153)

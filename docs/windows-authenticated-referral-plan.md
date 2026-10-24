@@ -1,11 +1,11 @@
 # Authenticated Windows referral investigation and diagnostic results
 
 The latest approved real-provider diagnostic completed on 2026-10-24 in run
-[40117275357](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40117275357):
-37/37 comparison cases passed on .NET 8 and 35/37 on .NET 10. Both runtimes passed all 11
+[40123894559](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40123894559):
+37/37 comparison cases passed on each runtime. Both runtimes passed all 11
 authenticated raw controls; anonymous TLS still failed. External security-object and
-temporary-file cleanup passed independently. Pool fixture cleanup failures are distinct
-and remain under investigation. Windows Basic with referrals remains ineligible for
+temporary-file cleanup passed independently. All pool fixture cleanup checks passed
+in this run; earlier failed target-barrier diagnostics remain documented below. Windows Basic with referrals remains ineligible for
 production pooling. Detailed results, local corrections and remaining limits appear
 at the end. Earlier plan/approval sections are historical, not execution authorization.
 
@@ -1002,3 +1002,67 @@ disposable job would retain the same two standard accounts/one logon each, owned
 non-exportable runner-user key, public LocalMachine Root certificate, watchdogs
 and exact cleanup. No such run is authorized now. Production remains guarded and
 Kerberos work remains deferred.
+
+
+## Primary-lease overlap verification completed successfully within fixture scope
+
+Exactly one approved disposable Windows job executed candidate
+dd4972e34778d0916adc30a3d71110ef50f51b31:
+[40123894559](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40123894559).
+Its remote source is 0615f46c2482b8939afc03ef6ebcc31012e3de67, local equivalent
+9ed2499, tree 1ce4e030b642cce2d60f38fbbfb925f8fc9eb487. The existing executor,
+clean candidate and absence of pending prior runs were checked first. The one-job
+trigger was removed at remote e0402036e8bca24486f1832519c8c094be6a4ccf, local
+equivalent 5541d7f. No duplicate job or automatic rerun occurred.
+
+Both runtimes passed all 37 comparison cases and all 11 authenticated raw stages.
+This includes every pooled/unpooled concurrency case and all credential/settings
+isolation, capacity/cancellation, generation, failed-bind, primary/target failure,
+negative certificate/credential controls, mixed-referral comparison and ambient
+A/B transition cases. All per-case cleanup checks passed with PoolDelta=0.
+
+All twelve concurrency traces (six per runtime) independently satisfy:
+- Two managed calls and distinct primary connection IDs for operations 1 and 2.
+- Both source arrivals before the first source release.
+- Each operation's managed entry, source search/arrival/release/referral-send,
+  target search/response-send and managed exit in the required order.
+- Exactly one target search for each synthetic operation ID, no duplicate request.
+- SourceOverlapArrivals=2, SourceOverlapTimeouts=0, TimelineDropped=0.
+- Actual Windows SID checks, returned LDAP identity checks, exclusive lease checks
+  and joined worker/endpoint cleanup all pass.
+
+The .NET 10 original-unpooled case is particularly informative: two target
+TCP/TLS connections were observed but only one bind; target connection 1 handled
+both operation IDs, while connection 2 closed before a bind. There were still
+exactly two searches and no retry/timeout. Thus overlapping primary operations
+can legitimately use one bound target connection. This is direct fixture
+evidence of shared target connection use in that case, not proof of simultaneous
+target execution, independent target sessions, or an internal WinLDAP algorithm.
+
+With target responses no longer artificially withheld, the repeated-search
+pattern was absent in this run. Together with the earlier unpooled failure and
+timeout-before-repetition traces, this supports the target-barrier design flaw
+as the explanation for those diagnostic failures. It does not establish that
+native reconnect/retry can never occur after a real transport failure, nor
+guarantee identical timing in every environment.
+
+Both report Supported verdicts passed. Anonymous direct TLS still failed with
+LDAP 81 before TLS/bind/search on both runtimes; Adverse failed and AllPassed
+remained false. Consequently the overall Actions job correctly concluded failure.
+No adverse result was hidden or reclassified.
+
+Finally and independent cleanup each verified exact certificate
+3C5BB4B1ADCF49647F56A9B0716AB98F6433E333 absent, owned non-exportable runner-user
+CNG key absent, PFX absent and all owned accounts/objects absent. The final
+independent step verified all temporary files and directory absent. Independent
+read-only review confirmed all twelve concurrency traces, case results and
+cleanup.
+
+This validates the diagnostic candidate only within the tested LDAPS IPv4
+loopback, External-referral, TLS 1.2 endpoint scope with synthetic explicit Basic
+credentials and these local authenticated identities. It does not justify
+StartTLS, broader referral policies, hostname variants, multihop/cycles or domain
+delegation behavior. Production Windows referral eligibility remains unchanged
+and guarded as instructed. Windows pooling is not declared complete; Kerberos
+#236 remains deferred. The one approval is consumed and no further security run,
+merge or release is authorized by it.

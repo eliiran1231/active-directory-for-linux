@@ -15,6 +15,34 @@ internal static class Program
     {
         // Explicit pure entry point: no Windows calls, fixture creation or secrets.
         if (args.SequenceEqual(new[] { "--pool-report-self-test" })) { PoolReportSelfTest(); return 0; }
+        if (args.SequenceEqual(new[] { "--context-report-self-test" }))
+        {
+            var native = WindowsAuthenticatedDiagnostic.Schedule((_, stage) =>
+                new("passed", stage == "retained-primary" || stage == "transition" ? 4 : 2,
+                    stage == "retained-primary" || stage == "transition" ? 4 : 2,
+                    stage == "retained-primary" || stage == "transition" ? 4 : 2,
+                    stage == "retained-primary" || stage == "transition" ? 4 : 2, 0, 0,
+                    stage == "direct" ? 0 : 2, stage == "direct" ? 0 : stage == "referral" ? 2 : 4,
+                    stage == "retained-primary" || stage == "transition" ? 4 : 2));
+            native["anonymous-direct"] = new("failed", 1, 0, 0, 0, 0, 0);
+            var candidate = WindowsContextCandidateDiagnostic.Schedule(native, name =>
+            {
+                var parts = name.Split('/'); string owner = parts[0], scenario = parts[1];
+                var row = new WindowsContextCandidateDiagnostic.Observation("passed", 1, 1, 1, 1, 1, 1, 0, false, true, 0);
+                return scenario switch
+                {
+                    "stable" => row with { Attempts = 3, TargetSearches = 3 },
+                    "failed-bind" => row with { Attempts = 2, ObservedCode = 49, ObservedKind = "ldap" },
+                    "primary-failure" or "target-failure" => row with { Attempts = 3, SourceBinds = 2, ObservedCode = 81, ObservedKind = "ldap" },
+                    "findone" => row with { Attempts = 2, SourceBinds = 3, SourceSearches = 6, TargetSearches = 2 },
+                    _ when owner == "partition" => row with { Attempts = 3, SourceBinds = 2, TargetSearches = 3 },
+                    _ when owner == "anonymous" && scenario is not ("complete" or "return") => row with { Attempts = scenario is "acquired" or "send" ? 2 : 3, FreshCode = 81, WarmCode = 81, FreshKind = "ldap", WarmKind = "ldap" },
+                    _ => row
+                };
+            });
+            Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsContextCandidateDiagnostic.CreateReport(native, candidate) }));
+            return 0;
+        }
         if (args.SequenceEqual(new[] { "--self-test" })) { SelfTest(); return 0; }
         if (args.SequenceEqual(new[] { "--certificate-material-self-test" })) return CertificateMaterialSelfTest();
         if (args.Length == 2 && args[0] == "--setup-e2e") return SetupEndToEnd(args[1]);
@@ -26,7 +54,8 @@ internal static class Program
             File.Move(ready + ".new", ready);
             Thread.Sleep(Timeout.Infinite); return 2;
         }
-        if (args.Length != 0 || !OperatingSystem.IsWindows() || !Environment.Is64BitProcess ||
+        bool contextCandidate = args.SequenceEqual(new[] { "--context-candidate" });
+        if ((!contextCandidate && args.Length != 0) || !OperatingSystem.IsWindows() || !Environment.Is64BitProcess ||
             Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" ||
             Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted") return 2;
         try
@@ -47,6 +76,13 @@ internal static class Program
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX", null);
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY", request.Root);
             var native = WindowsAuthenticatedDiagnostic.Run(a.Run, b.Run);
+            if (contextCandidate)
+            {
+                var candidate = WindowsContextCandidateDiagnostic.Run(native, a.Run, b.Run);
+                var candidateResult = WindowsContextCandidateDiagnostic.CreateReport(native, candidate);
+                Console.Out.Write(JsonSerializer.Serialize(candidateResult));
+                return candidateResult.AllPassed ? 0 : 1;
+            }
             var pool = WindowsReferralPoolDiagnostic.Run(native, a.Run, b.Run);
             var result = WindowsDiagnosticReport.Create(native, pool);
             // Result keys/status/counters only. Never include input, handles or exceptions.

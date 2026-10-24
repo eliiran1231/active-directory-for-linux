@@ -16,7 +16,7 @@ public static class WindowsAuthenticatedDiagnostic
     [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool TerminateProcess(IntPtr process, uint code);
-    private static void Anonymous(Action action)
+    internal static void Anonymous(Action action)
     {
         if (!ImpersonateAnonymousToken(GetCurrentThread())) throw new InvalidOperationException("Anonymous scope unavailable.");
         try { action(); }

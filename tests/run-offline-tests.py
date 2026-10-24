@@ -13,7 +13,7 @@ GROUPS = {
         "AclMutationEngineTests", "AclMutationReplayTests", "PortableSecurityFoundationTests",
         "V1PrincipalAuditTests", "Issue216RegressionTests", "AccountManagementPublicTypesTests",
         "PrincipalValueCollectionTests", "OfflineExecutionGuardTests", "ConnectionPoolTests", "ConnectionPoolOperationTests",
-        "WindowsTlsDiagnosticControlTests", "WindowsReferralPoolPreparationTests",
+        "WindowsTlsDiagnosticControlTests", "WindowsReferralPoolPreparationTests", "WindowsContextScopedReadTests",
     ]),
     "surface": ("AdForLinux.DifferentialTests", [
         "LowLevelPublicSurfaceComparisonTests", "PublicApiSurfaceComparisonTests",

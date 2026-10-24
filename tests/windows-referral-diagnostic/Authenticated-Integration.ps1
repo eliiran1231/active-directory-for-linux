@@ -266,3 +266,57 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
         $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Inconsistent diagnostic verdict.' }
     return $value
 }
+
+function Get-ContextCandidateNames {
+    foreach ($identity in @('original', 'a', 'b')) {
+        foreach ($scenario in @('stable', 'failed-bind', 'primary-failure', 'target-failure', 'findone')) { "$identity/$scenario" }
+    }
+    foreach ($identity in @('a-to-b', 'b-to-a', 'anonymous')) {
+        foreach ($stage in @('acquired', 'send', 'complete', 'return')) { "$identity/$stage" }
+    }
+    'anonymous/first'; 'anonymous/repeated'; 'anonymous/primary'; 'partition/a-b-a'
+}
+function ConvertTo-ContextCandidateResult([string]$Json) {
+    if ($Json.Length -gt 65536) { throw 'Candidate output limit exceeded.' }
+    $value = $Json | ConvertFrom-Json -AsHashtable
+    if (($value.Keys | Sort-Object) -join ',' -cne 'Adverse,AllPassed,Candidate,Native,Supported') { throw 'Unexpected candidate report.' }
+    $native = ConvertTo-DiagnosticResult ($value.Native | ConvertTo-Json -Depth 8 -Compress)
+    $names = @(Get-ContextCandidateNames)
+    if (($value.Candidate.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Candidate cases missing or unexpected.' }
+    foreach ($name in $names) {
+        $row = $value.Candidate[$name]
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Attempts,Checks,Cleanup,FailureCode,FailureKind,FreshCode,FreshKind,InstrumentationFailed,ObservedCode,ObservedKind,PoolDelta,SourceBinds,SourceSearches,Status,TargetBinds,TargetSearches,WarmCode,WarmKind') { throw 'Unexpected candidate fields.' }
+        if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool] -or $row.InstrumentationFailed -isnot [bool]) { throw 'Invalid candidate status.' }
+        foreach ($field in @('Attempts', 'Checks', 'SourceBinds', 'SourceSearches', 'TargetBinds', 'TargetSearches', 'FailureCode', 'FreshCode', 'WarmCode', 'ObservedCode', 'PoolDelta')) {
+            if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid candidate number.' }
+        }
+        foreach ($field in @('Attempts', 'Checks', 'SourceBinds', 'SourceSearches', 'TargetBinds', 'TargetSearches')) {
+            if ($row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid candidate counter.' }
+        }
+        foreach ($prefix in @('Failure', 'Fresh', 'Warm', 'Observed')) {
+            if ($row[$prefix + 'Kind'] -notin @('success','ldap','directory','directory-no-response','fixture')) { throw 'Unexpected native outcome kind.' }
+            if ($row[$prefix + 'Kind'] -eq 'success' -and $row[$prefix + 'Code'] -ne 0) { throw 'Success with failure code.' }
+        }
+        $owner = $name.Split('/')[0]
+        $identities = if ($owner -in @('a-to-b','b-to-a','partition')) { @('a','b') } elseif ($owner -eq 'anonymous') { @('original') } else { @($owner) }
+        $ready = $true
+        foreach ($identity in $identities) { if ($native["$identity-direct"].Status -ne 'passed' -or $native["$identity-referral"].Status -ne 'passed') { $ready = $false } }
+        if ((!$ready -and $row.Status -ne 'skipped') -or ($ready -and $row.Status -eq 'skipped')) { throw 'Candidate dependency mismatch.' }
+        if ($row.Status -eq 'passed' -and (!$row.Cleanup -or $row.PoolDelta -ne 0 -or $row.InstrumentationFailed -or $row.FailureCode -ne 0 -or $row.FailureKind -ne 'success' -or $row.Checks -lt 1 -or $row.Attempts -lt 1)) { throw 'Incomplete candidate success.' }
+        if ($row.Status -eq 'passed') {
+            $scenario = $name.Split('/')[1]
+            if ($scenario -eq 'stable' -and ($row.Attempts -ne 3 -or $row.SourceBinds -ne 1 -or $row.TargetSearches -ne 3)) { throw 'Stable reuse counters incomplete.' }
+            if ($scenario -eq 'failed-bind' -and ($row.Attempts -ne 2 -or $row.ObservedCode -ne 49 -or $row.ObservedKind -ne 'ldap' -or $row.TargetSearches -ne 1)) { throw 'Bind rejection evidence incomplete.' }
+            if ($scenario -in @('primary-failure','target-failure') -and ($row.Attempts -ne 3 -or $row.SourceBinds -lt 2 -or $row.ObservedKind -notin @('ldap','directory') -or $row.ObservedCode -notin @(2,52,81,82,85,91))) { throw 'Transport failure evidence incomplete.' }
+            if ($scenario -eq 'findone' -and ($row.Attempts -ne 2 -or $row.SourceBinds -ne 3 -or $row.SourceSearches -ne 6 -or $row.TargetSearches -ne 2)) { throw 'FindOne/schema evidence incomplete.' }
+            if ($owner -in @('a-to-b','b-to-a') -and ($row.Attempts -ne 1 -or $row.SourceSearches -ne 1 -or $row.TargetSearches -ne 1)) { throw 'Transition evidence incomplete.' }
+            if ($owner -eq 'partition' -and ($row.Attempts -ne 3 -or $row.SourceBinds -ne 2 -or $row.TargetSearches -ne 3)) { throw 'Partition evidence incomplete.' }
+            if ($owner -eq 'anonymous' -and $scenario -in @('complete','return') -and ($row.Attempts -ne 1 -or $row.TargetSearches -ne 1)) { throw 'Post-send anonymous evidence incomplete.' }
+            if ($owner -eq 'anonymous' -and $scenario -notin @('complete','return') -and ($row.FreshKind -ne $row.WarmKind -or $row.FreshCode -ne $row.WarmCode -or $row.Attempts -ne $(if ($scenario -in @('acquired','send')) { 2 } else { 3 }))) { throw 'Anonymous parity evidence incomplete.' }
+        }
+    }
+    $supported = @($native.GetEnumerator() | Where-Object { $_.Key -ne 'anonymous-direct' -and $_.Value.Status -ne 'passed' }).Count -eq 0 -and @($value.Candidate.Values | Where-Object Status -NE 'passed').Count -eq 0
+    $adverse = $native['anonymous-direct'].Status -eq 'passed'
+    if ($value.Supported -cne $(if ($supported) { 'passed' } else { 'failed' }) -or $value.Adverse -cne $(if ($adverse) { 'passed' } else { 'failed' }) -or $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Candidate verdict mismatch.' }
+    return $value
+}

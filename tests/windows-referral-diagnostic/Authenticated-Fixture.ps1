@@ -1,11 +1,13 @@
 param(
     [ValidateSet('Preflight', 'Supervisor', 'Coordinator', 'Cleanup', 'E2ESupervisor', 'E2ECoordinator', 'E2ECleanup')][string]$Mode = 'Preflight',
     [string]$RunId,
+    [switch]$ContextCandidate,
     [ValidateSet('Success', 'SetupEarlyExit', 'SecondCreateFailure', 'SetupTimeout', 'RuntimeTimeout', 'PartialHandoff', 'MalformedOutput', 'OutputOverflow', 'EarlyExit', 'TruncatedFrame', 'CleanupFailures')][string]$E2ECase = 'Success'
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Authenticated-Fixture-Core.ps1')
 $testOnly = $Mode.StartsWith('E2E', [StringComparison]::OrdinalIgnoreCase)
+if ($testOnly -and $ContextCandidate) { throw 'Candidate native mode is incompatible with E2E mode.' }
 if (!$testOnly -and $E2ECase -ne 'Success') { throw 'Fault injection requires explicit E2E mode.' }
 if ($testOnly) { . (Join-Path $PSScriptRoot 'Authenticated-E2E-Adapters.ps1') }
 else { . (Join-Path $PSScriptRoot 'Authenticated-Windows-Adapters.ps1') }
@@ -168,7 +170,7 @@ if ($Mode -in @('Coordinator', 'E2ECoordinator')) {
                         param($context)
                         $context.Job = [AdflProcessJob]::new('Local\adfl-auth-' + [Guid]::NewGuid().ToString('N'))
                         $binary = Join-Path $PSScriptRoot "worker/bin/Release/$framework/AuthenticatedWorker.dll"
-                        $workerArguments = if ($testOnly) { @($binary, '--setup-e2e', $root) } else { @($binary) }
+                        $workerArguments = if ($testOnly) { @($binary, '--setup-e2e', $root) } elseif ($ContextCandidate) { @($binary, '--context-candidate') } else { @($binary) }
                         $context.Process = Start-DiagnosticProcess 'dotnet' $workerArguments
                         $context.Capture = [AdflBoundedCapture]::new($context.Process)
                     }
@@ -210,7 +212,7 @@ if ($Mode -in @('Coordinator', 'E2ECoordinator')) {
                             $synthetic = $context.Capture.Result() | ConvertFrom-Json -AsHashtable
                             if (($synthetic.Keys | Sort-Object) -join ',' -cne 'Observations,TestOnly' -or $synthetic.TestOnly -isnot [bool] -or !$synthetic.TestOnly) { throw 'E2E output discriminator missing.' }
                             ConvertTo-DiagnosticResult ($synthetic.Observations | ConvertTo-Json -Depth 8 -Compress)
-                        } else { ConvertTo-DiagnosticCombinedResult ($context.Capture.Result()) }
+                        } elseif ($ContextCandidate) { ConvertTo-ContextCandidateResult ($context.Capture.Result()) } else { ConvertTo-DiagnosticCombinedResult ($context.Capture.Result()) }
                     }
                     StopAndVerify = {
                         param($context)
@@ -293,7 +295,9 @@ try {
             $current.Job = [AdflProcessJob]::new($owner.JobName)
             $owner.JobOwned = $true; Save-DiagnosticJson $owner $ownerPath
             $coordinatorMode = if ($testOnly) { 'E2ECoordinator' } else { 'Coordinator' }
-            $current.Process = Start-DiagnosticProcess (Join-Path $PSHOME 'pwsh.exe') @('-NoProfile', '-NonInteractive', '-File', $fixtureScriptPath, '-Mode', $coordinatorMode, '-RunId', $RunId, '-E2ECase', $E2ECase)
+            $coordinatorArguments = @('-NoProfile', '-NonInteractive', '-File', $fixtureScriptPath, '-Mode', $coordinatorMode, '-RunId', $RunId, '-E2ECase', $E2ECase)
+            if ($ContextCandidate) { $coordinatorArguments += '-ContextCandidate' }
+            $current.Process = Start-DiagnosticProcess (Join-Path $PSHOME 'pwsh.exe') $coordinatorArguments
             $current.Capture = [AdflBoundedCapture]::new($current.Process)
         }
         Assign = { param($current) $current.Job.Assign($current.Process); $current.Timer = [Diagnostics.Stopwatch]::StartNew() }
