@@ -12,7 +12,10 @@ public static class WindowsReferralPoolDiagnostic
         int TargetConnections = 0, int TargetTls = 0, int TargetBinds = 0, int TargetSearches = 0,
         int Anonymous = 0, int Sasl = 0, int Closed = 0, int ManagedAttempts = 0,
         int BaselineCredentialed = 0, int PooledCredentialed = 0, bool Cleanup = false,
-        string FailureKind = "none", int FailureCode = 0, string ObservedFailureKind = "none", int ObservedFailureCode = 0);
+        string FailureKind = "none", int FailureCode = 0, string ObservedFailureKind = "none", int ObservedFailureCode = 0,
+        int CleanupMask = 0, int LeaseCleanupCode = 0, int KeyCleanupCode = 0, int OtherCleanupCode = 0,
+        int SourceCleanupCode = 0, int TargetCleanupCode = 0, int PoolDelta = 0,
+        int SourceAbandons = 0, int TargetAbandons = 0, int TargetTlsPrefixes = 0, int TargetBerPrefixes = 0, string FailurePoint = "none");
     public static readonly string[] Cases = ["isolation", "concurrent", "capacity", "generation", "failed-bind",
         "primary-disconnect", "target-disconnect", "target-bind-rejection", "untrusted-target", "mixed-referral"];
     public static readonly string[] Transitions = ["a-to-b", "b-to-a", "first-a-to-b", "first-b-to-a"];
@@ -46,29 +49,58 @@ public static class WindowsReferralPoolDiagnostic
     private static Observation Observe(Action<Action> scope, string scenario, Action<Action>? second = null, bool firstAfterSwitch = false)
     {
         Fixture? fixture = null;
-        string status = "failed", kind = "none"; int code = 0;
+        string status = "failed";
+        Exception? failure = null;
         try
         {
             // Server/key creation stays under original identity, before impersonation.
-            fixture = new Fixture(scenario == "untrusted-target", scenario == "mixed-referral");
-            if (scenario == "transition") Transition(fixture, scope, second!, firstAfterSwitch);
-            else scope(() => Execute(fixture, scenario));
+            RunPreparedCase(() => fixture = new Fixture(scenario == "untrusted-target", scenario == "mixed-referral", scenario == "isolation"),
+                scenario == "transition" ? action => action() : scope,
+                () => { if (scenario == "transition") Transition(fixture!, scope, second!, firstAfterSwitch); else Execute(fixture!, scenario); });
             status = "passed";
         }
-        catch (Exception error) { (kind, code) = Describe(error); }
+        catch (Exception error) { failure = error; }
         finally
         {
             try { fixture?.Dispose(); }
-            catch (Exception error) { status = "failed"; (kind, code) = Describe(error); }
+            catch (Exception error) { failure = PreserveOriginalFailure(failure, error); status = "failed"; }
         }
+        var (kind, code) = failure is null ? ("none", 0) : Describe(failure);
         return new(status, fixture?.Checks ?? 0, fixture?.Source.Binds ?? 0,
             fixture?.Target.Connections ?? 0, fixture?.Target.TlsHandshakes ?? 0,
             fixture?.Target.Binds ?? 0, fixture?.Target.Searches ?? 0,
             fixture?.Target.AnonymousBinds ?? 0, fixture?.Target.SaslBinds ?? 0,
             fixture?.Target.Closed ?? 0, fixture?.ManagedAttempts ?? 0,
             fixture?.BaselineCredentialed ?? 0, fixture?.PooledCredentialed ?? 0,
-            fixture?.Cleanup ?? false, kind, code, fixture?.ObservedFailureKind ?? "none", fixture?.ObservedFailureCode ?? 0);
+            fixture?.Cleanup ?? false, kind, code, fixture?.ObservedFailureKind ?? "none", fixture?.ObservedFailureCode ?? 0,
+            fixture?.CleanupDetail.Mask ?? 0, fixture?.CleanupDetail.LeaseCode ?? 0, fixture?.CleanupDetail.KeyCode ?? 0,
+            fixture?.CleanupDetail.OtherCode ?? 0, fixture?.CleanupDetail.SourceCode ?? 0, fixture?.CleanupDetail.TargetCode ?? 0,
+            fixture?.CleanupDetail.PoolDelta ?? 0, fixture?.Source.Abandons ?? 0, fixture?.Target.Abandons ?? 0,
+            fixture?.Target.FirstRecords.Count(x => x == "TLS handshake") ?? 0,
+            fixture?.Target.FirstRecords.Count(x => x == "LDAP BER") ?? 0, FailurePoint(failure, fixture is null));
     }
+    private sealed class DiagnosticAssertionException(string point) : Exception
+    { internal string Point { get; } = point; }
+    private static string FailurePoint(Exception? failure, bool setup)
+    {
+        if (failure is null) return "none";
+        if (failure is AggregateException aggregate) failure = aggregate.Flatten().InnerExceptions.FirstOrDefault() ?? failure;
+        if (failure is DiagnosticAssertionException assertion) return assertion.Point;
+        if (failure is ObservedResponseException) return "native-response";
+        if (failure is LdapException or DirectoryOperationException) return "native-operation";
+        return setup ? "setup" : "other";
+    }
+    internal static void RunPreparedCase(Action prepare, Action<Action> scope, Action operation)
+    {
+        prepare(); // Endpoint creation and owned-key loading must finish before impersonation.
+        scope(operation);
+    }
+    internal static Exception PreserveConstructionFailure(Exception original, params Action[] cleanup)
+    {
+        foreach (var action in cleanup) { try { action(); } catch { /* Preserve the construction error; no success claim. */ } }
+        return original;
+    }
+    internal static Exception PreserveOriginalFailure(Exception? original, Exception cleanup) => original ?? cleanup;
     private sealed class ObservedResponseException(ResultCode result) : Exception
     { internal ResultCode Result { get; } = result; }
     private static (string, int) Describe(Exception error) => error switch
@@ -102,7 +134,6 @@ public static class WindowsReferralPoolDiagnostic
         var other = f.Acquire(f.Options(identity: WindowsReferralEndpoint.SecondIdentity));
         f.Require(!ReferenceEquals(old, other.Connection)); f.Read(other, WindowsReferralEndpoint.SecondIdentity); other.Dispose();
         var timeout = f.Acquire(f.Options(seconds: 7)); f.Require(!ReferenceEquals(old, timeout.Connection)); f.Read(timeout); timeout.Dispose();
-        f.OtherSource = new WindowsReferralEndpoint(tls: true) { ReferralUrl = f.Source.ReferralUrl };
         var port = f.Acquire(f.Options(endpoint: f.OtherSource)); f.Require(!ReferenceEquals(old, port.Connection)); f.Read(port); port.Dispose();
         var noReferral = f.Acquire(options, none: true); f.Require(!ReferenceEquals(old, noReferral.Connection)); noReferral.Dispose();
         int binds = f.Source.Binds;
@@ -140,11 +171,11 @@ public static class WindowsReferralPoolDiagnostic
         Task.WaitAll(leases.Select(lease => Task.Run(() =>
         {
             using var current = WindowsIdentity.GetCurrent();
-            f.Require(current.User?.Value == sid);
+            f.Require(current.User?.Value == sid, "ambient-identity");
             f.Read(lease);
         })).ToArray());
         f.Target.BeforeSearchResponse = null;
-        f.Require(arrived == 2 && f.Target.Searches == 2 && f.Source.Binds == 2);
+        f.Require(arrived == 2 && f.Target.Searches == 2 && f.Source.Binds == 2, "concurrent-counts");
     }
     private static void Capacity(Fixture f)
     {
@@ -256,33 +287,44 @@ public static class WindowsReferralPoolDiagnostic
         // Assertions occur OUTSIDE the provider operation. An unresolved response
         // must not become an invented native failure that makes eviction pass.
         if (response.ResultCode != ResultCode.Success) throw new ObservedResponseException(response.ResultCode);
-        if (response.Entries.Count != 1 ||
-            response.Entries[0].Attributes["description"]?[0] is not string actual || actual != identity)
-            throw new InvalidOperationException("Synthetic LDAP identity mismatch.");
+        if (response.Entries.Count != 1 || response.Entries[0].Attributes["description"]?[0] is not string actual)
+            throw new DiagnosticAssertionException("search-shape");
+        if (actual != identity) throw new DiagnosticAssertionException("ldap-identity");
         return actual;
     }
     private sealed class Fixture : IDisposable
     {
         internal readonly WindowsReferralEndpoint Target, Source;
-        internal WindowsReferralEndpoint? OtherSource;
+        internal readonly WindowsReferralEndpoint? OtherSource;
         private readonly List<LdapConnectionProvider.Session> sessions = [];
         private readonly int initialTotal = LdapConnectionProvider.Snapshot.Total;
         private readonly Dictionary<LdapConnectionProvider.ConnectionKey, (LdapConnectionOptions Options, bool None)> keys = [];
         internal int Checks, ManagedAttempts, BaselineCredentialed, PooledCredentialed;
         internal bool Cleanup;
+        internal readonly WindowsDiagnosticCleanup CleanupDetail = new();
         internal string ObservedFailureKind = "none";
         internal int ObservedFailureCode;
-        internal Fixture(bool untrusted, bool mixed)
+        internal Fixture(bool untrusted, bool mixed, bool isolation)
         {
             Target = new WindowsReferralEndpoint(tls: !mixed, untrustedOwnedCertificate: untrusted);
-            try { Source = new WindowsReferralEndpoint(tls: true) { ReferralUrl = $"{(mixed ? "ldap" : "ldaps")}://127.0.0.1:{Target.Port}/CN=target??base?(objectClass=*)" }; }
-            catch { Target.DisposeAsync().AsTask().GetAwaiter().GetResult(); throw; }
+            try
+            {
+                Source = new WindowsReferralEndpoint(tls: true) { ReferralUrl = $"{(mixed ? "ldap" : "ldaps")}://127.0.0.1:{Target.Port}/CN=target??base?(objectClass=*)" };
+                if (isolation) OtherSource = new WindowsReferralEndpoint(tls: true) { ReferralUrl = Source.ReferralUrl };
+            }
+            catch (Exception original)
+            {
+                PreserveConstructionFailure(original,
+                    () => Source?.DisposeAsync().AsTask().GetAwaiter().GetResult(),
+                    () => Target.DisposeAsync().AsTask().GetAwaiter().GetResult());
+                throw;
+            }
         }
         internal LdapConnectionOptions Options(string identity = WindowsReferralEndpoint.FirstIdentity,
             string password = WindowsReferralEndpoint.Password, int seconds = 5, WindowsReferralEndpoint? endpoint = null) => new()
         { Host = "127.0.0.1", Port = (endpoint ?? Source).Port, UseSsl = true, AuthenticationType = AuthType.Basic,
             BindDn = identity, BindPassword = password, Timeout = TimeSpan.FromSeconds(seconds) };
-        internal void Require(bool condition) { if (!condition) throw new InvalidOperationException("Pool diagnostic assertion failed."); Interlocked.Increment(ref Checks); }
+        internal void Require(bool condition, string point = "assertion") { if (!condition) throw new DiagnosticAssertionException(point); Interlocked.Increment(ref Checks); }
         internal LdapConnectionProvider.Session Acquire(LdapConnectionOptions options, bool none = false, bool fresh = false,
             long minimum = 0, CancellationToken cancellation = default)
         {
@@ -306,27 +348,26 @@ public static class WindowsReferralPoolDiagnostic
         { try { Read(lease); return null; } catch (Exception error) { (ObservedFailureKind, ObservedFailureCode) = Describe(error); return error; } }
         public void Dispose()
         {
-            bool failed = false;
             Source.DisconnectOnSearch = Target.DisconnectOnSearch = false;
             Target.RejectBinds = false; Target.BeforeSearchResponse = null;
-            foreach (var lease in sessions) { try { lease.Invalidate(); lease.Dispose(); } catch { failed = true; } }
+            foreach (var lease in sessions) CleanupDetail.Attempt(1, () => { lease.Invalidate(); lease.Dispose(); });
             // Retire each exact idle key via existing provider freshness semantics.
             // Cleanup binds are explicit and included in primary counters; never replay a read.
             foreach (var item in keys.Values)
             {
-                try
+                CleanupDetail.Attempt(2, () =>
                 {
                     using var cleanup = item.None ? LdapConnectionProvider.Acquire(item.Options, preferFresh: true)
                         : LdapConnectionProvider.AcquireWindowsReferralDiagnostic(item.Options, preferFresh: true)[0];
                     cleanup.Invalidate();
-                }
-                catch { failed = true; }
+                });
             }
-            foreach (var endpoint in new[] { OtherSource, Source, Target })
-                try { endpoint?.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { failed = true; }
-            if (LdapConnectionProvider.Snapshot.Total != initialTotal) failed = true;
-            Cleanup = !failed;
-            if (failed) throw new InvalidOperationException("Pool fixture cleanup failed.");
+            CleanupDetail.Attempt(4, () => OtherSource?.DisposeAsync().AsTask().GetAwaiter().GetResult());
+            CleanupDetail.Attempt(8, () => Source.DisposeAsync().AsTask().GetAwaiter().GetResult());
+            CleanupDetail.Attempt(16, () => Target.DisposeAsync().AsTask().GetAwaiter().GetResult());
+            CleanupDetail.CheckPool(initialTotal, LdapConnectionProvider.Snapshot.Total);
+            Cleanup = CleanupDetail.Mask == 0;
+            if (!Cleanup) throw new DiagnosticAssertionException("cleanup");
         }
     }
 }

@@ -1,12 +1,13 @@
 # Authenticated Windows referral investigation and diagnostic results
 
-The approved authenticated diagnostic completed on 2026-10-24 in run
-[40098419409](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40098419409).
-Both runtimes passed all 11 authenticated stages; anonymous direct TLS still failed.
-Independent cleanup verified the owned security objects and temporary files absent.
-Windows Basic with referrals remains ineligible for production pooling. Detailed
-results and remaining limits appear at the end of this document. Earlier plan and
-approval sections below are historical, not current execution authorization.
+The latest approved real-provider diagnostic completed on 2026-10-24 in run
+[40113617612](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40113617612):
+26/34 pool cases passed on .NET 8 and 25/34 on .NET 10. Both runtimes passed all 11
+authenticated raw controls; anonymous TLS still failed. External security-object and
+temporary-file cleanup passed independently. Pool fixture cleanup failures are distinct
+and remain under investigation. Windows Basic with referrals remains ineligible for
+production pooling. Detailed results, local corrections and remaining limits appear
+at the end. Earlier plan/approval sections are historical, not execution authorization.
 
 ## Evidence and limits
 
@@ -586,3 +587,113 @@ runner passed **13,496 tests + 1 existing cross-DC skip per runtime**, with zero
 found no remaining static preparation blocker after correcting failure attribution
 and per-case schema checks. These results are not hosted Windows execution or native
 pool safety evidence. Changes remain preparation-only, with no full trigger installed.
+
+### Actual production-pool diagnostic: 2026-10-24
+
+Exactly one approved job ran: [40113617612](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40113617612),
+job `120930254286`, source `8bee2ea3c55e93df1e6175934ef56aa357c621c3` (tree
+`1dd8c87bb5a6b430e6d081449ab1ca63370bbd10`, local equivalent `07118e6`). This contains
+candidate `915294a` and the reviewed single-job workflow. The publication's create-tree
+call initially remained pending; its confirmed result was reconciled before commit/ref
+updates, with no duplicate launch. The consumed trigger was removed at public commit
+`c096f7e02af08cadb7f87ab84af6ad9bf4f75dc3` (local `7ca090f`). PR #235 remains unchanged.
+GitHub's job-step endpoint returned empty/stale step data while running; the completed
+job log supplied the actual stage results.
+
+Safe invocation checks, builds, metadata/material checks, both report contracts, all
+11 complete fake-security E2E scenarios and dummy cleanup passed before real setup.
+Both real runtimes reached `complete` and emitted all 34 pool cases. Their raw native
+controls again passed all 11 authenticated stages; anonymous direct failed with LDAP
+81 before TLS/bind/search. Both Supported and Adverse verdicts were failed, and the job
+correctly returned failure. No retry was requested.
+
+Every pool case is accounted for below; O/A/B are original runner, local account A,
+and local account B. Four transition cases are listed separately.
+
+| Case | .NET 8 O / A / B | .NET 10 O / A / B |
+| --- | --- | --- |
+| isolation | pass / fail / fail | pass / fail / fail |
+| concurrent | pass / pass / pass | pass / fail / pass |
+| capacity | pass / pass / pass | pass / pass / pass |
+| generation | pass / pass / pass | pass / pass / pass |
+| failed-bind | pass / pass / pass | pass / pass / pass |
+| primary-disconnect | pass / pass / pass | pass / pass / pass |
+| target-disconnect | fail / fail / fail | fail / fail / fail |
+| target-bind-rejection | pass / pass / pass | pass / pass / pass |
+| untrusted-target | pass / pass / pass | pass / pass / pass |
+| mixed-referral | fail / fail / fail | fail / fail / fail |
+| A→B→A idle reacquisition | pass | pass |
+| B→A→B idle reacquisition | pass | pass |
+| First referral after A→B, then A | pass | pass |
+| First referral after B→A, then B | pass | pass |
+
+Totals: .NET 8 **26 passed / 8 failed**; .NET 10 **25 passed / 9 failed**. Positive
+candidate cases used actual production pool leases. They do not enable ordinary
+production eligibility or validate broader transports/referral graphs.
+
+Finally and independent cleanup both verified exact certificate thumbprint
+`45E77954588F98B9637DBB25CC284016B525A511`, owned provider key and PFX absent, plus aggregate
+owned-object/account absence. Independent temporary-file cleanup verified all owned
+files and the directory absent. These successful external cleanup checks must not be
+confused with individual pool rows' `Cleanup=false` (in-process lease/key-retirement,
+endpoint teardown or pool-count verification).
+
+### Failure interpretation and local corrections
+
+Independent review confirmed the A/B isolation fixture design defect: after two
+successful assertions and three reads, it constructed the alternate TLS endpoint
+inside impersonation. The owned-certificate loader then needed the runner's private
+manifest/key. Both failures reported `0x80070005`, consistent with that boundary.
+All endpoints, including the alternate source, are now prepared before entering any
+identity scope. No ACL or key permission changes were made. The alternate endpoint
+is readonly after construction; a pure lifecycle regression checks preparation order
+and prevents entering the scope after setup failure. Windows execution of this fix
+is still unverified.
+
+All six target-disconnect rows recorded four assertions, three managed invocations,
+and observed directory error 52; replacement acquisition was reached. Cleanup then
+failed. The old report overwrote any operation exception with generic cleanup
+`0x80131509`, so neither a completely successful recovery nor the cause of cleanup
+failure can be claimed. All mixed-referral rows completed 14 comparison assertions,
+observed unresolved Referral response 10 and three target TCP connections, but zero
+binds/searches. Their cleanup also failed. The old fixture did not classify first
+bytes on plaintext targets, so these observations do not establish which transport
+WinLDAP attempted there. .NET 10 A-concurrent reported three target searches, two
+binds and three TLS connections for two managed invocations, with four completed
+assertions and failed cleanup. Its cause remains unresolved; it is not evidence of
+managed replay or a proven pool defect.
+
+Local instrumentation now preserves original operation errors when disposal also
+fails, including during partial construction. Cleanup attempts every category and
+reports fixed mask bits and numeric HResults: 1 active-lease disposal, 2 exact-key
+retirement, 4 alternate endpoint, 8 primary endpoint, 16 target endpoint, 32 pool
+count mismatch; PoolDelta is reported separately. Fixed failure-point labels distinguish
+setup, ambient-identity checks, concurrent-count assertions, response shape/identity,
+native response/exception, and cleanup. No messages, payloads, paths or secrets enter
+these reports. First-byte protocol classifications now also cover plaintext targets;
+only TLS/BER category counts are emitted, not bytes.
+
+Source review and pure tests also reproduce a separate parser defect: the fixture
+assumed every non-Unbind operation was constructed, while
+[RFC 4511 section 4.11](https://www.rfc-editor.org/rfc/rfc4511.html#section-4.11)
+encodes Abandon as a primitive application-tagged message ID. It now consumes that
+primitive and emits no response, recording only a count. This is parsing support,
+not full cancellation of an in-flight search. Malformed encodings still fail. The
+completed job did not record Abandon operations, so this correction is **not** claimed
+to explain its cleanup failures. Unexpected protocol/teardown failures remain visible;
+no success assertion was weakened.
+
+Local validation passed: both runtime builds, 49 focused pool/preparation tests per
+runtime, both invocation-scope regressions and .NET 8/10 synthetic report serialization
+contracts. Four added pure tests cover preparation-before-impersonation, preserving
+original errors while attempting all cleanup, separate cleanup attribution and Abandon
+encoding. Independent static review found no remaining blocker. No new account,
+logon/token, key, store, policy or ACL operation was executed during correction.
+
+The next proposed test is one separately approved disposable job using the same two
+standard accounts/one logon each, one owned non-exportable user key and one public
+LocalMachine Root certificate, with complete safe prechecks and exact independent
+cleanup. It would rerun the 34 cases on both runtimes to verify isolation setup and
+identify the remaining native/cleanup failures through the new fields. No such job
+is authorized or triggered here. Production Windows referral pooling remains guarded;
+Kerberos #236 remains deferred until actual Windows completion.

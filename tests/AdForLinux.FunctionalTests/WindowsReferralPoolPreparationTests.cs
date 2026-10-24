@@ -1,4 +1,5 @@
 using System.DirectoryServices.Protocols;
+using System.Formats.Asn1;
 using AdForLinux.DirectoryServices.Ldap;
 using Xunit;
 using ReferralChasingOption = AdForLinux.DirectoryServices.ReferralChasingOption;
@@ -44,4 +45,67 @@ public sealed class WindowsReferralPoolPreparationTests
             if (failure == "") Assert.True(report.AllPassed);
         }
     }
+    [Fact]
+    public void Cleanup_attempts_all_categories_and_reports_pool_delta_without_replacing_operation_error()
+    {
+        var cleanup = new WindowsDiagnosticCleanup();
+        var attempted = new List<int>();
+        foreach (int bit in new[] { 1, 2, 4, 8, 16 })
+            cleanup.Attempt(bit, () => { attempted.Add(bit); throw new SyntheticFailure(-100 - bit); });
+        cleanup.CheckPool(2, 3);
+        Assert.Equal(new[] { 1, 2, 4, 8, 16 }, attempted);
+        Assert.Equal(63, cleanup.Mask);
+        Assert.Equal(-101, cleanup.LeaseCode); Assert.Equal(-102, cleanup.KeyCode);
+        Assert.Equal(-104, cleanup.OtherCode); Assert.Equal(-108, cleanup.SourceCode); Assert.Equal(-116, cleanup.TargetCode);
+        Assert.Equal(1, cleanup.PoolDelta);
+        var original = new UnauthorizedAccessException();
+        var disposal = new InvalidOperationException();
+        Assert.Same(original, WindowsReferralPoolDiagnostic.PreserveOriginalFailure(original, disposal));
+        Assert.Same(disposal, WindowsReferralPoolDiagnostic.PreserveOriginalFailure(null, disposal));
+    }
+    [Fact]
+    public void Successful_cleanup_has_no_failure_bits_or_codes()
+    {
+        var cleanup = new WindowsDiagnosticCleanup();
+        foreach (int bit in new[] { 1, 2, 4, 8, 16 }) cleanup.Attempt(bit, () => { });
+        cleanup.CheckPool(0, 0);
+        Assert.Equal(0, cleanup.Mask); Assert.Equal(0, cleanup.PoolDelta);
+        Assert.Equal(0, cleanup.LeaseCode); Assert.Equal(0, cleanup.KeyCode);
+        Assert.Equal(0, cleanup.OtherCode); Assert.Equal(0, cleanup.SourceCode); Assert.Equal(0, cleanup.TargetCode);
+    }
+    [Fact]
+    public void Abandon_is_a_primitive_message_id_not_a_constructed_operation()
+    {
+        var valid = new AsnReader(new byte[] { 0x50, 0x01, 0x07 }, AsnEncodingRules.BER);
+        Assert.True(WindowsReferralEndpoint.TryConsumeAbandon(valid));
+        Assert.False(valid.HasData);
+        var search = new AsnReader(new byte[] { 0x63, 0x00 }, AsnEncodingRules.BER);
+        Assert.False(WindowsReferralEndpoint.TryConsumeAbandon(search)); Assert.True(search.HasData);
+        Assert.Throws<AsnContentException>(() => WindowsReferralEndpoint.TryConsumeAbandon(
+            new AsnReader(new byte[] { 0x70, 0x03, 0x02, 0x01, 0x07 }, AsnEncodingRules.BER)));
+        Assert.Throws<InvalidDataException>(() => WindowsReferralEndpoint.TryConsumeAbandon(
+            new AsnReader(new byte[] { 0x50, 0x01, 0x00 }, AsnEncodingRules.BER)));
+    }
+    [Fact]
+    public void All_endpoint_preparation_precedes_identity_scope_and_setup_errors_survive_cleanup()
+    {
+        bool impersonated = false;
+        var events = new List<string>();
+        WindowsReferralPoolDiagnostic.RunPreparedCase(
+            () => { Assert.False(impersonated); events.Add("target"); events.Add("source"); events.Add("alternate"); },
+            action => { impersonated = true; try { events.Add("scope"); action(); } finally { impersonated = false; } },
+            () => { Assert.True(impersonated); events.Add("operation"); });
+        Assert.Equal(new[] { "target", "source", "alternate", "scope", "operation" }, events);
+        bool entered = false;
+        Assert.Throws<UnauthorizedAccessException>(() => WindowsReferralPoolDiagnostic.RunPreparedCase(
+            () => throw new UnauthorizedAccessException(), action => { entered = true; action(); }, () => { }));
+        Assert.False(entered);
+        var original = new UnauthorizedAccessException(); int cleanups = 0;
+        Assert.Same(original, WindowsReferralPoolDiagnostic.PreserveConstructionFailure(original,
+            () => { cleanups++; throw new InvalidOperationException(); },
+            () => { cleanups++; throw new IOException(); }));
+        Assert.Equal(2, cleanups);
+    }
+    private sealed class SyntheticFailure : Exception
+    { internal SyntheticFailure(int code) { HResult = code; } }
 }

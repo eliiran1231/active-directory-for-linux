@@ -24,10 +24,12 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private readonly List<(TcpClient Client, Task Serving)> clients = [];
     private readonly Task accepting;
     private readonly X509Certificate2? certificate;
+    private int abandons;
     private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
     internal volatile bool DisconnectOnSearch;
+    internal int Abandons => Volatile.Read(ref abandons);
     internal int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
     internal int Binds => Volatile.Read(ref binds);
     internal int Searches => Volatile.Read(ref searches);
@@ -110,15 +112,16 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
             Stream stream = client.GetStream();
             try
             {
+                // Observe protocol selection on TLS AND plaintext targets. No bytes
+                // are consumed/logged; this cannot establish trust or identity by itself.
+                var first = new byte[1];
+                var count = await client.Client.ReceiveAsync(first.AsMemory(), SocketFlags.Peek, stop.Token);
+                FirstRecords.Enqueue(count == 0 ? "EOF" : first[0] switch
+                {
+                    0x16 => "TLS handshake", 0x15 => "TLS alert", 0x30 => "LDAP BER", _ => "other",
+                });
                 if (certificate is not null)
                 {
-                    // Observe protocol selection without consuming or logging LDAP payloads.
-                    var first = new byte[1];
-                    var count = await client.Client.ReceiveAsync(first.AsMemory(), SocketFlags.Peek, stop.Token);
-                    FirstRecords.Enqueue(count == 0 ? "EOF" : first[0] switch
-                    {
-                        0x16 => "TLS handshake", 0x15 => "TLS alert", 0x30 => "LDAP BER", _ => "other",
-                    });
                     var secure = new SslStream(stream, leaveInnerStreamOpen: false);
                     stream = secure;
                     await secure.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
@@ -137,6 +140,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                     var tag = message.PeekTag();
                     if (tag.TagClass != TagClass.Application) throw new InvalidDataException("Expected LDAP operation.");
                     if (tag.TagValue == 2) return;
+                    if (TryConsumeAbandon(message)) { Interlocked.Increment(ref abandons); continue; }
                     var operation = message.ReadSequence(tag);
                     if (tag.TagValue == 0)
                     {
@@ -194,6 +198,16 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                 Interlocked.Increment(ref closed);
             }
         }
+    }
+
+    internal static bool TryConsumeAbandon(AsnReader message)
+    {
+        var tag = message.PeekTag();
+        if (tag.TagClass != TagClass.Application || tag.TagValue != 16) return false;
+        // RFC 4511 4.11: primitive implicitly tagged MessageID; no response.
+        var abandoned = message.ReadInteger(new Asn1Tag(TagClass.Application, 16));
+        if (abandoned <= 0 || abandoned > int.MaxValue) throw new InvalidDataException("Invalid abandoned message ID.");
+        return true;
     }
 
     private static string DescribeFailure(Exception error)

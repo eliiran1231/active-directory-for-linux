@@ -173,18 +173,26 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
     if (($value.Pool.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Unexpected pool cases.' }
     foreach ($name in $names) {
         $row = $value.Pool[$name]
-        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,Closed,FailureCode,FailureKind,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,PooledCredentialed,PrimaryBinds,Sasl,Status,TargetBinds,TargetConnections,TargetSearches,TargetTls') { throw 'Unexpected pool observation fields.' }
+        if (($row.Keys | Sort-Object) -join ',' -cne 'Anonymous,BaselineCredentialed,Checks,Cleanup,CleanupMask,Closed,FailureCode,FailureKind,FailurePoint,KeyCleanupCode,LeaseCleanupCode,ManagedAttempts,ObservedFailureCode,ObservedFailureKind,OtherCleanupCode,PoolDelta,PooledCredentialed,PrimaryBinds,Sasl,SourceAbandons,SourceCleanupCode,Status,TargetAbandons,TargetBerPrefixes,TargetBinds,TargetCleanupCode,TargetConnections,TargetSearches,TargetTls,TargetTlsPrefixes') { throw 'Unexpected pool observation fields.' }
+        if ($row.FailurePoint -notin @('none', 'setup', 'other', 'assertion', 'ambient-identity', 'concurrent-counts', 'search-shape', 'ldap-identity', 'native-response', 'native-operation', 'cleanup')) { throw 'Invalid fixed failure point.' }
         if ($row.Status -notin @('passed', 'failed', 'skipped') -or $row.Cleanup -isnot [bool]) { throw 'Invalid pool status.' }
         foreach ($field in @('FailureKind', 'ObservedFailureKind')) {
             if ($row[$field] -notin @('none', 'ldap', 'directory', 'fixture', 'response')) { throw 'Invalid pool failure kind.' }
         }
-        foreach ($field in @('FailureCode', 'ObservedFailureCode')) {
+        foreach ($field in @('FailureCode', 'ObservedFailureCode', 'LeaseCleanupCode', 'KeyCleanupCode', 'OtherCleanupCode', 'SourceCleanupCode', 'TargetCleanupCode')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid pool failure code.' }
         }
         foreach ($field in @('Checks', 'PrimaryBinds', 'TargetConnections', 'TargetTls', 'TargetBinds', 'TargetSearches',
-            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed')) {
+            'Anonymous', 'Sasl', 'Closed', 'ManagedAttempts', 'BaselineCredentialed', 'PooledCredentialed', 'SourceAbandons', 'TargetAbandons', 'TargetTlsPrefixes', 'TargetBerPrefixes')) {
             if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt 0 -or $row[$field] -gt 10000) { throw 'Invalid pool counter.' }
         }
+        if (($row.CleanupMask -isnot [int] -and $row.CleanupMask -isnot [long]) -or $row.CleanupMask -lt 0 -or $row.CleanupMask -gt 63 -or
+            ($row.PoolDelta -isnot [int] -and $row.PoolDelta -isnot [long]) -or $row.PoolDelta -lt -10000 -or $row.PoolDelta -gt 10000) { throw 'Invalid cleanup attribution.' }
+        foreach ($pair in @(@('LeaseCleanupCode', 1), @('KeyCleanupCode', 2), @('OtherCleanupCode', 4), @('SourceCleanupCode', 8), @('TargetCleanupCode', 16))) {
+            if (($row.CleanupMask -band $pair[1]) -eq 0 -and $row[$pair[0]] -ne 0) { throw 'Cleanup code without category.' }
+        }
+        if (($row.PoolDelta -ne 0) -ne (($row.CleanupMask -band 32) -ne 0) -or
+            ($row.Cleanup -and $row.CleanupMask -ne 0)) { throw 'Cleanup verdict inconsistent.' }
         $identities = if ($name -match '^(first-)?[ab]-to-[ab]$') { @('a', 'b') } else { @($name.Split('-')[0]) }
         $ready = $true
         foreach ($identity in $identities) {
@@ -193,7 +201,7 @@ function ConvertTo-DiagnosticCombinedResult([string]$Json) {
         if ((!$ready -and $row.Status -ne 'skipped') -or ($ready -and $row.Status -eq 'skipped')) { throw 'Pool native dependency bypassed.' }
         if ($row.Status -eq 'passed') {
             if (!$row.Cleanup -or $row.Checks -lt 3 -or $row.PrimaryBinds -lt 1 -or $row.ManagedAttempts -lt 1 -or
-                $row.Closed -ne $row.TargetConnections -or $row.Sasl -ne 0 -or $row.FailureKind -ne 'none' -or $row.FailureCode -ne 0) { throw 'Incomplete passing pool evidence.' }
+                $row.Closed -ne $row.TargetConnections -or $row.Sasl -ne 0 -or $row.FailureKind -ne 'none' -or $row.FailureCode -ne 0 -or $row.FailurePoint -ne 'none') { throw 'Incomplete passing pool evidence.' }
             if ($name -notlike '*-mixed-referral' -and $row.Anonymous -ne 0) { throw 'Unexpected anonymous forwarding.' }
             if ($name -like '*-untrusted-target') {
                 if ($row.TargetConnections -lt 1 -or $row.TargetBinds -ne 0 -or $row.TargetSearches -ne 0 -or $row.ObservedFailureKind -eq 'none') { throw 'Untrusted target evidence incomplete.' }

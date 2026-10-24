@@ -170,7 +170,8 @@ foreach ($name in $poolNames) {
     $pool[$name] = @{ Status = 'passed'; Checks = 3; PrimaryBinds = 2; TargetConnections = 2; TargetTls = 2;
         TargetBinds = 2; TargetSearches = 2; Anonymous = 0; Sasl = 0; Closed = 2; ManagedAttempts = 1;
         BaselineCredentialed = 0; PooledCredentialed = 0; Cleanup = $true; FailureKind = 'none'; FailureCode = 0;
-        ObservedFailureKind = 'none'; ObservedFailureCode = 0 }
+        ObservedFailureKind = 'none'; ObservedFailureCode = 0; CleanupMask = 0; LeaseCleanupCode = 0; KeyCleanupCode = 0;
+        OtherCleanupCode = 0; SourceCleanupCode = 0; TargetCleanupCode = 0; PoolDelta = 0; SourceAbandons = 0; TargetAbandons = 0; TargetTlsPrefixes = 0; TargetBerPrefixes = 0; FailurePoint = 'none' }
     if ($name -like '*-disconnect') { $pool[$name].ManagedAttempts = 3; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 52 }
     if ($name -like '*-untrusted-target') { $pool[$name].TargetBinds = 0; $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'ldap'; $pool[$name].ObservedFailureCode = 81 }
     if ($name -like '*-target-bind-rejection') { $pool[$name].TargetSearches = 0; $pool[$name].ObservedFailureKind = 'directory'; $pool[$name].ObservedFailureCode = 49 }
@@ -188,6 +189,15 @@ $pool['a-isolation'].Remove('Password')
 $pool['a-isolation'].Cleanup = $false
 MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
 $pool['a-isolation'].Cleanup = $true
+$pool['a-isolation'].CleanupMask = 8
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].CleanupMask = 0
+$pool['a-isolation'].SourceCleanupCode = -1
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].SourceCleanupCode = 0
+$pool['a-isolation'].PoolDelta = 1
+MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
+$pool['a-isolation'].PoolDelta = 0
 $pool['a-isolation'].Status = 'skipped'
 MustThrow { ConvertTo-DiagnosticCombinedResult ($combined | ConvertTo-Json -Depth 8) }
 $pool['a-isolation'].Status = 'passed'
