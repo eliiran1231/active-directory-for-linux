@@ -1,5 +1,19 @@
 # Windows Basic referral pooling: evidence and production boundary
 
+Current implementation decision (2026-10-25): enable only the existing exact
+Windows synchronous Base FindOne / validated LDAPS / `127.0.0.1` / External
+subset, with token-isolated keys and lifecycle checks. The primary host predicate
+is not a target allowlist. Other Windows referral paths stay fresh. This is a
+limited feature, not completion of general remote-host Windows pooling.
+[Supported contract](connection-pooling.md#supported-windows-scoped-findone-subset).
+
+[Run 40214586987](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40214586987)
+passed all 31 candidate cases on both runtimes, including real FindOne and
+anonymous fresh-path parity; exact cleanup was independently verified. Final
+ordinary exact-head CI is tracked separately. The assessments below preserve
+chronological context: earlier disabled/untested statements are superseded only
+for this exact subset by the [validation record](windows-context-candidate-validation.md#corrected-candidate-verification-2026-10-25).
+
 Assessment after [run 40123894559](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40123894559)
 at 0615f46c2482b8939afc03ef6ebcc31012e3de67. Both .NET 8 and 10 passed
 37/37 comparison cases and all 11 authenticated native stages. The separate

@@ -426,6 +426,10 @@ public class DirectorySearcher : Component
         return FindOneCore(diagnostic);
     }
 
+    internal bool CanUseContextScopedRead(SearchRequest request) =>
+        !HasAttributeScopeQuery && DirectorySynchronization is null && _virtualListView is null &&
+        ConfigureConnectionOverride is null && request.Controls.Count == 0 && PageSize == 0 && !Asynchronous;
+
     private SearchResult? FindOneCore(ContextScopedReadDiagnostic? diagnostic)
     {
         using var operation = CaptureSearch();
@@ -442,10 +446,8 @@ public class DirectorySearcher : Component
 
         CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
 
-        // Only this fully buffered, single-request path is a future candidate.
-        // Production activation is separate from the native diagnostic entry.
-        if (DirectorySynchronization is null && _virtualListView is null && ConfigureConnectionOverride is null &&
-            request.Controls.Count == 0 && PageSize == 0 && !Asynchronous)
+        // Only this fully buffered single-request path has audited context checks.
+        if (CanUseContextScopedRead(request))
         {
             bool sent;
             SearchResponse? scoped;

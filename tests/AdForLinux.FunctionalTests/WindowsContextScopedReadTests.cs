@@ -517,9 +517,63 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
-    public void Candidate_scope_is_narrow_and_all_ordinary_paths_remain_guarded()
+    public void Production_configuration_rejects_every_unevidenced_transport_and_host()
     {
-        Assert.False(LdapConnectionProvider.ContextScopedProductionEnabled);
+        LdapConnectionOptions Make(string host = "127.0.0.1", int port = 636, bool ssl = true,
+            bool startTls = false, bool skip = false, AuthType auth = AuthType.Basic,
+            string? user = "synthetic", string? password = "synthetic", bool sign = false, bool seal = false)
+            => new() { Host = host, Port = port, UseSsl = ssl, UseStartTls = startTls,
+                SkipCertificateCheck = skip, AuthenticationType = auth, BindDn = user,
+                BindPassword = password, Signing = sign, Sealing = seal };
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Make(), ReferralChasingOption.External, request));
+        foreach (var options in new[] { Make(host: "dc.example.test"), Make(host: "localhost"), Make(host: "::1"),
+            Make(host: "127.0.0.2"), Make(port: 0), Make(port: 65536), Make(ssl: false), Make(startTls: true),
+            Make(skip: true), Make(auth: AuthType.Negotiate), Make(auth: AuthType.Kerberos), Make(auth: AuthType.Anonymous),
+            Make(user: null), Make(user: ""), Make(password: null), Make(password: ""), Make(sign: true), Make(seal: true) })
+            Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request));
+    }
+
+    [Fact]
+    public void FindOne_routing_excludes_mutable_control_async_and_override_paths()
+    {
+        using var searcher = new AdForLinux.DirectoryServices.DirectorySearcher();
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        Assert.True(searcher.CanUseContextScopedRead(request));
+        searcher.Asynchronous = true; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.Asynchronous = false;
+        searcher.PageSize = 1; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.PageSize = 0;
+        searcher.DirectorySynchronization = new(); Assert.False(searcher.CanUseContextScopedRead(request)); searcher.DirectorySynchronization = null;
+        searcher.VirtualListView = new(); Assert.False(searcher.CanUseContextScopedRead(request)); searcher.VirtualListView = null;
+        searcher.SearchScope = AdForLinux.DirectoryServices.SearchScope.Base;
+        searcher.AttributeScopeQuery = "member"; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.AttributeScopeQuery = "";
+        searcher.ConfigureConnectionOverride = _ => { }; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.ConfigureConnectionOverride = null;
+        request.Controls.Add(new PageResultRequestControl(1)); Assert.False(searcher.CanUseContextScopedRead(request)); request.Controls.Clear();
+        Assert.True(searcher.CanUseContextScopedRead(request));
+    }
+
+    [Fact]
+    public void Ordinary_route_selects_only_supported_Windows_path_and_respects_retained_seams()
+    {
+        using var root = new AdForLinux.DirectoryServices.DirectoryEntry("LDAP://127.0.0.1:1636/CN=synthetic", "synthetic", "synthetic",
+            AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        var authority = root.CaptureBindingAuthority();
+        // No diagnostic capability. On Windows, selection reaches the offline
+        // guard before any token/native call; other platforms keep ordinary routing.
+        if (OperatingSystem.IsWindows() && OfflineTestGuard.Enabled)
+            Assert.Equal(OfflineTestGuard.Message, Assert.Throws<InvalidOperationException>(() =>
+                root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _)).Message);
+        else if (!OperatingSystem.IsWindows())
+            Assert.False(root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _));
+        Assert.False(root.TryContextScopedRead(request, ReferralChasingOption.All, null, authority, out _));
+        root.OperationSessionFactory = (_, _, _, _, _) => throw new Exception("Must not enter retained seam");
+        Assert.False(root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _));
+    }
+
+    [Fact]
+    public void Scoped_production_is_Windows_only_and_general_provider_remains_guarded()
+    {
+        Assert.Equal(OperatingSystem.IsWindows(), LdapConnectionProvider.ContextScopedProductionEnabled);
         var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
         Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
         foreach (var mode in new[] { ReferralChasingOption.None, ReferralChasingOption.Subordinate, ReferralChasingOption.All })

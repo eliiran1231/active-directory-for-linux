@@ -23,7 +23,8 @@ internal static partial class LdapConnectionProvider
         // rebind callback, binds them anonymously. Preserve that existing policy.
         // Windows LDAPS/External passed the restricted authenticated fixture,
         // but primary options do not bound server-supplied referrals or ambient
-        // context changes across/within a lease. Keep production guarded; see
+        // context changes across/within a lease. This general API stays fresh;
+        // the separately audited scoped FindOne path owns context checks. See
         // docs/windows-basic-pooling-boundary.md. Other backends remain unaudited.
         (referrals == ReferralChasingOption.None || OperatingSystem.IsLinux());
 

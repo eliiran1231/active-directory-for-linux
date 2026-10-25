@@ -88,10 +88,10 @@ when there is no rebind callback, as in this library. Reuse preserves that behav
 it does not grant referral targets the primary Basic identity. External/Subordinate
 still map to All on Linux because Protocols cannot represent partial modes there.
 
-Windows and other backends retain fresh, capacity-accounted sessions when referrals
-are enabled. MS-ADTS supports fixed Basic credential propagation, but native
-Windows TLS referral identity and reuse validation remains incomplete. Basic with
-referrals disabled remains reusable on those platforms. This platform limitation does not change caller referral settings.
+Windows and other backends generally retain fresh, capacity-accounted sessions
+when referrals are enabled. The narrow Windows FindOne exception is documented
+below; general referral reuse remains disabled. Basic with referrals disabled
+remains reusable on those platforms. Caller referral settings do not change.
 
 Ambient/default, anonymous, Negotiate/Kerberos and other mechanisms remain fresh
 and capacity-accounted. Current DirectoryEntry authentication defaults are Secure
@@ -180,14 +180,13 @@ throughput or tail-latency parity. No lab AD testing is authorized for this work
 
 ## Windows Basic referral investigation
 
-The Windows eligibility extension is gated on native evidence and an enforceable
-production boundary. The latest
-[verification run](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40123894559)
-passed all 37 explicit-Basic comparison cases per runtime in the restricted
-authenticated LDAPS/External loopback fixture. Anonymous direct TLS still failed;
-production Windows referral pooling remains guarded. See the
+The narrow supported FindOne subset is described below. The latest
+[verification run](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40214586987)
+passed all 31 context-scoped cases per runtime, including real FindOne and
+anonymous fresh-path parity. The separate anonymous direct TLS control still
+failed; anonymous pooling is not enabled. See the
 [eligibility boundary assessment](windows-basic-pooling-boundary.md) for the
-evidence matrix and concrete remaining gap. Earlier results below are historical.
+exact supported subset and remaining limits. Earlier results are historical.
 The [MS-ADTS referral task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/b2edefdd-16f9-413d-88c5-a2f5c137bafe)
 associates referred connections with the containing ADConnection; the
 [bind task](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/7a6dad48-8a6f-4704-8308-e3367ab7440a)
@@ -589,3 +588,36 @@ safety/unsafety. The probe uses a different synthetic certificate and per-call
 offline restrictions, so it cannot substitute for native TLS/referral evidence.
 The prior successful original-referral tests still establish retained **primary**
 reuse with fresh target connections, not production pool-key or lease isolation.
+
+
+## Supported Windows scoped FindOne subset
+
+Windows now selects context-isolated reuse only for synchronous, fully buffered
+`DirectorySearcher.FindOne` with Base scope, PageSize=0, no request controls,
+DirSync, VLV, attribute-scope query or connection override. The primary must be
+exactly `127.0.0.1`, use validated LDAPS with explicit nonempty Basic credentials,
+and request External referrals. StartTLS, certificate skipping, signing/sealing,
+other host spellings/addresses and referral modes are excluded. Existing retained
+entry/schema handles and streaming/FindAll paths do not enter this new path.
+Linux and existing Basic/None reuse are unchanged.
+
+Each lease is isolated by the exact connection configuration/credentials plus
+the effective Windows token instance, logon identifier, modification identifier,
+type and impersonation level. Anonymous, unreadable, restricted, AppContainer or
+unsupported token contexts use capacity-accounted fresh connections with their
+original explicit LDAP credentials. Context checks surround acquisition, send,
+completion and return; an unused mismatched lease is discarded, while no sent
+operation is replayed. Schema materialization uses a separate fresh External
+lease. The ordinary preliminary BindAuthority request retains the root's policy.
+
+[Native validation](windows-context-candidate-validation.md#corrected-candidate-verification-2026-10-25)
+passed 31 cases on each runtime, including token transitions, anonymous fresh/warm
+failure parity, failure eviction and real FindOne. The primary loopback condition
+is an evidence limit, **not a referral-destination allowlist**. Native referrals
+still choose their own targets and may reconnect/share child sessions; no new
+callbacks or credential forwarding are installed. No native exactly-once or
+atomic protection against concurrent external token mutation is promised.
+
+This is intentionally limited Windows support, not general remote-host Windows
+Basic referral pooling. Broader addresses/transports/topologies require their own
+boundary review. Kerberos/Negotiate remains fresh and deferred to issue 236.

@@ -4,13 +4,18 @@ namespace AdForLinux.DirectoryServices.Ldap;
 
 internal static partial class LdapConnectionProvider
 {
-    // NOT a public setting or environment override. Native validation of this
-    // new lifecycle and the remaining referral boundary precedes activation.
-    internal static bool ContextScopedProductionEnabled => false;
+    // Only the audited, operation-owned FindOne path may use this subset.
+    // Native validation: 40214586987, 31/31 on net8/net10. This is not a
+    // general provider/referral switch or a referral-destination allowlist.
+    internal static bool ContextScopedProductionEnabled => OperatingSystem.IsWindows();
 
     internal static bool IsContextScopedReadConfiguration(LdapConnectionOptions options,
         ReferralChasingOption referrals, SearchRequest request) =>
-        referrals == ReferralChasingOption.External && IsWindowsReferralDiagnosticConfiguration(options) &&
+        referrals == ReferralChasingOption.External &&
+        options.Host == "127.0.0.1" && options.Port > 0 && options.Port <= 65535 && options.UseSsl &&
+        !options.UseStartTls && !options.SkipCertificateCheck && !options.Signing && !options.Sealing &&
+        options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
+        !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
         request.Scope == System.DirectoryServices.Protocols.SearchScope.Base && request.Controls.Count == 0;
 
     // Audited caller: DirectorySearcher.FindOne only, with no controls/overrides.

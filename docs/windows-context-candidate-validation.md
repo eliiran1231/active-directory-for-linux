@@ -336,3 +336,82 @@ query report contracts passed. Independent final review found no remaining
 static findings after synchronizing the parser and synthetic report to the new
 strict counts and adding rejection of the old counts. No production files were
 changed by this fixture correction, and no corrected native run was executed.
+
+
+## Corrected candidate verification: 2026-10-25
+
+[Run 40214586987](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40214586987)
+at `138bfe380db815075c47dad4501f821d523429a1` (local prepared fix `488b2dee`)
+ran exactly once, with .NET 8 and 10 sequentially on one disposable hosted VM.
+Both existing-token preflights passed before security setup. **All 31 candidate
+cases passed on each runtime**, with Cleanup=true and PoolDelta=0 throughout.
+All 11 authenticated raw controls passed. The separate anonymous direct control
+still failed LDAP 81 before TLS/bind/search, so the overall job correctly remains
+failed; both reports explicitly say supported=passed, anonymous-adverse=failed.
+Anonymous candidate cases establish fresh/warm failure parity and eviction, not
+successful anonymous TLS or anonymous pooling eligibility.
+
+All three FindOne identities on both runtimes recorded the strict expected four
+source binds, seven source searches and two target searches. Their internal
+assertions also required one binding-resolution read and four schema reads. The
+actual BindAuthority and shared candidate/FindOne paths ran, with root None and
+searcher External preserved; no bypass or validation override was introduced.
+The other 28 cases retained the assertions described in the preceding table.
+
+Independent review confirmed the complete reports and both cleanup passes:
+exact public certificate `ECF3CDA8A20A7B44A347FAA8A46DB46BC1AEFD49`, owned
+non-exportable provider key, PFX and both owned accounts were absent. Independent
+final cleanup verified all temporary files and the private directory absent.
+The consumed trigger was removed at remote
+`a5ed2c439843f7cfacdbe310f0534e83e74cce24` (local `9f78015`). No rerun occurred.
+
+### Next safe implementation steps
+
+The candidate lifecycle now has native evidence for stable authenticated reuse,
+A/B token-instance partitioning, changes at acquisition/send/completion/return,
+anonymous fresh-path parity, bind/transport failure eviction and synchronous
+FindOne materialization on both runtimes. The prior distinct-primary concurrency
+suite remains separate evidence; this run is not a new concurrency stress test.
+Native reconnect is still distinct from managed replay, and no exactly-once
+native guarantee is claimed.
+
+Production activation is still false. The current candidate predicate inherits
+the fixture's IPv4-loopback restriction; shipping that as general remote LDAP
+support would be misleading. The next safe work is an independent final audit of
+the production eligibility predicate and operation boundaries, separating the
+hosted fixture capability from any proposed supported production boundary. It
+must explicitly decide the host/certificate/topology scope rather than silently
+removing the address restriction or enabling all referral operations. Preserve
+fresh paths for unsupported contexts, transports and retained/streaming APIs.
+
+After that decision, ordinary exact-head Linux/Windows offline and Samba CI plus
+final review remain required before claiming Windows work complete. StartTLS,
+plaintext/All/Subordinate modes, domain delegation, broader referral graphs and
+remote hostname/certificate variants are not established by this run. This is
+not a demand for anonymous pooling to work, nor a requirement to test every LDAP
+deployment; it is a requirement to state and justify the supported subset. No
+production activation, additional security run, merge or release is authorized
+by this completed run. Issue 236 planning remains conditional on completing and
+validating the Windows implementation.
+
+
+## Narrow production selection prepared after final boundary review
+
+Independent source review found no remaining concrete pooling defect in enabling
+only the existing exact candidate subset. Production selection is now Windows-
+only and retains the exact 127.0.0.1/validated-LDAPS/External/Base predicate. The
+production predicate no longer depends on the diagnostic helper predicate;
+there is no public override or environment-based activation. The guarded native
+diagnostic remains a separate invocation capability using the same core.
+
+Routing regressions reject unsupported hosts, transports, auth modes, token
+contexts, controls and retained seams. The ordinary production route reaches the
+offline guard before native operations on Windows, while non-Windows routing and
+the general provider remain unchanged. Local full functional tests passed
+13,548 with one existing skip on each runtime. Independent review found no
+blocking code/workflow issue. Ordinary exact-head Linux/Windows offline and
+Samba CI is the next verification gate; no security fixture is invoked by it.
+
+This enables a deliberately limited feature, not general remote-host Windows
+Basic pooling. The preceding disabled-state chronology describes earlier commits.
+No deployment, merge or release has occurred, and issue 236 is not yet started.
