@@ -19,7 +19,9 @@ public partial class DirectoryEntry
         var snapshot = IdentityLifetime.Checked(generation, Validate, () =>
             (Options: BuildOptions(), Fresh: _freshConnectionRequired, Minimum: _minimumConnectionGeneration,
              Existing: _connection is not null || _schemaConnection is not null || OperationSessionFactory is not null));
-        if (snapshot.Existing || !LdapConnectionProvider.IsContextScopedReadConfiguration(snapshot.Options, referrals, request)) return false;
+        if (snapshot.Existing || !(diagnostic is null
+            ? LdapConnectionProvider.IsContextScopedReadConfiguration(snapshot.Options, referrals, request)
+            : LdapConnectionProvider.IsContextScopedDiagnosticConfiguration(snapshot.Options, referrals, request, diagnostic.ContinuationScope))) return false;
         response = diagnostic is null
             ? LdapConnectionProvider.SendContextScopedRead(snapshot.Options, referrals, request, timeout,
                 authority, snapshot.Fresh, snapshot.Minimum)

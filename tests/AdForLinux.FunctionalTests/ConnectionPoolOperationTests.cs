@@ -78,6 +78,23 @@ public class ConnectionPoolOperationTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Diagnostic_destination_rejected_before_preliminary_binding(bool ordinary)
+    {
+        using var fixture = new Fixture();
+        using var root = fixture.Entry(); // Deliberately outside the loopback diagnostic boundary.
+        using var searcher = new Searcher(root) { SearchScope = AdForLinux.DirectoryServices.SearchScope.Base };
+        // Enter the private core with an inert capability solely to verify guard order;
+        // the public diagnostic entry separately requires hosted Windows/live access.
+        var diagnostic = (ContextScopedReadDiagnostic)RuntimeHelpers.GetUninitializedObject(typeof(ContextScopedReadDiagnostic));
+        var core = typeof(Searcher).GetMethod("FindOneCore", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var error = Assert.Throws<TargetInvocationException>(() => core.Invoke(searcher, [diagnostic, ordinary]));
+        Assert.IsType<InvalidOperationException>(error.InnerException);
+        Assert.Empty(fixture.Requests); Assert.Empty(fixture.Connections);
+    }
+
+    [Theory]
     [InlineData(AdForLinux.DirectoryServices.SearchScope.OneLevel, false)]
     [InlineData(AdForLinux.DirectoryServices.SearchScope.OneLevel, true)]
     [InlineData(AdForLinux.DirectoryServices.SearchScope.Subtree, false)]

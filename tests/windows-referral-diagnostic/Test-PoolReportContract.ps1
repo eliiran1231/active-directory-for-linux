@@ -83,3 +83,109 @@ foreach ($framework in @('net8.0', 'net10.0')) {
         $process.Dispose()
     }
 }
+
+foreach ($framework in @('net8.0', 'net10.0')) {
+    $binary = Join-Path $PSScriptRoot "worker/bin/Release/$framework/AuthenticatedWorker.dll"
+    $process = Start-DiagnosticProcess 'dotnet' @($binary, '--continuation-report-self-test')
+    try {
+        $capture = [AdflBoundedCapture]::new($process)
+        if (!$process.WaitForExit(30000) -or $process.ExitCode -ne 0) { throw 'Pure continuation report worker failed.' }
+        $wrapper = $capture.Result() | ConvertFrom-Json -AsHashtable
+        if (($wrapper.Keys | Sort-Object) -join ',' -cne 'Report,TestOnly' -or $wrapper.TestOnly -isnot [bool] -or !$wrapper.TestOnly) { throw 'Synthetic discriminator missing.' }
+        $json = $wrapper.Report | ConvertTo-Json -Depth 10 -Compress
+        $report = ConvertTo-ContinuationCandidateResult $json
+        if ($report.Continuations.Count -ne 4 -or $report.Supported -ne 'passed' -or $report.Adverse -ne 'failed' -or $report.AllPassed) { throw 'Continuation contract failed.' }
+        foreach ($mutation in @('extra','missing','unknown-case','cleanup','pool','identity','attempts','sends','searches','binds','schema','references','reuse','partial-reuse','partial-code','code-type','array-type','label','order','phase','kind','failure','verdict','dependency','comparison','case-cleanup','negative','overflow','boolean-counter')) {
+            $bad = $json | ConvertFrom-Json -AsHashtable
+            $row = $bad.Continuations['onelevel/success'].Scoped
+            switch ($mutation) {
+                'extra' { $row.Secret = 'synthetic' }
+                'missing' { $bad.Continuations.Remove('subtree/partial') }
+                'unknown-case' { $bad.Continuations['unknown'] = $bad.Continuations['subtree/partial'] }
+                'cleanup' { $row.Cleanup = $false }
+                'pool' { $row.PoolDelta = 1 }
+                'identity' { $row.IdentityValid = $false }
+                'attempts' { $row.Attempts = 1 }
+                'sends' { $row.Sends = 3 }
+                'searches' { $row.TargetSearches = 3 }
+                'binds' { $row.SourceBinds = 3 }
+                'schema' { $row.SchemaReads = 3 }
+                'references' { $row.References = 1 }
+                'reuse' { $row.Reused = 0 }
+                'partial-reuse' { $bad.Continuations['subtree/partial'].Scoped.Reused = 1 }
+                'partial-code' { $bad.Continuations['subtree/partial'].Scoped.Results = @(0,0) }
+                'code-type' { $row.Results = @('0',0) }
+                'array-type' { $row.Results = 0 }
+                'label' { $row.Returned = @('raw private detail','local') }
+                'order' { $row.Returned = @('target','local') }
+                'phase' { $row.Phase = 'raw private detail' }
+                'kind' { $row.FailureKind = 'raw private detail' }
+                'failure' { $row.FailureCode = 81 }
+                'verdict' { $bad.AllPassed = $true }
+                'dependency' { $row.Status = 'skipped' }
+                'comparison' { $bad.Continuations['onelevel/success'].Status = 'failed' }
+                'case-cleanup' { $bad.Continuations['onelevel/success'].Cleanup = $false }
+                'negative' { $row.TargetBinds = -1 }
+                'overflow' { $row.TargetBinds = 2147483648 }
+                'boolean-counter' { $row.TargetBinds = $true }
+            }
+            $rejected = $false
+            try { $null = ConvertTo-ContinuationCandidateResult ($bad | ConvertTo-Json -Depth 10 -Compress) } catch { $rejected = $true }
+            if (!$rejected) { throw "Malformed continuation $mutation accepted." }
+        }
+        # Valid failures remain reportable, including a separate teardown failure and original LDAP error.
+        $bad = $json | ConvertFrom-Json -AsHashtable
+        $case = $bad.Continuations['subtree/success']; $row = $case.Scoped
+        $row.Status = 'failed'; $row.Phase = 'read'; $row.FailureKind = 'ldap'; $row.FailureCode = 81
+        $row.Cleanup = $false; $row.PoolDelta = 1; $case.Cleanup = $false; $case.Status = 'failed'; $bad.Supported = 'failed'
+        $result = ConvertTo-ContinuationCandidateResult ($bad | ConvertTo-Json -Depth 10 -Compress)
+        if ($result.Continuations['subtree/success'].Scoped.FailureCode -ne 81 -or $result.Continuations['subtree/success'].Cleanup) { throw 'Failure evidence lost.' }
+        # A failed original direct gate produces four completely empty skipped comparisons.
+        $bad = $json | ConvertFrom-Json -AsHashtable
+        $bad.Native['original-direct'].Status = 'failed'
+        $bad.Native['original-referral'].Status = 'skipped'; $bad.Native['original-retained-primary'].Status = 'skipped'
+        foreach ($case in $bad.Continuations.Values) {
+            $case.Status = 'skipped'
+            foreach ($mode in @('Ordinary','Scoped')) {
+                $row = $case[$mode]; $row.Status = 'skipped'; $row.Phase = 'not-started'; $row.IdentityValid = $false
+                $row.Results = @(); $row.Returned = @()
+                foreach ($field in @('Attempts','Sends','SourceBinds','SourceSearches','BindingReads','SchemaReads','Continuations','References','TargetBinds','TargetSearches','Reused')) { $row[$field] = 0 }
+            }
+        }
+        $bad.Supported = 'failed'
+        $null = ConvertTo-ContinuationCandidateResult ($bad | ConvertTo-Json -Depth 10 -Compress)
+        $bad.Continuations['onelevel/success'].Scoped.Sends = 1
+        $rejected = $false
+        try { $null = ConvertTo-ContinuationCandidateResult ($bad | ConvertTo-Json -Depth 10 -Compress) } catch { $rejected = $true }
+        if (!$rejected) { throw 'Skipped operation accepted.' }
+        Write-Host "PASS $framework continuation inventory, 30 rejection cases, skipped dependencies and preserved operation/cleanup failures; no native operations."
+    } finally {
+        if (!$process.HasExited) { $process.Kill($true); if (!$process.WaitForExit(10000)) { throw 'Pure continuation worker remains.' } }
+        $process.Dispose()
+    }
+}
+
+# Parse and execute only the inert Preflight path in both new invocation modes.
+$fixture = Join-Path $PSScriptRoot 'Authenticated-Fixture.ps1'
+& $fixture -Mode Preflight -ContinuationCandidate
+foreach ($invoke in @({ & $fixture -Mode Preflight -ContextCandidate -ContinuationCandidate }, { & $fixture -Mode E2ESupervisor -ContinuationCandidate })) {
+    $rejected = $false
+    try { & $invoke | Out-Null } catch { $rejected = $true }
+    if (!$rejected) { throw 'Conflicting or E2E continuation mode accepted.' }
+}
+Write-Host 'PASS inert continuation preflight and mode conflicts; no setup.'
+
+# A parser rejection travels through the real runtime orchestration finally path.
+$events = [Collections.Generic.List[string]]::new()
+$ops = @{
+    Start = { param($context) }; Assign = { param($context) }
+    CopyA = { param($context) 'fake-a' }; CopyB = { param($context) 'fake-b' }
+    Release = { param($context, $a, $b) }; Wait = { param($context, $timeout) }
+    Read = { param($context) ConvertTo-ContinuationCandidateResult '{"invalid":true}' }
+    StopAndVerify = { param($context) $events.Add('stop') }
+    Dispose = { param($context) $events.Add('dispose') }
+}
+$rejected = $false
+try { $null = Invoke-DiagnosticRuntime $ops } catch { $rejected = $true }
+if (!$rejected -or ($events -join ',') -cne 'stop,dispose') { throw 'Parser failure escaped runtime teardown.' }
+Write-Host 'PASS actual parser rejection invokes stop verification then disposal with fake transport.'

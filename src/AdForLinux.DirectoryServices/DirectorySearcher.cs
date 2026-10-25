@@ -426,14 +426,30 @@ public class DirectorySearcher : Component
         return FindOneCore(diagnostic);
     }
 
+    internal SearchResult? FindOneOrdinaryDiagnostic(ContextScopedReadDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+        ContextScopedReadDiagnostic.Validate();
+        return FindOneCore(diagnostic, ordinaryDiagnostic: true);
+    }
+
     internal bool CanUseContextScopedRead(SearchRequest request) =>
         !HasAttributeScopeQuery && DirectorySynchronization is null && _virtualListView is null &&
         ConfigureConnectionOverride is null && request.Controls.Count == 0 && PageSize == 0 && !Asynchronous;
 
-    private SearchResult? FindOneCore(ContextScopedReadDiagnostic? diagnostic)
+    private SearchResult? FindOneCore(ContextScopedReadDiagnostic? diagnostic, bool ordinaryDiagnostic = false)
     {
         using var operation = CaptureSearch();
         var root = operation.Root;
+        if (diagnostic is not null)
+        {
+            // Reject diagnostic destinations/options before the preliminary bind/read.
+            var preflight = BuildRequestForDn(operation.Origin.DistinguishedName);
+            preflight.SizeLimit = 1;
+            if (!CanUseContextScopedRead(preflight) ||
+                !LdapConnectionProvider.IsContextScopedDiagnosticConfiguration(root.BuildOptions(), ReferralChasing, preflight, diagnostic.ContinuationScope))
+                throw new InvalidOperationException("FindOne outside guarded diagnostic scope.");
+        }
         root.BindAuthority(operation.Origin.Authority);
         if (HasAttributeScopeQuery)
         {
@@ -447,7 +463,7 @@ public class DirectorySearcher : Component
         CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
 
         // Only this fully buffered single-request path has audited context checks.
-        if (CanUseContextScopedRead(request))
+        if (!ordinaryDiagnostic && CanUseContextScopedRead(request))
         {
             bool sent;
             SearchResponse? scoped;
@@ -474,12 +490,17 @@ public class DirectorySearcher : Component
             }
         }
 
-        if (diagnostic is not null) throw new InvalidOperationException("Scoped diagnostic did not select the candidate path.");
+        if (diagnostic is not null && !ordinaryDiagnostic) throw new InvalidOperationException("Scoped diagnostic did not select the candidate path.");
+        if (ordinaryDiagnostic && (!CanUseContextScopedRead(request) ||
+            !LdapConnectionProvider.IsContextScopedDiagnosticConfiguration(root.BuildOptions(), ReferralChasing, request, diagnostic!.ContinuationScope)))
+            throw new InvalidOperationException("Ordinary comparison outside guarded diagnostic scope.");
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
+        diagnostic?.RecordSend();
         var response = SendSearch(connection, request, operation.Origin.Authority);
+        diagnostic?.RecordResult(response);
         UpdateControlState(response);
         return response.Entries.Count > 0
             ? new SearchResult(response.Entries[0], operation.Origin, root, root.SchemaConnectionForOperation(connection))

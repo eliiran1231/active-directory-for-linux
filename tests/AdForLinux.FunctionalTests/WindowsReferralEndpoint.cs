@@ -31,6 +31,11 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal bool RejectBinds { get; set; }
     internal bool ServeSyntheticSchema { get; set; }
     internal bool ServeBindingResolution { get; set; }
+    internal System.DirectoryServices.Protocols.SearchScope? ContinuationScope { get; set; }
+    internal bool ContinuationPartial { get; set; }
+    private int continuationReads, continuationReferences;
+    internal int ContinuationReads => Volatile.Read(ref continuationReads);
+    internal int ContinuationReferences => Volatile.Read(ref continuationReferences);
     private int bindingReads;
     internal int BindingReads => Volatile.Read(ref bindingReads);
     private int schemaReads;
@@ -200,7 +205,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         if (BeforeCorrelatedSearchResponse is not null) await BeforeCorrelatedSearchResponse(connection, id, synthetic);
                         if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
-                        if (ServeBindingResolution && IsBindingResolution(baseDn, operation))
+                        if (ServeBindingResolution && IsBindingResolution(baseDn, operation.Clone()))
                         {
                             Interlocked.Increment(ref bindingReads);
                             await stream.WriteAsync(Entry(id, identity, new Dictionary<string, string>()), stop.Token);
@@ -214,6 +219,17 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                                 : new Dictionary<string, string> { ["lDAPDisplayName"] = "description", ["attributeSyntax"] = "2.5.5.12", ["oMSyntax"] = "64" };
                             await stream.WriteAsync(Entry(id, identity, attributes), stop.Token);
                             await stream.WriteAsync(Result(id, 5, ResultCode.Success), stop.Token);
+                        }
+                        else if (ContinuationScope is { } expected)
+                        {
+                            var scope = operation.ReadEnumeratedValue<System.DirectoryServices.Protocols.SearchScope>();
+                            _ = operation.ReadEnumeratedBytes();
+                            var limit = operation.ReadInteger();
+                            if (scope != expected || limit != 1 || !baseDn.AsSpan().SequenceEqual("CN=target"u8) || ReferralUrl is null)
+                                throw new InvalidDataException("Unexpected continuation fixture request.");
+                            Interlocked.Increment(ref continuationReads);
+                            await stream.WriteAsync(ContinuationResponse(id, identity, ReferralUrl, ContinuationPartial), stop.Token);
+                            Interlocked.Increment(ref continuationReferences);
                         }
                         else if (ReferralUrl is not null)
                         {
@@ -331,14 +347,26 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         return writer.Encode();
     }
 
-    internal static byte[] Entry(int id, string identity, IReadOnlyDictionary<string, string>? attributes = null)
+    internal static byte[] ContinuationResponse(int id, string identity, string referral, bool partial)
+    {
+        var writer = new AsnWriter(AsnEncodingRules.BER);
+        writer.PushSequence(); writer.WriteInteger(id);
+        var tag = new Asn1Tag(TagClass.Application, 19, true);
+        writer.PushSequence(tag); writer.WriteOctetString(Encoding.UTF8.GetBytes(referral));
+        writer.PopSequence(tag); writer.PopSequence();
+        return writer.Encode().Concat(Entry(id, identity, distinguishedName: "CN=local,CN=target"))
+            .Concat(Result(id, 5, partial ? ResultCode.SizeLimitExceeded : ResultCode.Success)).ToArray();
+    }
+
+    internal static byte[] Entry(int id, string identity, IReadOnlyDictionary<string, string>? attributes = null,
+        string distinguishedName = "CN=target")
     {
         var writer = new AsnWriter(AsnEncodingRules.BER);
         writer.PushSequence();
         writer.WriteInteger(id);
         var tag = new Asn1Tag(TagClass.Application, 4, true);
         writer.PushSequence(tag);
-        writer.WriteOctetString("CN=target"u8);
+        writer.WriteOctetString(Encoding.UTF8.GetBytes(distinguishedName));
         writer.PushSequence();
         foreach (var pair in attributes ?? new Dictionary<string, string> { ["description"] = identity })
         {
@@ -355,7 +383,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         return writer.Encode();
     }
 
-    private enum ResultCode { Success = 0, AuthMethodNotSupported = 7, Referral = 10, InvalidCredentials = 49 }
+    private enum ResultCode { Success = 0, SizeLimitExceeded = 4, AuthMethodNotSupported = 7, Referral = 10, InvalidCredentials = 49 }
 
     internal async Task DisconnectClients()
     {

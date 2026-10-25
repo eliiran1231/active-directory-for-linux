@@ -487,3 +487,163 @@ scope capability must remain per invocation and separately guarded; production
 Base-only eligibility must not be broadened just to run the experiment. This is
 an evidence plan, not a prepared or authorized native/security run. No broad AD,
 domain-delegation or credential matrix is required for this scope-specific gap.
+
+### Local continuation comparison preparation (2026-10-25)
+
+After the approved ordinary publication at `3da9a6e8027bccf2794ad70270de1841f3cfdd24`
+(run `40217364239`, five jobs passed), subsequent continuation work is local only.
+The production predicate still excludes OneLevel and Subtree. The new standalone
+`WindowsContinuationDiagnostic.Run` is not wired into a worker mode, PowerShell
+report parser or workflow; it cannot be selected by the existing diagnostic job.
+No native/account/key/trust setup, external CI or publication was performed for
+this preparation.
+
+The minimal comparison has four scenarios: OneLevel and Subtree, each with a
+successful or SizeLimitExceeded terminal response. Each scenario runs two real
+FindOne calls through the ordinary path and two through the explicitly scoped
+diagnostic path, under the original authenticated runner identity. It preserves
+External referrals, normal LDAPS validation, explicit synthetic Basic identity,
+SizeLimit=1 and no controls. A per-invocation internal capability permits only
+the named non-Base scope on the guarded loopback diagnostic; it does not change
+public eligibility. Both diagnostic paths reject invalid destination/options
+before the preliminary binding-resolution read.
+
+The source emits an application-19 SearchResultReference, a local entry and a
+terminal SearchResultDone (0 or 4). This is distinct from the previously tested
+SearchResultDone referral (10). RFC4511 sections 4.5.2 and 4.5.3 permit entries and
+references before the terminal result, and require a base referral scope when
+continuing a OneLevel search. See <https://www.rfc-editor.org/rfc/rfc4511.html#section-4.5.2>
+and <https://www.rfc-editor.org/rfc/rfc4511.html#section-4.5.3>.
+
+Measurements preserve returned first-entry labels, result codes, two managed
+sends, explicit identity, target search counts, binding/schema reads, scoped
+reuse and zero final pool delta. Ordinary and scoped modes use separate endpoint
+lifetimes. Both endpoints are stopped and awaited before final count/identity
+assertions, so a late extra search cannot be attributed to the next mode or
+escape the final counters. Cleanup failures remain separate from operation
+failure codes; every owned endpoint and exact tracked pool key is attempted.
+Expected source counts are 3 ordinary binds, 4 scoped-success binds or 5
+scoped-partial binds; seven searches comprise one binding read, four schema reads
+and two continuation reads. The partial path must evict rather than reuse its
+scoped lease. These are explicit hypotheses to verify natively, not prior results.
+
+Offline checks can establish BER structure, diagnostic configuration isolation,
+pre-bind rejection, stage scheduling, strict final counts, parity comparisons and
+existing public request/materialization behavior. They cannot establish whether
+WinLDAP under External chasing follows this continuation, how it aggregates a
+local entry plus a referred entry with SizeLimit=1, or whether it preserves code
+4 and first-entry order. A native normalization, suppressed chase or differing
+order must remain visible as a failed/insufficient comparison; do not silently
+weaken the assertions. The original direct/referral gates control these original
+identity cases independently of unrelated A/B or anonymous failures, while the
+report still distinguishes aggregate supported controls and the adverse control.
+
+A no-trust plaintext Windows experiment could investigate BER parsing/chasing
+or result ordering with the current identity and synthetic credentials, but
+cannot supply LDAPS explicit-referral-identity/context pooling evidence. This
+Linux executor cannot provide WinLDAP evidence. No such experiment was executed.
+Before proposing a security-changing run, the remaining **safe preparation gate**
+is a reviewed opt-in worker/report-parser integration and pure serialization/
+negative contract tests. Then the smallest native evidence gate is these four
+comparisons on .NET 8 and 10 under the already established authenticated LDAPS
+harness, with unchanged exact ownership/watchdog/cleanup safeguards and fresh
+execution approval. Additional identities or a broad transport matrix are not
+needed merely to resolve this continuation question; extending production scope
+still requires evaluating the actual results. Streaming/retained paths and
+Kerberos remain outside this preparation.
+
+Local validation: 74 focused checks and 13,573 full offline functional checks
+passed on each of .NET 8 and .NET 10 (one existing full-suite skip per runtime).
+The offline-runner Python suite passed all five checks. Independent static review
+confirmed both pre-bind validation and post-quiescence counter fixes, with no
+remaining blocker for this local preparation. Native hypotheses remain untested.
+
+### Completed local continuation integration (supersedes the integration gap above)
+
+The opt-in `-ContinuationCandidate` supervisor switch now forwards
+`--continuation-candidate` through the existing bounded worker transport. It is
+mutually exclusive with context-candidate and fake E2E modes. The existing
+read-only token-reader preflight runs for both runtimes before security setup.
+The default worker mode, credential transport, ownership manifest, watchdogs,
+normal TLS validation and production eligibility remain unchanged.
+
+`ConvertTo-ContinuationCandidateResult` and the read-only result printer accept
+exactly the four comparisons and fixed sanitized observation fields. Passing
+rows require all counts, identity, result codes, reuse and cleanup assertions;
+comparison verdicts additionally require identical first-entry/result sequences.
+Valid operation failures and separate cleanup failures remain visible. Skipped
+comparisons require failed original prerequisites and zero operation evidence.
+The anonymous adverse outcome remains separate from supported-case verdicts.
+
+The pure `--continuation-report-self-test` emits a marked synthetic report on
+both runtimes. Contract tests cover the four-case inventory, 30 malformed-report
+rejections, legitimate failed/skipped reports, mode conflicts, and the real
+runtime orchestration's stop/dispose path after parser rejection with fake
+transport. Eight cleanup combinations verify that key/source/target teardown is
+attempted even when earlier teardown fails. No self-test calls native fixture
+setup, certificate import or account/token creation.
+
+The inert `tests/windows-referral-diagnostic/Continuation-Once.yml.template`
+retains the previously exercised one-job workflow structure. It is outside
+`.github/workflows`, contains invalid placeholder run IDs, and is not an active
+trigger. Independent review covers it before any proposal to publish it.
+
+One future bundled approval would cover publication to the public
+`eliiran1231/active-directory-for-linux` repository's existing
+`diagnostic/windows-authenticated-20261024-once` branch (last verified published
+head `3da9a6e8027bccf2794ad70270de1841f3cfdd24`, recheck before writing), and exactly
+one GitHub-hosted `windows-2025` job using the template copied to
+`.github/workflows/windows-authenticated-once.yml` with two fresh manifest IDs.
+The job runs .NET 8 then .NET 10 on the same disposable VM: four continuation
+comparisons per runtime, each with two ordinary and two scoped FindOne calls
+(16 comparison calls per runtime), plus the existing 12 raw controls (11
+authenticated stages and the separate anonymous adverse control).
+
+Security scope is unchanged: two unique standard local accounts, one interactive
+logon each with token-handle copies, one uniquely owned non-exportable runner-user
+CNG key, and one public certificate temporarily in LocalMachine Root. No new
+identity, profile, membership, ACL, policy or validation changes are required.
+Keep the 60-second setup watchdog and bounded runtime workers; terminate and
+verify workers before cleanup. Existing finally and independent always cleanup
+must verify exact owned account/certificate/provider-key absence and temporary
+PFX/file/directory deletion, even after partial failure. No private key or
+password enters logs, arguments or artifacts. The trigger is removed after the
+single attempt; no automatic rerun. PR235 remains unchanged and no merge,
+deployment or release is included.
+
+Readiness means locally compiled, contract-tested and statically reviewed, not
+native-proven. Only actual Windows execution can establish continuation chasing,
+size-limit aggregation, ordering and counts under the unchanged LDAPS settings.
+An unexpected native result must remain a failed comparison for investigation.
+No expansion of OneLevel/Subtree eligibility follows automatically from a run.
+
+Exact proposed publication content relative to that published tree (local only):
+
+- `docs/windows-basic-pooling-boundary.md`
+- `src/AdForLinux.DirectoryServices/DirectoryEntry.ScopedRead.cs`
+- `src/AdForLinux.DirectoryServices/DirectorySearcher.cs`
+- `src/AdForLinux.DirectoryServices/Ldap/ContextScopedReadDiagnostic.cs`
+- `src/AdForLinux.DirectoryServices/Ldap/LdapConnectionProvider.ScopedRead.cs`
+- `tests/AdForLinux.FunctionalTests/ConnectionPoolOperationTests.cs`
+- `tests/AdForLinux.FunctionalTests/WindowsContinuationDiagnostic.cs`
+- `tests/AdForLinux.FunctionalTests/WindowsContinuationTests.cs`
+- `tests/AdForLinux.FunctionalTests/WindowsReferralEndpoint.cs`
+- `tests/run-offline-tests.py`
+- `tests/windows-referral-diagnostic/Authenticated-Fixture.ps1`
+- `tests/windows-referral-diagnostic/Authenticated-Integration.ps1`
+- `tests/windows-referral-diagnostic/Show-AuthenticatedResults.ps1`
+- `tests/windows-referral-diagnostic/Test-PoolReportContract.ps1`
+- `tests/windows-referral-diagnostic/worker/Program.cs`
+- `tests/windows-referral-diagnostic/Continuation-Once.yml.template` (inert reviewed source)
+- `.github/workflows/windows-authenticated-once.yml` (only after approval, from that template with fresh IDs; remove after consumption)
+
+Final local integration validation: worker builds passed for both target runtimes;
+13,581 full offline functional tests passed per runtime, with one existing skip.
+Both runtime serialization contracts passed, including 30 continuation rejection
+mutations, valid failure/skipped reports and fake runtime teardown on actual
+parser rejection. Pure helper tests passed in direct-file and workflow-wrapper
+invocation scopes; fake adapter tests passed. The inert YAML parsed as exactly one
+hosted job, one supervisor invocation, attempt-one-only, independent always
+cleanup and no artifact upload. Independent end-to-end static review found no
+avoidable preparation blocker. No Windows security operation or external action
+was performed during this integration.

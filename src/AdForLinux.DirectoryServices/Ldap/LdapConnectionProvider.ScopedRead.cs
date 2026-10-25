@@ -18,6 +18,13 @@ internal static partial class LdapConnectionProvider
         !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
         request.Scope == System.DirectoryServices.Protocols.SearchScope.Base && request.Controls.Count == 0;
 
+    internal static bool IsContextScopedDiagnosticConfiguration(LdapConnectionOptions options,
+        ReferralChasingOption referrals, SearchRequest request, System.DirectoryServices.Protocols.SearchScope? permittedScope) =>
+        IsWindowsReferralDiagnosticConfiguration(options) && referrals == ReferralChasingOption.External &&
+        request.Controls.Count == 0 && (request.Scope == System.DirectoryServices.Protocols.SearchScope.Base ||
+            (permittedScope is System.DirectoryServices.Protocols.SearchScope.OneLevel or System.DirectoryServices.Protocols.SearchScope.Subtree &&
+             request.Scope == permittedScope && request.SizeLimit == 1));
+
     // Eligibility only: preserve the exact caller string for native resolution,
     // TLS verification and the key. DNS names can still select multiple DCs;
     // this neither pins a destination nor changes WinLDAP discovery options.
@@ -66,8 +73,7 @@ internal static partial class LdapConnectionProvider
         TimeSpan? timeout = null, bool preferFresh = false, long minimumGeneration = 0, CancellationToken cancellationToken = default)
     {
         ContextScopedReadDiagnostic.Validate();
-        if (!IsWindowsReferralDiagnosticConfiguration(options) ||
-            !IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request))
+        if (!IsContextScopedDiagnosticConfiguration(options, ReferralChasingOption.External, request, diagnostic.ContinuationScope))
             throw new InvalidOperationException("Outside scoped diagnostic configuration.");
         return SendContextScopedReadCore(options, ReferralChasingOption.External, request, timeout, authority,
             preferFresh, minimumGeneration, cancellationToken, diagnostic);
@@ -100,17 +106,27 @@ internal static partial class LdapConnectionProvider
                     LdapConnectionFactory.ConfigureReferralChasing(connection, referrals);
                     connection.Bind();
                 }), cancellationToken, reusable, preferFresh, minimumGeneration);
-            return new ScopedSearchLease(lease, request, requestTimeout ?? snapshot.Timeout, authority);
+            return new ScopedSearchLease(lease, request, requestTimeout ?? snapshot.Timeout, authority, diagnostic);
         }, cancellationToken, diagnostic?.Boundary);
     }
 
     private sealed class ScopedSearchLease(
         BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease,
-        SearchRequest request, TimeSpan timeout, DirectoryEntry.BindingAuthority? authority)
+        SearchRequest request, TimeSpan timeout, DirectoryEntry.BindingAuthority? authority, ContextScopedReadDiagnostic? diagnostic)
         : IContextRequestLease<SearchResponse>
     {
         public void Prepare() => authority?.Validate();
-        public SearchResponse Send() => (SearchResponse)lease.Value.SendRequest(request, timeout);
+        public SearchResponse Send()
+        {
+            diagnostic?.RecordSend();
+            try
+            {
+                var response = (SearchResponse)lease.Value.SendRequest(request, timeout);
+                diagnostic?.RecordResult(response); return response;
+            }
+            catch (DirectoryOperationException error) when (error.Response is SearchResponse partial)
+            { diagnostic?.RecordResult(partial); throw; }
+        }
         public void Invalidate() => lease.Invalidate();
         public void Dispose() => lease.Dispose();
     }

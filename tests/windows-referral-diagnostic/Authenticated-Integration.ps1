@@ -343,3 +343,65 @@ function ConvertTo-ContextQueryResult([string]$Json) {
     }
     return $row
 }
+
+function Get-ContinuationCandidateNames { 'onelevel/success'; 'onelevel/partial'; 'subtree/success'; 'subtree/partial' }
+function ConvertTo-ContinuationCandidateResult([string]$Json) {
+    if ($Json.Length -gt 65536) { throw 'Continuation output limit exceeded.' }
+    $value = $Json | ConvertFrom-Json -AsHashtable
+    if (($value.Keys | Sort-Object) -join ',' -cne 'Adverse,AllPassed,Continuations,Native,Supported') { throw 'Unexpected continuation report.' }
+    $native = ConvertTo-DiagnosticResult ($value.Native | ConvertTo-Json -Depth 8 -Compress)
+    $names = @(Get-ContinuationCandidateNames)
+    if (($value.Continuations.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Continuation inventory mismatch.' }
+    $ready = $native['original-direct'].Status -eq 'passed' -and $native['original-referral'].Status -eq 'passed'
+    foreach ($name in $names) {
+        $case = $value.Continuations[$name]
+        if (($case.Keys | Sort-Object) -join ',' -cne 'Cleanup,Ordinary,Scoped,Status' -or $case.Cleanup -isnot [bool] -or $case.Status -cnotin @('passed','failed','skipped')) { throw 'Invalid comparison fields.' }
+        foreach ($mode in @('Ordinary','Scoped')) {
+            $row = $case[$mode]
+            if (($row.Keys | Sort-Object) -join ',' -cne 'Attempts,BindingReads,Cleanup,Continuations,FailureCode,FailureKind,IdentityValid,Phase,PoolDelta,References,Results,Returned,Reused,SchemaReads,Sends,SourceBinds,SourceSearches,Status,TargetBinds,TargetSearches') { throw 'Unexpected continuation fields.' }
+            if ($row.Status -cnotin @('passed','failed','skipped') -or $row.Cleanup -isnot [bool] -or $row.IdentityValid -isnot [bool] -or
+                $row.Phase -cnotin @('not-started','setup','context','selection','read','context-after','counts','target-evidence','complete') -or
+                $row.FailureKind -cnotin @('none','ldap','directory','fixture')) { throw 'Invalid continuation status.' }
+            foreach ($field in @('Attempts','Sends','SourceBinds','SourceSearches','BindingReads','SchemaReads','Continuations','References','TargetBinds','TargetSearches','Reused','PoolDelta','FailureCode')) {
+                if (($row[$field] -isnot [int] -and $row[$field] -isnot [long]) -or $row[$field] -lt [int]::MinValue -or $row[$field] -gt [int]::MaxValue) { throw 'Invalid continuation number.' }
+                if ($field -notin @('PoolDelta','FailureCode') -and ($row[$field] -lt 0 -or $row[$field] -gt 10000)) { throw 'Invalid continuation counter.' }
+            }
+            if (($row.Cleanup -and $row.PoolDelta -ne 0) -or ($row.FailureKind -ceq 'none' -and $row.FailureCode -ne 0)) { throw 'Inconsistent continuation failure.' }
+            if ($row.Results -isnot [array] -or $row.Returned -isnot [array] -or $row.Results.Count -gt 2 -or $row.Returned.Count -gt 2) { throw 'Invalid continuation arrays.' }
+            foreach ($code in $row.Results) { if (($code -isnot [int] -and $code -isnot [long]) -or $code -lt 0 -or $code -gt 10000) { throw 'Invalid result code.' } }
+            foreach ($label in $row.Returned) { if ($label -isnot [string] -or $label -cnotin @('local','target','unexpected')) { throw 'Unapproved entry label.' } }
+            if ((!$ready -and $row.Status -cne 'skipped') -or ($ready -and $row.Status -ceq 'skipped')) { throw 'Continuation dependency mismatch.' }
+            if ($row.Status -ceq 'skipped') {
+                if ($row.Phase -cne 'not-started' -or !$row.Cleanup -or $row.IdentityValid -or $row.FailureKind -cne 'none' -or
+                    $row.Results.Count -ne 0 -or $row.Returned.Count -ne 0) { throw 'Invalid skipped continuation.' }
+                foreach ($field in @('Attempts','Sends','SourceBinds','SourceSearches','BindingReads','SchemaReads','Continuations','References','TargetBinds','TargetSearches','Reused','PoolDelta','FailureCode')) {
+                    if ($row[$field] -ne 0) { throw 'Skipped continuation performed operations.' }
+                }
+            }
+            if ($row.Status -ceq 'passed') {
+                $partial = $name.EndsWith('/partial', [StringComparison]::Ordinal)
+                $expectedBinds = if ($mode -eq 'Ordinary') { 3 } elseif ($partial) { 5 } else { 4 }
+                $expectedCode = if ($partial) { 4 } else { 0 }
+                $expectedReuse = if ($mode -eq 'Scoped' -and !$partial) { 1 } else { 0 }
+                if (!$row.Cleanup -or !$row.IdentityValid -or $row.PoolDelta -ne 0 -or $row.Phase -cne 'complete' -or $row.FailureKind -cne 'none' -or $row.FailureCode -ne 0 -or
+                    $row.Attempts -ne 2 -or $row.Sends -ne 2 -or $row.SourceBinds -ne $expectedBinds -or $row.SourceSearches -ne 7 -or
+                    $row.BindingReads -ne 1 -or $row.SchemaReads -ne 4 -or $row.Continuations -ne 2 -or $row.References -ne 2 -or
+                    $row.TargetBinds -lt 1 -or $row.TargetSearches -ne 2 -or $row.Reused -ne $expectedReuse -or
+                    $row.Results.Count -ne 2 -or @($row.Results | Where-Object { $_ -ne $expectedCode }).Count -ne 0 -or
+                    $row.Returned.Count -ne 2 -or 'unexpected' -cin $row.Returned) { throw 'Incomplete passing continuation evidence.' }
+            }
+        }
+        $cleanup = $case.Ordinary.Cleanup -and $case.Scoped.Cleanup
+        $passed = $cleanup -and $case.Ordinary.Status -ceq 'passed' -and $case.Scoped.Status -ceq 'passed' -and
+            ($case.Ordinary.Results -join ',') -ceq ($case.Scoped.Results -join ',') -and
+            ($case.Ordinary.Returned -join ',') -ceq ($case.Scoped.Returned -join ',')
+        $expectedStatus = if (!$ready) { 'skipped' } elseif ($passed) { 'passed' } else { 'failed' }
+        if ($case.Cleanup -ne $cleanup -or $case.Status -cne $expectedStatus) { throw 'Comparison verdict mismatch.' }
+    }
+    $supported = @($native.GetEnumerator() | Where-Object { $_.Key -ne 'anonymous-direct' -and $_.Value.Status -ne 'passed' }).Count -eq 0 -and
+        @($value.Continuations.Values | Where-Object Status -NE 'passed').Count -eq 0
+    $adverse = $native['anonymous-direct'].Status -eq 'passed'
+    if ($value.Supported -cne $(if ($supported) { 'passed' } else { 'failed' }) -or $value.Adverse -cne $(if ($adverse) { 'passed' } else { 'failed' }) -or
+        $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Continuation verdict mismatch.' }
+    return $value
+}
