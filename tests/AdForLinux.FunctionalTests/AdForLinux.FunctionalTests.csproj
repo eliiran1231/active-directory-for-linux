@@ -9,8 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="../windows-referral-diagnostic/Match-SchannelCertificate.ps1" Link="Match-SchannelCertificate.ps1" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../windows-referral-diagnostic/Compare-CertificateDer.ps1" Link="Compare-CertificateDer.ps1" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

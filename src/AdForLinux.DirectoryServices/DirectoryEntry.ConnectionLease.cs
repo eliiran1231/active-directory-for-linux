@@ -33,18 +33,18 @@ public partial class DirectoryEntry
 
     internal Func<LdapConnectionOptions, int, ReferralChasingOption, bool, long, LdapConnectionProvider.Session[]>? OperationSessionFactory { get; set; }
 
-    internal ConnectionLease AcquireConnection(Action? validate = null, ReferralChasingOption? referrals = null, bool schema = false)
-        => AcquireConnections(1, validate, referrals, schema)[0];
+    internal ConnectionLease AcquireConnection(Action? validate = null, ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false)
+        => AcquireConnections(1, validate, referrals, schema, forceFresh)[0];
 
     internal ConnectionLease[] AcquireConnections(int count, Action? validate = null,
-        ReferralChasingOption? referrals = null, bool schema = false)
+        ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false)
     {
         void Validate() { ThrowIfDisposed(); validate?.Invoke(); }
         var generation = IdentityLifetime.Capture(Validate);
         var snapshot = IdentityLifetime.Checked(generation, Validate, () =>
             (Options: BuildOptions(), Referral: referrals ?? Options.Referral,
-             Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired,
-             Existing: schema ? _schemaConnection : _connection, Schema: _schemaConnection));
+             Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired || forceFresh,
+             Existing: forceFresh ? null : schema ? _schemaConnection : _connection, Schema: forceFresh ? null : _schemaConnection));
         if (snapshot.Existing is not null)
             return Enumerable.Range(0, count).Select(index =>
                 new ConnectionLease(index == 0 ? snapshot.Existing : snapshot.Schema ?? snapshot.Existing)).ToArray();

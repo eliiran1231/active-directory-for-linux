@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 /// <summary>Pool only audited operation-owned sessions; raw factory ownership remains explicit.</summary>
-internal static class LdapConnectionProvider
+internal static partial class LdapConnectionProvider
 {
     private static readonly BoundedConnectionPool<ConnectionKey, LdapConnection> Pool = new();
     internal static (int Total, int Keys, int Waiting, long Created, long Reused, long Destroyed, long Failures, long Waits, long Timeouts) Snapshot => Pool.Snapshot;
@@ -21,8 +21,11 @@ internal static class LdapConnectionProvider
         !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
         // OpenLDAP keeps referral children on the owning handle and, without a
         // rebind callback, binds them anonymously. Preserve that existing policy.
-        // WinLDAP referral identity propagation is not established for Basic;
-        // other backends also remain conservative until separately audited.
+        // Windows LDAPS/External passed the restricted authenticated fixture,
+        // but primary options do not bound server-supplied referrals or ambient
+        // context changes across/within a lease. This general API stays fresh;
+        // the separately audited scoped FindOne path owns context checks. See
+        // docs/connection-pooling.md. Other backends remain unaudited.
         (referrals == ReferralChasingOption.None || OperatingSystem.IsLinux());
 
     internal static long NewGeneration() => Pool.NewGeneration();
@@ -141,8 +144,12 @@ internal static class LdapConnectionProvider
         private readonly string digest;
         private ConnectionKey(string digest) => this.digest = digest;
         internal static ConnectionKey Create(LdapConnectionOptions options, ReferralChasingOption referrals)
+            => CreateCore(options, referrals, false, null);
+        internal static ConnectionKey CreateContextScoped(LdapConnectionOptions options, ReferralChasingOption referrals, WindowsLdapContext? context)
+            => CreateCore(options, referrals, true, context);
+        private static ConnectionKey CreateCore(LdapConnectionOptions options, ReferralChasingOption referrals, bool scoped, WindowsLdapContext? context)
         {
-            using var data = new MemoryStream(checked(100 + 2 * (options.Host.Length +
+            using var data = new MemoryStream(checked((scoped ? 256 : 100) + 2 * (options.Host.Length +
                 (options.BindDn?.Length ?? 0) + (options.BindPassword?.Length ?? 0))));
             using (var writer = new BinaryWriter(data, System.Text.Encoding.UTF8, leaveOpen: true))
             {
@@ -151,6 +158,16 @@ internal static class LdapConnectionProvider
                 writer.Write((int)options.AuthenticationType); writer.Write(options.Signing); writer.Write(options.Sealing);
                 WriteNullable(writer, options.BindDn); WriteNullable(writer, options.BindPassword);
                 writer.Write(options.Timeout.Ticks); writer.Write((int)referrals);
+                if (scoped)
+                {
+                    writer.Write("WindowsContextScopedRead/v1");
+                    writer.Write(context.HasValue);
+                    if (context is { } value)
+                    {
+                        writer.Write(value.TokenId); writer.Write(value.AuthenticationId); writer.Write(value.ModifiedId);
+                        writer.Write(value.TokenType); writer.Write(value.ImpersonationLevel); writer.Write(value.ThreadToken);
+                    }
+                }
             }
             var bytes = data.GetBuffer().AsSpan(0, checked((int)data.Length));
             try { return new(Convert.ToHexString(HMACSHA256.HashData(Secret, bytes))); }

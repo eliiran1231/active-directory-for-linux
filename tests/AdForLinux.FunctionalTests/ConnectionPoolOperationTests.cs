@@ -77,6 +77,39 @@ public class ConnectionPoolOperationTests
         return response;
     }
 
+    [Theory]
+    [InlineData(AdForLinux.DirectoryServices.SearchScope.OneLevel, false)]
+    [InlineData(AdForLinux.DirectoryServices.SearchScope.OneLevel, true)]
+    [InlineData(AdForLinux.DirectoryServices.SearchScope.Subtree, false)]
+    [InlineData(AdForLinux.DirectoryServices.SearchScope.Subtree, true)]
+    public void FindOne_nonbase_is_one_bounded_request_and_preserves_partial_results(
+        AdForLinux.DirectoryServices.SearchScope scope, bool partial)
+    {
+        using var fixture = new Fixture();
+        using var root = fixture.Entry(defaultReferrals: true);
+        using var searcher = new Searcher(root) { SearchScope = scope, SizeLimit = 20,
+            CacheResults = false, ServerTimeLimit = TimeSpan.FromSeconds(5) };
+        fixture.OnRequest = request =>
+        {
+            var search = Assert.IsType<SearchRequest>(request);
+            bool operation = search.DistinguishedName == "CN=first" && !search.Attributes.Contains("1.1");
+            fixture.Failure = operation && partial
+                ? new DirectoryOperationException(Response("CN=first", new() { ["description"] = ["partial value"] }, ResultCode.SizeLimitExceeded))
+                : null;
+        };
+        var result = searcher.FindOne();
+        Assert.NotNull(result);
+        Assert.Equal(partial ? "partial value" : "readable value", result.Properties["description"][0]);
+        var requests = fixture.Requests.OfType<SearchRequest>().ToArray();
+        Assert.Single(requests, r => r.DistinguishedName == "CN=first" && r.Attributes.Contains("1.1"));
+        var sent = Assert.Single(requests, r => r.DistinguishedName == "CN=first" && !r.Attributes.Contains("1.1"));
+        Assert.Equal((System.DirectoryServices.Protocols.SearchScope)(int)scope, sent.Scope);
+        Assert.Equal(1, sent.SizeLimit); Assert.InRange(sent.TimeLimit, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        Assert.Empty(sent.Controls);
+        // Delegate-backed ordinary routing only: this validates public request
+        // construction/materialization, not WinLDAP continuation or scoped eligibility.
+    }
+
     [Fact]
     public void Retained_entries_release_operation_leases_and_share_one_handle_across_different_dns()
     {

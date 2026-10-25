@@ -416,6 +416,10 @@ public class DirectorySearcher : Component
         }
     }
 
+    internal bool CanUseContextScopedRead(SearchRequest request) =>
+        !HasAttributeScopeQuery && DirectorySynchronization is null && _virtualListView is null &&
+        ConfigureConnectionOverride is null && request.Controls.Count == 0 && PageSize == 0 && !Asynchronous;
+
     /// <summary>Returns the first match, or null if there is none.</summary>
     public SearchResult? FindOne()
     {
@@ -431,6 +435,34 @@ public class DirectorySearcher : Component
         request.SizeLimit = 1;
 
         CreateServerTimeLimitBudget(isPaged: false).TryApply(request);
+
+        // Only this fully buffered single-request path has audited context checks.
+        if (CanUseContextScopedRead(request))
+        {
+            bool sent;
+            SearchResponse? scoped;
+            try
+            {
+                sent = root.TryContextScopedRead(request, ReferralChasing,
+                    ClientTimeout >= TimeSpan.Zero ? ClientTimeout : null, operation.Origin.Authority, out scoped);
+            }
+            catch (DirectoryOperationException ex) when (ex.Response is SearchResponse partial && partial.ResultCode == ResultCode.SizeLimitExceeded)
+            {
+                operation.Origin.Authority.Validate();
+                scoped = partial; sent = true;
+            }
+            catch (LdapException ex) when (ex.ErrorCode == 87) { throw new ArgumentException(ex.Message, nameof(Filter), ex); }
+            catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex)) { throw LdapExceptionTranslator.Translate(ex); }
+            if (sent)
+            {
+                UpdateControlState(scoped!);
+                // Materialization can issue schema requests: use an ordinary
+                // fresh Windows referral lease, never the scoped read handle.
+                if (scoped!.Entries.Count == 0) return null;
+                using var schema = root.AcquireContextScopedReadSchemaConnection(operation.Origin.Authority);
+                return new SearchResult(scoped.Entries[0], operation.Origin, root, schema.Connection);
+            }
+        }
 
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
         var connection = connectionLease.Connection;
