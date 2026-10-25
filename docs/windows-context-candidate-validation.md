@@ -214,3 +214,54 @@ fixed stages and numeric errors without identifiers. It creates no accounts,
 logons, tokens, certificates or keys, performs no impersonation or LDAP, and makes
 no trust/policy changes. It cannot substitute for a later authenticated native
 candidate run, which would require fresh security-setup approval.
+
+
+## Read-only token-reader diagnosis and correction
+
+The shared early failure was the reader's fixed four-byte length requirement for
+`TokenHasRestrictions` (information class 21), not an LDAP failure. The native
+query succeeded but reported one byte. The existing runner token was inspected
+without account creation, logon, impersonation, LDAP, keys, certificates or trust
+changes:
+
+- [40128963981](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40128963981): both runtimes stopped at `restrictions-length`.
+- [40129362513](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40129362513): both reported native return length 1. Reading the entire sentinel-initialized DWORD incorrectly looked restricted; that was not evidence of an actually restricted token.
+- [40129862501](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40129862501), source `f2f504d7fc8fb535242da7f7d181cef472c4af1b`: both runtimes reproduced strict rejection and returned two eligible, stable captures with the bounded decoder. Independent review confirmed the results.
+
+The default reader now uses that same decoder: a four-byte result must be exactly
+0 or 1; a one-byte result must be 0 or 1 with all three upper initialized sentinel
+bytes untouched. Other lengths or patterns reject pooling. Restricted and
+AppContainer tokens remain excluded. The documented constants, 56-byte
+TOKEN_STATISTICS layout, TOKEN_QUERY access, bounded SID handling and immediate
+native-error capture were reviewed. Microsoft's
+[TOKEN_INFORMATION_CLASS documentation](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_information_class)
+describes DWORD output, so the one-byte compatibility handling is grounded in the
+observed native result rather than an assumption about that documentation.
+
+Per-case reports now include only fixed query stage/kind and numeric error or
+length. They never expose token identifiers. A future candidate invocation first
+checks the existing runner token on both runtimes, before any directory, account,
+key or trust setup. Invalid reports or failed eligibility/stability stop setup.
+Pure report-contract tests exercise rejection without native operations.
+
+All read-only triggers were removed; the final removal is
+`3d4ec84b2f8b6ab519f4dc1ff111008310329c21` (local `30fb1a3`). These probes created no
+security objects requiring cleanup. The prior full run's independently verified
+account/certificate/key/file cleanup remains recorded above.
+
+This corrects and validates the runner-token reader only. Authenticated A/B
+classification and all 31 real candidate cases still require one separately
+approved full run on .NET 8 and 10, with the unchanged two standard accounts,
+one logon each, owned non-exportable runner-user CNG key and public LocalMachine
+Root certificate, bounded execution and independent exact cleanup. Production
+activation stays disabled. The LDAPS IPv4 loopback / External referral limits,
+anonymous adverse-control distinction and outstanding broader transport/context
+limits are unchanged.
+
+Final local validation after promoting the decoder: functional offline tests passed
+13,542 with one existing skip on each runtime; both worker builds passed; pure
+authenticated helper syntax/bridge compilation and all native/pool/candidate/query
+report contracts passed. Independent review found no blocker in the decoder
+promotion or the pre-security query gate. These checks do not execute A/B token
+queries or native LDAP. The previously compared 12 Linux surface failures remain
+baseline limitations, not a claim of a green Windows surface run.

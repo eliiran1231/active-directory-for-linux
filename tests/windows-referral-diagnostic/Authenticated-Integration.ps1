@@ -322,3 +322,24 @@ function ConvertTo-ContextCandidateResult([string]$Json) {
     if ($value.Supported -cne $(if ($supported) { 'passed' } else { 'failed' }) -or $value.Adverse -cne $(if ($adverse) { 'passed' } else { 'failed' }) -or $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Candidate verdict mismatch.' }
     return $value
 }
+
+function ConvertTo-ContextQueryResult([string]$Json) {
+    if ($Json.Length -gt 4096) { throw 'Token query report too large.' }
+    $row = $Json | ConvertFrom-Json -AsHashtable
+    if (($row.Keys | Sort-Object) -join ',' -cne 'Eligible,FirstCode,FirstKind,FirstStage,FixedEligible,FixedFirstCode,FixedFirstKind,FixedFirstStage,FixedSecondCode,FixedSecondKind,FixedSecondStage,FixedStable,SecondCode,SecondKind,SecondStage,Stable') { throw 'Unexpected token query fields.' }
+    foreach ($field in @('Eligible','Stable','FixedEligible','FixedStable')) {
+        if ($row[$field] -isnot [bool]) { throw 'Invalid query boolean.' }
+    }
+    foreach ($prefix in @('First','Second','FixedFirst','FixedSecond')) {
+        if ($row[$prefix + 'Stage'] -notin @('guard','offline','platform','open-thread','open-process','statistics-before','statistics-before-length','restrictions','restrictions-length','restrictions-format','app-container','app-container-length','app-container-format','token-user','token-user-length','token-user-read','token-user-read-length','token-user-complete','sid-bounds','statistics-after','statistics-after-length','token-changed','sid-unreadable','anonymous','restricted','app-container-token','token-id-unavailable','authentication-id-unavailable','modified-id-unavailable','token-type','impersonation-level','eligible') -or
+            $row[$prefix + 'Kind'] -notin @('none','rejected','win32','managed','length') -or
+            ($row[$prefix + 'Code'] -isnot [int] -and $row[$prefix + 'Code'] -isnot [long]) -or
+            $row[$prefix + 'Code'] -lt [int]::MinValue -or $row[$prefix + 'Code'] -gt [int]::MaxValue) { throw 'Invalid fixed query metadata.' }
+    }
+    foreach ($prefix in @('','Fixed')) {
+        $eligible = $row[$prefix + 'FirstStage'] -eq 'eligible' -and $row[$prefix + 'SecondStage'] -eq 'eligible'
+        if ($row[$prefix + 'Eligible'] -ne $eligible -or ($row[$prefix + 'Stable'] -and !$eligible)) { throw 'Inconsistent query verdict.' }
+        if ($eligible -and ($row[$prefix + 'FirstKind'] -ne 'none' -or $row[$prefix + 'SecondKind'] -ne 'none' -or $row[$prefix + 'FirstCode'] -ne 0 -or $row[$prefix + 'SecondCode'] -ne 0)) { throw 'Eligible query contains a failure.' }
+    }
+    return $row
+}

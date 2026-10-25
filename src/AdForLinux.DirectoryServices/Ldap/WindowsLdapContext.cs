@@ -28,9 +28,10 @@ internal static class WindowsLdapContextQuery
 
     internal readonly record struct QueryDiagnostic(string Stage, string Kind, int Code);
     internal static WindowsLdapContext? Capture() => Capture(out _);
-    internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic) => CaptureCore(false, out diagnostic);
-    internal static WindowsLdapContext? CaptureScalarDiagnostic(out QueryDiagnostic diagnostic)
-        => CaptureCore(true, out diagnostic);
+    internal static WindowsLdapContext? Capture(out QueryDiagnostic diagnostic) => CaptureCore(true, out diagnostic);
+    // Read-only regression comparison only; ordinary callers use the validated decoder.
+    internal static WindowsLdapContext? CaptureStrictLengthDiagnostic(out QueryDiagnostic diagnostic)
+        => CaptureCore(false, out diagnostic);
     private static WindowsLdapContext? CaptureCore(bool scalarLayout, out QueryDiagnostic diagnostic)
     {
         diagnostic = new("guard", "none", 0);

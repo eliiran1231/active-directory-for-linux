@@ -266,6 +266,20 @@ foreach ($framework in @('net8.0', 'net10.0')) {
         if (!$preflight.HasExited) { $preflight.Kill($true); $null = $preflight.WaitForExit(10000) }
         $preflight.Dispose()
     }
+    if ($ContextCandidate) {
+        # Existing runner token, TOKEN_QUERY only. Before directory/account/key/trust setup.
+        $query = Start-DiagnosticProcess 'dotnet' @($binary, '--context-query-probe')
+        try {
+            $capture = [AdflBoundedCapture]::new($query)
+            if (!$query.WaitForExit(30000)) { throw 'Read-only token preflight timed out.' }
+            $summary = ConvertTo-ContextQueryResult ($capture.Result())
+            if ($query.ExitCode -ne 0 -or !$summary.FixedEligible -or !$summary.FixedStable) { throw 'Existing token reader preflight failed; no security setup permitted.' }
+            Write-Host "PASS $framework existing-token query eligibility and stability; no security setup."
+        } finally {
+            if (!$query.HasExited) { $query.Kill($true); if (!$query.WaitForExit(10000)) { throw 'Token probe remains.' } }
+            $query.Dispose()
+        }
+    }
 }
 if (Test-Path -LiteralPath $root) { throw 'Run directory preexists; no setup or cleanup authorized.' }
 $parent = [IO.Path]::GetDirectoryName($root)

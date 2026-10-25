@@ -52,3 +52,33 @@ foreach ($framework in @('net8.0', 'net10.0')) {
         $process.Dispose()
     }
 }
+
+foreach ($framework in @('net8.0', 'net10.0')) {
+    $binary = Join-Path $PSScriptRoot "worker/bin/Release/$framework/AuthenticatedWorker.dll"
+    $process = Start-DiagnosticProcess 'dotnet' @($binary, '--context-query-report-self-test')
+    try {
+        $capture = [AdflBoundedCapture]::new($process)
+        if (!$process.WaitForExit(30000) -or $process.ExitCode -ne 0) { throw 'Query report self-test failed.' }
+        $wrapper = $capture.Result() | ConvertFrom-Json -AsHashtable
+        if (($wrapper.Keys | Sort-Object) -join ',' -cne 'Report,TestOnly' -or $wrapper.TestOnly -isnot [bool] -or !$wrapper.TestOnly) { throw 'Synthetic discriminator missing.' }
+        $result = ConvertTo-ContextQueryResult ($wrapper.Report | ConvertTo-Json -Compress)
+        if (!$result.FixedEligible -or !$result.FixedStable -or $result.Eligible) { throw 'Synthetic query comparison mismatch.' }
+        foreach ($mutation in @('extra','stage','kind','code','verdict')) {
+            $bad = $wrapper.Report | ConvertTo-Json | ConvertFrom-Json -AsHashtable
+            switch ($mutation) {
+                'extra' { $bad.TokenId = 123 }
+                'stage' { $bad.FixedFirstStage = 'unapproved raw detail' }
+                'kind' { $bad.FixedFirstKind = 'win32' }
+                'code' { $bad.FixedFirstCode = 5 }
+                'verdict' { $bad.FixedEligible = $false }
+            }
+            $rejected = $false
+            try { $null = ConvertTo-ContextQueryResult ($bad | ConvertTo-Json -Compress) } catch { $rejected = $true }
+            if (!$rejected) { throw 'Unsafe query report accepted.' }
+        }
+        Write-Host "PASS $framework fixed-stage query report and pre-security gate contract; no native operations."
+    } finally {
+        if (!$process.HasExited) { $process.Kill($true); if (!$process.WaitForExit(10000)) { throw 'Pure query worker remains.' } }
+        $process.Dispose()
+    }
+}
