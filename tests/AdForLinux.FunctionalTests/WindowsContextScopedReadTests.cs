@@ -152,6 +152,30 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
+    public void Partial_search_exception_reaches_outer_materialization_after_eviction_without_replay()
+    {
+        using var h = new Harness();
+        var partial = (SearchResponse)Activator.CreateInstance(typeof(SearchResponse),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            null, new object?[] { null, Array.Empty<DirectoryControl>(), ResultCode.SizeLimitExceeded, null, Array.Empty<Uri>() }, null)!;
+        var original = new DirectoryOperationException(partial);
+        h.Sending = _ => throw original;
+        var observed = Assert.Throws<DirectoryOperationException>(() => h.Run());
+        Assert.Same(original, observed); Assert.Same(partial, observed.Response);
+        Assert.Equal(1, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+        Assert.Equal(1, h.Resources.Single().Disposed);
+    }
+
+    [Theory]
+    [InlineData(SearchScope.OneLevel)]
+    [InlineData(SearchScope.Subtree)]
+    public void Nonbase_scope_remains_outside_current_scoped_pooling(SearchScope scope)
+    {
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", scope) { SizeLimit = 1 };
+        Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+    }
+
+    [Fact]
     public void Transport_negative_control_rejects_fixture_and_authentication_errors()
     {
         Assert.True(WindowsContextCandidateDiagnostic.IsTransportFailure(new LdapException(81)));
@@ -517,7 +541,7 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
-    public void Production_configuration_rejects_every_unevidenced_transport_and_host()
+    public void Production_configuration_rejects_unsupported_transports_and_ambiguous_hosts()
     {
         LdapConnectionOptions Make(string host = "127.0.0.1", int port = 636, bool ssl = true,
             bool startTls = false, bool skip = false, AuthType auth = AuthType.Basic,
@@ -527,11 +551,38 @@ public sealed class WindowsContextScopedReadTests
                 BindPassword = password, Signing = sign, Sealing = seal };
         var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
         Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Make(), ReferralChasingOption.External, request));
-        foreach (var options in new[] { Make(host: "dc.example.test"), Make(host: "localhost"), Make(host: "::1"),
-            Make(host: "127.0.0.2"), Make(port: 0), Make(port: 65536), Make(ssl: false), Make(startTls: true),
+        foreach (var options in new[] { Make(host: "dc.example.test other.example.test"), Make(host: "ldaps://dc.example.test"), Make(host: "::1"),
+            Make(host: "dc.example.test:636"), Make(port: 0), Make(port: 65536), Make(ssl: false), Make(startTls: true),
             Make(skip: true), Make(auth: AuthType.Negotiate), Make(auth: AuthType.Kerberos), Make(auth: AuthType.Anonymous),
             Make(user: null), Make(user: ""), Make(password: null), Make(password: ""), Make(sign: true), Make(seal: true) })
             Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request));
+    }
+
+    [Fact]
+    public void Explicit_remote_host_eligibility_preserves_native_names_and_exact_key_isolation()
+    {
+        string[] names = ["127.0.0.1", "192.0.2.10", "198.51.100.20", "dc.example.test", "DC.example.test", "dc-1.example.test", "dc1", "xn--example-9d0b.test"];
+        var keys = new HashSet<LdapConnectionProvider.ConnectionKey>();
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        foreach (var name in names)
+        {
+            Assert.True(LdapConnectionProvider.IsExplicitWindowsLdapsHost(name));
+            var options = new LdapConnectionOptions { Host = name, BindDn = "synthetic", BindPassword = "synthetic" };
+            Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request));
+            Assert.Equal(name, options.Clone().Host);
+            Assert.True(keys.Add(LdapConnectionProvider.ConnectionKey.CreateContextScoped(options, ReferralChasingOption.External, A)));
+            Assert.Equal(name == "127.0.0.1", LdapConnectionProvider.IsWindowsReferralDiagnosticConfiguration(options));
+        }
+        foreach (var name in new string?[] { null, "", " ", "dc.example.test other.example.test", "dc.example.test\0suffix",
+            "ldaps://dc.example.test", "dc.example.test:636", "dc.example.test/path", "user@dc.example.test", "dc.example.test.",
+            ".dc.example.test", "dc..example.test", "-dc.example.test", "dc-.example.test", "_ldap.example.test", "dç.example.test",
+            "::1", "[::1]", "127.1", "2130706433", "0177.0.0.1", "127.0.0.01", "999.0.0.1", "12345.678",
+            new string('a', 64) + ".test", string.Join('.', Enumerable.Repeat(new string('a', 63), 4)) })
+            Assert.False(LdapConnectionProvider.IsExplicitWindowsLdapsHost(name));
+        var independent = new LdapConnectionOptions { Host = "dc.example.test", BindDn = "synthetic", BindPassword = "different" };
+        Assert.DoesNotContain(LdapConnectionProvider.ConnectionKey.CreateContextScoped(independent, ReferralChasingOption.External, A), keys);
+        var sameCredentials = new LdapConnectionOptions { Host = "dc.example.test", BindDn = "synthetic", BindPassword = "synthetic" };
+        Assert.DoesNotContain(LdapConnectionProvider.ConnectionKey.CreateContextScoped(sameCredentials, ReferralChasingOption.External, B), keys);
     }
 
     [Fact]
@@ -551,10 +602,13 @@ public sealed class WindowsContextScopedReadTests
         Assert.True(searcher.CanUseContextScopedRead(request));
     }
 
-    [Fact]
-    public void Ordinary_route_selects_only_supported_Windows_path_and_respects_retained_seams()
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("dc.example.test")]
+    [InlineData("192.0.2.10")]
+    public void Ordinary_route_selects_only_supported_Windows_path_and_respects_retained_seams(string host)
     {
-        using var root = new AdForLinux.DirectoryServices.DirectoryEntry("LDAP://127.0.0.1:1636/CN=synthetic", "synthetic", "synthetic",
+        using var root = new AdForLinux.DirectoryServices.DirectoryEntry($"LDAP://{host}:1636/CN=synthetic", "synthetic", "synthetic",
             AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
         var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
         var authority = root.CaptureBindingAuthority();

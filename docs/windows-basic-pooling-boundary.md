@@ -1,10 +1,12 @@
 # Windows Basic referral pooling: evidence and production boundary
 
-Current implementation decision (2026-10-25): enable only the existing exact
-Windows synchronous Base FindOne / validated LDAPS / `127.0.0.1` / External
-subset, with token-isolated keys and lifecycle checks. The primary host predicate
-is not a target allowlist. Other Windows referral paths stay fresh. This is a
-limited feature, not completion of general remote-host Windows pooling.
+Current local implementation decision (2026-10-25): extend the reviewed Windows
+synchronous Base FindOne / validated LDAPS / External subset to explicitly supplied
+ASCII DNS names and canonical dotted IPv4 addresses, retaining token-isolated
+keys and lifecycle checks. This is a source-backed generalization, not a remote-AD
+native result. The diagnostic capability remains loopback-only. The host predicate
+is not a target allowlist. Other Windows referral paths stay fresh. This remains
+a limited operation subset, not general Windows Basic pooling across all APIs.
 [Supported contract](connection-pooling.md#supported-windows-scoped-findone-subset).
 
 [Run 40214586987](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40214586987)
@@ -318,3 +320,170 @@ this does not replace the outstanding native and Windows surface validation.
 
 The baseline failures and the prepared 31-case native matrix are reconciled in
 [the candidate validation plan](windows-context-candidate-validation.md).
+
+
+## Minimal path from loopback evidence to useful remote-host support
+
+The literal loopback predicate was a fixture boundary, not a property consumed by
+the pool/lifecycle algorithm. The pinned
+[Protocols 9 Windows implementation](https://raw.githubusercontent.com/dotnet/runtime/v9.0.0/src/libraries/System.DirectoryServices.Protocols/src/System/DirectoryServices/Protocols/ldap/LdapConnection.Windows.cs)
+passes the supplied hostname and port to WinLDAP and connects the resulting
+handle. The library's factory, credentials, certificate validation, referral
+configuration and scoped-key construction use the same paths for remote names.
+The host string is included exactly in the HMAC key, without DNS canonicalization,
+alias merging or credential rewriting. Native 31-case evidence validates context
+isolation and lifecycle handling on that common path, while earlier negative TLS
+and mixed-referral cases validate selected failure/identity behavior. Together
+with source review, this supports broadening host eligibility; loopback success
+alone would not establish that conclusion.
+
+WinLDAP's [ldap_init documentation](https://learn.microsoft.com/en-us/windows/win32/api/winldap/nf-winldap-ldap_initw)
+explicitly allows domain names and describes discovery/reconnection. Even one
+syntactically valid DNS name need not identify one physical server. We do not set
+AREC_EXCLUSIVE/FullyQualifiedDnsHostName, pin DNS results, disable reconnect or
+change referrals to obtain pooling. Reuse retains the native session's selected
+connection until normal eviction, just as pooling normally retains a connection;
+it does not promise a new DNS/DC choice on every operation. Basic does not enter
+the SASL credential branch in the pinned
+[bind implementation](https://raw.githubusercontent.com/dotnet/runtime/v9.0.0/src/libraries/System.DirectoryServices.Protocols/src/System/DirectoryServices/Protocols/ldap/LdapConnection.cs).
+
+| Constraint | Why it remains or changes |
+| --- | --- |
+| Literal 127.0.0.1 primary | Evidence-only fence; replaced locally with one explicit ASCII DNS name or canonical IPv4 address. Diagnostic capability retains the literal fence. |
+| Exact host/port/credentials/configuration key | Required isolation. Preserve original spelling, including case; never merge aliases or resolve before keying. |
+| Internally owned synchronous request | Architectural boundary: can discard an unused lease after a token change and return/evict it without replay after send. No raw connection escapes. |
+| Base scope | Evidence-only fence retained for this step. OneLevel/Subtree FindOne use the same single SendRequest boundary, but expanding scopes is distinct from host generalization. |
+| Explicit Basic, validated LDAPS, External | Retain tested authentication/transport/referral semantics. StartTLS, plaintext and other masks are not inferred from LDAPS evidence. |
+| Authenticated supported token and lifecycle checks | Required for reuse. Anonymous/unreadable/restricted/AppContainer contexts stay fresh, without substituting process identity. |
+| Paging, controls, async/retained/streaming paths | Excluded from scoped reuse. Existing retained-handle behavior is unchanged; general Windows referral-provider leases remain fresh. Their mutable/multi-request lifetimes are not covered by the one-shot boundary. |
+| Fresh schema reads and ordinary BindAuthority | Preserve audited materialization and existing root-policy semantics. |
+
+The local host recognizer excludes null/empty strings, lists, URLs, embedded
+ports, noncanonical numeric IP spellings, IPv6, non-ASCII names and trailing-dot
+forms. Exclusion means the existing fresh path, not rejection of otherwise
+supported public LDAP inputs. These are conservative eligibility choices, not
+new WinLDAP resolution rules. Pure regressions cover accepted/rejected names,
+exact case/host/credential/context key separation and the unchanged diagnostic
+loopback fence.
+
+No additional trusted fixture or live AD is necessary to establish these managed
+routing/key changes. Required next verification is independent review and
+ordinary exact-head Windows/Linux/Samba CI on the remote-host change; the green
+CI at `2ff9a7f7` predates it and must not be presented as its validation. Remote
+DNS/DC failover and certificate-name handling have not been executed here; they
+remain native integration limits, not a reason to alter validation or request a
+new trust change automatically.
+
+This provides a useful remote-directory operation: repeated known-DN Base
+FindOne reads with explicit Basic/LDAPS/External, using the same synchronous
+operation ownership proved natively. It does not pool default Subtree FindOne,
+FindAll/paging, DirectoryEntry's general reads/mutations or PrincipalContext.
+Thus it advances the original Basic-with-referrals goal but does not complete
+all Windows operation coverage. The next operation expansion should first audit
+single-call OneLevel/Subtree FindOne and its partial-result/continuation handling;
+that is smaller than redesigning general leases or commissioning a broad AD
+matrix. A targeted native continuation test would be useful additional evidence,
+but no such account/key/trust execution is prepared or requested in this step.
+
+No new user security decision is required for the local host extension or ordinary
+CI. No additional publication or trusted run was performed in this preparation
+step. Existing PR-description publication denial remains untouched.
+
+Local preparation validation: 13,549 full offline functional cases passed with
+one existing skip per runtime. After adding explicit ordinary-route DNS and
+non-loopback IPv4 cases, all 42 focused scoped-read cases passed on both runtimes.
+Independent code/documentation review found no remaining blocker. The remote-host
+change is local and not covered by the earlier hosted CI SHA.
+
+
+## Local OneLevel/Subtree ownership audit and publication manifest
+
+FindOne builds one SearchRequest, overrides SizeLimit to 1 and applies the
+nonpaged time budget before selecting the send path. OneLevel/Subtree change
+request data, not the synchronous ownership shape. The ordinary path accepts
+SizeLimitExceeded partial responses; the scoped path preserves the same partial
+response after evicting its lease, without resending. Materialization occurs
+after the scoped lease has returned and uses a separate fresh schema lease.
+The ordinary preliminary BindAuthority read is not removed.
+
+New local regressions exercise the actual public FindOne request construction
+and materialization through an existing delegate-backed ordinary connection:
+OneLevel/Subtree, success/partial result, SizeLimit=1 despite a larger configured
+limit, no paging controls, one object-resolution read and one search request.
+These tests do not simulate native referral following. A separate scoped-lifetime
+regression verifies that the original partial-response exception reaches the
+outer caller only after eviction and with exactly one send. Eligibility tests
+explicitly keep both non-Base scopes outside scoped pooling.
+
+No specific ownership flaw emerged for non-Base synchronous FindOne. The untested
+native distinction is a search that returns continuation references, potentially
+alongside local entries and size-limited partial results, rather than the fixture's
+single referral result. A minimal future native comparison would use that one
+response shape with ordinary versus scoped FindOne, check identical first-result/
+partial-result behavior, explicit identity, one managed send and pool cleanup on
+both runtimes. It need not be a broad AD matrix or a new general lease design.
+No fixture execution or scope activation is authorized/performed by this local
+audit. The audit regressions were subsequently independently reviewed under the
+parent's explicit local-review request; no external action was delegated or used
+to bypass the publication denial.
+
+The parent reported rejection of its CI/publication continuation request because
+publication authorization and destination were not established. No GitHub write
+or external CI was attempted in response. Read-only reconciliation confirmed:
+
+- Public repository: `https://github.com/eliiran1231/active-directory-for-linux`.
+- Proposed destination branch: `diagnostic/windows-authenticated-20261024-once`.
+- Current branch head: `2ff9a7f7cbca077fc4a6eef09ada5e49be6c1b0b`.
+- Existing workflow: `.github/workflows/windows-scoped-final-checks.yml`.
+- PR235 source branch remains `codex/issue-15-connection-pooling` at `3b9565e5c467fba402dbfda7d6601260c85bcedc`; it is not the proposed publication destination.
+
+Minimal future action, only after specific publication approval: create one
+commit based on the verified destination head, containing the remote-host change,
+local audit regressions and documentation, plus a descriptive workflow-name/comment
+change to trigger its existing branch-and-path push rule. Advance only that branch
+using an expected-head check. No dispatch, new branch, PR-description edit, merge
+or trust/account workflow is needed. Recheck the head and pending runs immediately
+before any approved write; do not overwrite intervening work.
+
+The changed content relative to that head is these five tracked files:
+`docs/connection-pooling.md`, `docs/windows-basic-pooling-boundary.md`,
+`src/AdForLinux.DirectoryServices/Ldap/LdapConnectionProvider.ScopedRead.cs`,
+`tests/AdForLinux.FunctionalTests/ConnectionPoolOperationTests.cs` and
+`tests/AdForLinux.FunctionalTests/WindowsContextScopedReadTests.cs`. The deliberate
+workflow trigger edit would be the sixth file. GitHub stores the resulting public
+repository commit/tree; the runner checks out the tracked repository, not the
+local workspace or its ignored files. No local credentials, keys, PFX, private
+certificate material or user files are part of these changes.
+
+The existing workflow uses GitHub-hosted `windows-2025` and `ubuntu-latest`, never
+self-hosted runners. Four offline jobs cover both OSes/runtimes, with the offline
+guard, builds, pure helper tests, and Windows surface/companion checks. Their
+`artifacts/` TRX results are uploaded to this repository's GitHub Actions artifact
+storage, named by OS/runtime/commit. GitHub also retains console/build/test logs.
+The Linux job builds the repository's Docker image and runs both runtimes against
+an isolated disposable Samba fixture using the repository's existing synthetic
+test settings, then removes its containers/network; it has no artifact-upload
+step. No authenticated Windows fixture, token/account creation, certificate import,
+policy/ACL change or user-computer/live-AD access is invoked. The workflow requests
+only `contents: read` for its run and disables checkout credential persistence.
+
+Local audit validation: all 59 scoped-read and operation-lifetime tests passed on
+.NET 8 and 10. No production scope predicate changed, and no external CI or
+publication was attempted. Independent local review of the seven audit regression
+cases found no blocker; the remote-host implementation had already passed its
+separate independent review. The scoped partial-response test proves delivery to
+the outer caller after eviction, not actual scoped FindOne materialization. The
+time-limit assertion establishes an upper bound, not exact budget retention.
+
+
+Minimal continuation evidence: four response scenarios (OneLevel/Subtree crossed
+with success/SizeLimitExceeded) should emit SearchResultReference messages beside
+a local entry. Compare the ordinary and scoped FindOne paths, including a second
+operation to exercise warm reuse, on .NET 8 and 10. Keep returned entry/partial
+result parity, exact explicit target identity, one managed send per operation,
+strict duplicate-operation checks when no failure is injected, and zero final
+pool delta. Schema materialization stays fresh. Any required diagnostic-only
+scope capability must remain per invocation and separately guarded; production
+Base-only eligibility must not be broadened just to run the experiment. This is
+an evidence plan, not a prepared or authorized native/security run. No broad AD,
+domain-delegation or credential matrix is required for this scope-specific gap.

@@ -595,9 +595,10 @@ reuse with fresh target connections, not production pool-key or lease isolation.
 Windows now selects context-isolated reuse only for synchronous, fully buffered
 `DirectorySearcher.FindOne` with Base scope, PageSize=0, no request controls,
 DirSync, VLV, attribute-scope query or connection override. The primary must be
-exactly `127.0.0.1`, use validated LDAPS with explicit nonempty Basic credentials,
-and request External referrals. StartTLS, certificate skipping, signing/sealing,
-other host spellings/addresses and referral modes are excluded. Existing retained
+an explicitly supplied ASCII DNS name or canonical dotted IPv4 address, use
+validated LDAPS with explicit nonempty Basic credentials, and request External
+referrals. StartTLS, certificate skipping, signing/sealing,
+ambiguous host lists/URLs/embedded ports, IPv6 and other referral modes are excluded. Existing retained
 entry/schema handles and streaming/FindAll paths do not enter this new path.
 Linux and existing Basic/None reuse are unchanged.
 
@@ -612,12 +613,12 @@ lease. The ordinary preliminary BindAuthority request retains the root's policy.
 
 [Native validation](windows-context-candidate-validation.md#corrected-candidate-verification-2026-10-25)
 passed 31 cases on each runtime, including token transitions, anonymous fresh/warm
-failure parity, failure eviction and real FindOne. The primary loopback condition
-is an evidence limit, **not a referral-destination allowlist**. Native referrals
+failure parity, failure eviction and real FindOne. The remote-host eligibility extension is supported by shared-path source review,
+not a remote-AD native run; the host predicate is **not a referral-destination allowlist**. Native referrals
 still choose their own targets and may reconnect/share child sessions; no new
 callbacks or credential forwarding are installed. No native exactly-once or
 atomic protection against concurrent external token mutation is promised.
 
-This is intentionally limited Windows support, not general remote-host Windows
-Basic referral pooling. Broader addresses/transports/topologies require their own
-boundary review. Kerberos/Negotiate remains fresh and deferred to issue 236.
+This is intentionally limited Windows operation support, now with a locally
+prepared remote-host extension. Broader operations/transports/topologies require
+their own boundary review. Kerberos/Negotiate remains fresh and deferred to issue 236.

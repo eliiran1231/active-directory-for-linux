@@ -1,4 +1,4 @@
-name: Scoped Windows pooling ordinary final checks
+name: Scoped Windows remote-host pooling ordinary checks
 on:
   push:
     branches: [diagnostic/windows-authenticated-20261024-once]
