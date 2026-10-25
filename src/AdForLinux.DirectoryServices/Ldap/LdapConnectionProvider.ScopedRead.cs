@@ -5,7 +5,8 @@ namespace AdForLinux.DirectoryServices.Ldap;
 internal static partial class LdapConnectionProvider
 {
     // Only the audited, operation-owned FindOne path may use this subset.
-    // Native validation: 40214586987, 31/31 on net8/net10. This is not a
+    // Native validation: 40214586987 (context) and 40230473969 (OneLevel/Subtree).
+    // Both net8/net10; this is not a
     // general provider/referral switch or a referral-destination allowlist.
     internal static bool ContextScopedProductionEnabled => OperatingSystem.IsWindows();
 
@@ -16,7 +17,9 @@ internal static partial class LdapConnectionProvider
         !options.UseStartTls && !options.SkipCertificateCheck && !options.Signing && !options.Sealing &&
         options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
         !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
-        request.Scope == System.DirectoryServices.Protocols.SearchScope.Base && request.Controls.Count == 0;
+        request.Controls.Count == 0 && (request.Scope == System.DirectoryServices.Protocols.SearchScope.Base ||
+            (request.Scope is System.DirectoryServices.Protocols.SearchScope.OneLevel or System.DirectoryServices.Protocols.SearchScope.Subtree &&
+             request.SizeLimit == 1));
 
     internal static bool IsContextScopedDiagnosticConfiguration(LdapConnectionOptions options,
         ReferralChasingOption referrals, SearchRequest request, System.DirectoryServices.Protocols.SearchScope? permittedScope) =>

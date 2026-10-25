@@ -1,4 +1,4 @@
-name: Scoped Windows remote-host pooling ordinary checks
+name: Scoped Windows all-FindOne-scope ordinary checks
 on:
   push:
     branches: [diagnostic/windows-authenticated-20261024-once]

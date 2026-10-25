@@ -96,7 +96,7 @@ public static class WindowsContinuationDiagnostic
             root.Options.Referral = Referral.None;
             diagnostic.Track(WindowsContextCandidateDiagnostic.BindingResolutionKey(root));
             phase = "selection";
-            Require(!LdapConnectionProvider.IsContextScopedReadConfiguration(root.BuildOptions(), Referral.External,
+            Require(LdapConnectionProvider.IsContextScopedReadConfiguration(root.BuildOptions(), Referral.External,
                 new SearchRequest("CN=target", "(objectClass=*)", scope) { SizeLimit = 1 }));
             for (int i = 0; i < 2; i++)
             {

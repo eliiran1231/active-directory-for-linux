@@ -593,14 +593,15 @@ reuse with fresh target connections, not production pool-key or lease isolation.
 ## Supported Windows scoped FindOne subset
 
 Windows now selects context-isolated reuse only for synchronous, fully buffered
-`DirectorySearcher.FindOne` with Base scope, PageSize=0, no request controls,
+`DirectorySearcher.FindOne` with Base, OneLevel or Subtree scope, PageSize=0, no request controls,
 DirSync, VLV, attribute-scope query or connection override. The primary must be
 an explicitly supplied ASCII DNS name or canonical dotted IPv4 address, use
 validated LDAPS with explicit nonempty Basic credentials, and request External
 referrals. StartTLS, certificate skipping, signing/sealing,
 ambiguous host lists/URLs/embedded ports, IPv6 and other referral modes are excluded. Existing retained
 entry/schema handles and streaming/FindAll paths do not enter this new path.
-Linux and existing Basic/None reuse are unchanged.
+Linux and existing Basic/None reuse are unchanged. Non-Base admission additionally
+requires the FindOne SizeLimit=1 request; this does not enable general searches.
 
 Each lease is isolated by the exact connection configuration/credentials plus
 the effective Windows token instance, logon identifier, modification identifier,
@@ -619,6 +620,12 @@ still choose their own targets and may reconnect/share child sessions; no new
 callbacks or credential forwarding are installed. No native exactly-once or
 atomic protection against concurrent external token mutation is promised.
 
-This is intentionally limited Windows operation support, now with a locally
-prepared remote-host extension. Broader operations/transports/topologies require
+[External operation-scope validation](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40230473969)
+passed OneLevel/Subtree ordinary-versus-scoped comparisons on both runtimes, with
+actual target identity/searches, warm primary reuse and exact cleanup. The native
+fixture used loopback LDAPS; it did not test remote AD, subordinate/All policy or
+multi-hop behavior. Earlier unchased-continuation cases remain failed and are not
+reclassified as target proof.
+
+This is intentionally bounded synchronous FindOne support. Broader operations/transports/topologies require
 their own boundary review. Kerberos/Negotiate remains fresh and deferred to issue 236.

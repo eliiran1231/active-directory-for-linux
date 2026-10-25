@@ -770,3 +770,107 @@ setup on one hosted VM, .NET 8 followed by .NET 10, with all existing watchdog a
 independent cleanup safeguards. It would run two comparisons (eight comparison
 FindOne calls per runtime) plus the unchanged 12 raw controls. No such run or
 publication is authorized by this local preparation, and none was attempted.
+
+### External operation-scope verification: 40230473969
+
+The specifically approved single job ran at
+`c164debb8c3d0d2f520252c90acccadb26fafe94`, tree
+`8f47ad9ffdfb60481431d5618becc63e0be1574d` (reviewed local 92c4f43 plus fresh-ID
+trigger). Run: <https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40230473969>,
+job `121280889239`, attempt 1. The public branch update was guarded against the
+expected previous head 97acd93e; no intervening changes or active duplicate runs
+were found. The consumed trigger was removed and absence verified at
+`8709d1622b959800e188388dd8407d4f432cabd5`. PR235 remains draft to dev at
+`3b9565e5c467fba402dbfda7d6601260c85bcedc`. This results note is local only.
+
+Both `onelevel/external` and `subtree/external` passed on .NET 8 and .NET 10.
+For each comparison, ordinary and scoped modes each made two managed sends,
+performed two target binds/searches with the expected explicit identity, returned
+`target,target` and successful result codes `0,0`. The endpoint guards validated
+source/referred request scope, SizeLimit=1 and the child result DN. Source binds
+were 3 ordinary/4 scoped; each had seven source searches, one binding-resolution
+read and four schema reads. No application 19 continuation was emitted. Scoped
+mode reused once, ordinary mode did not; every observation had Cleanup=true and
+PoolDelta=0 after quiescence. All assertions remained unchanged.
+
+All 11 authenticated raw controls passed on both runtimes. Anonymous-direct
+separately failed with LDAP 81 before TLS/bind/search. Consequently supported=passed,
+anonymous-adverse=failed and AllPassed=false: the overall job correctly remained
+failed rather than hiding that adverse outcome. Pure preflight, both worker
+builds, contracts, complete fake setup/failure-path checks and their cleanup passed.
+
+At 20:26:05 and 20:26:06 UTC, the primary and independent cleanup passes verified
+exact certificate `FA12B40532818F578D20B4C67A1E8456DB6A99FD`, owned provider key,
+PFX and owned accounts absent. Final owned temporary files/directory absence was
+verified at 20:26:08 UTC. Independent read-only review confirmed case results and
+both cleanup passes. No rerun, new security operation, PR235 update or production
+eligibility change followed this job.
+
+Evidence now supports the synchronous OneLevel/Subtree FindOne external-referral
+path under the tested authenticated original context, loopback LDAPS/TLS 1.2
+fixture and native validation. The unchanged raw controls also passed for A/B;
+the new scoped operation comparisons themselves ran under the original context.
+Combine this with the separately recorded 31-case context validation and observed
+local/partial parity only within their actual limits. It does not validate
+Subordinate/All chasing, multi-hop, streaming, StartTLS or remote AD, and the
+historical continuation comparisons remain failed under their original contract.
+The next safe step is a local eligibility/code review and regressions for the
+narrow synchronous External scope expansion; non-Base production pooling remains
+disabled pending that review. No further publication or security-run approval is
+implied by this result, and Windows completion/issue 236 readiness is not claimed.
+
+### Local bounded FindOne eligibility completion
+
+Following run 40230473969 and independent review, the local production predicate
+now admits OneLevel and Subtree only for SizeLimit=1, alongside the existing Base
+path. The sole production caller remains synchronous, fully buffered FindOne;
+this makes the ordinary default Subtree FindOne useful without enabling general
+provider reuse. No lifecycle, authentication, token capture, credential/config
+keying, native referral, validation or Linux implementation was changed.
+
+Supported operations are Base/OneLevel/Subtree FindOne with PageSize=0, no async,
+controls, DirSync, VLV, attribute-scope query or connection override, and no
+retained entry/schema connection. Connection requirements remain explicit
+nonempty Basic credentials, normally validated LDAPS, External referral policy,
+explicit ASCII DNS/canonical IPv4 host and supported authenticated token context.
+Anonymous/unreadable/restricted/AppContainer contexts retain capacity-accounted
+fresh behavior; token changes still invalidate incompatible leases and no sent
+operation is replayed. Schema reads stay separately fresh. FindAll, paging,
+streaming, retained handles, StartTLS/plaintext referral paths, Subordinate/All,
+certificate overrides and Kerberos/Negotiate remain outside this new path.
+Existing Basic/None pooling and Linux behavior remain unchanged.
+
+Regressions cover positive non-Base bounded admission, rejection of unbounded or
+larger non-Base requests, transport/authentication/configuration negatives for all
+three scopes, all-scope async/control/override exclusions, and public ordinary
+routing/platform fallback/retained-seam rejection across loopback, DNS and IPv4
+hosts. Prior context-transition, concurrency, failure eviction and no-replay tests
+remain in the full suite. The historical native diagnostic reports and failed
+continuation verdicts were not changed. Current diagnostic selection assertions
+now reflect the locally supported predicate, without relaxing native counters.
+
+Independent code review found no blocking issue and requires no additional
+trusted native run for this scope change. The minimal remaining validation gate
+is ordinary exact-head Windows/Linux offline and disposable Samba CI, including
+Windows surface/companion checks, via the existing
+`.github/workflows/windows-scoped-final-checks.yml`. That requires separately
+authorized publication of the final source/tests/docs and a scoped workflow
+trigger edit to the public diagnostic branch; this local step publishes nothing.
+The last verified remote head is 8709d1622b959800e188388dd8407d4f432cabd5 and must
+be rechecked before a write. CI uploads source and test logs/TRX, not keys or
+credentials, and needs no Windows accounts or certificate trust setup. PR235 is
+still unchanged; later PR integration is a separate authorized action and must
+preserve external work.
+
+This is a bounded implementation of Windows Basic referral pooling for the
+common synchronous FindOne path, not a claim that every Windows operation or
+transport can be pooled. The remaining gate is integration/ordinary CI for this
+agreed scope, not an open-ended topology/security test matrix. Remote AD has not
+been natively tested. Windows completion and issue 236 planning remain conditional
+on final validation and the agreed integration boundary.
+
+Local final validation: 13,596 offline functional tests passed on each runtime,
+with one existing skip each; both worker builds passed. The .NET 8 focused suite
+passed 97 checks, all included in the full suites. Independent review approved the
+bounded eligibility change and existing safety exclusions. No external CI,
+publication or security operation was performed in this local completion step.

@@ -37,7 +37,7 @@ public sealed class WindowsContinuationTests
     [Theory]
     [InlineData(SearchScope.OneLevel)]
     [InlineData(SearchScope.Subtree)]
-    public void Continuation_capability_does_not_expand_production_or_other_diagnostic_scopes(SearchScope scope)
+    public void Continuation_capability_still_requires_explicit_scope_and_loopback_host(SearchScope scope)
     {
         LdapConnectionOptions Options(string host = "127.0.0.1", bool skip = false, bool startTls = false) =>
             new() { Host = host, Port = 1636, UseSsl = true, BindDn = "synthetic", BindPassword = "synthetic",
@@ -47,7 +47,7 @@ public sealed class WindowsContinuationTests
         bool Allowed(SearchScope? permitted) => LdapConnectionProvider.IsContextScopedDiagnosticConfiguration(options, Referral.External, request, permitted);
         Assert.True(Allowed(scope)); Assert.False(Allowed(null));
         Assert.False(Allowed(scope == SearchScope.OneLevel ? SearchScope.Subtree : SearchScope.OneLevel));
-        Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(options, Referral.External, request));
+        Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(options, Referral.External, request));
         request.SizeLimit = 0; Assert.False(Allowed(scope)); request.SizeLimit = 1;
         request.Controls.Add(new PageResultRequestControl(1)); Assert.False(Allowed(scope)); request.Controls.Clear();
         options = Options(skip: true); Assert.False(Allowed(scope));
