@@ -47,7 +47,7 @@ internal static class Program
                     "stable" => row with { Attempts = 3, TargetSearches = 3 },
                     "failed-bind" => row with { Attempts = 2, ObservedCode = 49, ObservedKind = "ldap" },
                     "primary-failure" or "target-failure" => row with { Attempts = 3, SourceBinds = 2, ObservedCode = 81, ObservedKind = "ldap" },
-                    "findone" => row with { Attempts = 2, SourceBinds = 3, SourceSearches = 6, TargetSearches = 2 },
+                    "findone" => row with { Attempts = 2, SourceBinds = 4, SourceSearches = 7, TargetSearches = 2 },
                     _ when owner == "partition" => row with { Attempts = 3, SourceBinds = 2, TargetSearches = 3 },
                     _ when owner == "anonymous" && scenario is not ("complete" or "return") => row with { Attempts = scenario is "acquired" or "send" ? 2 : 3, FreshCode = 81, WarmCode = 81, FreshKind = "ldap", WarmKind = "ldap" },
                     _ => row

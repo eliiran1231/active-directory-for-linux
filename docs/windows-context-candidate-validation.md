@@ -265,3 +265,74 @@ report contracts passed. Independent review found no blocker in the decoder
 promotion or the pre-security query gate. These checks do not execute A/B token
 queries or native LDAP. The previously compared 12 Linux surface failures remain
 baseline limitations, not a claim of a green Windows surface run.
+
+
+## Token-fixed candidate run: 2026-10-25
+
+[Run 40211353310](https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40211353310),
+source `486f00ef0fa7a61034be7d0bed58b73477f88ec7` (reviewed fix `da0ba465`),
+executed exactly once on one disposable Windows VM. Existing-token checks passed
+on both runtimes before security setup. Both runtimes emitted all 31 candidate
+cases: **28 passed, three failed**. All 11 authenticated raw controls passed;
+the separate anonymous direct control still failed LDAP 81 before bind/search.
+
+| Cases | .NET 8 | .NET 10 | Evidence |
+| --- | --- | --- | --- |
+| original/a/b stable (3) | passed | passed | Three operations, one primary bind, three target searches per case |
+| original/a/b failed-bind (3) | passed | passed | LDAP 49, no search before recovery, reservation released |
+| original/a/b primary-failure (3) | passed | passed | Native directory Unavailable 52, eviction and recovery |
+| original/a/b target-failure (3) | passed | passed | Native directory Unavailable 52, eviction and recovery |
+| original/a/b FindOne (3) | failed | failed | One source bind/search, zero target activity, 0x80072030; Cleanup=false, PoolDelta=1 |
+| A-to-B and B-to-A acquired/send/complete/return (8) | passed | passed | Changed contexts detected; one managed send/search and zero final pool delta |
+| partition A-B-A (1) | passed | passed | Two primary binds, three searches; A reuse separated from B |
+| anonymous first/repeated/primary (3) | passed | passed | Fresh/warm LDAP 81 parity, no anonymous pool reuse |
+| anonymous acquired/send (2) | passed | passed | Fresh/warm LDAP 81 parity, no search sent on old authenticated selection |
+| anonymous complete/return (2) | passed | passed | Original result retained; lease evicted after context change |
+
+All 28 passing cases reported Cleanup=true and PoolDelta=0. Failure tests observed
+native reconnect behavior (for example four source or target searches during
+three managed attempts); this is not a claim of native exactly-once execution.
+No managed replay was added. The FindOne failures are not hidden by the external
+security cleanup result.
+
+Independent review verified two cleanup passes removed the exact public
+certificate `D1F94CACC5ADDABB623F8EF229B06ACAACCBC2DA`, owned provider key, PFX and
+owned accounts; final files/directory absence was also verified. Consumed trigger
+removal is remote `a6326738b2aff90f7ea1a70e23b1e2711acf1749`, local `d9fb016`.
+No additional security run occurred.
+
+### FindOne diagnosis and local preparation
+
+Source review independently identifies a fixture mismatch before candidate
+execution. FindOne calls BindAuthority, which resolves its root with a Base
+`(objectClass=*)` search requesting only `1.1`, using the root's deliberately
+configured Referral.None. The source fixture returned only a referral, so there
+was no entry; BindEntry translated NoSuchObject to `0x80072030`. The ordinary
+Basic/None lease returned idle to the normal pool, outside the diagnostic's
+candidate-key set. This explains both the pre-candidate operation error and the
+single unretired entry; it does not establish a candidate lease leak.
+
+The local correction preserves BindAuthority and the differing root/searcher
+referral policies. Only the exact synthetic target's Base/objectClass/1.1 request
+receives a local entry with no attributes; actual searches retain the referral.
+The fixture tracks the ordinary exact root options/referral key before invoking
+FindOne, so existing exact-key retirement runs on success and failure. It never
+drains unrelated keys or relaxes PoolDelta=0. Pure tests cover request separation,
+empty-attribute response BER, exact ordinary/candidate key separation and owned
+retirement after both success and failure without removing an unrelated entry.
+
+Expected successful FindOne totals are now four source binds, seven source
+searches, one binding-resolution read, four schema reads and two target searches.
+These counts follow source analysis and remain strict assertions, not native
+results. The corrected FindOne path still requires native execution before any
+production activation. The smallest useful next approved job is the same
+31-case suite with unchanged security setup, to establish FindOne and retain
+regression coverage for the 28 passing cases. Production stays disabled and
+Kerberos issue 236 remains deferred.
+
+Local correction validation: 13,545 functional offline tests passed with one
+existing skip per runtime; both worker builds and all pure native/pool/candidate/
+query report contracts passed. Independent final review found no remaining
+static findings after synchronizing the parser and synthetic report to the new
+strict counts and adding rejection of the old counts. No production files were
+changed by this fixture correction, and no corrected native run was executed.

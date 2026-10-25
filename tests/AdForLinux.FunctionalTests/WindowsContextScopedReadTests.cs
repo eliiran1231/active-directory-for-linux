@@ -161,6 +161,69 @@ public sealed class WindowsContextScopedReadTests
     }
 
     [Fact]
+    public void Binding_resolution_recognizer_preserves_actual_search_referrals()
+    {
+        bool Match(string dn, SearchScope scope, string filter, params string[] names)
+        {
+            var writer = new System.Formats.Asn1.AsnWriter(System.Formats.Asn1.AsnEncodingRules.BER);
+            writer.WriteEnumeratedValue(scope);
+            writer.WriteEnumeratedValue(DereferenceAlias.Never);
+            writer.WriteInteger(0); writer.WriteInteger(0); writer.WriteBoolean(false);
+            writer.WriteOctetString(System.Text.Encoding.UTF8.GetBytes(filter),
+                new System.Formats.Asn1.Asn1Tag(System.Formats.Asn1.TagClass.ContextSpecific, 7));
+            writer.PushSequence();
+            foreach (var name in names) writer.WriteOctetString(System.Text.Encoding.UTF8.GetBytes(name));
+            writer.PopSequence();
+            return WindowsReferralEndpoint.IsBindingResolution(System.Text.Encoding.UTF8.GetBytes(dn),
+                new System.Formats.Asn1.AsnReader(writer.Encode(), System.Formats.Asn1.AsnEncodingRules.BER));
+        }
+        Assert.True(Match("CN=target", SearchScope.Base, "objectClass", "1.1"));
+        Assert.False(Match("CN=target", SearchScope.Base, "objectClass", "description"));
+        Assert.False(Match("CN=target", SearchScope.Base, "objectClass"));
+        Assert.False(Match("CN=target", SearchScope.Base, "objectClass", "1.1", "description"));
+        Assert.False(Match("CN=target", SearchScope.Subtree, "objectClass", "1.1"));
+        Assert.False(Match("CN=synthetic-schema", SearchScope.Base, "objectClass", "1.1"));
+        Assert.False(Match("CN=target", SearchScope.Base, "description", "1.1"));
+        var entry = new System.Formats.Asn1.AsnReader(WindowsReferralEndpoint.Entry(1, "synthetic", new Dictionary<string, string>()), System.Formats.Asn1.AsnEncodingRules.BER).ReadSequence();
+        Assert.Equal(1, (int)entry.ReadInteger());
+        var body = entry.ReadSequence(new System.Formats.Asn1.Asn1Tag(System.Formats.Asn1.TagClass.Application, 4, true));
+        Assert.Equal("CN=target", System.Text.Encoding.UTF8.GetString(body.ReadOctetString()));
+        Assert.False(body.ReadSequence().HasData); body.ThrowIfNotEmpty(); entry.ThrowIfNotEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Fixture_binding_key_retirement_is_exact_after_success_or_failure(bool fail)
+    {
+        using var root = new AdForLinux.DirectoryServices.DirectoryEntry("LDAP://127.0.0.1:1636/CN=target", "synthetic", "synthetic",
+            AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+        root.Options.Referral = ReferralChasingOption.None;
+        var key = WindowsContextCandidateDiagnostic.BindingResolutionKey(root);
+        Assert.Equal(LdapConnectionProvider.ConnectionKey.Create(root.BuildOptions(), ReferralChasingOption.None), key);
+        var other = LdapConnectionProvider.ConnectionKey.CreateContextScoped(root.BuildOptions(), ReferralChasingOption.External, A);
+        Assert.NotEqual(other, key);
+        using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, Resource>(startTimer: false);
+        var owned = new Resource(1); var unrelated = new Resource(2);
+        using (pool.Acquire(other, () => unrelated)) { }
+        try
+        {
+            using (pool.Acquire(key, () => owned)) { }
+            if (fail) throw new IOException("synthetic resolution failure");
+        }
+        catch (IOException) { }
+        finally
+        {
+            // Same exact-key freshness retirement primitive as diagnostic disposal.
+            Assert.Throws<InvalidOperationException>(() => pool.Acquire(key, () => throw new InvalidOperationException(), reusable: false, preferFresh: true));
+        }
+        Assert.Equal(1, owned.Disposed); Assert.Equal(0, unrelated.Disposed);
+        Assert.Equal(1, pool.Snapshot.Total);
+        using var retained = pool.Acquire(other, () => throw new Exception("Unexpected replacement"));
+        Assert.Same(unrelated, retained.Value);
+    }
+
+    [Fact]
     public void Synthetic_schema_entry_has_valid_ber_and_requested_schema_fields()
     {
         var fields = new Dictionary<string, string> { ["schemaNamingContext"] = "CN=synthetic-schema" };

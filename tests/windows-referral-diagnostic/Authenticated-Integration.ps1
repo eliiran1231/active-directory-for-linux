@@ -310,7 +310,7 @@ function ConvertTo-ContextCandidateResult([string]$Json) {
             if ($scenario -eq 'stable' -and ($row.Attempts -ne 3 -or $row.SourceBinds -ne 1 -or $row.TargetSearches -ne 3)) { throw 'Stable reuse counters incomplete.' }
             if ($scenario -eq 'failed-bind' -and ($row.Attempts -ne 2 -or $row.ObservedCode -ne 49 -or $row.ObservedKind -ne 'ldap' -or $row.TargetSearches -ne 1)) { throw 'Bind rejection evidence incomplete.' }
             if ($scenario -in @('primary-failure','target-failure') -and ($row.Attempts -ne 3 -or $row.SourceBinds -lt 2 -or $row.ObservedKind -notin @('ldap','directory') -or $row.ObservedCode -notin @(2,52,81,82,85,91))) { throw 'Transport failure evidence incomplete.' }
-            if ($scenario -eq 'findone' -and ($row.Attempts -ne 2 -or $row.SourceBinds -ne 3 -or $row.SourceSearches -ne 6 -or $row.TargetSearches -ne 2)) { throw 'FindOne/schema evidence incomplete.' }
+            if ($scenario -eq 'findone' -and ($row.Attempts -ne 2 -or $row.SourceBinds -ne 4 -or $row.SourceSearches -ne 7 -or $row.TargetSearches -ne 2)) { throw 'FindOne/schema evidence incomplete.' }
             if ($owner -in @('a-to-b','b-to-a') -and ($row.Attempts -ne 1 -or $row.SourceSearches -ne 1 -or $row.TargetSearches -ne 1)) { throw 'Transition evidence incomplete.' }
             if ($owner -eq 'partition' -and ($row.Attempts -ne 3 -or $row.SourceBinds -ne 2 -or $row.TargetSearches -ne 3)) { throw 'Partition evidence incomplete.' }
             if ($owner -eq 'anonymous' -and $scenario -in @('complete','return') -and ($row.Attempts -ne 1 -or $row.TargetSearches -ne 1)) { throw 'Post-send anonymous evidence incomplete.' }

@@ -109,6 +109,7 @@ public static class WindowsContextCandidateDiagnostic
                 f.Read(); f.Require(f.Attempts == 3 && f.Source.Binds >= 2); break;
             case "findone":
                 f.Source.ServeSyntheticSchema = true;
+                f.Source.ServeBindingResolution = true;
                 using (var root = new Entry($"LDAP://127.0.0.1:{f.Source.Port}/CN=target",
                     WindowsReferralEndpoint.FirstIdentity, WindowsReferralEndpoint.Password,
                     AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer))
@@ -116,19 +117,25 @@ public static class WindowsContextCandidateDiagnostic
                     ReferralChasing = Referral.External, PageSize = 0 })
                 {
                     root.Options.Referral = Referral.None; // Deliberately differs from searcher.
+                    // BindAuthority runs before the candidate. Track its ordinary exact
+                    // key before invocation so success and failure both retire it.
+                    f.Diagnostic.Track(BindingResolutionKey(root));
                     for (int i = 0; i < 2; i++)
                     {
                         f.Attempts++;
                         var result = searcher.FindOneContextDiagnostic(f.Diagnostic);
                         f.Require(result?.Properties["description"][0] as string == WindowsReferralEndpoint.FirstIdentity);
                     }
-                    // One pooled primary, two fresh schema binds, each reading rootDSE and schema.
-                    f.Require(f.Source.Binds == 3 && f.Source.Searches == 6 && f.Source.SchemaReads == 4 && f.Target.Searches == 2);
+                    // One ordinary resolution bind, one pooled primary, two fresh schema binds.
+                    f.Require(f.Source.Binds == 4 && f.Source.Searches == 7 && f.Source.BindingReads == 1 && f.Source.SchemaReads == 4 && f.Target.Searches == 2);
                 }
                 break;
             default: throw new InvalidOperationException("Unknown candidate scenario.");
         }
     }
+    internal static LdapConnectionProvider.ConnectionKey BindingResolutionKey(Entry root)
+        => LdapConnectionProvider.ConnectionKey.Create(root.BuildOptions(), root.Options.Referral);
+
     private static void Transition(Fixture f, Action<Action> first, Action<Action> second, string stage)
     {
         WindowsLdapContext? before = null, changed = null;

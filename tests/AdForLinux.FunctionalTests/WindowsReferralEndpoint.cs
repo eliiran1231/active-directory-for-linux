@@ -30,6 +30,9 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     internal string? ReferralUrl { get; set; }
     internal bool RejectBinds { get; set; }
     internal bool ServeSyntheticSchema { get; set; }
+    internal bool ServeBindingResolution { get; set; }
+    private int bindingReads;
+    internal int BindingReads => Volatile.Read(ref bindingReads);
     private int schemaReads;
     internal int SchemaReads => Volatile.Read(ref schemaReads);
     internal volatile bool DisconnectOnSearch;
@@ -197,7 +200,13 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         if (BeforeCorrelatedSearchResponse is not null) await BeforeCorrelatedSearchResponse(connection, id, synthetic);
                         if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
-                        if (ServeSyntheticSchema && (baseDn.Length == 0 || Encoding.UTF8.GetString(baseDn) == "CN=synthetic-schema"))
+                        if (ServeBindingResolution && IsBindingResolution(baseDn, operation))
+                        {
+                            Interlocked.Increment(ref bindingReads);
+                            await stream.WriteAsync(Entry(id, identity, new Dictionary<string, string>()), stop.Token);
+                            await stream.WriteAsync(Result(id, 5, ResultCode.Success), stop.Token);
+                        }
+                        else if (ServeSyntheticSchema && (baseDn.Length == 0 || Encoding.UTF8.GetString(baseDn) == "CN=synthetic-schema"))
                         {
                             Interlocked.Increment(ref schemaReads);
                             var attributes = baseDn.Length == 0
@@ -237,6 +246,25 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                 Interlocked.Increment(ref closed);
             }
         }
+    }
+
+    // Only the preliminary DirectoryEntry object-resolution read is local.
+    // Actual FindOne requests must still receive the configured referral.
+    internal static bool IsBindingResolution(byte[] baseDn, AsnReader operation)
+    {
+        var scope = operation.ReadEnumeratedBytes();
+        _ = operation.ReadEnumeratedBytes(); // dereference policy
+        _ = operation.ReadInteger(); // size limit
+        _ = operation.ReadInteger(); // time limit
+        _ = operation.ReadBoolean();
+        var filter = operation.ReadEncodedValue();
+        var attributes = operation.ReadSequence();
+        var names = new List<string>();
+        while (attributes.HasData) names.Add(Encoding.UTF8.GetString(attributes.ReadOctetString()));
+        operation.ThrowIfNotEmpty();
+        return baseDn.AsSpan().SequenceEqual("CN=target"u8) && scope.Span.SequenceEqual(new byte[] { 0 }) &&
+            filter.Span.SequenceEqual(new byte[] { 0x87, 11, (byte)'o', (byte)'b', (byte)'j', (byte)'e', (byte)'c', (byte)'t', (byte)'C', (byte)'l', (byte)'a', (byte)'s', (byte)'s' }) &&
+            names.Count == 1 && names[0] == "1.1";
     }
 
     internal static bool ShouldRejectTlsProbe(bool enabled, bool tls, byte? first) => enabled && !tls && first == 0x16;
