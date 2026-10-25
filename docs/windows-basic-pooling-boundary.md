@@ -647,3 +647,126 @@ hosted job, one supervisor invocation, attempt-one-only, independent always
 cleanup and no artifact upload. Independent end-to-end static review found no
 avoidable preparation blocker. No Windows security operation or external action
 was performed during this integration.
+
+### Executed continuation comparison: 40222146911
+
+The specifically approved one-job publication ran at
+`bc65fd1feb34cb9e59388a8a1ce6f17a5e17d835` (tree
+`5bb569fa9a9a8bd244f12d17479b85bc7839e736`, exactly the reviewed preparation plus
+fresh-ID trigger). Run: <https://github.com/eliiran1231/active-directory-for-linux/actions/runs/40222146911>,
+job `121255836043`, attempt 1. Both runtimes completed; overall failure. The
+consumed trigger was removed and its absence verified at remote
+`97acd93e162734e93b585c6c393bc5188d0d5d23`. This results note is local only.
+
+All four comparisons failed on both .NET 8 and .NET 10, at the strict final
+counts assertion: target binds/searches were zero for ordinary and scoped paths.
+No verdict or expectation was relaxed. Each path made two managed sends and
+returned `local,local`; successful terminal results were `0,0`, partial results
+`4,4`. Source counts matched the prepared expectations (ordinary binds 3,
+scoped-success 4, scoped-partial 5; searches 7, binding reads 1, schema reads 4,
+continuation reads/references 2). Scoped success reused once; partial results did
+not reuse. Every observation had Cleanup=true and PoolDelta=0. The identity
+predicate checks observed binds; with no target binds it is NOT target-identity
+proof. This establishes local/partial result parity and observed scoped lease
+behavior, not continuation-target chasing or identity safety.
+
+All 11 authenticated raw controls passed on both runtimes. The separate anonymous
+direct control failed with LDAP81 before TLS/bind/search, as before. Pure
+preflight, builds, contracts, fake complete-setup checks and their cleanup passed.
+
+The primary and independent cleanup passes at 18:40:43 and 18:40:45 UTC verified
+exact certificate `C6FFA3C4BCEE750F8E26EFDCA6C3C6254503D329`, owned provider key,
+PFX and owned accounts absent. Final temporary file/directory absence was verified
+at 18:40:46 UTC. Independent read-only review confirmed these results. No automatic
+rerun, further security setup, production activation or PR235 update occurred.
+
+Source investigation: Microsoft's WinLDAP Session Options distinguishes
+`LDAP_CHASE_SUBORDINATE_REFERRALS` for search references from
+`LDAP_CHASE_EXTERNAL_REFERRALS`:
+<https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ldap/session-options>.
+This makes the fixture's External-only setting a credible explanation for not
+following application-19 references. The current logs cannot exclude other
+native conditions, including size-limit behavior, so do not claim causal proof.
+Changing public policy to All/Subordinate merely to obtain target traffic would
+change the tested semantics and is not a fix for External support.
+
+The smallest useful next preparation is to separate two questions: preserve the
+unchased continuation/local-result observations as such, and prepare OneLevel/
+Subtree **external SearchResultDone referral (code 10)** comparisons under the
+unchanged External policy to exercise the applicable referred-target path. Keep
+strict managed-send/target identity/count/cleanup assertions on that external
+referral test; do not relabel these failed continuation cases as passing target
+coverage. Any additional native execution needs a fresh bounded approval. The
+non-Base production guard and issue236 prerequisite remain unchanged.
+
+### Corrected local test contract: external operation scope
+
+The failure in run 40222146911 was a target-chasing assertion applied to the wrong
+referral category, not evidence of an ordinary/scoped behavioral discrepancy.
+Microsoft's WinLDAP `LDAP_OPT_REFERRALS` documentation explicitly separates
+subordinate search references from external referrals (Session Options link
+above). RFC4511 sections 4.1.10 and 4.5.2–4.5.3 distinguish a terminal referral result
+from application 19 references returned during a search. Our Windows factory
+passes the requested enum unchanged; External does not mean All. Neither the
+documentation nor the ordinary baseline promises subordinate-reference chasing
+under External. The run does not isolate whether policy, SizeLimit or another
+native condition caused zero target traffic, so exact runtime causation remains
+unproven. It would be incorrect to change policy to All to make this assertion
+pass while claiming External evidence.
+
+The existing run remains failed under its original strict contract. Its actual
+observations still support narrower conclusions: ordinary/scoped local-entry
+and partial-result parity, successful scoped reuse, partial-result eviction,
+matching managed sends and exact cleanup. They do not establish target identity,
+continuation chasing or all-scope pooling safety. No retrospective result edits
+or weakening of the old four-case parser/count assertions were made.
+
+A separate local `RunExternal` inventory now has exactly two cases:
+`onelevel/external` and `subtree/external`. It emits a terminal external referral
+result (10), without local source entries or application 19 references, under the
+unchanged External policy. The referral URL retains the requested one/sub scope;
+both source and target validate CN=target, that actual scope, SizeLimit=1 and
+DereferenceAlias.Never. Only the source's exact binding-resolution/schema reads
+are exempt. The target returns CN=referred,CN=target, a valid child for both
+scopes. Existing four-case continuation behavior/reporting is unchanged.
+
+Each case compares two actual ordinary FindOne calls and two diagnostic-scoped
+FindOne calls. Strict expected observations: two managed sends and two target
+searches per mode, nonempty explicit target bind identity without anonymous/SASL,
+matching target entry labels and successful results, one scoped warm reuse,
+source binds 3 ordinary/4 scoped, seven source searches including one binding
+resolution and four schema reads, and zero pool delta after all endpoint/key
+teardown. Wrong request scope or malformed traffic fails the fixture rather than
+being silently accepted. Counts and WinLDAP referral rewriting still need native
+verification; any unexpected assertion remains a failure.
+
+The separate `-ExternalScopeCandidate` / `--external-scope-candidate` mode is
+wired through the existing bounded supervisor, token-query preflight, worker and
+read-only result printer. `ExternalScopes` has a separate strict two-case parser;
+it cannot be parsed as the old `Continuations` inventory. Pure regressions cover
+scope/limit rejection, missing/duplicate target traffic, historical continuation
+failure preservation, inventory/dependencies, report type separation, 15 new
+malformed-report mutations, preserved failure cleanup and all mode conflicts.
+The inert `External-Scope-Once.yml.template` differs from the reviewed continuation
+template only in its descriptive name and the two mode switches. No trigger was
+created, published or executed.
+
+Local validation: both worker builds passed; 13,586 full offline functional tests
+passed per runtime (.NET 8 and .NET 10), with one existing skip each. All historical
+and new report contracts passed on both runtimes, and pure preflight passed in
+both actual invocation scopes. Independent static review found no blocker in
+semantics, endpoint validation, cleanup, mode forwarding or report acceptance.
+Production non-Base eligibility is unchanged.
+
+The precise remaining question is whether real OneLevel/Subtree FindOne under
+External follows a terminal external referral with the requested scope, returns
+the same fully materialized result, and safely reuses its scoped primary across
+two calls with exact cleanup. This two-case native comparison, combined with the
+already observed local/partial parity, is the smallest useful next evidence gate;
+it does not test subordinate/All modes, multi-hop, StartTLS, streaming or Kerberos.
+A future explicitly approved single job could reuse the same two-account,
+one-logon-each, owned non-exportable key/public LocalMachine Root certificate
+setup on one hosted VM, .NET 8 followed by .NET 10, with all existing watchdog and
+independent cleanup safeguards. It would run two comparisons (eight comparison
+FindOne calls per runtime) plus the unchanged 12 raw controls. No such run or
+publication is authorized by this local preparation, and none was attempted.

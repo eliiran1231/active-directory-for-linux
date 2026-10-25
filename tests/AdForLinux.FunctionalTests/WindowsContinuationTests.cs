@@ -102,6 +102,52 @@ public sealed class WindowsContinuationTests
         Assert.Equal(new[] { 0, 1, 2 }, attempted);
     }
 
+    [Theory]
+    [InlineData(SearchScope.OneLevel)]
+    [InlineData(SearchScope.Subtree)]
+    public void External_fixture_validates_actual_request_scope_and_limit(SearchScope scope)
+    {
+        bool Match(SearchScope requested, int limit, string dn = "CN=target")
+        {
+            var writer = new AsnWriter(AsnEncodingRules.BER);
+            writer.WriteEnumeratedValue(requested); writer.WriteEnumeratedValue(DereferenceAlias.Never); writer.WriteInteger(limit);
+            return WindowsReferralEndpoint.MatchesScopedSearch(Encoding.UTF8.GetBytes(dn), new AsnReader(writer.Encode(), AsnEncodingRules.BER), scope);
+        }
+        Assert.True(Match(scope, 1)); Assert.False(Match(SearchScope.Base, 1));
+        Assert.False(Match(scope, 0)); Assert.False(Match(scope, 2)); Assert.False(Match(scope, 1, "CN=other"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void External_contract_requires_target_searches_without_relabeling_continuation_failures(bool scoped)
+    {
+        int[] counts = [scoped ? 4 : 3, 7, 1, 4, 0, 0, 1, 2];
+        Assert.True(WindowsContinuationDiagnostic.ExternalCountsMatch(counts, scoped));
+        Assert.False(WindowsContinuationDiagnostic.CountsMatch(counts, scoped, false));
+        counts[6] = 0; counts[7] = 0;
+        Assert.False(WindowsContinuationDiagnostic.ExternalCountsMatch(counts, scoped));
+        counts[4] = 2; counts[5] = 2; // Historical unchased continuation observations remain failed.
+        Assert.False(WindowsContinuationDiagnostic.CountsMatch(counts, scoped, false));
+        counts[4] = 0; counts[5] = 0; counts[6] = 1; counts[7] = 3;
+        Assert.False(WindowsContinuationDiagnostic.ExternalCountsMatch(counts, scoped));
+    }
+
+    [Fact]
+    public void External_inventory_is_separate_and_original_dependency_gated()
+    {
+        var native = WindowsAuthenticatedDiagnostic.Schedule((_, _) => new("passed", 0, 0, 0, 0, 0, 0));
+        int calls = 0;
+        WindowsContinuationDiagnostic.Comparison Execute(string name)
+        { calls++; return new("failed", true, Empty(), Empty()); }
+        var cases = WindowsContinuationDiagnostic.ScheduleExternal(native, Execute);
+        Assert.Equal(new[] { "onelevel/external", "subtree/external" }, cases.Keys);
+        Assert.Equal(2, calls); Assert.Equal(4, WindowsContinuationDiagnostic.Names.Length);
+        native["original-referral"] = native["original-referral"] with { Status = "failed" };
+        calls = 0; cases = WindowsContinuationDiagnostic.ScheduleExternal(native, Execute);
+        Assert.Equal(0, calls); Assert.All(cases.Values, c => Assert.Equal("skipped", c.Status));
+    }
+
     [Fact]
     public void Comparison_preserves_order_partial_result_and_cleanup_failures()
     {

@@ -56,7 +56,7 @@ internal static class Program
             Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsContextCandidateDiagnostic.CreateReport(native, candidate) }));
             return 0;
         }
-        if (args.SequenceEqual(new[] { "--continuation-report-self-test" }))
+        if (args.SequenceEqual(new[] { "--continuation-report-self-test" }) || args.SequenceEqual(new[] { "--external-scope-report-self-test" }))
         {
             var native = WindowsAuthenticatedDiagnostic.Schedule((_, stage) =>
                 new("passed", stage is "retained-primary" or "transition" ? 4 : 2,
@@ -66,15 +66,24 @@ internal static class Program
                     stage == "direct" ? 0 : 2, stage == "direct" ? 0 : stage == "referral" ? 2 : 4,
                     stage is "retained-primary" or "transition" ? 4 : 2));
             native["anonymous-direct"] = new("failed", 1, 0, 0, 0, 0, 0);
-            var cases = WindowsContinuationDiagnostic.Schedule(native, name =>
+            bool external = args[0] == "--external-scope-report-self-test";
+            WindowsContinuationDiagnostic.Comparison MakeCase(string name)
             {
-                bool partial = name.EndsWith("/partial", StringComparison.Ordinal);
+                bool partial = !external && name.EndsWith("/partial", StringComparison.Ordinal);
                 var ordinary = new WindowsContinuationDiagnostic.Observation("passed", "complete", "none", 0,
-                    true, 0, 2, 2, [partial ? 4 : 0, partial ? 4 : 0], ["local", "local"],
-                    3, 7, 1, 4, 2, 2, 2, 2, true, 0);
+                    true, 0, 2, 2, [partial ? 4 : 0, partial ? 4 : 0], [external ? "target" : "local", external ? "target" : "local"],
+                    3, 7, 1, 4, external ? 0 : 2, external ? 0 : 2, 2, 2, true, 0);
                 var scoped = ordinary with { SourceBinds = partial ? 5 : 4, Reused = partial ? 0 : 1 };
                 return new("passed", true, ordinary, scoped);
-            });
+            }
+            if (external)
+            {
+                var externalCases = WindowsContinuationDiagnostic.ScheduleExternal(native, MakeCase);
+                var report = new WindowsContinuationDiagnostic.ExternalReport(native, externalCases, "passed", "failed", false);
+                Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = report }));
+                return 0;
+            }
+            var cases = WindowsContinuationDiagnostic.Schedule(native, MakeCase);
             Console.Write(JsonSerializer.Serialize(new { TestOnly = true, Report = WindowsContinuationDiagnostic.CreateReport(native, cases) }));
             return 0;
         }
@@ -91,7 +100,8 @@ internal static class Program
         }
         bool contextCandidate = args.SequenceEqual(new[] { "--context-candidate" });
         bool continuationCandidate = args.SequenceEqual(new[] { "--continuation-candidate" });
-        if ((!contextCandidate && !continuationCandidate && args.Length != 0) || !OperatingSystem.IsWindows() || !Environment.Is64BitProcess ||
+        bool externalScopeCandidate = args.SequenceEqual(new[] { "--external-scope-candidate" });
+        if ((!contextCandidate && !continuationCandidate && !externalScopeCandidate && args.Length != 0) || !OperatingSystem.IsWindows() || !Environment.Is64BitProcess ||
             Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true" ||
             Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "github-hosted") return 2;
         try
@@ -112,6 +122,12 @@ internal static class Program
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_TEST_PFX", null);
             Environment.SetEnvironmentVariable("ADFL_REFERRAL_OWNED_KEY_DIRECTORY", request.Root);
             var native = WindowsAuthenticatedDiagnostic.Run(a.Run, b.Run);
+            if (externalScopeCandidate)
+            {
+                var comparison = WindowsContinuationDiagnostic.RunExternal(native);
+                Console.Out.Write(JsonSerializer.Serialize(comparison));
+                return comparison.AllPassed ? 0 : 1;
+            }
             if (continuationCandidate)
             {
                 var comparison = WindowsContinuationDiagnostic.Run(native);

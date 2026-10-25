@@ -28,6 +28,8 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
     private readonly bool rejectTlsOnPlaintext;
     private int binds, searches, connections, closed, saslBinds, credentialedSimpleBinds, anonymousBinds, tlsHandshakes;
     internal string? ReferralUrl { get; set; }
+    internal System.DirectoryServices.Protocols.SearchScope? ExpectedSearchScope { get; set; }
+    internal string ResponseDn { get; set; } = "CN=target";
     internal bool RejectBinds { get; set; }
     internal bool ServeSyntheticSchema { get; set; }
     internal bool ServeBindingResolution { get; set; }
@@ -205,6 +207,11 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         if (BeforeCorrelatedSearchResponse is not null) await BeforeCorrelatedSearchResponse(connection, id, synthetic);
                         if (BeforeSearchResponse is not null) await BeforeSearchResponse();
                         if (DisconnectOnSearch) return; // Deterministic transport failure, including reconnects.
+                        if (ExpectedSearchScope is { } expectedScope &&
+                            !(ServeBindingResolution && IsBindingResolution(baseDn, operation.Clone())) &&
+                            !(ServeSyntheticSchema && (baseDn.Length == 0 || Encoding.UTF8.GetString(baseDn) == "CN=synthetic-schema")) &&
+                            !MatchesScopedSearch(baseDn, operation.Clone(), expectedScope))
+                            throw new InvalidDataException("Unexpected external-scope fixture request.");
                         if (ServeBindingResolution && IsBindingResolution(baseDn, operation.Clone()))
                         {
                             Interlocked.Increment(ref bindingReads);
@@ -241,7 +248,7 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
                         else
                         {
                             Timeline?.Add(TimelineRole, connection, id, synthetic, "response-send");
-                            await stream.WriteAsync(Entry(id, identity), stop.Token);
+                            await stream.WriteAsync(Entry(id, identity, distinguishedName: ResponseDn), stop.Token);
                             await stream.WriteAsync(Result(id, 5, ResultCode.Success), stop.Token);
                         }
                     }
@@ -346,6 +353,12 @@ internal sealed class WindowsReferralEndpoint : IAsyncDisposable
         writer.PopSequence();
         return writer.Encode();
     }
+
+    internal static bool MatchesScopedSearch(byte[] baseDn, AsnReader operation, System.DirectoryServices.Protocols.SearchScope expected) =>
+        baseDn.AsSpan().SequenceEqual("CN=target"u8) &&
+        operation.ReadEnumeratedValue<System.DirectoryServices.Protocols.SearchScope>() == expected &&
+        operation.ReadEnumeratedValue<System.DirectoryServices.Protocols.DereferenceAlias>() == System.DirectoryServices.Protocols.DereferenceAlias.Never &&
+        operation.ReadInteger() == 1;
 
     internal static byte[] ContinuationResponse(int id, string identity, string referral, bool partial)
     {

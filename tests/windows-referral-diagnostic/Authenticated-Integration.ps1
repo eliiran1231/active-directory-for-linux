@@ -345,16 +345,18 @@ function ConvertTo-ContextQueryResult([string]$Json) {
 }
 
 function Get-ContinuationCandidateNames { 'onelevel/success'; 'onelevel/partial'; 'subtree/success'; 'subtree/partial' }
-function ConvertTo-ContinuationCandidateResult([string]$Json) {
+function ConvertTo-ContinuationCandidateResult([string]$Json, [switch]$ExternalScope) {
     if ($Json.Length -gt 65536) { throw 'Continuation output limit exceeded.' }
     $value = $Json | ConvertFrom-Json -AsHashtable
-    if (($value.Keys | Sort-Object) -join ',' -cne 'Adverse,AllPassed,Continuations,Native,Supported') { throw 'Unexpected continuation report.' }
+    $casesName = if ($ExternalScope) { 'ExternalScopes' } else { 'Continuations' }
+    $expectedKeys = if ($ExternalScope) { 'Adverse,AllPassed,ExternalScopes,Native,Supported' } else { 'Adverse,AllPassed,Continuations,Native,Supported' }
+    if (($value.Keys | Sort-Object) -join ',' -cne $expectedKeys) { throw 'Unexpected continuation report.' }
     $native = ConvertTo-DiagnosticResult ($value.Native | ConvertTo-Json -Depth 8 -Compress)
-    $names = @(Get-ContinuationCandidateNames)
-    if (($value.Continuations.Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Continuation inventory mismatch.' }
+    $names = if ($ExternalScope) { @('onelevel/external','subtree/external') } else { @(Get-ContinuationCandidateNames) }
+    if (($value[$casesName].Keys | Sort-Object) -join ',' -cne (($names | Sort-Object) -join ',')) { throw 'Continuation inventory mismatch.' }
     $ready = $native['original-direct'].Status -eq 'passed' -and $native['original-referral'].Status -eq 'passed'
     foreach ($name in $names) {
-        $case = $value.Continuations[$name]
+        $case = $value[$casesName][$name]
         if (($case.Keys | Sort-Object) -join ',' -cne 'Cleanup,Ordinary,Scoped,Status' -or $case.Cleanup -isnot [bool] -or $case.Status -cnotin @('passed','failed','skipped')) { throw 'Invalid comparison fields.' }
         foreach ($mode in @('Ordinary','Scoped')) {
             $row = $case[$mode]
@@ -379,16 +381,18 @@ function ConvertTo-ContinuationCandidateResult([string]$Json) {
                 }
             }
             if ($row.Status -ceq 'passed') {
-                $partial = $name.EndsWith('/partial', [StringComparison]::Ordinal)
+                $partial = !$ExternalScope -and $name.EndsWith('/partial', [StringComparison]::Ordinal)
+                $expectedReferences = if ($ExternalScope) { 0 } else { 2 }
                 $expectedBinds = if ($mode -eq 'Ordinary') { 3 } elseif ($partial) { 5 } else { 4 }
                 $expectedCode = if ($partial) { 4 } else { 0 }
                 $expectedReuse = if ($mode -eq 'Scoped' -and !$partial) { 1 } else { 0 }
                 if (!$row.Cleanup -or !$row.IdentityValid -or $row.PoolDelta -ne 0 -or $row.Phase -cne 'complete' -or $row.FailureKind -cne 'none' -or $row.FailureCode -ne 0 -or
                     $row.Attempts -ne 2 -or $row.Sends -ne 2 -or $row.SourceBinds -ne $expectedBinds -or $row.SourceSearches -ne 7 -or
-                    $row.BindingReads -ne 1 -or $row.SchemaReads -ne 4 -or $row.Continuations -ne 2 -or $row.References -ne 2 -or
+                    $row.BindingReads -ne 1 -or $row.SchemaReads -ne 4 -or $row.Continuations -ne $expectedReferences -or $row.References -ne $expectedReferences -or
                     $row.TargetBinds -lt 1 -or $row.TargetSearches -ne 2 -or $row.Reused -ne $expectedReuse -or
                     $row.Results.Count -ne 2 -or @($row.Results | Where-Object { $_ -ne $expectedCode }).Count -ne 0 -or
-                    $row.Returned.Count -ne 2 -or 'unexpected' -cin $row.Returned) { throw 'Incomplete passing continuation evidence.' }
+                    $row.Returned.Count -ne 2 -or 'unexpected' -cin $row.Returned -or
+                    ($ExternalScope -and @($row.Returned | Where-Object { $_ -cne 'target' }).Count -ne 0)) { throw 'Incomplete passing continuation evidence.' }
             }
         }
         $cleanup = $case.Ordinary.Cleanup -and $case.Scoped.Cleanup
@@ -399,9 +403,11 @@ function ConvertTo-ContinuationCandidateResult([string]$Json) {
         if ($case.Cleanup -ne $cleanup -or $case.Status -cne $expectedStatus) { throw 'Comparison verdict mismatch.' }
     }
     $supported = @($native.GetEnumerator() | Where-Object { $_.Key -ne 'anonymous-direct' -and $_.Value.Status -ne 'passed' }).Count -eq 0 -and
-        @($value.Continuations.Values | Where-Object Status -NE 'passed').Count -eq 0
+        @($value[$casesName].Values | Where-Object Status -NE 'passed').Count -eq 0
     $adverse = $native['anonymous-direct'].Status -eq 'passed'
     if ($value.Supported -cne $(if ($supported) { 'passed' } else { 'failed' }) -or $value.Adverse -cne $(if ($adverse) { 'passed' } else { 'failed' }) -or
         $value.AllPassed -isnot [bool] -or $value.AllPassed -ne ($supported -and $adverse)) { throw 'Continuation verdict mismatch.' }
     return $value
 }
+
+function ConvertTo-ExternalScopeResult([string]$Json) { ConvertTo-ContinuationCandidateResult $Json -ExternalScope }
