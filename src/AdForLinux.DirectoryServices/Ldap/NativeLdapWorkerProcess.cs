@@ -41,7 +41,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
             lock (admissionGate)
             {
                 ObjectDisposedException.ThrowIf(disposed != 0, this);
-                owner = new WorkerOwner(launch, Released);
+                owner = new WorkerOwner(launch, profile, Released);
                 owners.TryAdd(owner, 0);
                 startup = owner.StartAsync();
             }
@@ -92,7 +92,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         }
     }
 
-    internal sealed class WorkerOwner(WorkerLaunch launch, Action<WorkerOwner> released)
+    internal sealed class WorkerOwner(WorkerLaunch launch, LdapWorkerStart profile, Action<WorkerOwner> released)
     {
         private readonly TaskCompletionSource cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly object stateGate = new();
@@ -109,10 +109,12 @@ internal sealed class NativeLdapWorkerPool : IDisposable
             {
                 api = new WorkerNative(launch.SupervisorLibrary);
                 using var argv = new WorkerStrings([launch.Executable, .. launch.Arguments]);
-                // Deliberately do not inherit loader hooks, credentials or cache
-                // environment. Supported credential-source transfer is not proven.
-                using var env = new WorkerStrings(["DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "ADFL_OFFLINE_TESTS=1"]);
-                var error = api.Spawn(launch.Executable, argv.Pointer, env.Pointer, out channel, out var child);
+                // Generated configuration is installed before exec: GSS creates
+                // contexts independently of the resolver. No parent environment is changed.
+                using var configuration = new WorkerProfileFiles(api, profile);
+                using var env = new WorkerStrings(["DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "ADFL_OFFLINE_TESTS=1", .. configuration.Environment]);
+                var error = api.Spawn(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, out channel, out var child);
+                configuration.Dispose(); // child owns independent fd4/5 after successful exec
                 if (error != 0) throw new InvalidOperationException($"Worker exec failed ({error}).");
                 spawned = true;
                 while (true)
@@ -208,6 +210,7 @@ internal sealed class WorkerNative : IDisposable
     private readonly IntPtr library;
     internal readonly SpawnCall Spawn;
     internal readonly ReceiveCall Receive;
+    internal readonly ProfileCall CreateProfile;
     internal readonly FdCall Kill, Reap, Close, SendIdentity;
     internal WorkerNative(string path)
     {
@@ -216,7 +219,8 @@ internal sealed class WorkerNative : IDisposable
         try
         {
             T Get<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(library, name));
-            if (Get<VersionCall>("adfl_worker_abi_version")() != 1) throw new PlatformNotSupportedException("Unsupported worker supervisor ABI.");
+            if (Get<VersionCall>("adfl_worker_abi_version")() != 2) throw new PlatformNotSupportedException("Unsupported worker supervisor ABI.");
+            CreateProfile = Get<ProfileCall>("adfl_worker_profile_create");
             Spawn = Get<SpawnCall>("adfl_worker_spawn"); Receive = Get<ReceiveCall>("adfl_worker_parent_receive_identity");
             Kill = Get<FdCall>("adfl_worker_signal_kill"); Reap = Get<FdCall>("adfl_worker_reap_nonblocking");
             Close = Get<FdCall>("adfl_worker_closefd"); SendIdentity = Get<FdCall>("adfl_worker_child_send_identity");
@@ -225,9 +229,40 @@ internal sealed class WorkerNative : IDisposable
     }
     public void Dispose() => NativeLibrary.Free(library);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint VersionCall();
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int SpawnCall([MarshalAs(UnmanagedType.LPUTF8Str)] string executable, IntPtr argv, IntPtr environment, out int channel, out int childPid);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int SpawnCall([MarshalAs(UnmanagedType.LPUTF8Str)] string executable, IntPtr argv, IntPtr environment, int configuration, int mechanisms, out int channel, out int childPid);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ProfileCall(byte[] bytes, UIntPtr length, out int descriptor);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ReceiveCall(int channel, int expectedChildPid, out int pidfd);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int FdCall(int fd);
+}
+// Parent copies are startup-owned and closed on every spawn path. Child fd4/5
+// remain process-owned across operation leases and are released by worker exit.
+internal sealed class WorkerProfileFiles : IDisposable
+{
+    private readonly WorkerNative api;
+    internal int Config { get; private set; } = -1;
+    internal int Mechanisms { get; private set; } = -1;
+    internal string[] Environment => Config < 0 ? [] : ["KRB5_CONFIG=/proc/self/fd/4", "GSS_MECH_CONFIG=/proc/self/fd/5"];
+    internal WorkerProfileFiles(WorkerNative api, LdapWorkerStart profile)
+    {
+        this.api = api;
+        if (profile.RestrictedConfiguration is not { } configuration) return;
+        try
+        {
+            var bytes = configuration.Generate(profile.Host);
+            var status = api.CreateProfile(bytes, (UIntPtr)bytes.Length, out var descriptor);
+            if (status != 0) throw new IOException($"Creating sealed worker profile failed ({status}).");
+            Config = descriptor;
+            status = api.CreateProfile([], UIntPtr.Zero, out descriptor);
+            if (status != 0) throw new IOException($"Creating sealed mechanism profile failed ({status}).");
+            Mechanisms = descriptor;
+        }
+        catch { Dispose(); throw; }
+    }
+    public void Dispose()
+    {
+        if (Config >= 0) { api.Close(Config); Config = -1; }
+        if (Mechanisms >= 0) { api.Close(Mechanisms); Mechanisms = -1; }
+    }
 }
 internal sealed class WorkerStrings : IDisposable
 {

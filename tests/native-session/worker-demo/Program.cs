@@ -8,14 +8,16 @@ using AdForLinux.DirectoryServices.Ldap;
 using Microsoft.Win32.SafeHandles;
 
 if (args.FirstOrDefault() == "--child") return await Child(args);
-if (!OfflineTestGuard.Enabled || args.Length != 4) throw new InvalidOperationException("Use the offline worker runner with dotnet, supervisor, recording bridge and production host paths.");
+if (!OfflineTestGuard.Enabled || args.Length is not (4 or 5)) throw new InvalidOperationException("Use the offline worker runner with dotnet, supervisor, recording bridge and production host paths.");
 var executable = Path.GetFullPath(args[0]);
 var supervisorPath = Path.GetFullPath(args[1]);
 var bridgePath = Path.GetFullPath(args[2]);
 var productionHost = Path.GetFullPath(args[3]);
 var assembly = typeof(Program).Assembly.Location;
-var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 2, TimeSpan.FromSeconds(5), new(LdapCredentialSourceKind.File, "/recording/worker-cache"));
-WorkerLaunch Launch(string mode) => new(executable, [assembly, "--child", supervisorPath, bridgePath, mode], supervisorPath);
+var profileProbe = args.Length == 5 ? Path.GetFullPath(args[4]) : "";
+var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 2, TimeSpan.FromSeconds(5), new(LdapCredentialSourceKind.File, "/recording/worker-cache"),
+    new("EXAMPLE.INVALID", "directory.invalid", "/recording/private-plugins"));
+WorkerLaunch Launch(string mode) => new(executable, [assembly, "--child", supervisorPath, bridgePath, mode, profileProbe], supervisorPath);
 var read = new LdapSearchCommand("", "(objectClass=*)", SearchScope.Base, ["dnsHostName"], TimeSpan.FromSeconds(2));
 var modify = new LdapModifyCommand("CN=example", [new("description", DirectoryAttributeOperation.Replace, [Array.Empty<byte>()]), new("other", DirectoryAttributeOperation.Delete, [])], TimeSpan.FromSeconds(2), []);
 using var workers = new NativeLdapWorkerPool(1);
@@ -61,6 +63,7 @@ using (var lease = await workers.AcquireAsync(Launch("normal"), profile, TimeSpa
 }
 await Empty();
 Console.WriteLine("PASS: isolated actual native dispatcher serves paired sessions, pages, binary results and complete mutation responses over bounded IPC.");
+if (profileProbe.Length != 0) Console.WriteLine("PASS: sealed restricted configuration consumed by private MIT profile reads and GSS mechanism metadata; no credential acquisition.");
 using (var lease = await workers.AcquireAsync(Launch("normal"), profile with
     { CredentialSource = new(LdapCredentialSourceKind.DirectoryCollection, "/recording/collection") }, TimeSpan.FromSeconds(5)))
     if (LdapRequestDispatcher.Search(lease.Client.Sessions[1], read).Entries.Length != 1)
@@ -126,7 +129,7 @@ finally
 
 static async Task<int> Child(string[] arguments)
 {
-    if (!OfflineTestGuard.Enabled || arguments.Length != 4) return 2;
+    if (!OfflineTestGuard.Enabled || arguments.Length != 5) return 2;
     var mode = arguments[3];
     if (mode == "late-identity") await Task.Delay(700);
     using var native = new WorkerNative(arguments[1]);
@@ -135,6 +138,14 @@ static async Task<int> Child(string[] arguments)
     using var channel = new NetworkStream(socket, ownsSocket: false);
     if (mode == "exit") return 0;
     if (mode == "malformed") { await channel.WriteAsync(new byte[] { 255, 255, 255, 127 }); await Task.Delay(5000); return 0; }
+    if (arguments[4].Length != 0)
+    {
+        // Separate test-only private MIT module; no cache/credential operations.
+        // Retain until process exit because upstream libraries own process state.
+        var probeLibrary = NativeLibrary.Load(arguments[4]);
+        var inspect = Marshal.GetDelegateForFunctionPointer<InspectProfile>(NativeLibrary.GetExport(probeLibrary, "adfl_test_private_profile"));
+        if (inspect() != 0) return 6;
+    }
     var library = NativeLibrary.Load(arguments[2]);
     NativeLibrary.SetDllImportResolver(typeof(NativeLdapBindingBackend).Assembly, (name, _, _) => name == "adfl_native" ? library : IntPtr.Zero);
     var configure = Marshal.GetDelegateForFunctionPointer<Configure>(NativeLibrary.GetExport(library, "adfl_test_configure"));
@@ -163,3 +174,5 @@ static async Task<int> Child(string[] arguments)
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Configure(int value);
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr SourcePath();
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int InspectProfile();

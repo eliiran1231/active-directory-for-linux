@@ -12,6 +12,11 @@ dotnet_path="$(realpath "$dotnet_path")"
 "$dotnet_path" build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release --framework "$framework"
 worker_out="${ADFL_WORKER_OUT:-/tmp/adfl-worker-demo}"
 native_out="${ADFL_NATIVE_OUT:-/tmp/adfl-native-demo}"
+profile_args=()
+if [[ -n "${ADFL_PRIVATE_MIT_SOURCE:-}" ]]; then
+  profile_probe="$(bash tests/native-session/build-private-profile-probe.sh "$ADFL_PRIVATE_MIT_SOURCE")"
+  profile_args+=("$(realpath "$profile_probe")")
+fi
 ADFL_OFFLINE_TESTS=1 "$dotnet_path" "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
   "$dotnet_path" "$(realpath "$worker_out/libadfl_worker.so")" "$(realpath "$native_out/libadfl_native_test.so")" \
-  "$(realpath "src/AdForLinux.NativeHost/bin/Release/$framework/AdForLinux.NativeHost.dll")"
+  "$(realpath "src/AdForLinux.NativeHost/bin/Release/$framework/AdForLinux.NativeHost.dll")" "${profile_args[@]}"

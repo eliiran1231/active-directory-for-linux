@@ -8,6 +8,33 @@ namespace AdForLinux.FunctionalTests;
 public partial class ConnectionPoolOperationTests
 {
     [Fact]
+    public void Restricted_worker_profile_is_typed_bounded_and_requires_explicit_source()
+    {
+        var configuration = new LdapWorkerKerberosProfile("EXAMPLE.INVALID", "directory.invalid", "/recording/private-plugins");
+        var generated = Encoding.ASCII.GetString(configuration.Generate("directory.invalid"));
+        Assert.Contains("default_realm = EXAMPLE.INVALID", generated);
+        Assert.Contains("directory.invalid = EXAMPLE.INVALID", generated);
+        Assert.Contains("enable_only = realm", generated);
+        Assert.Contains("dns_canonicalize_hostname = false", generated);
+        Assert.DoesNotContain("include", generated); Assert.DoesNotContain("module =", generated);
+        Assert.True(Encoding.ASCII.GetByteCount(generated) < LdapWorkerKerberosProfile.MaximumBytes);
+        var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 1, TimeSpan.FromSeconds(5), RestrictedConfiguration: configuration);
+        Assert.Throws<ArgumentException>(() => LdapWorkerProtocol.ValidateStart(profile));
+        LdapWorkerProtocol.ValidateStart(profile with { CredentialSource = new(LdapCredentialSourceKind.File, "/recording/cache") });
+        Assert.Throws<ArgumentException>(() => configuration.Generate("different.invalid"));
+    }
+    [Theory]
+    [InlineData("/recording/plugins\ninclude /etc/krb5.conf")]
+    [InlineData("/recording/%{LIBDIR}")]
+    [InlineData("/recording/plugins#comment")]
+    [InlineData("/recording/plugins;comment")]
+    [InlineData("/recording/plugins module=evil")]
+    public void Restricted_worker_configuration_rejects_raw_syntax_and_expansion(string path)
+    {
+        Assert.Throws<ArgumentException>(() => new LdapWorkerKerberosProfile("EXAMPLE.INVALID", "directory.invalid", path).Generate("directory.invalid"));
+    }
+
+    [Fact]
     public void Worker_submission_gate_runs_before_uncertainty_and_cannot_be_reentered()
     {
         LdapSubmission? submission = null;
@@ -18,9 +45,9 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Theory]
-    [InlineData("{\"Version\":2,\"Version\":2,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
-    [InlineData("{\"Version\":2,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
-    [InlineData("{\"Version\":2,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":3,\"Version\":3,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":3,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
+    [InlineData("{\"Version\":3,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
     public async Task Worker_frames_reject_duplicate_missing_and_invalid_fields(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json); using var stream = new MemoryStream();

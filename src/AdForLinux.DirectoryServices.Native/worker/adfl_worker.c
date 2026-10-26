@@ -9,12 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-unsigned adfl_worker_abi_version(void) { return 1; }
+unsigned adfl_worker_abi_version(void) { return 2; }
 int adfl_worker_closefd(int fd) {
     /* Linux releases the fd even when close reports EINTR; never retry against
      * a number another thread may already have reused. */
@@ -22,43 +24,90 @@ int adfl_worker_closefd(int fd) {
     return errno;
 }
 static int high_fd(int fd) {
-    int copy = fcntl(fd, F_DUPFD_CLOEXEC, 4);
+    int copy = fcntl(fd, F_DUPFD_CLOEXEC, 6);
     int saved = errno; close(fd); errno = saved; return copy;
 }
+#define PROFILE_MAX 32768
+#define PROFILE_SEALS (F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL)
+int adfl_worker_profile_create(const unsigned char *bytes, size_t length, int *out) {
+    if (!out) return EINVAL;
+    *out = -1;
+    if (length > PROFILE_MAX || (length && !bytes)) return EINVAL;
+    int fd = (int)syscall(SYS_memfd_create, "adfl-worker-profile", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    if (fd < 0) return errno;
+    size_t offset = 0;
+    while (offset < length) {
+        ssize_t written = write(fd, bytes + offset, length - offset);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) { int e = written < 0 ? errno : EIO; close(fd); return e; }
+        offset += (size_t)written;
+    }
+    if (lseek(fd, 0, SEEK_SET) < 0 || fcntl(fd, F_ADD_SEALS, PROFILE_SEALS) < 0) {
+        int e = errno; close(fd); return e;
+    }
+    fd = high_fd(fd);
+    if (fd < 0) return errno;
+    *out = fd; return 0;
+}
+static int profile_valid(int fd, int empty) {
+    int seals = fcntl(fd, F_GET_SEALS);
+    if (seals < 0) return errno;
+    if ((seals & PROFILE_SEALS) != PROFILE_SEALS) return EINVAL;
+    struct stat status;
+    if (fstat(fd, &status)) return errno;
+    if (!S_ISREG(status.st_mode) ||
+        (empty ? status.st_size != 0 : status.st_size <= 0 || status.st_size > PROFILE_MAX)) return EINVAL;
+    return 0;
+}
 int adfl_worker_spawn(const char *exe, const char *const *argv, const char *const *envp,
-                      int *channel, int *child_pid) {
+                      int config, int mechanisms, int *channel, int *child_pid) {
     if (!channel || !child_pid) return EINVAL;
     *channel = *child_pid = -1;
-    if (!exe || exe[0] != '/' || !argv || !argv[0] || !envp) return EINVAL;
+    if (!exe || exe[0] != '/' || !argv || !argv[0] || !envp ||
+        (config < 0 && config != -1) || (mechanisms < 0 && mechanisms != -1) ||
+        (config == -1) != (mechanisms == -1)) return EINVAL;
 #if !defined(__GLIBC__) || !__GLIBC_PREREQ(2, 34)
-    return ENOTSUP; /* closefrom is mandatory; never inherit arbitrary host fds. */
+    return ENOTSUP;
 #else
-    int sockets[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) return errno;
+    int sources[2] = {-1, -1}, sockets[2] = {-1, -1}, rc = 0, initialized = 0;
+    posix_spawn_file_actions_t actions;
+    if (config >= 0) {
+        /* Validate owned duplicates, never a caller fd which can be replaced.
+         * All sources live above targets 0..5 before any child dup/open action. */
+        sources[0] = fcntl(config, F_DUPFD_CLOEXEC, 6);
+        if (sources[0] < 0) { rc = errno; goto done; }
+        sources[1] = fcntl(mechanisms, F_DUPFD_CLOEXEC, 6);
+        if (sources[1] < 0) { rc = errno; goto done; }
+        if ((rc = profile_valid(sources[0], 0)) || (rc = profile_valid(sources[1], 1))) goto done;
+    }
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) { rc = errno; goto done; }
     sockets[0] = high_fd(sockets[0]);
-    if (sockets[0] < 0) { int e = errno; close(sockets[1]); return e; }
+    if (sockets[0] < 0) { rc = errno; goto done; }
     sockets[1] = high_fd(sockets[1]);
-    if (sockets[1] < 0) { int e = errno; close(sockets[0]); return e; }
+    if (sockets[1] < 0) { rc = errno; goto done; }
     int enabled = 1;
     if (setsockopt(sockets[0], SOL_SOCKET, SO_PASSCRED, &enabled, sizeof(enabled)) ||
-        fcntl(sockets[0], F_SETFL, O_NONBLOCK)) {
-        int e = errno; close(sockets[0]); close(sockets[1]); return e;
-    }
-    posix_spawn_file_actions_t actions;
-    int rc = posix_spawn_file_actions_init(&actions);
-    if (rc) { close(sockets[0]); close(sockets[1]); return rc; }
-    /* Sources are >=4; opening stdio cannot destroy either socket endpoint. */
+        fcntl(sockets[0], F_SETFL, O_NONBLOCK)) { rc = errno; goto done; }
+    rc = posix_spawn_file_actions_init(&actions);
+    if (rc) goto done;
+    initialized = 1;
     rc = posix_spawn_file_actions_addclose(&actions, sockets[0]);
     if (!rc) rc = posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0);
     if (!rc) rc = posix_spawn_file_actions_addopen(&actions, 1, "/dev/null", O_WRONLY, 0);
     if (!rc) rc = posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0);
     if (!rc) rc = posix_spawn_file_actions_adddup2(&actions, sockets[1], 3);
-    if (!rc) rc = posix_spawn_file_actions_addclosefrom_np(&actions, 4);
+    if (!rc && config >= 0) rc = posix_spawn_file_actions_adddup2(&actions, sources[0], 4);
+    if (!rc && config >= 0) rc = posix_spawn_file_actions_adddup2(&actions, sources[1], 5);
+    if (!rc) rc = posix_spawn_file_actions_addclosefrom_np(&actions, config >= 0 ? 6 : 4);
     pid_t pid = -1;
     if (!rc) rc = posix_spawn(&pid, exe, &actions, NULL, (char *const *)argv, (char *const *)envp);
-    posix_spawn_file_actions_destroy(&actions); close(sockets[1]);
-    if (rc) { close(sockets[0]); return rc; }
-    *channel = sockets[0]; *child_pid = (int)pid; return 0;
+    if (!rc) { *channel = sockets[0]; *child_pid = (int)pid; }
+done:
+    if (initialized) posix_spawn_file_actions_destroy(&actions);
+    if (sockets[1] >= 0) close(sockets[1]);
+    for (int i = 0; i < 2; i++) if (sources[i] >= 0) close(sources[i]);
+    if (rc && sockets[0] >= 0) close(sockets[0]);
+    return rc;
 #endif
 }
 int adfl_worker_child_send_identity(int channel) {

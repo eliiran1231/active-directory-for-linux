@@ -8,13 +8,13 @@ namespace AdForLinux.DirectoryServices.Ldap;
 // Only an explicit source recipe may cross; no credential material, selected identity,
 // native handle or ambient environment lookup is transferred.
 internal sealed record LdapWorkerStart(string Host, int Port, bool UseSsl, bool Signing, bool Sealing,
-    int SessionCount, TimeSpan Timeout, LdapCredentialSource? CredentialSource = null);
+    int SessionCount, TimeSpan Timeout, LdapCredentialSource? CredentialSource = null, LdapWorkerKerberosProfile? RestrictedConfiguration = null);
 internal sealed record LdapWorkerReady(LdapTransportCapabilities[] Capabilities);
 internal sealed record LdapWorkerFailure(string Category);
 internal sealed record LdapWorkerFrame(int Version, long Id, int Session, string Kind, long TimeoutTicks, JsonElement Payload);
 internal static class LdapWorkerProtocol
 {
-    internal const int Version = 2, MaximumFrame = 4 * 1024 * 1024;
+    internal const int Version = 3, MaximumFrame = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = Options();
     private static JsonSerializerOptions Options()
     {
@@ -82,6 +82,11 @@ internal static class LdapWorkerProtocol
     internal static void ValidateStart(LdapWorkerStart profile)
     {
         profile.CredentialSource?.Validate();
+        if (profile.RestrictedConfiguration is { } configuration)
+        {
+            if (profile.CredentialSource is null) throw new ArgumentException("Restricted worker configuration requires an explicit credential source.");
+            configuration.Generate(profile.Host);
+        }
         if (string.IsNullOrWhiteSpace(profile.Host) || profile.Host.Length > 1024 || profile.Host.Contains('\0') ||
             profile.Port is < 1 or > 65535 || profile.SessionCount is < 1 or > 2 ||
             profile.Timeout <= TimeSpan.Zero || profile.Timeout > TimeSpan.FromHours(1))

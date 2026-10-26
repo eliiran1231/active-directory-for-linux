@@ -215,11 +215,51 @@ requires all link references to resolve. It checks the embedded local GSSAPI ent
 rejects a dynamic dependency on host LDAP/Cyrus. The actual built bridge's metadata and both
 ambient/explicit-source refusal paths are tested before credential resolution. This build
 profile cannot represent requested TLS, so it remains ineligible for that policy.
-MIT libraries, loadable modules and configuration are still system dependencies, not yet a
-controlled closure. No manifest or build result overrides the hard authentication gates.
+Add `--mit-archive /path/to/krb5-1.21.3.tar.gz` to build pinned MIT static client
+libraries as well. The full build uses private headers and exact archives and rejects any
+final dynamic dependency beyond the supported libc/resolver/system runtime list. Its actual
+ELF dependency list here is libc and libresolv; embedded MIT/GSS symbols are hidden too.
+No manifest or build result overrides the hard authentication gates. The library versions are
+reviewed prototype pins, not a claim that these versions are the current deployment choice.
+
+MIT static linking does not disable dynamic modules. Legacy plugin directories are compiled
+under the private build prefix; deployment still must control them. MIT's default profile
+search includes `/etc/krb5.conf` even with a private sysconfdir. Therefore the restricted worker
+path explicitly sets `KRB5_CONFIG` and `GSS_MECH_CONFIG` before exec, without changing the
+parent or host environment. Supervisor ABI 2 passes fully sealed memfds as descriptors 4/5;
+all sources are duplicated above the child targets before validation/spawn, and parent copies
+close after spawn. The child compares the profile against the immutable START recipe using
+pread before creating backend resources. Unreaped-worker accounting is unchanged.
+
+`LdapWorkerKerberosProfile` generates a deliberately restricted exact-host/default-realm
+profile with only the realm selector and no KDC endpoint, raw configuration, includes,
+modules or k5identity. An explicit FILE/DIR source is required. This is an executable synthetic
+policy boundary, not a transparent import of a user's Kerberos configuration. Unsupported
+custom policies cannot be silently replaced by it. An empty sealed GSS mechanism file prevents
+normal host mechanism-file discovery; ordinary GSS contexts use the explicit profile through
+MIT's documented environment path. Secure/setuid or other configuration semantics are not
+represented or enabled.
+
+```sh
+ADFL_PRIVATE_MIT_SOURCE=/private/bridge/mit/krb5-1.21.3/src \
+  ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/native-session/run-process-demo.sh net8.0
+bash tests/native-session/run-private-bind-demo.sh /private/bridge
+```
+
+The optional worker probe uses real private MIT profile reads and GSS mechanism enumeration;
+file, module-loading and resolver/connect traps reject unexpected accesses. It does not acquire
+credentials or exercise GSS Kerberos-context initialization. Separately, the supplied-handle
+demo traverses production bind coordination plus real private OpenLDAP/Cyrus callbacks using
+an AF_UNIX socketpair. Instrumented GSS verifies the exact synthetic authority pointer and
+service target, then fails before returning a token. Interleaved failing binds verify isolation
+and replacement ownership. This proves successful handle injection, not successful
+Kerberos authentication, concurrent bound sessions or reconnect enforcement. The fixture
+shuts down its socket before cleanup so even the unrelated LDAP Unbind cannot be emitted.
+Real credential acquisition, wire authentication/security layers, deployment integrity and
+policy compatibility remain unverified; authentication/reuse gates stay closed.
 No `make install`, account, cache or host configuration operation is part of these scripts.
 
-Worker protocol 2 and native ABI 3 add an explicit source recipe. `LdapCredentialSource`
+Worker protocol 3 and native ABI 3 add an explicit source recipe. `LdapCredentialSource`
 represents only a FILE absolute path or DIR collection absolute path, supplied explicitly;
 no code captures a user environment or reads credentials in the demonstration. The source
 travels through START and the shared operation owner into `adfl_authority_resolve_from`.

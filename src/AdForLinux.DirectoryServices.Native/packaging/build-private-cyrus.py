@@ -24,7 +24,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(archive, output):
+def build(archive, output, mit_source=None):
     if digest(archive) != ARCHIVE_SHA256:
         raise ValueError('Only the pinned official Cyrus 2.1.28 release archive is supported.')
     # A new directory prevents accidental reuse of generated configuration/objects.
@@ -40,6 +40,10 @@ def build(archive, output):
         raise ValueError('Guard source hash mismatch.')
     env = {'PATH': '/usr/bin:/bin', 'LC_ALL': 'C', 'CONFIG_SITE': '/dev/null',
            'CFLAGS': '-O2 -fPIC', 'CPPFLAGS': '-DHAVE_TIME_H=1 -DTIME_WITH_SYS_TIME=1', 'LDFLAGS': ''}
+    if mit_source is not None:
+        env['CPPFLAGS'] += ' -I' + str(mit_source / 'include')
+        env['LDFLAGS'] = '-L' + str(mit_source / 'lib')
+        env['LIBS'] = '-lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lkrb5support -lresolv -ldl -pthread'
     def run(*args, capture=False):
         return subprocess.run(args, cwd=source, env=env, check=True,
                               stdout=subprocess.PIPE if capture else None, text=True).stdout
@@ -52,7 +56,7 @@ def build(archive, output):
                 'krb4', 'plain', 'anon', 'login', 'ntlm', 'passdss', 'sql', 'ldapdb',
                 'auth-sasldb', 'httpform', 'sia', 'alwaystrue', 'checkapop']
     run('./configure', '--enable-static', '--disable-shared', '--disable-staticdlopen',
-        '--enable-gssapi', '--with-gss_impl=mit', '--with-dblib=none',
+        '--enable-gssapi' + ('=' + str(mit_source) if mit_source is not None else ''), '--with-gss_impl=mit', '--with-dblib=none',
         '--without-saslauthd', '--without-authdaemond', '--without-pwcheck',
         '--without-pam', '--without-openssl', '--without-des', '--without-opie',
         '--without-rc4', '--without-sphinx-build',

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a private static LDAP/Cyrus bridge; leave all authentication gates closed.
 
-No downloads/installations/authentication. MIT remains a system build dependency;
+No downloads/installations/authentication. Optional pinned MIT archives remove system MIT linkage;
 this is a verifiable composition increment, not a complete deployment package.
 """
 import argparse
@@ -26,6 +26,7 @@ def main():
     parser.add_argument('cyrus_archive', type=Path)
     parser.add_argument('openldap_archive', type=Path, help='Official GitHub OPENLDAP_REL_ENG_2_6_10 tag archive')
     parser.add_argument('output', type=Path, help='New build directory without whitespace')
+    parser.add_argument('--mit-archive', type=Path, help='Also build/link pinned private MIT client archives')
     args = parser.parse_args()
     output = args.output.resolve()
     if re.search(r'\s', str(output)):
@@ -34,9 +35,14 @@ def main():
         parser.error('OpenLDAP source archive hash mismatch.')
     output.mkdir(parents=True, exist_ok=False)
     sys.dont_write_bytecode = True
+    mit_source = None
+    if args.mit_archive is not None:
+        mit_spec = importlib.util.spec_from_file_location('private_mit', Path(__file__).with_name('build-private-mit.py'))
+        mit = importlib.util.module_from_spec(mit_spec); mit_spec.loader.exec_module(mit)
+        mit_source = mit.build(args.mit_archive.resolve(), output / 'mit')
     spec = importlib.util.spec_from_file_location('private_cyrus', Path(__file__).with_name('build-private-cyrus.py'))
     cyrus = importlib.util.module_from_spec(spec); spec.loader.exec_module(cyrus)
-    sasl_archive = cyrus.build(args.cyrus_archive.resolve(), output / 'cyrus')
+    sasl_archive = cyrus.build(args.cyrus_archive.resolve(), output / 'cyrus', mit_source)
     sasl_source = sasl_archive.parents[2]
     includes = output / 'include/sasl'; includes.mkdir(parents=True)
     for header in (sasl_source / 'include').glob('*.h'):
@@ -52,10 +58,14 @@ def main():
            'CFLAGS': '-O2 -fPIC', 'CPPFLAGS': '-I' + str(includes.parent),
            'LDFLAGS': '-L' + str(sasl_archive.parent),
            'LIBS': '-lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lresolv'}
+    if mit_source is not None:
+        env['CPPFLAGS'] += ' -I' + str(mit_source / 'include')
+        env['LDFLAGS'] += ' -L' + str(mit_source / 'lib')
+        env['LIBS'] = '-lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lkrb5support -lresolv -ldl -pthread'
     def run(*command, capture=False):
         return subprocess.run(command, cwd=source, env=env, check=True,
                               stdout=subprocess.PIPE if capture else None, text=True).stdout
-    if run('pkg-config', '--modversion', 'krb5-gssapi', capture=True).strip() != '1.21.3':
+    if mit_source is None and run('pkg-config', '--modversion', 'krb5-gssapi', capture=True).strip() != '1.21.3':
         raise ValueError('Only the reviewed MIT 1.21.3 build dependency is supported.')
     run('./configure', '--enable-static', '--disable-shared', '--disable-slapd',
         '--disable-balancer', '--disable-dynamic', '--without-tls', '--without-systemd',
@@ -72,7 +82,13 @@ def main():
     exports = output / 'bridge.exports'
     exports.write_text('{ global: adfl_*; local: *; };\n')
     bridge = output / 'libadfl_native.so'
-    mit_flags = shlex.split(run('pkg-config', '--cflags', '--libs', 'krb5-gssapi', 'krb5', capture=True))
+    if mit_source is None:
+        mit_flags = shlex.split(run('pkg-config', '--cflags', '--libs', 'krb5-gssapi', 'krb5', capture=True))
+    else:
+        mit_flags = ['-I' + str(mit_source / 'include'), '-Wl,--start-group',
+            *[str(mit_source / 'lib' / name) for name in
+              ['libgssapi_krb5.a', 'libkrb5.a', 'libk5crypto.a', 'libcom_err.a', 'libkrb5support.a']],
+            '-Wl,--end-group', '-ldl']
     run('cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-pedantic', '-O2', '-fPIC',
         '-fvisibility=hidden', '-DADFL_REVIEWED_MIT_1_21_3', '-shared',
         '-I' + str(native), '-I' + str(source / 'include'), '-I' + str(includes.parent),
@@ -83,15 +99,21 @@ def main():
     dynamic = run('readelf', '-d', str(bridge), capture=True)
     if re.search(r'Shared library: \[(?:libldap|liblber|libsasl)', dynamic):
         raise ValueError('Bridge still depends on host LDAP/Cyrus libraries.')
+    if mit_source is not None:
+        needed = re.findall(r'Shared library: \[([^\]]+)\]', dynamic)
+        allowed = {'libc.so.6', 'libresolv.so.2', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0'}
+        if set(needed) - allowed:
+            raise ValueError('Unexpected dependency outside the private native stack: ' + repr(needed))
     symbols = run('nm', '-D', '--defined-only', str(bridge), capture=True)
-    if any(line.split()[-1].startswith(('sasl_', 'ldap_', 'ber_', '_sasl_')) for line in symbols.splitlines()):
+    if any(line.split()[-1].startswith(('sasl_', 'ldap_', 'ber_', '_sasl_', 'gss_', 'krb5_', 'k5_')) for line in symbols.splitlines()):
         raise ValueError('Private LDAP/Cyrus symbols escaped the bridge.')
     local_symbols = run('nm', '--defined-only', str(bridge), capture=True)
     if not re.search(r'\bt\s+gssapiv2_client_plug_init\b', local_symbols):
         raise ValueError('Private static GSSAPI plugin was not linked locally.')
     print('Built private LDAP/Cyrus bridge:', bridge)
     print('SHA256:', hashlib.sha256(bridge.read_bytes()).hexdigest())
-    print('System MIT/config/plugin closure remains unproven; authentication gates remain false.')
+    print('MIT linkage:', 'private static' if mit_source is not None else 'system shared')
+    print('Runtime configuration/plugin policy and deployment integrity remain unproven; authentication gates remain false.')
 
 
 if __name__ == '__main__':

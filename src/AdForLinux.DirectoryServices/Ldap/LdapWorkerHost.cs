@@ -26,6 +26,7 @@ internal static class LdapWorkerHost
             if (request.Id != 1 || request.Session != 0 || request.Kind != "START") throw new InvalidDataException("Expected worker start.");
             var profile = LdapWorkerProtocol.Payload<LdapWorkerStart>(request); LdapWorkerProtocol.ValidateStart(profile);
             if (request.TimeoutTicks <= 0 || request.TimeoutTicks > TimeSpan.FromHours(1).Ticks) throw new InvalidDataException("Invalid start budget.");
+            LdapWorkerKerberosProfile.VerifyInherited(profile);
             resources = factory(profile);
             if (resources.Sessions.Length != profile.SessionCount || resources.Sessions.Any(value => value is null))
                 throw new InvalidDataException("Factory returned invalid sessions.");
