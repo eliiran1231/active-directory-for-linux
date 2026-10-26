@@ -27,6 +27,12 @@ typedef struct adfl_native_ops {
     void (*result_free)(void *, void *);
     void (*abandon)(void *, LDAP *, int);
     uint64_t (*monotonic_ms)(void *);
+    int (*page_start)(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, int *);
+    int (*message_poll)(void *, LDAP *, int, unsigned, void **); /* native message type, 0 timeout, -1 error */
+    int (*message_emit)(void *, LDAP *, void *, int, adfl_result_fn, void *);
+    int (*page_cookie)(void *, LDAP *, void *, int *, adfl_bytes *); /* malloc-owned output */
+    int (*modify_start)(void *, LDAP *, const adfl_modify_request *, adfl_submitted_fn, void *, int *, int *);
+
 } adfl_native_ops;
 struct adfl_authority {
     atomic_uint references;
@@ -40,6 +46,7 @@ struct adfl_bound_session {
     ldap_conncb connection_guard;
     atomic_uint connection_count;
     atomic_int retired, busy;
+    atomic_uint references;
     unsigned port;
 };
 int adfl_system_search_start(void *, LDAP *, const adfl_search_request *, int *);
@@ -48,6 +55,13 @@ int adfl_system_result_emit(void *, LDAP *, void *, adfl_result_fn, void *);
 void adfl_system_result_free(void *, void *);
 void adfl_system_abandon(void *, LDAP *, int);
 uint64_t adfl_system_monotonic_ms(void *);
+void adfl_session_retain(adfl_bound_session *);
+void adfl_session_release(adfl_bound_session *);
+int adfl_system_page_start(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, int *);
+int adfl_system_message_poll(void *, LDAP *, int, unsigned, void **);
+int adfl_system_message_emit(void *, LDAP *, void *, int, adfl_result_fn, void *);
+int adfl_system_page_cookie(void *, LDAP *, void *, int *, adfl_bytes *);
+int adfl_system_modify_start(void *, LDAP *, const adfl_modify_request *, adfl_submitted_fn, void *, int *, int *);
 extern const adfl_native_ops adfl_system_ops;
 int adfl_resolve_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_authority **);
 int adfl_open_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);

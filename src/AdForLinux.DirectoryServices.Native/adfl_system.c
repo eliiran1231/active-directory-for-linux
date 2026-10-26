@@ -170,5 +170,7 @@ const adfl_native_ops adfl_system_ops = {
     probe, material_new, select_target, select_default, acquire_selected, credential, material_free,
     create_session, set_credential, bind_session, ldap_close, install_connection_guard,
     adfl_system_search_start, adfl_system_search_poll, adfl_system_result_emit,
-    adfl_system_result_free, adfl_system_abandon, adfl_system_monotonic_ms
+    adfl_system_result_free, adfl_system_abandon, adfl_system_monotonic_ms,
+    adfl_system_page_start, adfl_system_message_poll, adfl_system_message_emit,
+    adfl_system_page_cookie, adfl_system_modify_start
 };

@@ -42,11 +42,15 @@ static void release(adfl_authority *a) {
 void adfl_authority_close(adfl_authority **owner) {
     if (owner && *owner) { adfl_authority *a = *owner; *owner = NULL; release(a); }
 }
-void adfl_session_close(adfl_bound_session **owner) {
-    if (!owner || !*owner) return;
-    adfl_bound_session *s = *owner; *owner = NULL;
+void adfl_session_retain(adfl_bound_session *s) { atomic_fetch_add(&s->references, 1); }
+void adfl_session_release(adfl_bound_session *s) {
+    if (atomic_fetch_sub(&s->references, 1) != 1) return;
     s->authority->ops->ldap_close(s->authority->state, s->ldap);
     release(s->authority); free(s);
+}
+void adfl_session_close(adfl_bound_session **owner) {
+    if (!owner || !*owner) return;
+    adfl_bound_session *s = *owner; *owner = NULL; adfl_session_release(s);
 }
 int adfl_resolve_with(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
                      adfl_cancelled_fn check, void *cancel_state, adfl_authority **out) {
@@ -117,6 +121,7 @@ int adfl_authority_bind(adfl_authority *a, const adfl_native_profile *p,
     if (cancelled(check, cancel_state)) return ADFL_CANCELLED;
     adfl_bound_session *s = calloc(1, sizeof(*s));
     if (!s) return ADFL_NO_MEMORY;
+    atomic_init(&s->references, 1);
     s->authority = a; s->port = p->port;
     atomic_init(&s->connection_count, 0); atomic_init(&s->retired, 0); atomic_init(&s->busy, 0);
     s->connection_guard = (ldap_conncb){connected, disconnected, s};

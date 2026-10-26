@@ -111,6 +111,26 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Fact]
+    public void Native_stream_message_parser_preserves_kind_and_requires_complete_owned_payload()
+    {
+        var entry = new NativeSearchResultBuilder();
+        entry.Accept(1, "CN=first", [], 0); entry.Accept(6, null, [], 0);
+        Assert.Equal("CN=first", Assert.IsType<LdapSearchEvent.Entry>(entry.CompleteEvent(1, false)).Value.DistinguishedName);
+        Assert.Throws<InvalidOperationException>(() => entry.CompleteEvent(3, false));
+        Assert.Throws<InvalidOperationException>(() => entry.CompleteEvent(1, true));
+        var reference = new NativeSearchResultBuilder();
+        reference.Accept(7, null, [], 0); reference.Accept(8, "ldap://returned.invalid/", [], 0); reference.Accept(10, null, [], 0);
+        Assert.Single(Assert.IsType<LdapSearchEvent.Reference>(reference.CompleteEvent(2, false)).Value.Urls);
+        var result = new NativeSearchResultBuilder();
+        result.Accept(11, null, [], (int)ResultCode.SizeLimitExceeded);
+        result.Accept(13, "partial result", [], 0);
+        var page = Assert.IsType<LdapSearchEvent.PageEnd>(result.CompleteEvent(3, false));
+        Assert.Equal(ResultCode.SizeLimitExceeded, page.Result.Code);
+        Assert.Equal("partial result", page.Result.Diagnostic);
+        Assert.Throws<InvalidOperationException>(() => new NativeSearchResultBuilder().CompleteEvent(3, false));
+    }
+
+    [Fact]
     public void Native_result_copy_survives_native_buffer_release_and_preserves_full_search_envelope()
     {
         var memory = Marshal.AllocHGlobal(3);

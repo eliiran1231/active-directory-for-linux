@@ -16,12 +16,14 @@ struct fixture {
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply;
+    int bad_cookie, unexpected_message, modify_send_failure, slow_prepare, reject_submit;
+    atomic_int page_sends, modify_sends, submissions, submission_receipts;
     int selection_result, acquire_failure, create_failure, install_failure, probe_rejected, material_failure, untrusted_plugin;
     int cancel_after_select, cancel_after_create, cancel_at_callback;
     int bind_failure, omit_callback, wrong_prompt, cancel_after_bind;
 };
 struct fake_material { struct fixture *owner; int identity; char target[254]; atomic_int sessions; };
-struct fake_ldap { struct fixture *owner; struct fake_material *credential; char target[254]; char attribute[64]; unsigned port; ldap_conncb *guard; };
+struct fake_ldap { struct fixture *owner; struct fake_material *credential; char target[254]; char attribute[64]; unsigned port; int page, stream_index, modify; ldap_conncb *guard; };
 static const adfl_native_profile profile = {"directory.invalid", 389, 5, 0, 0, 1, 1};
 static int probe(void *state, adfl_native_capabilities *caps) {
     memset(caps, 0, sizeof(*caps)); caps->reviewed_build = !((struct fixture *)state)->probe_rejected;
@@ -101,8 +103,9 @@ static int install_guard(void *state, LDAP *value, ldap_conncb *guard) {
 }
 static int search_start(void *state, LDAP *value, const adfl_search_request *request, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
-    assert(request->scope == 0 && !strcmp(request->filter, "(objectClass=*)"));
+    assert(request->scope >= 0 && request->scope <= 2 && !strcmp(request->filter, "(objectClass=*)"));
     if (f->root_reply) {
+        assert(request->scope == 0);
         assert(request->attributes && request->attributes[0] && strlen(request->attributes[0]) < sizeof(ld->attribute));
         strcpy(ld->attribute, request->attributes[0]);
     }
@@ -155,10 +158,84 @@ static int result_emit(void *state, LDAP *ld, void *message, adfl_result_fn emit
 static void result_free(void *state, void *value) { atomic_fetch_add(&((struct fixture *)state)->results_freed, 1); free(value); }
 static void abandon(void *state, LDAP *ld, int id) { (void)ld; assert(id == 17); atomic_fetch_add(&((struct fixture *)state)->abandons, 1); }
 static uint64_t clock_ms(void *state) { return (uint64_t)atomic_fetch_add(&((struct fixture *)state)->clock, 10); }
+struct fake_message { int kind, page; };
+static int page_start(void *state, LDAP *value, const adfl_search_request *r, unsigned size, const adfl_bytes *cookie, int *id) {
+    struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
+    assert(r->timeout_milliseconds > 0 && r->timeout_milliseconds <= 3600000);
+    assert((!strcmp(r->base_dn, "") || !strcmp(r->base_dn, "CN=copied")) && !strcmp(r->filter, "(objectClass=*)"));
+    if (r->attributes) assert(r->attributes[0] && !strcmp(r->attributes[0], "binary") && !r->attributes[1]);
+    if (size && ld->page) {
+        const unsigned char expected[] = {0, 255, 80};
+        assert(cookie->length == sizeof(expected) && !memcmp(cookie->data, expected, sizeof(expected)));
+    } else assert(!cookie->length);
+    ld->page++; ld->stream_index = 0; ld->modify = 0;
+    atomic_fetch_add(&f->page_sends, 1);
+    return search_start(state, value, r, id);
+}
+static int message_poll(void *state, LDAP *value, int id, unsigned timeout, void **message) {
+    struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
+    assert(id == 17 && timeout && timeout <= 50); *message = NULL; atomic_fetch_add(&f->polls, 1);
+    if (f->disconnect_on_poll) { ld->guard->lc_del(value, (Sockbuf *)ld, ld->guard); return -1; }
+    if (f->pending_forever) return 0;
+    const int types[] = {LDAP_RES_SEARCH_ENTRY, LDAP_RES_SEARCH_REFERENCE, LDAP_RES_SEARCH_RESULT};
+    int type = ld->modify ? (int)LDAP_RES_MODIFY : types[ld->stream_index++];
+    if (f->unexpected_message) type = LDAP_RES_INTERMEDIATE;
+    struct fake_message *m = malloc(sizeof(*m)); assert(m); *m = (struct fake_message){type, ld->page};
+    if (f->late_result) { atomic_fetch_add(&f->clock, 10000); atomic_store(&f->cancelled, 1); }
+    *message = m; atomic_fetch_add(&f->results, 1); return type;
+}
+static int message_emit(void *state, LDAP *ld, void *message, int type, adfl_result_fn emit, void *out) {
+    (void)state; (void)ld;
+    struct fake_message *m = message; assert(type == m->kind);
+    const unsigned char binary[] = {0, 255, 65};
+    switch (type) {
+        case LDAP_RES_SEARCH_ENTRY:
+            return emit(out, ADFL_ENTRY_BEGIN, m->page == 1 ? "CN=first" : "CN=second", NULL, 0, 0) ||
+                emit(out, ADFL_ATTRIBUTE_BEGIN, "binary", NULL, 0, 0) ||
+                emit(out, ADFL_ATTRIBUTE_VALUE, NULL, binary, sizeof(binary), 0) ||
+                emit(out, ADFL_ATTRIBUTE_END, NULL, NULL, 0, 0) || emit(out, ADFL_ENTRY_END, NULL, NULL, 0, 0);
+        case LDAP_RES_SEARCH_REFERENCE:
+            return emit(out, ADFL_REFERENCE_BEGIN, NULL, NULL, 0, 0) ||
+                emit(out, ADFL_REFERENCE_URL, "ldap://reference.invalid/", NULL, 0, 0) ||
+                emit(out, ADFL_REFERENCE_END, NULL, NULL, 0, 0);
+        case LDAP_RES_SEARCH_RESULT:
+        case LDAP_RES_MODIFY:
+            return emit(out, ADFL_RESULT_CODE, NULL, NULL, 0, type == LDAP_RES_MODIFY ? LDAP_UNWILLING_TO_PERFORM : LDAP_SUCCESS) ||
+                emit(out, ADFL_MATCHED_DN, "DC=example", NULL, 0, 0) ||
+                emit(out, ADFL_DIAGNOSTIC, "synthetic complete result", NULL, 0, 0) ||
+                emit(out, ADFL_REFERRAL_URL, "ldap://referral.invalid/", NULL, 0, 0) ||
+                emit(out, ADFL_RESULT_CONTROL, "1.2.4", binary, sizeof(binary), 0);
+        default: return 1;
+    }
+}
+static int page_cookie(void *state, LDAP *ld, void *message, int *code, adfl_bytes *cookie) {
+    (void)ld; struct fixture *f = state; struct fake_message *m = message;
+    *cookie = (adfl_bytes){0}; *code = LDAP_SUCCESS;
+    if (f->bad_cookie) return 1;
+    if (m->page == 1) {
+        const unsigned char bytes[] = {0, 255, 80}; void *copy = malloc(sizeof(bytes)); assert(copy);
+        memcpy(copy, bytes, sizeof(bytes)); cookie->data = copy; cookie->length = sizeof(bytes);
+    }
+    return 0;
+}
+static int modify_start(void *state, LDAP *value, const adfl_modify_request *r,
+    adfl_submitted_fn submitted, void *submit_state, int *disposition, int *id) {
+    struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
+    assert(r->change_count == 2 && r->changes[0].value_count == 1 && r->changes[0].values[0].length == 0);
+    assert(r->changes[1].value_count == 0); /* one empty value differs from deleting the attribute */
+    if (f->slow_prepare) atomic_fetch_add(&f->clock, 10000);
+    if (submitted(submit_state)) return LDAP_USER_CANCELLED;
+    atomic_fetch_add(&f->submission_receipts, 1);
+    *disposition = ADFL_OUTCOME_UNKNOWN;
+    atomic_fetch_add(&f->modify_sends, 1); atomic_fetch_add(&f->wire_sent, 1);
+    if (f->modify_send_failure) return LDAP_SERVER_DOWN;
+    ld->modify = 1; *id = 17; return LDAP_SUCCESS;
+}
 static const adfl_native_ops fake_ops = {
     probe, material_new, select_target, select_default, acquire_selected, credential, material_free,
     create_session, set_credential, bind_session, ldap_close, install_guard,
-    search_start, search_poll, result_emit, result_free, abandon, clock_ms
+    search_start, search_poll, result_emit, result_free, abandon, clock_ms,
+    page_start, message_poll, message_emit, page_cookie, modify_start
 };
 static void balanced(struct fixture *f) {
     assert(atomic_load(&f->created) == atomic_load(&f->freed));
@@ -294,8 +371,84 @@ static void dispatch_ownership(void) {
     assert(adfl_session_search(s, &request, cancelled, &h, receive, &e) == ADFL_CANCELLED);
     assert(!atomic_load(&h.sends)); adfl_session_close(&s); balanced(&h);
 }
+static int accept_message(void *state, int event, const char *name, const void *bytes, size_t length, int number) {
+    (void)name; (void)bytes; (void)length;
+    if (event == ADFL_RESULT_CODE) *(int *)state = number;
+    return 0;
+}
+static int submitted(void *state) {
+    struct fixture *f = state; atomic_fetch_add(&f->submissions, 1); return f->reject_submit;
+}
+static void conversation_ownership(void) {
+    struct fixture f = {0}; adfl_bound_session *s = NULL; adfl_search_cursor *c = NULL;
+    assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
+    char base[] = "CN=copied"; char filter[] = "(objectClass=*)"; char attr[] = "binary"; const char *attrs[] = {attr, NULL};
+    adfl_search_request r = request; r.base_dn = base; r.filter = filter; r.attributes = attrs;
+    assert(adfl_cursor_open(s, &r, 1, NULL, NULL, &c) == ADFL_OK);
+    int code = -1;
+    assert(adfl_session_search(s, &request, NULL, NULL, accept_message, &code) == ADFL_BUSY);
+    adfl_session_close(&s); assert(!atomic_load(&f.closed));
+    base[0] = 'X'; filter[1] = 'X'; attr[0] = 'X'; /* all future pages must use owned recipe */
+    for (int page = 0; page < 2; page++) {
+        for (int expected = 1; expected <= 3; expected++) {
+            int kind = 0, more = 0;
+            assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_OK);
+            assert(kind == expected && more == (expected == 3 && page == 0));
+        }
+        int kind, more;
+        assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_INVALID);
+        assert(adfl_cursor_next_page(c, 1000, NULL, NULL) == (page ? ADFL_INVALID : ADFL_OK));
+    }
+    assert(code == LDAP_SUCCESS && atomic_load(&f.binds) == 1 && atomic_load(&f.page_sends) == 2);
+    adfl_cursor_close(&c); adfl_cursor_close(&c); balanced(&f);
+    for (int failure = 0; failure < 7; failure++) {
+        struct fixture g = {0};
+        assert(adfl_open_with(&fake_ops, &g, &profile, NULL, NULL, &s) == ADFL_OK);
+        assert(adfl_cursor_open(s, &request, 1, NULL, NULL, &c) == ADFL_OK);
+        if (failure == 0) { adfl_cursor_close(&c); assert(atomic_load(&g.abandons) == 1); }
+        else if (failure >= 5) {
+            int kind, more;
+            for (int i = 0; i < 3; i++) assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_OK);
+            assert(kind == ADFL_CURSOR_PAGE_END && more);
+            if (failure == 6) {
+                atomic_fetch_add(&g.clock, 1000);
+                assert(adfl_cursor_next_page(c, 1000, NULL, NULL) == ADFL_TIMEOUT);
+            }
+            adfl_cursor_close(&c);
+            assert(!atomic_load(&g.abandons) && atomic_load(&g.page_sends) == 1);
+        } else {
+            g.bad_cookie = failure == 1; g.pending_forever = failure == 2; g.unexpected_message = failure == 3;
+            int kind, more; int rc;
+            do { rc = adfl_cursor_read(c, failure == 4 ? 1 : 1000, NULL, NULL, accept_message, &code, &kind, &more); } while (!rc);
+            assert(rc != ADFL_OK);
+            if (failure == 4) assert(!atomic_load(&g.polls));
+            adfl_cursor_close(&c);
+        }
+        assert(adfl_session_search(s, &request, NULL, NULL, accept_message, &code) == ADFL_SESSION_RETIRED);
+        adfl_session_close(&s); balanced(&g);
+    }
+}
+static void modify_outcomes(void) {
+    adfl_bytes empty = {NULL, 0};
+    adfl_modification changes[] = {{2, "description", &empty, 1}, {1, "other", NULL, 0}};
+    adfl_modify_request r = {"CN=example", changes, 2, 1000};
+    for (int scenario = 0; scenario < 5; scenario++) {
+        struct fixture f = {0}; adfl_bound_session *s = NULL; int disposition = -1, code = -1;
+        assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
+        f.reject_submit = scenario == 1; f.modify_send_failure = scenario == 2;
+        f.pending_forever = scenario == 3; f.slow_prepare = scenario == 4;
+        f.late_result = scenario == 0; /* accepted terminal outcome wins over late cancel/deadline */
+        int rc = adfl_session_modify(s, &r, cancelled, &f, submitted, &f, accept_message, &code, &disposition);
+        assert(disposition == (scenario == 0 ? ADFL_COMPLETED : scenario == 1 || scenario == 4 ? ADFL_NOT_SENT : ADFL_OUTCOME_UNKNOWN));
+        if (!scenario) { assert(rc == ADFL_OK && code == LDAP_UNWILLING_TO_PERFORM); }
+        else assert(rc != ADFL_OK);
+        assert(atomic_load(&f.modify_sends) == (scenario == 1 || scenario == 4 ? 0 : 1));
+        assert(atomic_load(&f.submissions) == (scenario == 4 ? 0 : 1));
+        adfl_session_close(&s); balanced(&f);
+    }
+}
 int main(void) {
-    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership();
+    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes();
     puts("PASS: actual adapter orchestration; recording native dependencies only; no credentials or network.");
     return 0;
 }
@@ -303,10 +456,15 @@ int main(void) {
 #ifdef ADFL_TEST_BRIDGE
 /* Exported only by the explicitly built recording test library. The production
  * library has neither factory nor injected-dependency entry points exported. */
-static struct fixture managed_fixture;
+static struct fixture managed_fixture = {.root_reply = 1};
 ADFL_API int adfl_test_open(const adfl_native_profile *requested, adfl_bound_session **out) {
-    managed_fixture.root_reply = 1;
     return adfl_open_with(&fake_ops, &managed_fixture, requested, NULL, NULL, out);
+}
+/* Configuration changes only while no fake session is alive. Scenario1 enables
+ * cursor+modify fixtures; scenario0 preserves existing RootDSE search fixture. */
+ADFL_API int adfl_test_configure(int scenario) {
+    if (scenario < 0 || scenario > 1 || atomic_load(&managed_fixture.created) != atomic_load(&managed_fixture.freed)) return ADFL_INVALID;
+    managed_fixture.root_reply = scenario == 0; return ADFL_OK;
 }
 ADFL_API int adfl_test_count(int kind) {
     switch (kind) {
@@ -314,6 +472,9 @@ ADFL_API int adfl_test_count(int kind) {
         case 1: return atomic_load(&managed_fixture.closed);
         case 2: return atomic_load(&managed_fixture.freed);
         case 3: return atomic_load(&managed_fixture.results_freed);
+        case 4: return atomic_load(&managed_fixture.page_sends);
+        case 5: return atomic_load(&managed_fixture.modify_sends);
+        case 6: return atomic_load(&managed_fixture.submission_receipts);
         default: return -1;
     }
 }

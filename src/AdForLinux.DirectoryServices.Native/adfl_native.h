@@ -42,7 +42,7 @@ typedef struct {
     int cyrus_major, cyrus_minor, cyrus_step;
     int reviewed_build;
     int authority_binding_enforced;   /* pre-auth proof; real backend remains 0 */
-    int request_transport;            /* search dispatch implemented; not an enablement gate */
+    int request_transport;            /* request adapters implemented; not an enablement gate */
     int compatible_session_reuse;     /* always 0: no mutable-cache proof */
 } adfl_native_capabilities;
 
@@ -65,6 +65,42 @@ typedef int (*adfl_result_fn)(void *state, int event, const char *name,
                               const void *bytes, size_t length, int number);
 ADFL_API int adfl_session_search(adfl_bound_session *, const adfl_search_request *,
     adfl_cancelled_fn, void *, adfl_result_fn, void *);
+
+/* Streaming callbacks are synchronous and borrowed per read. Earlier accepted
+ * entry/reference messages may already have been published when a later read fails.
+ * The caller must serialize read/next_page/close on each cursor. Native retention
+ * permits closing the original session owner while its cursor remains alive.
+ * Budgets bound pre-submit checks and result polling; OpenLDAP async socket writes
+ * do not yet have a proven hard send deadline (NETWORK_TIMEOUT is connect-only). */
+typedef struct adfl_search_cursor adfl_search_cursor;
+enum adfl_cursor_kind { ADFL_CURSOR_ENTRY = 1, ADFL_CURSOR_REFERENCE = 2, ADFL_CURSOR_PAGE_END = 3 };
+ADFL_API int adfl_cursor_open(adfl_bound_session *, const adfl_search_request *, unsigned page_size,
+    adfl_cancelled_fn, void *, adfl_search_cursor **);
+ADFL_API int adfl_cursor_read(adfl_search_cursor *, unsigned remaining_milliseconds,
+    adfl_cancelled_fn, void *, adfl_result_fn, void *, int *kind, int *has_more);
+ADFL_API int adfl_cursor_next_page(adfl_search_cursor *, unsigned remaining_milliseconds,
+    adfl_cancelled_fn, void *);
+ADFL_API void adfl_cursor_close(adfl_search_cursor **);
+
+typedef struct { const void *data; size_t length; } adfl_bytes;
+typedef struct {
+    int operation;                    /* 0 add, 1 delete, 2 replace */
+    const char *attribute;
+    const adfl_bytes *values;
+    size_t value_count;
+} adfl_modification;
+typedef struct {
+    const char *dn;
+    const adfl_modification *changes;
+    size_t change_count;
+    unsigned timeout_milliseconds;
+} adfl_modify_request;
+enum adfl_submission { ADFL_NOT_SENT = 0, ADFL_OUTCOME_UNKNOWN = 1, ADFL_COMPLETED = 2 };
+/* Invoked synchronously immediately before native dispatch, after allocation.
+ * Nonzero refuses dispatch. Must not throw across the unmanaged boundary. */
+typedef int (*adfl_submitted_fn)(void *);
+ADFL_API int adfl_session_modify(adfl_bound_session *, const adfl_modify_request *,
+    adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
 
 /* Reads library version metadata only; no credential/cache/network operations. */
 ADFL_API int adfl_native_probe(adfl_native_capabilities *out);

@@ -37,7 +37,34 @@ for (var kind = 0; kind < 4; kind++)
     if (count(kind) != 3) throw new InvalidOperationException("Native dispatch/result/session/authority ownership was not balanced.");
 Console.WriteLine("PASS: both public facades -> common lease -> managed native ABI -> actual C dispatcher -> recording dependencies -> owned managed results.");
 Console.WriteLine("Three requests, messages, sessions and authorities balanced. No credentials, sockets or authentication used.");
+// Exercise the actual conversation adapter and ABI, not a parallel managed fake.
+var configure = Marshal.GetDelegateForFunctionPointer<Configure>(NativeLibrary.GetExport(library, "adfl_test_configure"));
+if (configure(1) != 0) throw new InvalidOperationException("Recording scenario change rejected.");
+LdapConnectionProvider.Session AcquireConversation() => Acquire(entry.BuildOptions(), 1, ReferralChasingOption.None, false, 0)[0];
+var events = new List<LdapSearchEvent>();
+await foreach (var item in LdapConversation.Search(AcquireConversation,
+    new LdapSearchCommand("", "(objectClass=*)", System.DirectoryServices.Protocols.SearchScope.Subtree,
+        ["binary"], TimeSpan.FromSeconds(10)), pageSize: 2)) events.Add(item);
+if (events.Count != 6 || events[0] is not LdapSearchEvent.Entry first || events[1] is not LdapSearchEvent.Reference ||
+    events[2] is not LdapSearchEvent.PageEnd { HasMore: true } || events[3] is not LdapSearchEvent.Entry second ||
+    events[4] is not LdapSearchEvent.Reference || events[5] is not LdapSearchEvent.PageEnd { HasMore: false } ||
+    first.Value.DistinguishedName != "CN=first" || second.Value.DistinguishedName != "CN=second" ||
+    !first.Value.Attributes["binary"][0].SequenceEqual(new byte[] { 0, 255, 65 }))
+    throw new InvalidOperationException("Native ordered/paged conversation failed.");
+var outcome = await LdapConversation.Modify(AcquireConversation, new("CN=example",
+    [new("description", System.DirectoryServices.Protocols.DirectoryAttributeOperation.Replace, [Array.Empty<byte>()]),
+     new("other", System.DirectoryServices.Protocols.DirectoryAttributeOperation.Delete, [])], TimeSpan.FromSeconds(10), []));
+if (outcome.Disposition != LdapWriteDisposition.Completed || outcome.Result is not { Code: System.DirectoryServices.Protocols.ResultCode.UnwillingToPerform } result ||
+    result.MatchedDn != "DC=example" || result.Diagnostic != "synthetic complete result" || result.Referrals.Length != 1 ||
+    result.Controls.Length != 1 || result.Controls[0].Oid != "1.2.4")
+    throw new InvalidOperationException("Native definitive write-error envelope was lost.");
+if (count(1) != 5 || count(2) != 5 || count(3) != 10 || count(4) != 2 || count(5) != 1 || count(6) != 1)
+    throw new InvalidOperationException("Native conversation ownership/submission counters were not balanced.");
+Console.WriteLine("PASS: native two-page streaming, opaque cookie continuation and complete modify error through the production managed/C adapters.");
+Console.WriteLine("One lease across pages; one write submission; owned binary results. Recording dependencies only.");
 // Resolver registration is process-lifetime; do not unload its library while
 // SafeHandle finalizers or the runtime may retain function pointers.
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Open(ref NativeLdapBindingBackend.Profile profile, out IntPtr session);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Count(int kind);
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Configure(int scenario);

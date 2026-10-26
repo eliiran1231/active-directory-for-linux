@@ -114,3 +114,104 @@ uint64_t adfl_system_monotonic_ms(void *state) {
     if (clock_gettime(CLOCK_MONOTONIC, &now)) return UINT64_MAX;
     return (uint64_t)now.tv_sec * 1000 + (uint64_t)now.tv_nsec / 1000000;
 }
+
+int adfl_system_page_start(void *state, LDAP *ld, const adfl_search_request *r,
+                           unsigned page_size, const adfl_bytes *cookie, int *message_id) {
+    /* This bounds connection setup only, not a proven hard socket-write deadline. */
+    struct timeval budget = {(long)(r->timeout_milliseconds / 1000), (long)(r->timeout_milliseconds % 1000) * 1000};
+    if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, &budget) != LDAP_OPT_SUCCESS) return LDAP_LOCAL_ERROR;
+    if (!page_size) return adfl_system_search_start(state, ld, r, message_id);
+    LDAPControl *page = NULL;
+    struct berval value = {cookie->length, (char *)cookie->data};
+    int rc = ldap_create_page_control(ld, (ber_int_t)page_size, &value, 1, &page);
+    if (rc != LDAP_SUCCESS) return rc;
+    LDAPControl *controls[] = {page, NULL};
+    rc = ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
+        (int)r->types_only, controls, NULL, NULL, (int)r->size_limit, message_id);
+    ldap_control_free(page); return rc;
+}
+int adfl_system_message_poll(void *state, LDAP *ld, int message_id, unsigned milliseconds, void **out) {
+    (void)state;
+    struct timeval timeout = {(long)(milliseconds / 1000), (long)(milliseconds % 1000) * 1000};
+    LDAPMessage *message = NULL;
+    int rc = ldap_result(ld, message_id, LDAP_MSG_ONE, &timeout, &message);
+    *out = message;
+    return rc;
+}
+int adfl_system_message_emit(void *unused, LDAP *ld, void *message, int kind, adfl_result_fn emit, void *state) {
+    if (!message || ldap_msgtype(message) != kind) return 1;
+    switch (kind) {
+        case LDAP_RES_SEARCH_ENTRY: return emit_entry(ld, message, emit, state);
+        case LDAP_RES_SEARCH_REFERENCE: return emit_reference(ld, message, emit, state);
+        case LDAP_RES_SEARCH_RESULT:
+        case LDAP_RES_MODIFY: return adfl_system_result_emit(unused, ld, message, emit, state);
+        default: return 1;
+    }
+}
+int adfl_system_page_cookie(void *unused, LDAP *ld, void *message, int *code, adfl_bytes *out) {
+    (void)unused;
+    LDAPControl **controls = NULL, *page = NULL;
+    struct berval cookie = {0}; ber_int_t count = 0;
+    int rc = 1;
+    *out = (adfl_bytes){0};
+    if (ldap_parse_result(ld, message, code, NULL, NULL, NULL, &controls, 0) != LDAP_SUCCESS) goto done;
+    for (size_t i = 0; controls && controls[i]; i++) {
+        if (!controls[i]->ldctl_oid) goto done;
+        if (!strcmp(controls[i]->ldctl_oid, LDAP_CONTROL_PAGEDRESULTS)) {
+            if (page) goto done;
+            page = controls[i];
+        }
+    }
+    /* An LDAP error response may legitimately omit the page response control. */
+    if (!page) { rc = *code == LDAP_SUCCESS ? 1 : 0; goto done; }
+    if (ldap_parse_pageresponse_control(ld, page, &count, &cookie) != LDAP_SUCCESS || count < 0 ||
+        (cookie.bv_len && !cookie.bv_val)) goto done;
+    if (*code == LDAP_SUCCESS && cookie.bv_len) {
+        void *copy = malloc(cookie.bv_len);
+        if (!copy) goto done;
+        memcpy(copy, cookie.bv_val, cookie.bv_len);
+        out->data = copy; out->length = cookie.bv_len;
+    }
+    rc = 0;
+done:
+    if (cookie.bv_val) ber_memfree(cookie.bv_val);
+    if (controls) ldap_controls_free(controls);
+    return rc;
+}
+int adfl_system_modify_start(void *unused, LDAP *ld, const adfl_modify_request *r,
+                             adfl_submitted_fn submitted, void *submit_state, int *disposition, int *message_id) {
+    (void)unused;
+    /* This bounds connection setup only, not a proven hard socket-write deadline. */
+    struct timeval budget = {(long)(r->timeout_milliseconds / 1000), (long)(r->timeout_milliseconds % 1000) * 1000};
+    if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, &budget) != LDAP_OPT_SUCCESS) return LDAP_LOCAL_ERROR;
+    LDAPMod **mods = calloc(r->change_count + 1, sizeof(*mods));
+    if (!mods) return LDAP_NO_MEMORY;
+    int rc = LDAP_NO_MEMORY;
+    for (size_t i = 0; i < r->change_count; i++) {
+        mods[i] = calloc(1, sizeof(*mods[i]));
+        if (!mods[i]) goto done;
+        mods[i]->mod_type = (char *)r->changes[i].attribute;
+        mods[i]->mod_op = r->changes[i].operation | LDAP_MOD_BVALUES;
+        mods[i]->mod_bvalues = calloc(r->changes[i].value_count + 1, sizeof(struct berval *));
+        if (!mods[i]->mod_bvalues) goto done;
+        for (size_t j = 0; j < r->changes[i].value_count; j++) {
+            struct berval *value = malloc(sizeof(*value));
+            if (!value) goto done;
+            *value = (struct berval){r->changes[i].values[j].length, (char *)r->changes[i].values[j].data};
+            /* A zero-length value still has a descriptor, distinct from no values. */
+            mods[i]->mod_bvalues[j] = value;
+        }
+    }
+    if (submitted(submit_state)) { rc = LDAP_USER_CANCELLED; goto done; }
+    *disposition = ADFL_OUTCOME_UNKNOWN;
+    rc = ldap_modify_ext(ld, r->dn, mods, NULL, NULL, message_id);
+done:
+    for (size_t i = 0; i < r->change_count && mods[i]; i++) {
+        if (mods[i]->mod_bvalues) {
+            for (size_t j = 0; mods[i]->mod_bvalues[j]; j++) free(mods[i]->mod_bvalues[j]);
+            free(mods[i]->mod_bvalues);
+        }
+        free(mods[i]);
+    }
+    free(mods); return rc;
+}

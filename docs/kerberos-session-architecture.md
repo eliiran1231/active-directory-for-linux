@@ -162,8 +162,9 @@ managed imitation, and the permanent offline guard stays enabled.
 
 The common command contains search base/filter/scope, attribute selection, types-only,
 size limit, local deadline and server-side controls. Controls unsupported by an adapter are
-refused before dispatch; the native subset currently accepts no request controls. Local/client
-controls, paging and alias-dereference overrides are not represented by this slice. No public
+refused before dispatch; the native subset currently accepts no arbitrary request controls.
+The conversation adapter below owns its built-in paging control. Local/client controls and
+alias-dereference overrides are not represented by this slice. No public
 method allowlist decides eligibility. Native-specific deadline limits do not restrict Protocols.
 Results retain binary values, per-entry/reference/result controls, references, final referrals,
 result code, matched DN and diagnostic text. Public LDAP decoding APIs do the parsing;
@@ -186,9 +187,12 @@ containing references or referral URLs. Receiving these URLs does not itself fol
 ## Streaming, paging and write outcome contract
 
 `LdapConversation` is an executable internal coordinator, exercised by recording transports
-in `ConnectionPoolOperationTests.Conversation.cs` through real pooled session leases. Existing
-adapters advertise none of its new capabilities; no existing public search/write path changes.
-Run it with the guarded demonstration at the top of this document.
+in `ConnectionPoolOperationTests.Conversation.cs` through real pooled session leases. Native
+`BoundSession` now implements it through `NativeLdapBindingBackend.Conversation.cs` and
+`adfl_conversation.c`. The managed native demo exercises two pages and a definitive modify
+error through the actual ABI, native cursor and submit/response lifecycle using recording
+dependencies. Protocols does not advertise these new capabilities, and production native
+selection remains disabled; no existing public search/write path changes.
 
 Search exposes owned entry/reference events followed by a full page-result envelope. Entries
 already delivered remain observable if a later result reports a limit or failure. Only success
@@ -206,8 +210,16 @@ each read and page advance receives the current remaining budget. Modify likewis
 only the budget remaining after acquisition. Backends must enforce these budgets during native
 waits; expired acquisition cannot start a request. Cancellation is cooperative:
 a still-running backend call is awaited before native state or its lease can be released.
-Recording tests cover pending reads, partial results, page boundaries, early disposal and
-cleanup failure; they do not prove native streaming or cookie encoding.
+The C cursor retains a native session reference and exclusive ownership through close. It
+uses `LDAP_MSG_ONE` to preserve entry/reference order and public OpenLDAP page-control APIs
+to encode/decode cookies. Cookies are copied, remain opaque and never cross the managed ABI.
+Successful paged completion requires exactly one valid paging response control. Unfinished
+close abandons pending work and retires; it sends no implicit extra page-abort search. Paged
+search with a nonzero total size limit is refused before dispatch until total-limit semantics
+are implemented; it is never silently reinterpreted as a per-page limit. Managed cursor calls
+are serialized, and SafeHandles plus native reference counting protect in-flight ownership.
+Recording tests cover these orchestration rules, not actual server paging or native decoder
+execution. Real libldap adapter calls are compiled but not authenticated in these tests.
 
 The typed modify slice snapshots binary attribute changes and controls before dispatch.
 A backend calls `LdapSubmission.BeforeSend` immediately before entering the native send.
@@ -215,8 +227,18 @@ Errors before that boundary are `NotSent`; errors afterward are `Indeterminate` 
 server may have applied the write. Neither outcome is automatically retried. A complete LDAP
 response, including an error result, is `Completed` with matched DN, diagnostics, referrals and
 controls preserved. Cancellation racing an accepted response cannot erase that known outcome.
-The marker records possible submission, not proof of delivery. Native/Protocols adapters for
-this contract remain to be implemented; it is not a working public mutation API.
+The native adapter builds `LDAPMod` arrays preserving binary values, an empty value list and
+a single zero-length value as distinct inputs. A synchronous callback marks submission after
+native allocation immediately before `ldap_modify_ext`. `LDAP_RES_MODIFY` retains the full
+response envelope, including negative LDAP results. The marker records possible submission,
+not proof of delivery. Arbitrary modify controls and the Protocols conversation adapter remain
+unimplemented; public mutation routing has not changed.
+
+Managed preparation and native conversion consume the supplied budget. Bounded polling and
+pre-send expiry checks are implemented, but `LDAP_OPT_NETWORK_TIMEOUT` only bounds connection
+setup, not a general socket write. A blocking libldap send cannot yet be forcibly interrupted
+within the remaining operation budget. This is an explicit limitation, not a hard native
+deadline guarantee; production activation remains disabled.
 
 ## Fail-closed plugin patch and composition boundary
 
@@ -252,9 +274,10 @@ not an approval to acquire credentials. Existing Protocols/Linux Negotiate limit
 
 Further commands must add typed internal command/response data and adapter capability checks,
 then use the same lease, single-dispatch, cancellation, result ownership and retirement rules.
-Native add/modify/delete/modify-DN/compare/extended adapters and full DirectorySearcher
-paging/streaming integration have not been implemented; the conversation contract above
-settles lifetime/outcome rules but does not implement their native protocols. Move their existing raw-connection consumers to
+Native add/delete/modify-DN/compare/extended adapters and full DirectorySearcher
+paging/streaming integration have not been implemented. Native search/modify adapters now
+implement the conversation boundary above, but full facade routing and schema conversion
+still need integration. Move their existing raw-connection consumers to
 this transport contract before enabling a native backend for them; keep streaming cursors
 inside the producer's retained lease. Do not add method allowlists, private-handle reflection,
 in-place rebind, managed replay or home-grown SASL/security framing. Windows remains on its

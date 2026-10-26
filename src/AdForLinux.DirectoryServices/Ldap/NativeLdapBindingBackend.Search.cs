@@ -6,9 +6,11 @@ namespace AdForLinux.DirectoryServices.Ldap;
 
 internal static partial class NativeLdapBindingBackend
 {
-    internal sealed class BoundSession(SessionHandle handle, TimeSpan timeout) : ILdapRequestTransport, IDisposable
+    internal sealed partial class BoundSession(SessionHandle handle, TimeSpan timeout) : ILdapConversationTransport, IDisposable
     {
-        public LdapTransportCapabilities Capabilities => LdapTransportCapabilities.Search;
+        private readonly SessionHandle ownedHandle = handle;
+        public LdapTransportCapabilities Capabilities => LdapTransportCapabilities.Search |
+            LdapTransportCapabilities.StreamingSearch | LdapTransportCapabilities.PagedSearch | LdapTransportCapabilities.Modify;
         public TimeSpan Timeout => timeout;
         public string? ConnectedHost => null; // a requested alias is not an observed DC
         public LdapSearchResult Search(LdapSearchCommand command, CancellationToken cancellationToken)
@@ -39,7 +41,7 @@ internal static partial class NativeLdapBindingBackend
                 catch (Exception error) { conversionError = error; return 1; }
             };
             Cancelled check = _ => cancellationToken.IsCancellationRequested ? 1 : 0;
-            var status = NativeSearch(handle, ref request, check, IntPtr.Zero, emit, IntPtr.Zero);
+            var status = NativeSearch(ownedHandle, ref request, check, IntPtr.Zero, emit, IntPtr.Zero);
             if (conversionError is not null) ExceptionDispatchInfo.Capture(conversionError).Throw();
             if (status != 0) Throw(status, cancellationToken);
             return result.Complete();
@@ -52,7 +54,7 @@ internal static partial class NativeLdapBindingBackend
             if (count != 0) Marshal.Copy(source, bytes, 0, count);
             return bytes;
         }
-        public void Dispose() => handle.Dispose();
+        public void Dispose() => ownedHandle.Dispose();
     }
 
     private sealed class AttributePointers : IDisposable
@@ -137,6 +139,24 @@ internal sealed class NativeSearchResultBuilder
             default: throw new InvalidOperationException("Unknown native result event.");
         }
     }
+    internal LdapSearchEvent CompleteEvent(int messageKind, bool hasMore)
+    {
+        if (attributes is not null || values is not null || urls is not null)
+            throw new InvalidOperationException("Native streaming message is incomplete.");
+        return messageKind switch
+        {
+            1 when code is null && entries.Count == 1 && references.Count == 0 && !hasMore => new LdapSearchEvent.Entry(entries[0]),
+            2 when code is null && entries.Count == 0 && references.Count == 1 && !hasMore => new LdapSearchEvent.Reference(references[0]),
+            3 when entries.Count == 0 && references.Count == 0 => CompletePage(hasMore),
+            _ => throw new InvalidOperationException("Native streaming message has an inconsistent kind or payload.")
+        };
+    }
+    private LdapSearchEvent.PageEnd CompletePage(bool hasMore)
+    {
+        var result = Complete();
+        return new(new(result.Code, result.MatchedDn, result.Diagnostic, result.Referrals, result.Controls), hasMore);
+    }
+
     internal LdapSearchResult Complete()
     {
         if (code is null || attributes is not null || values is not null || urls is not null)
