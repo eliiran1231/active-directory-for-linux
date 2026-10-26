@@ -300,3 +300,58 @@ reads and ranged attributes. Stock requests retain their original object, contro
 path, raw value conversions and connection-keyed schema cache. Neutral ranges use one lease and
 a total deadline across all chunks and schema reads. Range-name priority/progress checks and
 strict stock binary-security validation are preserved; partial data is not reconciliation proof.
+
+### Opt-in disposable real-login lab
+
+The lab is separate from offline tests and production activation. It builds pinned
+MIT KDC/local administration tools and OpenLDAP slapd, then runs a `FROM scratch`
+container with no network except loopback, no host mounts or ports, an unprivileged
+UID, dropped capabilities, a read-only root and one temporary state filesystem.
+It creates only the `ADFL.TEST` realm, two test client principals and one LDAP
+service principal. Keys, tickets, databases and diagnostic logs stay in that
+filesystem and disappear when the container is forcibly removed. The server's
+replay cache also lives there; replay protection is not disabled.
+
+Compile-only preparation, using the already described private bridge and pinned
+archives (plus Berkeley yacc 2.0.20221106, whose digest the script checks):
+
+```sh
+bash tests/native-session/lab/build-servers.sh MIT_ARCHIVE LDAP_ARCHIVE BYACC_ARCHIVE PRIVATE_BRIDGE NEW_SERVERS
+bash tests/native-session/build-private-login-lab.sh PRIVATE_BRIDGE
+python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab NEW_IMAGE_CONTEXT
+docker --config DOCKER_CONFIG build --network none --pull=false -t adfl-disposable-lab NEW_IMAGE_CONTEXT
+```
+
+Only with explicit authorization for real test credentials/authentication:
+
+```sh
+python3 tests/native-session/lab/run-container.py --authorize-disposable-lab --docker-config DOCKER_CONFIG adfl-disposable-lab
+docker --config DOCKER_CONFIG image rm adfl-disposable-lab
+```
+
+The controller verifies isolation configuration before starting the container,
+allows 90 seconds for completion, and forcibly removes its uniquely named
+container in cleanup. A nonresponsive Docker daemon remains an infrastructure
+failure, not a claim of verified teardown. No credential directories are mounted
+or copied out. The scratch image contains binaries/configuration source only.
+
+The harness enables binding only in its copied test operations table. Resolution,
+credential acquisition, LDAP connection creation, interaction callback, bind and
+requests use the actual private implementations. It checks exact WhoAmI results
+for both identities, multiple simultaneously live sessions, owner/session lifetime,
+cache-path replacement routing a fresh operation to the replacement identity while
+an established session retains its bound identity, and negotiated SASL SSF minima of 1 (signing requested) and 56 (sealing requested).
+Signing-only policy may negotiate sealing; this is not proof of a distinct
+integrity-only negotiation. Synthetic no-credential refusal and exact-handle
+orchestration checks remain separate evidence.
+
+This lab does not establish safe dynamic ambient reuse, Windows identity transfer,
+referrals, TLS/channel binding, deployment integrity, or a production-compatible
+restricted configuration. Production must require an audited configuration and
+composition policy; optional protocol metadata and static linking alone are not
+sufficient. All existing production authentication and reuse gates remain closed.
+
+Validated in the disposable lab: nine successful real binds, exact identity and
+protected WhoAmI exchanges, cache replacement and teardown. This does not prove
+that an old GSS credential handle snapshots a mutable cache, or that concurrent
+external cache mutation is safe. No production source gate was changed.
