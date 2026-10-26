@@ -52,7 +52,7 @@ internal sealed class LdapAuthenticationSource
     // principal/cache-path label that independently grants pool eligibility.
     internal LdapAuthenticationCapabilities Capabilities(ReferralChasingOption referrals)
     {
-        if (Provenance != LdapAuthenticationProvenance.ExplicitBasic || string.IsNullOrEmpty(recipe.BindPassword))
+        if (recipe.RestrictedKerberos is not null || Provenance != LdapAuthenticationProvenance.ExplicitBasic || string.IsNullOrEmpty(recipe.BindPassword))
             return LdapAuthenticationCapabilities.None;
         // Preserve PR235's Linux Basic policy (including anonymous referral
         // children). Windows native children require the separate scoped check.

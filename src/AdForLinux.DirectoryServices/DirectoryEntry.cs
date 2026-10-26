@@ -24,6 +24,7 @@ public partial class DirectoryEntry : Component
     private string? _password;
     private AuthenticationTypes _authenticationType;
     private LdapConnectionOptions? _connectionOptionsOverride;
+    internal RestrictedKerberosProfile? RestrictedKerberos { get; private set; }
 
     private LdapPath _path;
     private string _pathText;
@@ -117,6 +118,7 @@ public partial class DirectoryEntry : Component
             _authenticationType |= AuthenticationTypes.Sealing;
         }
         _connectionOptionsOverride = connectionOptions;
+        RestrictedKerberos = connectionOptions.RestrictedKerberos;
     }
 
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
@@ -139,9 +141,14 @@ public partial class DirectoryEntry : Component
                 return;
             }
 
+            var parsed = ParsePath(value);
+            if (RestrictedKerberos is { } selected &&
+                (!string.Equals(parsed.Host, selected.ServiceHost, StringComparison.OrdinalIgnoreCase) ||
+                 (parsed.Port ?? 389) != selected.ServicePort))
+                throw new InvalidOperationException("A restricted profile cannot change its service endpoint.");
             using var identityChange = IdentityLifetime.Change();
             _connectionOptionsOverride = null;
-            ResetBinding(ParsePath(value), value);
+            ResetBinding(parsed, value);
         }
     }
 
@@ -155,6 +162,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (_authenticationType != value)
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
@@ -173,6 +181,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _username = value;
                 _connectionOptionsOverride = null;
@@ -190,6 +199,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _password = value;
                 _connectionOptionsOverride = null;
@@ -522,6 +532,7 @@ public partial class DirectoryEntry : Component
         var child = parent._connectionOptionsOverride is null
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
+        child.RestrictedKerberos = parent.RestrictedKerberos;
         child._isNew = true;
         child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.CapturePropertyOwnerValidation());
 
@@ -1048,6 +1059,7 @@ public partial class DirectoryEntry : Component
         ThrowIfDisposed();
         if (_connectionOptionsOverride is not null)
         {
+            RestrictedKerberos?.ValidateRecipe(_connectionOptionsOverride);
             return _connectionOptionsOverride;
         }
 
@@ -1094,7 +1106,7 @@ public partial class DirectoryEntry : Component
                      || _path.Port == 636;
         var port = _path.Port ?? (useSsl ? 636 : 389);
 
-        return new LdapConnectionOptions
+        var options = new LdapConnectionOptions
         {
             Host = _path.Host!,
             Port = port,
@@ -1106,7 +1118,10 @@ public partial class DirectoryEntry : Component
             Sealing = sealing,
             BindDn = _username,
             BindPassword = _password,
+            RestrictedKerberos = RestrictedKerberos,
         };
+        RestrictedKerberos?.ValidateRecipe(options);
+        return options;
     }
 
     private void OnPropertyChanged(PropertyValueCollection property)
@@ -1143,7 +1158,8 @@ public partial class DirectoryEntry : Component
     {
         var source = BuildOptions();
         var destination = other.BuildOptions();
-        return SameHost(source.Host, destination.Host)
+        return ReferenceEquals(source.RestrictedKerberos, destination.RestrictedKerberos)
+            && SameHost(source.Host, destination.Host)
             && source.Port == destination.Port
             && source.UseSsl == destination.UseSsl
             && source.UseStartTls == destination.UseStartTls

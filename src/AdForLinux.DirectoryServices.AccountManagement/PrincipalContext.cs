@@ -17,6 +17,7 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public partial class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
+    private readonly RestrictedKerberosProfile? _restrictedKerberos;
     private readonly bool _hasExplicitPort;
     private readonly ContextType _contextType;
     private readonly string _name;
@@ -143,6 +144,13 @@ public partial class PrincipalContext : IDisposable
         _serverName = name;
         (_name, _port, _hasExplicitPort) = ParseServer(name, _useSsl);
         _container = container;
+    }
+
+    internal PrincipalContext(RestrictedKerberosProfile profile, string? container)
+        : this(ContextType.Domain, profile.ServiceHost + ":" + profile.ServicePort.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            container, DefaultOptions, null, null)
+    {
+        _restrictedKerberos = profile;
     }
 
     private readonly string? _password;
@@ -302,6 +310,7 @@ public partial class PrincipalContext : IDisposable
         get
         {
             CheckDisposed();
+            if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Global catalog probing is outside the restricted exact endpoint.");
             if (_canUseGlobalCatalog is not null)
             {
                 return _canUseGlobalCatalog.Value;
@@ -332,6 +341,7 @@ public partial class PrincipalContext : IDisposable
     public bool ValidateCredentials(string userName, string password)
     {
         CheckDisposed();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Explicit credential validation cannot replace a restricted FILE source.");
         ValidateCredentialPair(userName, password);
         if (userName is { Length: 0 })
         {
@@ -409,6 +419,7 @@ public partial class PrincipalContext : IDisposable
         ContextOptions options)
     {
         CheckDisposed();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Explicit credential validation cannot replace a restricted FILE source.");
         ValidateCredentialPair(userName, password);
 
         if (userName is { Length: 0 })
@@ -439,6 +450,13 @@ public partial class PrincipalContext : IDisposable
         }
     }
 
+    internal void RequireCompatibleKerberosSelection(PrincipalContext destination)
+    {
+        CheckDisposed(); destination.CheckDisposed();
+        if (!ReferenceEquals(_restrictedKerberos, destination._restrictedKerberos))
+            throw new InvalidOperationException("A principal cannot replace its restricted Kerberos selection. Create a new principal in the intended context.");
+    }
+
     internal LdapConnectionOptions BuildOptions()
     {
         CheckDisposed();
@@ -464,7 +482,7 @@ public partial class PrincipalContext : IDisposable
         var authenticationType = options.HasFlag(ContextOptions.SimpleBind)
             ? AuthType.Basic
             : AuthType.Negotiate;
-        return new LdapConnectionOptions
+        var recipe = new LdapConnectionOptions
         {
             Host = _name,
             Port = useContextPort && _hasExplicitPort ? _port : useSsl ? 636 : 389,
@@ -474,7 +492,10 @@ public partial class PrincipalContext : IDisposable
             Sealing = options.HasFlag(ContextOptions.Sealing),
             BindDn = bindUser,
             BindPassword = bindPassword,
+            RestrictedKerberos = _restrictedKerberos,
         };
+        _restrictedKerberos?.ValidateRecipe(recipe);
+        return recipe;
     }
 
     /// <summary>The LDAP path for a DN on this context's server.</summary>
@@ -523,6 +544,7 @@ public partial class PrincipalContext : IDisposable
                 Sealing = options.Sealing,
                 BindDn = options.BindDn,
                 BindPassword = options.BindPassword,
+                RestrictedKerberos = options.RestrictedKerberos,
             });
     }
 
@@ -534,6 +556,7 @@ public partial class PrincipalContext : IDisposable
     internal PrincipalContext GetForeignDomainContext(string domainName)
     {
         CheckDisposed();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Foreign-domain discovery cannot replace the restricted exact target.");
         ArgumentException.ThrowIfNullOrWhiteSpace(domainName);
         if (ForeignPrincipalResolver.TryGetDnsDomainName(DefaultNamingContext)
             ?.Equals(domainName, StringComparison.OrdinalIgnoreCase) == true)

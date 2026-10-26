@@ -426,8 +426,10 @@ before starting the managed workers.
 ### Admitted immutable worker bundles
 
 `LdapWorkerDeployment.Validate` checks a versioned Linux bundle before any custom
-native library is loaded. The caller must be non-root with no permitted/effective
-capabilities. Every ancestor and artifact must be root-owned and not writable by
+native library is loaded. The caller must be non-root with equal real/effective/saved UIDs and GIDs,
+zero `AT_SECURE`, and no permitted/effective capabilities. Secure execution is
+rejected because MIT `secure_getenv` can otherwise ignore the sealed profile.
+The same admission runs in the lab parent and child. Every ancestor and artifact must be root-owned and not writable by
 group/other; symlinks, privileged files, file capabilities, undeclared/missing files
 and digest mismatches are refused. A strict manifest inventories the private .NET
 runtime, host, supervisor and native bridge. The descriptor owner is retained by
@@ -456,9 +458,36 @@ session merely because its cache path or principal name matches. Each operation
 must resolve its source again; concurrent external cache mutation and general
 ambient-authority reuse remain unproven.
 
-The remaining public integration decision is an explicit opt-in to this restricted
-profile and administrator-managed bundle. Recommended default: preserve stock
-behavior unless that profile is deliberately selected; never silently replace a
-host's Kerberos policy with these restrictions. Authentication/reuse gates remain
-off pending independent deployment and authority-contract review. These checks
-make the lab profile executable, not a claim of general AD interoperability.
+The public selection boundary is explicit and inert. Existing constructors retain
+stock behavior. `RestrictedKerberosProfile` is immutable, validates syntax only,
+and never reads the bundle or cache during construction. Its entry factory and
+`RestrictedKerberosContext.Create` return the existing public types carrying the
+selection; derived entries retain it, and incompatible endpoint/authentication
+changes fail without dropping the selection. No host policy is imported.
+
+```csharp
+var profile = new AdForLinux.DirectoryServices.RestrictedKerberosProfile(
+    "/opt/example/adfl/version-1", "/run/example/client.ccache",
+    "EXAMPLE.INVALID", "directory.example.invalid", 389, "kdc.example.invalid");
+using var entry = profile.CreateDirectoryEntry("DC=example,DC=invalid");
+using var context = AdForLinux.DirectoryServices.AccountManagement
+    .RestrictedKerberosContext.Create(profile, "DC=example,DC=invalid");
+// Construction is inert, even when these paths do not exist.
+// entry.RefreshCache() currently throws PlatformNotSupportedException before I/O.
+```
+
+Selecting this profile is not activation. Both shared provider admission and raw
+connection creation refuse it before pool lookup or native access; there is no
+ambient fallback. Alternate credential validation, foreign-domain discovery and
+global-catalog probing cannot escape the selection. Requested referrals are not
+silently disabled; profile-created entries initially request none, while an
+explicit changed request remains visible and fails with the unavailable backend.
+The example's executable assertions run in `ConnectionPoolOperationTests` through
+`docs/examples/kerberos-session-demo.sh`; no credentials or deployment are needed.
+
+Authentication/reuse gates remain off. Remaining activation work must connect
+this selection to the admitted production host and reviewed native composition,
+with application authorization for its explicit FILE-source semantics. The lab
+proves controlled acquisition and binding, not arbitrary concurrent cache mutation
+or general AD interoperability. Fresh groups remain required; this API cannot
+claim compatible reuse from a username, path or caller-provided generation.

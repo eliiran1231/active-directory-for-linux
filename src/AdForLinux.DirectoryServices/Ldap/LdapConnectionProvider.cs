@@ -29,6 +29,7 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
     {
+        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only
@@ -43,6 +44,7 @@ internal static partial class LdapConnectionProvider
 
     internal static Session AcquireValidation(LdapConnectionOptions options)
     {
+        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Validation must perform the original fresh bind, even when a healthy
@@ -54,6 +56,8 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquirePair(LdapConnectionOptions first, LdapConnectionOptions second,
         Func<TimeSpan> remaining, CancellationToken cancellationToken)
     {
+        first.RestrictedKerberos?.RefuseUnavailableBackend(first);
+        second.RestrictedKerberos?.RefuseUnavailableBackend(second);
         OfflineTestGuard.RequireLiveAccess();
         var requests = new[] { first.Clone(), second.Clone() }.Select(snapshot =>
         {

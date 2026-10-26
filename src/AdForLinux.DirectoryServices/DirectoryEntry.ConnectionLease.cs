@@ -51,6 +51,7 @@ public partial class DirectoryEntry
 
     private DirectoryEntry CopyConnectionFreshnessTo(DirectoryEntry copy)
     {
+        copy.RestrictedKerberos = RestrictedKerberos;
         copy._minimumConnectionGeneration = _minimumConnectionGeneration;
         copy._freshConnectionRequired = _freshConnectionRequired;
         copy.OperationSessionFactory = OperationSessionFactory;
