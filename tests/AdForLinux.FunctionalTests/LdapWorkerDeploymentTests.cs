@@ -7,6 +7,28 @@ namespace AdForLinux.FunctionalTests;
 
 public class LdapWorkerDeploymentTests
 {
+    [Fact]
+    public void Caller_policy_accepts_only_consistent_unprivileged_execution()
+    {
+        LdapWorkerDeployment.RequireCallerPolicy(1000, 1000, 1000, 1000, 1000, 1000, 0, 0, 0);
+        // Secure mode remains disallowed even when all current IDs match.
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerDeployment.RequireCallerPolicy(1000, 1000, 1000, 1000, 1000, 1000, 1, 0, 0));
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerDeployment.RequireCallerPolicy(1000, 1000, 1000, 1000, 1000, 1000, 0, 1UL << 63, 0));
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerDeployment.RequireCallerPolicy(1000, 1000, 1000, 1000, 1000, 1000, 0, 0, 1UL << 63));
+    }
+    [Theory]
+    [InlineData(0, 0, 0, 1000, 1000, 1000)]
+    [InlineData(1000, 1001, 1000, 1000, 1000, 1000)]
+    [InlineData(1000, 1000, 1001, 1000, 1000, 1000)]
+    [InlineData(1001, 1000, 1000, 1000, 1000, 1000)]
+    [InlineData(1000, 1000, 1000, 1000, 1001, 1000)]
+    [InlineData(1000, 1000, 1000, 1000, 1000, 1001)]
+    [InlineData(1000, 1000, 1000, 1001, 1000, 1000)]
+    public void Caller_policy_rejects_root_and_set_id_states(int real, int effective, int saved, int realGroup, int effectiveGroup, int savedGroup)
+    {
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerDeployment.RequireCallerPolicy(
+            (uint)real, (uint)effective, (uint)saved, (uint)realGroup, (uint)effectiveGroup, (uint)savedGroup, 0, 0, 0));
+    }
     private static string Recipe() => JsonSerializer.Serialize(new
     {
         FormatVersion = 1, Version = "release-1",

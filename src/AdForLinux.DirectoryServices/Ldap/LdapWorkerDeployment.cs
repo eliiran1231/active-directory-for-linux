@@ -130,12 +130,36 @@ internal static class LdapWorkerDeployment
     }
     private static void RequireUnprivilegedLinux()
     {
-        if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture is not (Architecture.X64 or Architecture.Arm64) || GetResUid(out var real, out var effective, out var saved) != 0 || real == 0 || effective == 0 || saved == 0)
-            throw new PlatformNotSupportedException("Deployment admission requires an unprivileged Linux x64/arm64 caller.");
+        if (!OperatingSystem.IsLinux() || RuntimeInformation.ProcessArchitecture is not (Architecture.X64 or Architecture.Arm64) ||
+            GetResUid(out var real, out var effective, out var saved) != 0 ||
+            GetResGid(out var realGroup, out var effectiveGroup, out var savedGroup) != 0)
+            throw new PlatformNotSupportedException("Deployment admission requires verifiable Linux x64/arm64 caller identity.");
+        // Linux auxvec.h AT_SECURE=23. Check even after IDs were made equal:
+        // secure-execution mode survives such changes and secure_getenv can
+        // ignore the sealed KRB5_CONFIG/GSS_MECH_CONFIG environment recipe.
+        var secure = GetAuxVal(23);
+        if (Marshal.GetLastPInvokeError() != 0)
+            throw new PlatformNotSupportedException("Deployment admission cannot establish secure-execution state.");
         var status = File.ReadLines("/proc/thread-self/status").Where(line => line.StartsWith("CapPrm:", StringComparison.Ordinal) || line.StartsWith("CapEff:", StringComparison.Ordinal)).ToArray();
-        if (status.Length != 2 || status.Any(line => !ulong.TryParse(line.AsSpan(line.IndexOf(':') + 1).Trim(), NumberStyles.HexNumber,
-                CultureInfo.InvariantCulture, out var value) || value != 0))
-            throw new PlatformNotSupportedException("Deployment admission refuses permitted or effective capabilities.");
+        ulong Capabilities(string name)
+        {
+            var matching = status.Where(line => line.StartsWith(name + ":", StringComparison.Ordinal)).ToArray();
+            if (matching.Length != 1 || !ulong.TryParse(matching[0].AsSpan(name.Length + 1).Trim(), NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out var value))
+                throw new PlatformNotSupportedException("Deployment admission cannot establish caller capabilities.");
+            return value;
+        }
+        RequireCallerPolicy(real, effective, saved, realGroup, effectiveGroup, savedGroup,
+            (ulong)secure, Capabilities("CapPrm"), Capabilities("CapEff"));
+    }
+    // Pure policy seam: deterministic tests never change IDs, capabilities or
+    // secure-execution state. Actual admission always obtains these via libc/proc.
+    internal static void RequireCallerPolicy(uint real, uint effective, uint saved,
+        uint realGroup, uint effectiveGroup, uint savedGroup, ulong secure, ulong permitted, ulong active)
+    {
+        if (real == 0 || real != effective || real != saved || realGroup != effectiveGroup || realGroup != savedGroup ||
+            secure != 0 || permitted != 0 || active != 0)
+            throw new PlatformNotSupportedException("Deployment admission refuses root, differing real/effective/saved IDs, secure execution or capabilities.");
     }
     private static void CheckAncestors(string path)
     {
@@ -211,6 +235,10 @@ internal static class LdapWorkerDeployment
     [DllImport("libc", EntryPoint = "fgetxattr", SetLastError = true)] private static extern nint FGetXAttr(int fd, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr value, UIntPtr size);
     [DllImport("libc", EntryPoint = "faccessat", SetLastError = true)] private static extern int EffectiveAccess(int dir, [MarshalAs(UnmanagedType.LPUTF8Str)] string path, int mode, int flags);
     [DllImport("libc", EntryPoint = "getresuid")] private static extern int GetResUid(out uint real, out uint effective, out uint saved);
+    [DllImport("libc", EntryPoint = "getresgid")] private static extern int GetResGid(out uint real, out uint effective, out uint saved);
+    // SetLastError clears errno before the call on supported .NET, preserving
+    // the distinction between a present zero value and a missing auxv entry.
+    [DllImport("libc", EntryPoint = "getauxval", SetLastError = true)] private static extern nuint GetAuxVal(nuint type);
 }
 
 // Opaque validated authority, retaining artifact handles until all admitted
