@@ -240,6 +240,25 @@ setup, not a general socket write. A blocking libldap send cannot yet be forcibl
 within the remaining operation budget. This is an explicit limitation, not a hard native
 deadline guarantee; production activation remains disabled.
 
+## Shared schema and result materialization
+
+`LdapAttributeSchema.Transport.cs` adds schema resolution keyed by the persistent transport
+resource. It never shares cached visibility by hostname/principal or captures an operation's
+budget callback. The existing Protocols connection cache and raw exception behavior remain
+unchanged. Neutral queries preserve ordinary non-AD schema fallback, propagate connection
+failures, and do not permanently cache omitted attribute types when a successful response
+contains references/referrals. Receiving those URLs does not itself follow them.
+
+Both entry representations use one `SearchResult` materializer. Schema-driven scalar types,
+binary values, ranged attribute names, types-only empty properties, `adspath`, binding-authority
+validation and recipe-copy behavior are preserved. The neutral path copies binary values and
+materializes while the caller owns a distinct schema lease; returned results retain no schema
+transport. Its per-operation remaining-budget/cancellation parameters cover schema queries and
+conversion. Recording comparisons against actual Protocols response objects verify parity,
+including invalid UTF-8 fallback. This prepares broad facade integration but does not yet route
+public DirectorySearcher operations to the native cursor. That producer must retain the atomic
+search/schema lease pair and ensure both sessions consume the same resolved authority owner.
+
 ## Fail-closed plugin patch and composition boundary
 
 `src/AdForLinux.DirectoryServices.Native/patches/cyrus-sasl-2.1.28-explicit-credential.patch`
@@ -276,8 +295,8 @@ Further commands must add typed internal command/response data and adapter capab
 then use the same lease, single-dispatch, cancellation, result ownership and retirement rules.
 Native add/delete/modify-DN/compare/extended adapters and full DirectorySearcher
 paging/streaming integration have not been implemented. Native search/modify adapters now
-implement the conversation boundary above, but full facade routing and schema conversion
-still need integration. Move their existing raw-connection consumers to
+implement the conversation boundary above; neutral schema/result materialization is available,
+but full facade routing and paired resolved-authority acquisition still need integration. Move their existing raw-connection consumers to
 this transport contract before enabling a native backend for them; keep streaming cursors
 inside the producer's retained lease. Do not add method allowlists, private-handle reflection,
 in-place rebind, managed replay or home-grown SASL/security framing. Windows remains on its

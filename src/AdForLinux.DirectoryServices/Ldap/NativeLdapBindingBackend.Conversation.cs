@@ -83,10 +83,11 @@ internal static partial class NativeLdapBindingBackend
         private readonly object gate = new();
         public ValueTask<LdapSearchEvent> ReadAsync(TimeSpan remaining, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var budget = new PreparationBudget(remaining);
             lock (gate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var budget = new PreparationBudget(remaining);
                 var builder = new NativeSearchResultBuilder();
                 Exception? callbackError = null;
                 ResultEvent emit = (_, kind, name, bytes, length, number) =>
@@ -109,10 +110,11 @@ internal static partial class NativeLdapBindingBackend
         }
         public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var budget = new PreparationBudget(remaining);
             lock (gate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var budget = new PreparationBudget(remaining);
                 Cancelled check = _ => cancellationToken.IsCancellationRequested || budget.Expired ? 1 : 0;
                 var status = NativeCursorNext(handle, budget.RemainingMilliseconds(), check, IntPtr.Zero);
                 if (status != 0) ThrowWithBudget(status, cancellationToken, budget);

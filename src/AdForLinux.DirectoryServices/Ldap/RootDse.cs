@@ -17,9 +17,13 @@ internal static class RootDse
         => Read(new ProtocolsLdapTransport(connection), attributes);
 
     internal static Dictionary<string, string> Read(ILdapRequestTransport transport, params string[] attributes)
+        => Read(transport, transport.Timeout, CancellationToken.None, attributes);
+
+    internal static Dictionary<string, string> Read(ILdapRequestTransport transport, TimeSpan timeout,
+        CancellationToken cancellationToken, params string[] attributes)
     {
         var response = LdapRequestDispatcher.Search(transport,
-            new LdapSearchCommand("", "(objectClass=*)", ProtocolScope.Base, attributes, transport.Timeout));
+            new LdapSearchCommand("", "(objectClass=*)", ProtocolScope.Base, attributes, timeout), cancellationToken);
         if (response.Code != ResultCode.Success)
             throw LdapExceptionTranslator.Translate(response.Code, response.Diagnostic ?? "RootDSE search failed.");
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

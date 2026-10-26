@@ -30,6 +30,25 @@ internal static class SearchEntryReader
         }
     }
 
+    internal static IEnumerable<(string Name, object Value)> Read(
+        LdapTransportEntry entry, ILdapRequestTransport schemaTransport,
+        Func<TimeSpan>? remaining = null, CancellationToken cancellationToken = default)
+    {
+        var kinds = LdapAttributeSchema.Resolve(schemaTransport, entry.Attributes.Keys, remaining, cancellationToken);
+        foreach (var (name, values) in entry.Attributes)
+        {
+            var kind = kinds[name.Split(';', 2)[0]];
+            foreach (var bytes in values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (remaining is not null && remaining() <= TimeSpan.Zero) throw new TimeoutException("Result materialization deadline expired.");
+                yield return (name, kind == LdapValueKind.Binary
+                    ? bytes.ToArray()
+                    : ConvertValue(System.Text.Encoding.UTF8.GetString(bytes), kind));
+            }
+        }
+    }
+
     internal static object ConvertValue(object value, LdapValueKind kind) => kind switch
     {
         LdapValueKind.Boolean => bool.Parse((string)value),
