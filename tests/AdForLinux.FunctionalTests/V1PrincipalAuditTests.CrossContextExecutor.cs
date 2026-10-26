@@ -153,7 +153,7 @@ public partial class V1PrincipalAuditTests
             Assert.Contains("revoked", Assert.Throws<InvalidOperationException>(() => retained.IsMutuallyAuthenticated()).Message);
             Assert.Null(connectionField.GetValue(entry));
             var requests = 0;
-            connectionField.SetValue(entry, SaveReadConnection.Create(_ =>
+            entry.SetControlledRetainedConnections(SaveReadConnection.Create(_ =>
                 {
                     requests++;
                     return SaveResponse("", new() { ["dnsHostName"] = ["destination.invalid"] },

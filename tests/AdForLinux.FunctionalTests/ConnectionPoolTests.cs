@@ -9,6 +9,68 @@ namespace AdForLinux.FunctionalTests;
 
 public class ConnectionPoolTests
 {
+    [Theory]
+    [InlineData(AuthType.Negotiate, null, (int)LdapAuthenticationProvenance.AmbientPlatform)]
+    [InlineData(AuthType.Negotiate, "EXAMPLE\\reader", (int)LdapAuthenticationProvenance.ExplicitPlatform)]
+    [InlineData(AuthType.Anonymous, null, (int)LdapAuthenticationProvenance.Anonymous)]
+    public void Unknown_authority_never_grants_reuse(AuthType mechanism, string? identity,
+        int provenance)
+    {
+        var source = new LdapAuthenticationSource(new LdapConnectionOptions
+        { Host = "service-target.invalid", AuthenticationType = mechanism, BindDn = identity, BindPassword = "synthetic" });
+        Assert.Equal((LdapAuthenticationProvenance)provenance, source.Provenance);
+        foreach (var referrals in Enum.GetValues<ReferralChasingOption>())
+        {
+            Assert.Equal(LdapAuthenticationCapabilities.None, source.Capabilities(referrals));
+            Assert.Equal(LdapSessionFreshness.FreshBind, source.Freshness(referrals));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Both_namespaces_and_derived_entries_preserve_platform_policy(bool explicitIdentity)
+    {
+        var user = explicitIdentity ? "EXAMPLE\\reader" : null;
+        var password = explicitIdentity ? "synthetic" : null;
+        using var entry = new DirectoryEntry("LDAP://directory.invalid/DC=example", user, password,
+            AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing);
+        using var context = new AdForLinux.DirectoryServices.AccountManagement.PrincipalContext(
+            AdForLinux.DirectoryServices.AccountManagement.ContextType.Domain, "directory.invalid", "DC=example",
+            AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Negotiate |
+            AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Signing |
+            AdForLinux.DirectoryServices.AccountManagement.ContextOptions.Sealing, user, password);
+        using var derived = context.CreateDirectoryEntry("CN=reader,DC=example");
+        var recipes = new[] { entry.BuildOptions(), context.BuildOptions(), derived.BuildOptions() };
+        var expected = LdapConnectionProvider.ConnectionKey.Create(recipes[0], ReferralChasingOption.None);
+        foreach (var recipe in recipes)
+        {
+            Assert.Equal(expected, LdapConnectionProvider.ConnectionKey.Create(recipe, ReferralChasingOption.None));
+            Assert.Equal(LdapSessionFreshness.FreshBind,
+                new LdapAuthenticationSource(recipe).Freshness(ReferralChasingOption.None));
+            Assert.True(recipe.Signing); Assert.True(recipe.Sealing);
+        }
+    }
+
+    [Fact]
+    public void Native_binder_capability_does_not_enable_facade_transport_or_relax_profile()
+    {
+        var options = new LdapConnectionOptions { Host = "directory.invalid", Port = 389, UseSsl = false,
+            AuthenticationType = AuthType.Negotiate, Signing = true, Sealing = true };
+        Assert.False(NativeLdapBindingBackend.SupportsFacadeRequests);
+        Assert.Equal(OperatingSystem.IsLinux(), NativeLdapBindingBackend.CanRepresentBinding(options, ReferralChasingOption.None));
+        Assert.False(NativeLdapBindingBackend.CanRepresentBinding(options, ReferralChasingOption.All));
+        Assert.False(NativeLdapBindingBackend.CanRepresentBinding(new LdapConnectionOptions
+        { Host = "directory.invalid", UseSsl = true, AuthenticationType = AuthType.Negotiate, Signing = true }, ReferralChasingOption.None));
+        Assert.False(NativeLdapBindingBackend.CanRepresentBinding(new LdapConnectionOptions
+        { Host = "directory.invalid", UseSsl = false, AuthenticationType = AuthType.Negotiate, Signing = true, BindDn = "reader" }, ReferralChasingOption.None));
+        Assert.False(NativeLdapBindingBackend.CanRepresentBinding(new LdapConnectionOptions
+        { Host = "directory..invalid", UseSsl = false, AuthenticationType = AuthType.Negotiate, Signing = true }, ReferralChasingOption.None));
+        // The guard rejects before loading the native library or reading a cache.
+        var error = Assert.Throws<InvalidOperationException>(() => NativeLdapBindingBackend.ResolveForBinding(options, ReferralChasingOption.None));
+        Assert.Equal(OfflineTestGuard.Message, error.Message);
+    }
+
     private sealed class Resource : IDisposable
     {
         internal int Disposals;

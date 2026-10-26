@@ -916,6 +916,10 @@ public partial class DirectoryEntry : Component
         var generation = IdentityLifetime.Capture(ValidateBinding);
         var snapshot = IdentityLifetime.Checked(generation, ValidateBinding,
             () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
+        // Raw callers cannot express an operation lifetime. Never let this legacy
+        // seam retain platform authentication and bypass operation-time binding.
+        if (new LdapAuthenticationSource(snapshot.Options).RequiresOperationLease)
+            throw new NotSupportedException("Platform authentication requires an operation-owned connection lease.");
         if (snapshot.Existing is not null) return snapshot.Existing;
         var created = LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(snapshot.Options));
         LdapConnection? selected = null;

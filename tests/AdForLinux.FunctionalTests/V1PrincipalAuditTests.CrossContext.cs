@@ -98,8 +98,7 @@ public partial class V1PrincipalAuditTests
             Entry.WriteRequestOverride = _ => { Writes++; return System.DirectoryServices.Protocols.ResultCode.Success; };
             // MoveTo bypasses the Modify write hook. Intercept its actual retained
             // connection too, so an attempted compensation cannot hide in a catch.
-            typeof(DirectoryEntry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(Entry, SaveReadConnection.Create(_ =>
+            Entry.SetControlledRetainedConnections(SaveReadConnection.Create(_ =>
                 {
                     Writes++;
                     throw new InvalidOperationException("unexpected retained-entry transport request");

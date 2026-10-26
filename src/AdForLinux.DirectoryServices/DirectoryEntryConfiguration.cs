@@ -152,7 +152,7 @@ public class DirectoryEntryConfiguration
     {
         ValidateOwner();
         using var lease = _entry.AcquireConfigurationConnection(this);
-        return Ldap.RootDse.GetConnectedServerName(lease.Connection);
+        return lease.ExecuteTransport(transport => Ldap.RootDse.GetConnectedServerName(transport));
     }
 
     /// <summary>

@@ -14,38 +14,28 @@ internal static class RootDse
     /// value as a string. Missing attributes are simply absent from the map.
     /// </summary>
     public static Dictionary<string, string> Read(LdapConnection connection, params string[] attributes)
+        => Read(new ProtocolsLdapTransport(connection), attributes);
+
+    internal static Dictionary<string, string> Read(ILdapRequestTransport transport, params string[] attributes)
     {
-        var request = new SearchRequest(
-            null,                     // empty base DN = rootDSE
-            "(objectClass=*)",
-            ProtocolScope.Base,
-            attributes);
-
-        var response = (SearchResponse)connection.SendRequestCompatible(request);
-
+        var response = LdapRequestDispatcher.Search(transport,
+            new LdapSearchCommand("", "(objectClass=*)", ProtocolScope.Base, attributes, transport.Timeout));
+        if (response.Code != ResultCode.Success)
+            throw LdapExceptionTranslator.Translate(response.Code, response.Diagnostic ?? "RootDSE search failed.");
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (response.Entries.Count == 0)
-        {
-            return result;
-        }
-
-        var entry = response.Entries[0];
-        foreach (string name in entry.Attributes.AttributeNames)
-        {
-            var attribute = entry.Attributes[name];
-            if (attribute.Count > 0)
-            {
-                result[name] = attribute[0]?.ToString() ?? string.Empty;
-            }
-        }
-
+        if (response.Entries.Length == 0) return result;
+        foreach (var (name, values) in response.Entries[0].Attributes)
+            if (values.Length != 0) result[name] = System.Text.Encoding.UTF8.GetString(values[0]);
         return result;
     }
 
     /// <summary>The base DN of the domain, e.g. DC=samdom,DC=example,DC=com.</summary>
     public static string? GetDefaultNamingContext(LdapConnection connection)
+        => GetDefaultNamingContext(new ProtocolsLdapTransport(connection));
+
+    internal static string? GetDefaultNamingContext(ILdapRequestTransport transport)
     {
-        var values = Read(connection, "defaultNamingContext");
+        var values = Read(transport, "defaultNamingContext");
         return values.TryGetValue("defaultNamingContext", out var dn) ? dn : null;
     }
 
@@ -56,16 +46,18 @@ internal static class RootDse
     /// by the native LDAP session.
     /// </summary>
     public static string GetConnectedServerName(LdapConnection connection)
+        => GetConnectedServerName(new ProtocolsLdapTransport(connection));
+
+    internal static string GetConnectedServerName(ILdapRequestTransport transport)
     {
-        var values = Read(connection, "dnsHostName");
+        var values = Read(transport, "dnsHostName");
         if (values.TryGetValue("dnsHostName", out var dnsHostName) &&
             !string.IsNullOrWhiteSpace(dnsHostName))
         {
             return dnsHostName;
         }
 
-        var sessionHostName = LdapExceptionTranslator.Execute(
-            () => connection.SessionOptions.HostName);
+        var sessionHostName = transport.ConnectedHost;
         return !string.IsNullOrWhiteSpace(sessionHostName)
             ? sessionHostName
             : throw new InvalidOperationException(

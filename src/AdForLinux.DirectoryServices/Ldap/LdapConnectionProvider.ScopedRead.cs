@@ -63,23 +63,20 @@ internal static partial class LdapConnectionProvider
         return ContextScopedRequest.Execute(WindowsLdapContextQuery.Capture, (context, reusable) =>
         {
             var key = ConnectionKey.CreateContextScoped(snapshot, referrals, context);
-            var lease = Pool.Acquire(key, () => LdapConnectionFactory.ConfigureOwned(
-                LdapConnectionFactory.Create(snapshot), connection =>
-                {
-                    LdapConnectionFactory.ConfigureReferralChasing(connection, referrals);
-                    connection.Bind();
-                }), cancellationToken, reusable, preferFresh, minimumGeneration);
+            var authentication = new LdapAuthenticationSource(snapshot);
+            var lease = Pool.Acquire(key, () => authentication.Bind(referrals),
+                cancellationToken, reusable, preferFresh, minimumGeneration);
             return new ScopedSearchLease(lease, request, requestTimeout ?? snapshot.Timeout, authority);
         }, cancellationToken);
     }
 
     private sealed class ScopedSearchLease(
-        BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease,
+        BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease,
         SearchRequest request, TimeSpan timeout, DirectoryEntry.BindingAuthority? authority)
         : IContextRequestLease<SearchResponse>
     {
         public void Prepare() => authority?.Validate();
-        public SearchResponse Send() => (SearchResponse)lease.Value.SendRequest(request, timeout);
+        public SearchResponse Send() => (SearchResponse)lease.Value.Connection.SendRequest(request, timeout);
         public void Invalidate() => lease.Invalidate();
         public void Dispose() => lease.Dispose();
     }

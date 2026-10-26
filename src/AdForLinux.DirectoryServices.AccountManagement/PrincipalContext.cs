@@ -562,6 +562,15 @@ public partial class PrincipalContext : IDisposable
         }
     }
 
+    internal Func<LdapConnectionOptions, LdapConnectionProvider.Session>? TransportSessionFactory { get; set; }
+    private TResult ExecuteDiscoveryTransport<TResult>(Func<ILdapRequestTransport, TResult> operation)
+    {
+        var options = BuildOptions();
+        if (TransportSessionFactory is null) return LdapConnectionProvider.ExecuteTransport(options, operation);
+        using var session = TransportSessionFactory(options);
+        return session.ExecuteTransport(operation);
+    }
+
     private string DiscoverDefaultNamingContext() =>
         AccountManagementExceptionTranslator.Execute(DiscoverDefaultNamingContextCore);
 
@@ -569,7 +578,7 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            return LdapConnectionProvider.Execute(BuildOptions(), RootDse.GetConnectedServerName);
+            return ExecuteDiscoveryTransport(transport => RootDse.GetConnectedServerName(transport));
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {
@@ -581,8 +590,8 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            return LdapConnectionProvider.Execute(BuildOptions(), connection =>
-                RootDse.GetDefaultNamingContext(connection)
+            return ExecuteDiscoveryTransport(transport =>
+                RootDse.GetDefaultNamingContext(transport)
                 ?? throw new InvalidOperationException("The server did not report a default naming context."));
         }
         catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
@@ -593,8 +602,7 @@ public partial class PrincipalContext : IDisposable
 
     private string DiscoverRootDomainNamingContext()
     {
-        var values = LdapConnectionProvider.Execute(BuildOptions(),
-            connection => RootDse.Read(connection, "rootDomainNamingContext"));
+        var values = ExecuteDiscoveryTransport(transport => RootDse.Read(transport, "rootDomainNamingContext"));
         return values.TryGetValue("rootDomainNamingContext", out var namingContext)
             ? namingContext
             : DefaultNamingContext;

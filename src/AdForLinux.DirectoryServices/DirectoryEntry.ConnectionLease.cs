@@ -8,17 +8,42 @@ public partial class DirectoryEntry
     private long _minimumConnectionGeneration;
     private bool _freshConnectionRequired;
     private bool _hasOperationConnection;
+    private LdapConnection? _controlledPrimary;
+    private LdapConnection? _controlledSchema;
+
+    // Explicit synthetic-transport seam. Never enables retained platform identity
+    // in a production process; offline mode permanently blocks native creation.
+    internal void SetControlledRetainedConnections(LdapConnection primary, LdapConnection? schema = null)
+    {
+        if (!OfflineTestGuard.Enabled)
+            throw new InvalidOperationException("Controlled retained connections require offline test mode.");
+        ThrowIfDisposed();
+        var previous = new[] { _connection, _schemaConnection }.Distinct().ToArray();
+        _connection = primary;
+        _schemaConnection = schema;
+        _controlledPrimary = primary;
+        _controlledSchema = schema;
+        foreach (var old in previous)
+            if (old is not null && !ReferenceEquals(old, primary) && !ReferenceEquals(old, schema)) old.Dispose();
+    }
+
+    private bool CanUseRetainedConnection(LdapConnectionOptions options) =>
+        (OfflineTestGuard.Enabled && _controlledPrimary is not null &&
+         ReferenceEquals(_connection, _controlledPrimary) && ReferenceEquals(_schemaConnection, _controlledSchema)) ||
+        !new LdapAuthenticationSource(options).RequiresOperationLease;
 
     // Raw retained fields remain a compatibility seam for existing controlled
     // transports. Production operations own these short-lived leases instead.
     internal sealed class ConnectionLease : IDisposable
     {
         private readonly LdapConnectionProvider.Session? session;
-        private readonly LdapConnection connection;
+        private readonly LdapConnection? connection;
         internal ConnectionLease(LdapConnection connection) => this.connection = connection;
         internal ConnectionLease(LdapConnectionProvider.Session session)
-        { this.session = session; connection = session.Connection; }
-        internal LdapConnection Connection => session?.Connection ?? connection;
+        { this.session = session; }
+        internal LdapConnection Connection => session?.Connection ?? connection!;
+        internal TResult ExecuteTransport<TResult>(Func<ILdapRequestTransport, TResult> operation) =>
+            session is not null ? session.ExecuteTransport(operation) : operation(new ProtocolsLdapTransport(connection!));
         internal void Invalidate() => session?.Invalidate();
         public void Dispose() => session?.Dispose();
     }
@@ -45,7 +70,7 @@ public partial class DirectoryEntry
             (Options: BuildOptions(), Referral: referrals ?? Options.Referral,
              Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired || forceFresh,
              Existing: forceFresh ? null : schema ? _schemaConnection : _connection, Schema: forceFresh ? null : _schemaConnection));
-        if (snapshot.Existing is not null)
+        if (snapshot.Existing is not null && CanUseRetainedConnection(snapshot.Options))
             return Enumerable.Range(0, count).Select(index =>
                 new ConnectionLease(index == 0 ? snapshot.Existing : snapshot.Schema ?? snapshot.Existing)).ToArray();
         var sessions = LdapExceptionTranslator.Execute(() => OperationSessionFactory is { } open
@@ -64,7 +89,9 @@ public partial class DirectoryEntry
         }
     }
 
-    internal LdapConnection SchemaConnectionForOperation(LdapConnection connection) => _schemaConnection ?? connection;
+    internal LdapConnection SchemaConnectionForOperation(LdapConnection connection) =>
+        _schemaConnection is null || !CanUseRetainedConnection(BuildOptions())
+            ? connection : _schemaConnection;
 
     internal ConnectionLease AcquireConfigurationConnection(DirectoryEntryConfiguration owner)
     {
