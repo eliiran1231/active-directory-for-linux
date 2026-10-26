@@ -26,6 +26,11 @@ typedef struct {
     unsigned sealing;
 } adfl_native_profile;
 
+/* Transfer a source reference, never credential bytes or a captured identity.
+ * Only absolute FILE paths and DIR collections can cross this worker seam. */
+typedef struct { unsigned kind; const char *absolute_path; } adfl_credential_source;
+enum adfl_source_kind { ADFL_SOURCE_FILE = 1, ADFL_SOURCE_DIR = 2 };
+
 enum adfl_status {
     ADFL_OK = 0, ADFL_UNSUPPORTED = 1, ADFL_INVALID = 2,
     ADFL_CANCELLED = 3, ADFL_RESOLVE_FAILED = 4, ADFL_BIND_FAILED = 5,
@@ -139,7 +144,7 @@ ADFL_API int adfl_session_delete(adfl_bound_session *, const adfl_delete_request
 ADFL_API int adfl_session_modify_dn(adfl_bound_session *, const adfl_modify_dn_request *,
     adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
 
-/* Must equal 2 before passing any request/profile structure across the ABI. */
+/* Must equal 3 before passing any request/profile structure across the ABI. */
 ADFL_API unsigned adfl_native_abi_version(void);
 
 /* Reads library version metadata only; no credential/cache/network operations. */
@@ -148,6 +153,8 @@ ADFL_API int adfl_native_probe(adfl_native_capabilities *out);
  * Acquisition reads the caller's configured cache collection when actually used.
  * No passwords, default client keytab, environment mutation or login are used. */
 ADFL_API int adfl_authority_resolve(const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_authority **);
+ADFL_API int adfl_authority_resolve_from(const adfl_native_profile *, const adfl_credential_source *,
+    adfl_cancelled_fn, void *, adfl_authority **);
 ADFL_API int adfl_authority_bind(adfl_authority *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);
 ADFL_API int adfl_operation_open(const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);
 /* Each successful bind retains its authority. LDAP/SASL closes before GSS release.

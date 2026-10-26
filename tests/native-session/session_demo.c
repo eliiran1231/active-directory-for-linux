@@ -18,6 +18,8 @@ struct fixture {
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply, wrong_write_tag, expect_controls, cancel_prepare;
+    atomic_int source_sets, source_checks; unsigned source_kind; char source_path[4097];
+    const char *selected_source_override; int cancel_after_source_check;
     int block_phase; /* test-only child process: 1read, 2pre-submit, 3post-submit, 4close */
     int bad_cookie, unexpected_message, modify_send_failure, slow_prepare, reject_submit;
     atomic_int page_sends, modify_sends, submissions, submission_receipts;
@@ -25,7 +27,7 @@ struct fixture {
     int cancel_after_select, cancel_after_create, cancel_at_callback;
     int bind_failure, omit_callback, wrong_prompt, cancel_after_bind;
 };
-struct fake_material { struct fixture *owner; int identity; char target[254]; atomic_int sessions; };
+struct fake_material { struct fixture *owner; int identity; char target[254]; char cache_name[4110]; int source_checked; atomic_int sessions; };
 struct fake_ldap { struct fixture *owner; struct fake_material *credential; char target[254]; char attribute[64]; char base_dn[256]; const adfl_control *controls; size_t control_count; unsigned port; int page, stream_index, modify; ldap_conncb *guard; };
 static const adfl_native_profile profile = {"directory.invalid", 389, 5, 0, 0, 1, 1};
 static int probe(void *state, adfl_native_capabilities *caps) {
@@ -36,6 +38,23 @@ static int material_new(void *state, void **out) {
     struct fixture *f = state;
     struct fake_material *m = calloc(1, sizeof(*m)); assert(m);
     m->owner = f; atomic_init(&m->sessions, 0); *out = m; atomic_fetch_add(&f->created, 1); return f->material_failure ? ADFL_NO_MEMORY : ADFL_OK;
+}
+static int set_source(void *state, void *value, const adfl_credential_source *source) {
+    struct fixture *f = state; struct fake_material *m = value;
+    assert(adfl_source_validate(source) == ADFL_OK);
+    f->source_kind = source->kind; strcpy(f->source_path, source->absolute_path);
+    int count = snprintf(m->cache_name, sizeof(m->cache_name), "%s%s%s",
+        source->kind == ADFL_SOURCE_FILE ? "FILE:" : "DIR::", source->absolute_path,
+        source->kind == ADFL_SOURCE_FILE ? "" : "/synthetic-cache");
+    assert(count > 0 && (size_t)count < sizeof(m->cache_name));
+    atomic_fetch_add(&f->source_sets, 1); return ADFL_OK;
+}
+static int check_source(void *state, void *value, const adfl_credential_source *source) {
+    struct fixture *f = state; struct fake_material *m = value;
+    atomic_fetch_add(&f->source_checks, 1);
+    if (f->cancel_after_source_check) atomic_store(&f->cancelled, 1);
+    m->source_checked = adfl_source_matches(source, f->selected_source_override ? f->selected_source_override : m->cache_name);
+    return m->source_checked ? ADFL_OK : ADFL_RESOLVE_FAILED;
 }
 static int select_target(void *state, void *value, const char *target) {
     struct fixture *f = state; struct fake_material *m = value;
@@ -49,7 +68,9 @@ static int select_default(void *state, void *value) {
     (void)value; atomic_fetch_add(&((struct fixture *)state)->defaults, 1); return ADFL_OK;
 }
 static int acquire_selected(void *state, void *value) {
-    (void)value; struct fixture *f = state; atomic_fetch_add(&f->acquired, 1);
+    struct fake_material *m = value; struct fixture *f = state;
+    assert(!m->cache_name[0] || m->source_checked);
+    atomic_fetch_add(&f->acquired, 1);
     return f->acquire_failure ? ADFL_RESOLVE_FAILED : ADFL_OK;
 }
 static void *credential(void *state, void *value) { (void)state; return value; }
@@ -315,7 +336,7 @@ static const adfl_native_ops fake_ops = {
     probe, material_new, select_target, select_default, acquire_selected, credential, material_free,
     create_session, set_credential, bind_session, ldap_close, install_guard,
     search_start, search_poll, result_emit, result_free, abandon, clock_ms,
-    page_start, message_poll, message_emit, page_cookie, write_start
+    page_start, message_poll, message_emit, page_cookie, write_start, set_source, check_source
 };
 static void balanced(struct fixture *f) {
     assert(atomic_load(&f->created) == atomic_load(&f->freed));
@@ -640,8 +661,47 @@ static void search_policy_defaults(void) {
     }
     assert(ldap_unbind_ext_s(ld, NULL, NULL) == LDAP_SUCCESS);
 }
+static void explicit_source_resolution(void) {
+    adfl_credential_source file = {ADFL_SOURCE_FILE, "/recording/worker-cache"};
+    adfl_credential_source dir = {ADFL_SOURCE_DIR, "/recording/collection"};
+    assert(adfl_source_matches(&file, "FILE:/recording/worker-cache"));
+    assert(!adfl_source_matches(&file, "FILE:/recording/worker-cache-other"));
+    assert(adfl_source_matches(&dir, "DIR::/recording/collection/primary"));
+    assert(!adfl_source_matches(&dir, "DIR::/recording/collection-other/cache"));
+    assert(!adfl_source_matches(&dir, "DIR::/recording/collection/nested/cache"));
+    assert(!adfl_source_matches(&dir, "DIR::/recording/collection/.."));
+    assert(!adfl_source_matches(&dir, "FILE:/recording/collection/cache"));
+    const char *invalid[] = {"/", "relative", "/a/", "/a//b", "/a/../b", "/./b"};
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+        adfl_credential_source bad = {ADFL_SOURCE_FILE, invalid[i]};
+        assert(adfl_source_validate(&bad) == ADFL_INVALID);
+    }
+    adfl_credential_source memory = {3, "/recording/cache"};
+    assert(adfl_source_validate(&memory) == ADFL_UNSUPPORTED);
+    for (int kind = 0; kind < 2; kind++) for (int scenario = 0; scenario < 5; scenario++) {
+        struct fixture f = {0}; adfl_authority *a = NULL;
+        const adfl_credential_source *source = kind ? &dir : &file;
+        f.untrusted_plugin = scenario == 3; f.cancel_after_source_check = scenario == 4;
+        f.selection_result = scenario == 1 ? ADFL_NO_SELECTION : ADFL_OK;
+        if (scenario == 2) f.selected_source_override = "FILE:/recording/outside";
+        int rc = adfl_resolve_from_with(&fake_ops, &f, &profile, source, cancelled, &f, &a);
+        if (scenario == 3) {
+            assert(rc == ADFL_UNSUPPORTED && !a && !atomic_load(&f.created) && !atomic_load(&f.source_sets));
+        } else {
+            assert(atomic_load(&f.source_sets) == 1 && atomic_load(&f.source_checks) == 1);
+            assert(f.source_kind == source->kind && !strcmp(f.source_path, source->absolute_path));
+            if (scenario == 2 || scenario == 4) assert(rc == (scenario == 4 ? ADFL_CANCELLED : ADFL_RESOLVE_FAILED) && !a && !atomic_load(&f.acquired));
+            else {
+                assert(rc == ADFL_OK && a && atomic_load(&f.acquired) == 1);
+                assert(atomic_load(&f.defaults) == (scenario == 1));
+            }
+        }
+        adfl_authority_close(&a); balanced(&f);
+    }
+}
 int main(void) {
-    assert(adfl_native_abi_version() == 2);
+    assert(adfl_native_abi_version() == 3);
+    explicit_source_resolution();
     search_policy_defaults();
     operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes(); generic_write_outcomes(); control_ownership();
     puts("PASS: actual adapter orchestration; recording native dependencies only; no credentials or network.");
@@ -661,6 +721,11 @@ ADFL_API int adfl_test_resolve(const adfl_native_profile *requested, adfl_cancel
     void *cancel_state, adfl_authority **out) {
     return adfl_resolve_with(&fake_ops, &managed_fixture, requested, check, cancel_state, out);
 }
+ADFL_API int adfl_test_resolve_from(const adfl_native_profile *requested, const adfl_credential_source *source,
+    adfl_cancelled_fn check, void *cancel_state, adfl_authority **out) {
+    return adfl_resolve_from_with(&fake_ops, &managed_fixture, requested, source, check, cancel_state, out);
+}
+ADFL_API const char *adfl_test_source_path(void) { return managed_fixture.source_path; }
 /* Serialize these test scenario transitions with bind calls. Source identity can
  * change while an authority/session exists; expected identity separately asserts
  * which already-resolved resource subsequent binds actually consume. */
@@ -702,6 +767,9 @@ ADFL_API int adfl_test_count(int kind) {
         case 7: return atomic_load(&managed_fixture.selected);
         case 8: return atomic_load(&managed_fixture.acquired);
         case 9: return atomic_load(&managed_fixture.binds);
+        case 10: return atomic_load(&managed_fixture.source_sets);
+        case 11: return (int)managed_fixture.source_kind;
+        case 12: return atomic_load(&managed_fixture.source_checks);
         default: return -1;
     }
 }

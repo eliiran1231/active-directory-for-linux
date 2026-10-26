@@ -52,8 +52,48 @@ void adfl_session_close(adfl_bound_session **owner) {
     if (!owner || !*owner) return;
     adfl_bound_session *s = *owner; *owner = NULL; adfl_session_release(s);
 }
+int adfl_source_validate(const adfl_credential_source *source) {
+    if (!source) return ADFL_INVALID;
+    if (source->kind != ADFL_SOURCE_FILE && source->kind != ADFL_SOURCE_DIR) return ADFL_UNSUPPORTED;
+    const char *path = source->absolute_path;
+    if (!path || path[0] != '/' || !path[1] || strlen(path) > 4096) return ADFL_INVALID;
+    const char *component = path + 1;
+    for (const char *p = component;; p++) {
+        if (*p != '/' && *p) continue;
+        size_t length = (size_t)(p - component);
+        if (!length || (length == 1 && component[0] == '.') ||
+            (length == 2 && component[0] == '.' && component[1] == '.')) return ADFL_INVALID;
+        if (!*p) break;
+        component = p + 1;
+    }
+    return ADFL_OK;
+}
+int adfl_source_matches(const adfl_credential_source *source, const char *name) {
+    if (adfl_source_validate(source) != ADFL_OK || !name) return 0;
+    const char *prefix = source->kind == ADFL_SOURCE_FILE ? "FILE:" : "DIR::";
+    size_t prefix_length = strlen(prefix), path_length = strlen(source->absolute_path);
+    if (strncmp(name, prefix, prefix_length)) return 0;
+    const char *path = name + prefix_length;
+    if (source->kind == ADFL_SOURCE_FILE) return !strcmp(path, source->absolute_path);
+    if (strncmp(path, source->absolute_path, path_length) || path[path_length] != '/') return 0;
+    const char *child = path + path_length + 1;
+    return *child && !strchr(child, '/') && strcmp(child, ".") && strcmp(child, "..");
+}
+static int resolve(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
+                     const adfl_credential_source *source, adfl_cancelled_fn check, void *cancel_state, adfl_authority **out);
 int adfl_resolve_with(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
                      adfl_cancelled_fn check, void *cancel_state, adfl_authority **out) {
+    return resolve(ops, state, p, NULL, check, cancel_state, out);
+}
+int adfl_resolve_from_with(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
+                     const adfl_credential_source *source, adfl_cancelled_fn check, void *cancel_state, adfl_authority **out) {
+    if (!out) return ADFL_INVALID;
+    *out = NULL;
+    int rc = adfl_source_validate(source);
+    return rc ? rc : resolve(ops, state, p, source, check, cancel_state, out);
+}
+static int resolve(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
+                     const adfl_credential_source *source, adfl_cancelled_fn check, void *cancel_state, adfl_authority **out) {
     if (!out) return ADFL_INVALID;
     *out = NULL;
     int rc = validate(p);
@@ -61,14 +101,18 @@ int adfl_resolve_with(const adfl_native_ops *ops, void *state, const adfl_native
     if (cancelled(check, cancel_state)) return ADFL_CANCELLED;
     adfl_native_capabilities caps = {0};
     if (ops->probe(state, &caps) || !caps.reviewed_build || !caps.authority_binding_enforced) return ADFL_UNSUPPORTED;
+    if (source && (!ops->set_source || !ops->check_source)) return ADFL_UNSUPPORTED;
     adfl_authority *a = calloc(1, sizeof(*a));
     if (!a) return ADFL_NO_MEMORY;
     atomic_init(&a->references, 1); a->ops = ops; a->state = state;
     a->target = strdup(p->host);
     if (!a->target) { free(a); return ADFL_NO_MEMORY; }
     rc = ops->material_new(state, &a->material);
+    if (!rc && source) rc = ops->set_source(state, a->material, source);
     if (!rc) rc = ops->select_target(state, a->material, p->host);
     if (rc == ADFL_NO_SELECTION) rc = ops->select_default(state, a->material);
+    if (!rc && cancelled(check, cancel_state)) rc = ADFL_CANCELLED;
+    if (!rc && source) rc = ops->check_source(state, a->material, source);
     if (!rc && cancelled(check, cancel_state)) rc = ADFL_CANCELLED;
     if (!rc) rc = ops->acquire_selected(state, a->material);
     if (!rc && !ops->credential(state, a->material)) rc = ADFL_RESOLVE_FAILED;
@@ -150,6 +194,10 @@ int adfl_open_with(const adfl_native_ops *ops, void *state, const adfl_native_pr
 int adfl_authority_resolve(const adfl_native_profile *p, adfl_cancelled_fn c, void *s, adfl_authority **out) {
     return adfl_resolve_with(&adfl_system_ops, NULL, p, c, s, out);
 }
+int adfl_authority_resolve_from(const adfl_native_profile *p, const adfl_credential_source *source,
+    adfl_cancelled_fn c, void *s, adfl_authority **out) {
+    return adfl_resolve_from_with(&adfl_system_ops, NULL, p, source, c, s, out);
+}
 int adfl_operation_open(const adfl_native_profile *p, adfl_cancelled_fn c, void *s, adfl_bound_session **out) {
     return adfl_open_with(&adfl_system_ops, NULL, p, c, s, out);
 }
@@ -158,4 +206,4 @@ int adfl_native_probe(adfl_native_capabilities *out) {
 }
 
 /* Harmless ABI handshake: no library initialization or credential access. */
-unsigned adfl_native_abi_version(void) { return 2; }
+unsigned adfl_native_abi_version(void) { return 3; }

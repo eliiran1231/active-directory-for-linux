@@ -28,6 +28,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Worker authority transfer is implemented only for Linux; Windows impersonation is not transferred.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromHours(1)) throw new ArgumentOutOfRangeException(nameof(timeout));
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        LdapWorkerProtocol.ValidateStart(profile);
         launch.Validate();
         launch = launch with { Arguments = launch.Arguments.ToArray() };
         var started = Stopwatch.GetTimestamp();

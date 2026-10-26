@@ -16,25 +16,29 @@ internal sealed class NativeLdapOperation : IDisposable
     internal IReadOnlyList<LdapConnectionProvider.Session> Sessions => sessions;
 
     private NativeLdapOperation(LdapConnectionOptions options, ReferralChasingOption referrals,
-        NativeLdapBindingBackend.IBindingApi? api, CancellationToken cancellationToken)
+        NativeLdapBindingBackend.IBindingApi? api, CancellationToken cancellationToken, LdapCredentialSource? source)
     {
         if (!NativeLdapBindingBackend.CanRepresentBinding(options, referrals))
             throw new PlatformNotSupportedException("The native operation cannot represent the complete binding profile.");
+        source?.Validate();
+        var sourceRecipe = source is null ? null : source with { };
+        if (sourceRecipe is not null && api is not null && api is not NativeLdapBindingBackend.ISourceBindingApi)
+            throw new PlatformNotSupportedException("The binding API cannot consume an explicit credential source.");
         recipe = options.Clone(); provenance = new(recipe); this.cancellationToken = cancellationToken;
         // Capture point: after atomic pool admission, immediately before first bind.
         // Impossible/queued admission does not acquire any credential resources.
         authority = new(() => api is null
-            ? NativeLdapBindingBackend.ResolveForBinding(recipe, referrals, cancellationToken)
-            : NativeLdapBindingBackend.ResolveForBinding(recipe, referrals, api, cancellationToken));
+            ? NativeLdapBindingBackend.ResolveForBinding(recipe, referrals, cancellationToken, sourceRecipe)
+            : NativeLdapBindingBackend.ResolveForBinding(recipe, referrals, api, cancellationToken, sourceRecipe));
     }
     internal static NativeLdapOperation Acquire(
         BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession> pool,
         LdapConnectionOptions options, int count, ReferralChasingOption referrals = ReferralChasingOption.None,
-        CancellationToken cancellationToken = default, NativeLdapBindingBackend.IBindingApi? api = null)
+        CancellationToken cancellationToken = default, NativeLdapBindingBackend.IBindingApi? api = null, LdapCredentialSource? source = null)
     {
         if (count <= 0) throw new ArgumentOutOfRangeException(nameof(count));
         cancellationToken.ThrowIfCancellationRequested();
-        var owner = new NativeLdapOperation(options, referrals, api, cancellationToken);
+        var owner = new NativeLdapOperation(options, referrals, api, cancellationToken, source);
         BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>.Lease[]? leases = null;
         try
         {

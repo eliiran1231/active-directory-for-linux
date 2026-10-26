@@ -37,9 +37,9 @@ public partial class ConnectionPoolOperationTests
         Assert.Throws<InvalidOperationException>(() => builder.Accept(15, "1.2.3", [1], 0));
         Assert.Throws<InvalidOperationException>(() => builder.Accept(15, "1.2.3", [], 4));
         Assert.Throws<ArgumentException>(() => LdapControlCodec.Snapshot(new("1.2.3", [1], true, false)));
-        NativeLdapBindingBackend.ValidateAbi(2);
+        NativeLdapBindingBackend.ValidateAbi(3);
         Assert.Throws<PlatformNotSupportedException>(() => NativeLdapBindingBackend.ValidateAbi(1));
-        Assert.Throws<PlatformNotSupportedException>(() => NativeLdapBindingBackend.ValidateAbi(3));
+        Assert.Throws<PlatformNotSupportedException>(() => NativeLdapBindingBackend.ValidateAbi(2));
     }
 
     [Fact]

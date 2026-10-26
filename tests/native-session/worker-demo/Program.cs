@@ -14,7 +14,7 @@ var supervisorPath = Path.GetFullPath(args[1]);
 var bridgePath = Path.GetFullPath(args[2]);
 var productionHost = Path.GetFullPath(args[3]);
 var assembly = typeof(Program).Assembly.Location;
-var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 2, TimeSpan.FromSeconds(5));
+var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 2, TimeSpan.FromSeconds(5), new(LdapCredentialSourceKind.File, "/recording/worker-cache"));
 WorkerLaunch Launch(string mode) => new(executable, [assembly, "--child", supervisorPath, bridgePath, mode], supervisorPath);
 var read = new LdapSearchCommand("", "(objectClass=*)", SearchScope.Base, ["dnsHostName"], TimeSpan.FromSeconds(2));
 var modify = new LdapModifyCommand("CN=example", [new("description", DirectoryAttributeOperation.Replace, [Array.Empty<byte>()]), new("other", DirectoryAttributeOperation.Delete, [])], TimeSpan.FromSeconds(2), []);
@@ -61,6 +61,12 @@ using (var lease = await workers.AcquireAsync(Launch("normal"), profile, TimeSpa
 }
 await Empty();
 Console.WriteLine("PASS: isolated actual native dispatcher serves paired sessions, pages, binary results and complete mutation responses over bounded IPC.");
+using (var lease = await workers.AcquireAsync(Launch("normal"), profile with
+    { CredentialSource = new(LdapCredentialSourceKind.DirectoryCollection, "/recording/collection") }, TimeSpan.FromSeconds(5)))
+    if (LdapRequestDispatcher.Search(lease.Client.Sessions[1], read).Entries.Length != 1)
+        throw new InvalidOperationException("Explicit DIR source worker failed.");
+await Empty();
+Console.WriteLine("PASS: synthetic FILE/DIR source recipes cross START and native resolve_from once for paired sessions; no source files are opened.");
 
 foreach (var (mode, disposition) in new[] { ("before-write", LdapWriteDisposition.NotSent), ("after-write", LdapWriteDisposition.Indeterminate) })
 {
@@ -135,6 +141,8 @@ static async Task<int> Child(string[] arguments)
     var block = Marshal.GetDelegateForFunctionPointer<Configure>(NativeLibrary.GetExport(library, "adfl_test_set_block"));
     if (configure(1) != 0 || block(mode switch { "blocked-read" => 1, "before-write" => 2, "after-write" => 3, _ => 0 }) != 0) return 4;
     var api = new RecordingBindingApi(library);
+    var sourcePath = Marshal.GetDelegateForFunctionPointer<SourcePath>(NativeLibrary.GetExport(library, "adfl_test_source_path"));
+    var sourceCount = Marshal.GetDelegateForFunctionPointer<Configure>(NativeLibrary.GetExport(library, "adfl_test_count"));
     using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2, startTimer: false);
     try
     {
@@ -142,7 +150,10 @@ static async Task<int> Child(string[] arguments)
         {
             var options = new LdapConnectionOptions { Host = start.Host, Port = start.Port, UseSsl = start.UseSsl,
                 AuthenticationType = AuthType.Negotiate, Signing = start.Signing, Sealing = start.Sealing, Timeout = start.Timeout };
-            var owner = NativeLdapOperation.Acquire(pool, options, start.SessionCount, api: api);
+            var owner = NativeLdapOperation.Acquire(pool, options, start.SessionCount, api: api, source: start.CredentialSource);
+            if (start.CredentialSource is { } source && (sourceCount(10) != 1 || sourceCount(12) != 1 ||
+                sourceCount(11) != (int)source.Kind || Marshal.PtrToStringUTF8(sourcePath()) != source.AbsolutePath))
+            { owner.Dispose(); throw new InvalidOperationException("Native source recipe was not consumed exactly once."); }
             return new LdapWorkerResources(owner, owner.Sessions.Select(session => session.ExecuteTransport(value => value)).ToArray());
         }, CancellationToken.None);
         return 0;
@@ -150,3 +161,5 @@ static async Task<int> Child(string[] arguments)
     catch { return 5; }
 }
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Configure(int value);
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr SourcePath();

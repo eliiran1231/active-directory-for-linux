@@ -45,6 +45,8 @@ typedef struct adfl_native_ops {
     int (*page_cookie)(void *, LDAP *, void *, int *, adfl_bytes *); /* malloc-owned output */
     int (*write_start)(void *, LDAP *, const adfl_write_request *, adfl_submitted_fn, void *, int *, int *);
 
+    int (*set_source)(void *, void *, const adfl_credential_source *);
+    int (*check_source)(void *, void *, const adfl_credential_source *);
 } adfl_native_ops;
 struct adfl_authority {
     atomic_uint references;
@@ -82,5 +84,9 @@ int adfl_controls_build(const adfl_control *, size_t, LDAPControl *, LDAPControl
 void adfl_controls_release(LDAPControl **, size_t);
 extern const adfl_native_ops adfl_system_ops;
 int adfl_resolve_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_authority **);
+int adfl_source_validate(const adfl_credential_source *);
+int adfl_source_matches(const adfl_credential_source *, const char *full_cache_name);
+int adfl_resolve_from_with(const adfl_native_ops *, void *, const adfl_native_profile *, const adfl_credential_source *,
+    adfl_cancelled_fn, void *, adfl_authority **);
 int adfl_open_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);
 #endif

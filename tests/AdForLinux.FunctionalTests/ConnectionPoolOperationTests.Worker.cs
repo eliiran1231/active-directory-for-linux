@@ -18,9 +18,9 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Theory]
-    [InlineData("{\"Version\":1,\"Version\":1,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
-    [InlineData("{\"Version\":1,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
-    [InlineData("{\"Version\":1,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":2,\"Version\":2,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":2,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
+    [InlineData("{\"Version\":2,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
     public async Task Worker_frames_reject_duplicate_missing_and_invalid_fields(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json); using var stream = new MemoryStream();

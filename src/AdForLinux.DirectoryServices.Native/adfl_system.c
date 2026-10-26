@@ -57,6 +57,25 @@ static int material_new(void *state, void **out) {
     if (!m) return ADFL_NO_MEMORY;
     return krb5_init_context(&m->context) ? ADFL_RESOLVE_FAILED : ADFL_OK;
 }
+static int set_source(void *state, void *value, const adfl_credential_source *source) {
+    (void)state; struct material *m = value;
+    size_t length = strlen(source->absolute_path);
+    if (length > SIZE_MAX - 6) return ADFL_INVALID;
+    char *name = malloc(length + 6);
+    if (!name) return ADFL_NO_MEMORY;
+    snprintf(name, length + 6, "%s%s", source->kind == ADFL_SOURCE_FILE ? "FILE:" : "DIR:", source->absolute_path);
+    /* Context-local source selection; no environment mutation or cache copying. */
+    krb5_error_code rc = krb5_cc_set_default_name(m->context, name);
+    free(name); return rc ? ADFL_RESOLVE_FAILED : ADFL_OK;
+}
+static int check_source(void *state, void *value, const adfl_credential_source *source) {
+    (void)state; struct material *m = value; char *name = NULL;
+    if (krb5_cc_get_full_name(m->context, m->cache, &name)) return ADFL_RESOLVE_FAILED;
+    int matches = adfl_source_matches(source, name);
+    krb5_free_string(m->context, name);
+    /* Lexical source check, not a filesystem sandbox, snapshot, or identity proof. */
+    return matches ? ADFL_OK : ADFL_RESOLVE_FAILED;
+}
 static int select_target(void *state, void *value, const char *host) {
     (void)state; struct material *m = value;
     krb5_principal service = NULL;
@@ -172,5 +191,5 @@ const adfl_native_ops adfl_system_ops = {
     adfl_system_search_start, adfl_system_search_poll, adfl_system_result_emit,
     adfl_system_result_free, adfl_system_abandon, adfl_system_monotonic_ms,
     adfl_system_page_start, adfl_system_message_poll, adfl_system_message_emit,
-    adfl_system_page_cookie, adfl_system_write_start
+    adfl_system_page_cookie, adfl_system_write_start, set_source, check_source
 };

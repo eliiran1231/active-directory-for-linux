@@ -107,7 +107,7 @@ it cannot represent. Response criticality and value presence are independent fla
 
 Default property security-mask controls use a managed BER SEQUENCE/INTEGER encoder for the exact
 public SecurityDescriptorFlagControl type; subclasses retain their virtual encoding behavior.
-Native ABI version 2 is checked before real resolution/bind and request dispatch. A mismatch
+Native ABI version 3 is checked before real resolution/bind and request dispatch. A mismatch
 cannot silently discard the new control fields. ABI agreement is not authentication proof.
 The native search adapter explicitly pins per-handle aliases to Never and server time limit
 to zero before every send; it does not inherit handle defaults. DirectorySearcher still rejects
@@ -149,8 +149,8 @@ It does not verify a built plugin or deployment. Activation requires controlled 
 composition from Cyrus initialization onward; a plugin name, GETPATH/VERIFYFILE callback or
 version string cannot retrofit an already initialized host-global instance. A separately owned
 helper process with a pinned private dependency/plugin closure is the selected packaging
-boundary. The process/IPC boundary is executable; the private dependency closure and
-credential-source transfer are not yet implemented or attested. The production host refuses
+boundary. The process/IPC boundary and explicit source-recipe transfer are executable; the full
+private dependency closure and live authority semantics are not yet proven. The production host refuses
 before credential resolution; only the separate demo host injects recording dependencies.
 
 Run the actual exec/IPC/native-dispatch demonstration (Linux with pidfd and glibc closefrom):
@@ -184,6 +184,43 @@ checks parent return and verified reaping, exercises late startup/capacity reten
 peers, paging and dependent schema reads, and verifies production refusal. These are process
 and orchestration proofs, not real Kerberos authentication or private-plugin attestation.
 
+The private Cyrus component can now be built from the exact official 2.1.28 release
+archive with its checked-in guard, without downloading or installing anything:
+
+```sh
+python3 src/AdForLinux.DirectoryServices.Native/packaging/build-private-cyrus.py \
+  /path/to/cyrus-sasl-2.1.28.tar.gz /new/private/build-directory
+bash tests/native-session/run-private-cyrus-demo.sh \
+  /new/private/build-directory/cyrus-sasl-2.1.28
+```
+
+The recipe pins the whole archive and guard source hashes, disables shared Cyrus/dynamic
+plugin loading and optional mechanisms, builds position-independent static objects, and checks
+the static GSSAPI member/entry point and absence of dynamic-loader references. The full built
+Cyrus/plugin demo exercises initial interaction followed by missing-credential refusal with
+and without external protection; ABI-correct linker traps abort before real GSS acquisition or
+context initiation. This demonstrates the built guard, not successful credential injection or
+authentication. The archive must still be privately linked with OpenLDAP using hidden symbols;
+MIT dependencies, loadable modules and configuration are not yet a controlled closure.
+No `make install`, account, cache or host configuration operation is part of these scripts.
+
+Worker protocol 2 and native ABI 3 add an explicit source recipe. `LdapCredentialSource`
+represents only a FILE absolute path or DIR collection absolute path, supplied explicitly;
+no code captures a user environment or reads credentials in the demonstration. The source
+travels through START and the shared operation owner into `adfl_authority_resolve_from`.
+An older binding API cannot silently ignore it. A fresh MIT context uses
+`krb5_cc_set_default_name` before target selection. Before GSS acquisition, the selected
+full cache name must equal the FILE source or a direct DIR collection child, including when
+selection legitimately falls back to the default. Authoritative missing selection stays failed.
+The existing ambient API remains separate and unchanged.
+
+This is a source-routing policy, not filesystem confinement: symlinks and configured cache
+selection plugins can access other stores while selecting. MEMORY, KEYRING, KCM, Windows
+stores, ambiguous paths and credential-byte transfer are not represented. Neither a path nor
+a selected principal proves mutable-cache compatibility; session reuse stays disabled.
+Recording tests carry synthetic names through actual worker/native orchestration and verify
+one source selection for paired binds and rejection before acquisition on mismatch.
+
 Remaining proofs/work include mutable-cache authority compatibility, controlled native
 composition, native/helper facade activation, requested referral/TLS semantics, paged total-size
 limits, advanced search response-state handling, and remaining raw Protocols consumers.
@@ -194,6 +231,8 @@ retains its existing backend; WinLDAP does not accept an arbitrary SSPI credenti
 
 ## Primary source basis
 
+- [MIT context-local cache source](https://web.mit.edu/kerberos/krb5-latest/doc/appdev/refs/api/krb5_cc_set_default_name.html), [target selection](https://web.mit.edu/kerberos/krb5-latest/doc/appdev/refs/api/krb5_cc_select.html)
+- [Cyrus static loader](https://github.com/cyrusimap/cyrus-sasl/blob/cyrus-sasl-2.1.28/lib/dlopen.c), [static archive construction](https://github.com/cyrusimap/cyrus-sasl/blob/cyrus-sasl-2.1.28/lib/Makefile.am)
 - [MIT GSSAPI/cache semantics](https://web.mit.edu/kerberos/krb5-latest/doc/appdev/gssapi.html)
 - [RFC 4511](https://www.rfc-editor.org/rfc/rfc4511.html) and [RFC 4513](https://www.rfc-editor.org/rfc/rfc4513.html)
 - [OpenLDAP SASL integration](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/cyrus.c), [connection veto](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/os-ip.c), [controls](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/controls.c), [Add](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/add.c), [Modify](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/modify.c)

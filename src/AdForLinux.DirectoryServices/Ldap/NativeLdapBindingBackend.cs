@@ -44,11 +44,17 @@ internal static partial class NativeLdapBindingBackend
         void CloseAuthority(ref IntPtr authority);
         void CloseSession(ref IntPtr session);
     }
-    private sealed class SystemBindingApi : IBindingApi
+    internal interface ISourceBindingApi : IBindingApi
+    {
+        int ResolveFrom(ref Profile profile, ref CredentialSource source, Cancelled cancelled, IntPtr state, out IntPtr authority);
+    }
+    private sealed class SystemBindingApi : ISourceBindingApi
     {
         internal static readonly SystemBindingApi Instance = new();
         public int Resolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority)
         { OfflineTestGuard.RequireLiveAccess(); EnsureAbi(); return NativeResolve(ref profile, cancelled, state, out authority); }
+        public int ResolveFrom(ref Profile profile, ref CredentialSource source, Cancelled cancelled, IntPtr state, out IntPtr authority)
+        { OfflineTestGuard.RequireLiveAccess(); EnsureAbi(); return NativeResolveFrom(ref profile, ref source, cancelled, state, out authority); }
         public int Bind(AuthorityHandle authority, ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr session)
         { OfflineTestGuard.RequireLiveAccess(); EnsureAbi(); return NativeBind(authority, ref profile, cancelled, state, out session); }
         public void CloseAuthority(ref IntPtr authority) => NativeAuthorityClose(ref authority);
@@ -56,20 +62,30 @@ internal static partial class NativeLdapBindingBackend
     }
 
     internal static Authority ResolveForBinding(LdapConnectionOptions options,
-        ReferralChasingOption referrals, CancellationToken cancellationToken = default)
-        => ResolveForBinding(options, referrals, SystemBindingApi.Instance, cancellationToken);
+        ReferralChasingOption referrals, CancellationToken cancellationToken = default, LdapCredentialSource? source = null)
+        => ResolveForBinding(options, referrals, SystemBindingApi.Instance, cancellationToken, source);
 
     internal static Authority ResolveForBinding(LdapConnectionOptions options,
-        ReferralChasingOption referrals, IBindingApi api, CancellationToken cancellationToken = default)
+        ReferralChasingOption referrals, IBindingApi api, CancellationToken cancellationToken = default, LdapCredentialSource? source = null)
     {
         ArgumentNullException.ThrowIfNull(api);
         cancellationToken.ThrowIfCancellationRequested();
         if (!CanRepresentBinding(options, referrals))
             throw new PlatformNotSupportedException("The native binding prototype cannot represent this complete authentication/transport/referral profile.");
+        source?.Validate();
+        if (source is not null && api is not ISourceBindingApi)
+            throw new PlatformNotSupportedException("The binding API cannot consume an explicit credential source.");
         var snapshot = options.Clone();
         var profile = Profile.From(snapshot);
         Cancelled check = _ => cancellationToken.IsCancellationRequested ? 1 : 0;
-        var status = api.Resolve(ref profile, check, IntPtr.Zero, out var handle);
+        IntPtr handle;
+        int status;
+        if (source is null) status = api.Resolve(ref profile, check, IntPtr.Zero, out handle);
+        else
+        {
+            var nativeSource = new CredentialSource { Kind = (uint)source.Kind, AbsolutePath = source.AbsolutePath };
+            status = ((ISourceBindingApi)api).ResolveFrom(ref profile, ref nativeSource, check, IntPtr.Zero, out handle);
+        }
         if (status != 0 || handle == IntPtr.Zero)
         {
             if (handle != IntPtr.Zero) api.CloseAuthority(ref handle);
@@ -139,6 +155,14 @@ internal static partial class NativeLdapBindingBackend
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int Cancelled(IntPtr state);
     private const string Library = "adfl_native";
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct CredentialSource
+    {
+        public uint Kind;
+        [MarshalAs(UnmanagedType.LPUTF8Str)] public string AbsolutePath;
+    }
+    [DllImport(Library, EntryPoint = "adfl_authority_resolve_from", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeResolveFrom(ref Profile profile, ref CredentialSource source, Cancelled cancelled, IntPtr state, out IntPtr authority);
     [DllImport(Library, EntryPoint = "adfl_authority_resolve", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeResolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority);
     [DllImport(Library, EntryPoint = "adfl_authority_bind", CallingConvention = CallingConvention.Cdecl)]

@@ -8,11 +8,11 @@ internal static partial class NativeLdapBindingBackend
     {
         try { ValidateAbi(NativeAbiVersion()); }
         catch (EntryPointNotFoundException error)
-        { throw new PlatformNotSupportedException("The native LDAP library does not expose the required controls ABI.", error); }
+        { throw new PlatformNotSupportedException("The native LDAP library does not expose the required source-aware ABI.", error); }
     }
     internal static void ValidateAbi(uint version)
     {
-        if (version != 2) throw new PlatformNotSupportedException("The native LDAP library has an incompatible ABI; no operation was dispatched.");
+        if (version != 3) throw new PlatformNotSupportedException("The native LDAP library has an incompatible ABI; no operation was dispatched.");
     }
     [DllImport(Library, EntryPoint = "adfl_native_abi_version", CallingConvention = CallingConvention.Cdecl)]
     private static extern uint NativeAbiVersion();
