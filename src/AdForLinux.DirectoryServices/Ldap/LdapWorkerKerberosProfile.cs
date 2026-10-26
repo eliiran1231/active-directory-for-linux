@@ -5,9 +5,21 @@ using Microsoft.Win32.SafeHandles;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 // Deliberately restricted policy, not a transparent copy of host krb5.conf.
-// There are no raw fragments, includes, module entries, KDC endpoints or k5identity.
+// No raw fragments, includes, module entries, discovery or k5identity.
 // The path is a recipe: private compiled legacy plugin paths still require review.
-internal sealed record LdapWorkerKerberosProfile(string DefaultRealm, string ServiceHost, string PrivatePluginDirectory)
+internal sealed record LdapWorkerKdcEndpoint(string Host, int Port)
+{
+    internal string HostSpec()
+    {
+        if (Port is < 1 or > 65535 || string.IsNullOrEmpty(Host) || Host.Length > 253 ||
+            Host.Split('.').Any(label => label.Length is 0 or > 63 || label[0] == '-' || label[^1] == '-' ||
+                label.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-')))
+            throw new ArgumentException("KDC endpoint requires an ASCII DNS/IPv4 host and valid port.");
+        return Host + ":" + Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+}
+internal sealed record LdapWorkerKerberosProfile(string DefaultRealm, string ServiceHost, string PrivatePluginDirectory,
+    LdapWorkerKdcEndpoint? Kdc = null)
 {
     internal const int MaximumBytes = 32768;
     internal byte[] Generate(string targetHost)
@@ -39,6 +51,8 @@ internal sealed record LdapWorkerKerberosProfile(string DefaultRealm, string Ser
               enable_only = realm
              }
             """ + "\n";
+        if (Kdc is not null)
+            text += "[realms]\n " + DefaultRealm + " = {\n  kdc = " + Kdc.HostSpec() + "\n }\n";
         var bytes = Encoding.ASCII.GetBytes(text);
         if (bytes.Length > MaximumBytes) throw new ArgumentException("Restricted Kerberos configuration is too large.");
         return bytes;

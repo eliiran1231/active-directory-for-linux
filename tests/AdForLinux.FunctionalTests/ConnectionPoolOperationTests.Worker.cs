@@ -35,6 +35,36 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Fact]
+    public async Task Restricted_worker_endpoint_is_typed_and_preserved_by_protocol_roundtrip()
+    {
+        var configuration = new LdapWorkerKerberosProfile("ADFL.TEST", "127.0.0.1", "/recording/plugins");
+        var original = configuration.Generate("127.0.0.1");
+        Assert.Equal(original, (configuration with { Kdc = null }).Generate("127.0.0.1"));
+        var routed = configuration with { Kdc = new("127.0.0.1", 10088) };
+        Assert.EndsWith("[realms]\n ADFL.TEST = {\n  kdc = 127.0.0.1:10088\n }\n", Encoding.ASCII.GetString(routed.Generate("127.0.0.1")));
+        var profile = new LdapWorkerStart("127.0.0.1", 10389, false, true, true, 1, TimeSpan.FromSeconds(5),
+            new(LdapCredentialSourceKind.File, "/recording/cache"), routed);
+        using var channel = new MemoryStream();
+        await LdapWorkerProtocol.WriteAsync(channel, LdapWorkerProtocol.Frame(1, 0, "START", profile.Timeout, profile), default);
+        channel.Position = 0;
+        var copied = LdapWorkerProtocol.Payload<LdapWorkerStart>(await LdapWorkerProtocol.ReadAsync(channel, default));
+        Assert.Equal(profile, copied);
+        LdapWorkerProtocol.ValidateStart(copied);
+    }
+    [Theory]
+    [InlineData("127.0.0.1", 0)]
+    [InlineData("127.0.0.1", 65536)]
+    [InlineData("127.0.0.1:88", 88)]
+    [InlineData("bad\ninclude", 88)]
+    [InlineData("https://kdc", 88)]
+    [InlineData("::1", 88)]
+    [InlineData("", 88)]
+    public void Restricted_worker_endpoint_rejects_raw_syntax_and_invalid_ports(string host, int port)
+    {
+        Assert.Throws<ArgumentException>(() => new LdapWorkerKdcEndpoint(host, port).HostSpec());
+    }
+
+    [Fact]
     public async Task Production_worker_requires_source_and_policy_and_never_activates_from_metadata()
     {
         var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 1, TimeSpan.FromSeconds(5));
@@ -66,9 +96,9 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Theory]
-    [InlineData("{\"Version\":3,\"Version\":3,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
-    [InlineData("{\"Version\":3,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
-    [InlineData("{\"Version\":3,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":4,\"Version\":4,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":4,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
+    [InlineData("{\"Version\":4,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
     public async Task Worker_frames_reject_duplicate_missing_and_invalid_fields(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json); using var stream = new MemoryStream();

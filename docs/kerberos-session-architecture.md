@@ -222,8 +222,13 @@ ELF dependency list here is libc and libresolv; embedded MIT/GSS symbols are hid
 No manifest or build result overrides the hard authentication gates. The library versions are
 reviewed prototype pins, not a claim that these versions are the current deployment choice.
 
-MIT static linking does not disable dynamic modules. Legacy plugin directories are compiled
-under the private build prefix; deployment still must control them. MIT's default profile
+Static linking alone does not disable MIT modules. The full private build additionally
+hash-checks and modifies pinned MIT `util/support/plugins.c` to select its existing dummy
+loader on Linux. Direct, directory, modern plugin, GSS and dynamic-profile loading share
+this backend. Archive/final-bridge checks reject runtime loader imports. An actual loadable
+canary is refused by the modified loader, while built-in realm selection and GSS metadata
+survive. This restriction belongs to this modified MIT composition, not all libc/.NET
+loading in a process. Configuration files and directory scans remain possible. MIT's default profile
 search includes `/etc/krb5.conf` even with a private sysconfdir. Therefore the restricted worker
 path explicitly sets `KRB5_CONFIG` and `GSS_MECH_CONFIG` before exec, without changing the
 parent or host environment. Supervisor ABI 2 passes fully sealed memfds as descriptors 4/5;
@@ -232,8 +237,10 @@ close after spawn. The child compares the profile against the immutable START re
 pread before creating backend resources. Unreaped-worker accounting is unchanged.
 
 `LdapWorkerKerberosProfile` generates a deliberately restricted exact-host/default-realm
-profile with only the realm selector and no KDC endpoint, raw configuration, includes,
-modules or k5identity. An explicit FILE/DIR source is required. This is an executable synthetic
+profile with only the realm selector and an optional typed single-realm KDC endpoint.
+There are no raw configuration fragments, includes, modules or k5identity. The endpoint
+accepts only an ASCII DNS/IPv4 hostname and port; it is routing, not network confinement.
+IPv6, alternate realms and discovery are currently unsupported. An explicit FILE/DIR source is required. This is an executable synthetic
 policy boundary, not a transparent import of a user's Kerberos configuration. Unsupported
 custom policies cannot be silently replaced by it. An empty sealed GSS mechanism file prevents
 normal host mechanism-file discovery; ordinary GSS contexts use the explicit profile through
@@ -259,7 +266,9 @@ Real credential acquisition, wire authentication/security layers, deployment int
 policy compatibility remain unverified; authentication/reuse gates stay closed.
 No `make install`, account, cache or host configuration operation is part of these scripts.
 
-Worker protocol 3 and native ABI 3 add an explicit source recipe. `LdapCredentialSource`
+Worker protocol 4 and native ABI 3 carry an explicit source recipe. Protocol 4
+requires the new optional KDC field to be present (possibly null); older internal
+worker frames are deliberately rejected. `LdapCredentialSource`
 represents only a FILE absolute path or DIR collection absolute path, supplied explicitly;
 no code captures a user environment or reads credentials in the demonstration. The source
 travels through START and the shared operation owner into `adfl_authority_resolve_from`.
@@ -318,7 +327,9 @@ archives (plus Berkeley yacc 2.0.20221106, whose digest the script checks):
 ```sh
 bash tests/native-session/lab/build-servers.sh MIT_ARCHIVE LDAP_ARCHIVE BYACC_ARCHIVE PRIVATE_BRIDGE NEW_SERVERS
 bash tests/native-session/build-private-login-lab.sh PRIVATE_BRIDGE
-python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab NEW_IMAGE_CONTEXT
+dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release -f net8.0
+ADFL_OFFLINE_TESTS=1 dotnet tests/native-session/worker-demo/bin/Release/net8.0/AdForLinux.NativeWorkerDemo.dll --generate-lab-profile > LAB_PROFILE
+python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_IMAGE_CONTEXT
 docker --config DOCKER_CONFIG build --network none --pull=false -t adfl-disposable-lab NEW_IMAGE_CONTEXT
 ```
 
@@ -365,3 +376,16 @@ and reads those same owned handles. Identical bytes in unsealed, partially seale
 or FUTURE_WRITE-only memfds are rejected before the backend factory. These checks
 prevent mutable configuration admission; they do not establish plugin/deployment
 closure or enable authentication.
+
+The real-login lab also passes with the module-restricted private client build and
+configuration emitted by the actual production profile generator. Before binding,
+the harness verifies both fresh caches contain only a TGT (ignoring MIT cache
+configuration entries); successful binding therefore exercises service-ticket
+acquisition through the explicit loopback KDC endpoint. The KDC/server tools remain
+separate test fixtures. No ambient cache or user configuration is imported.
+
+Offline module-denial proof (no credentials):
+
+```sh
+bash tests/native-session/run-private-plugin-probe.sh PRIVATE_BRIDGE
+```

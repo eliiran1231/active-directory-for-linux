@@ -104,6 +104,10 @@ def main():
         allowed = {'libc.so.6', 'libresolv.so.2', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0'}
         if set(needed) - allowed:
             raise ValueError('Unexpected dependency outside the private native stack: ' + repr(needed))
+    if mit_source is not None:
+        imports = run('nm', '-D', '--undefined-only', str(bridge), capture=True)
+        if re.search(r'\bU\s+(?:dlopen|dlmopen|dlsym|dlclose|dlerror)(?:@\S+)?$', imports, re.M):
+            raise ValueError('Private bridge still imports a runtime module loader.')
     symbols = run('nm', '-D', '--defined-only', str(bridge), capture=True)
     if any(line.split()[-1].startswith(('sasl_', 'ldap_', 'ber_', '_sasl_', 'gss_', 'krb5_', 'k5_')) for line in symbols.splitlines()):
         raise ValueError('Private LDAP/Cyrus symbols escaped the bridge.')
@@ -113,7 +117,8 @@ def main():
     print('Built private LDAP/Cyrus bridge:', bridge)
     print('SHA256:', hashlib.sha256(bridge.read_bytes()).hexdigest())
     print('MIT linkage:', 'private static' if mit_source is not None else 'system shared')
-    print('Runtime configuration/plugin policy and deployment integrity remain unproven; authentication gates remain false.')
+    print('MIT runtime module loading:', 'unavailable in modified private build' if mit_source is not None else 'unrestricted system dependency')
+    print('Configuration semantics and deployment integrity remain unproven; authentication gates remain false.')
 
 
 if __name__ == '__main__':

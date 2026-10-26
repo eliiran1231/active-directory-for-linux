@@ -14,7 +14,7 @@ internal sealed record LdapWorkerFailure(string Category);
 internal sealed record LdapWorkerFrame(int Version, long Id, int Session, string Kind, long TimeoutTicks, JsonElement Payload);
 internal static class LdapWorkerProtocol
 {
-    internal const int Version = 3, MaximumFrame = 4 * 1024 * 1024;
+    internal const int Version = 4, MaximumFrame = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = Options();
     private static JsonSerializerOptions Options()
     {

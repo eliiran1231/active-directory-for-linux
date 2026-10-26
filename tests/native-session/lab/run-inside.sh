@@ -13,26 +13,7 @@ export KRB5_KTNAME=FILE:/run/adfl/ldap.keytab
 export GSS_MECH_CONFIG=/run/adfl/empty-mechs
 : > "$GSS_MECH_CONFIG"
 mkdir /run/adfl/db /run/adfl/plugins
-cat > "$KRB5_CONFIG" <<'CONFIG'
-[libdefaults]
- default_realm = ADFL.TEST
- dns_lookup_kdc = false
- dns_lookup_realm = false
- dns_canonicalize_hostname = false
- rdns = false
- qualify_shortname = ""
- plugin_base_dir = /run/adfl/plugins
-[realms]
- ADFL.TEST = {
-  kdc = 127.0.0.1:10088
- }
-[domain_realm]
- 127.0.0.1 = ADFL.TEST
-[plugins]
- ccselect = {
-  enable_only = realm
- }
-CONFIG
+cat /etc/lab-krb5.conf > "$KRB5_CONFIG"
 cat > "$KRB5_KDC_PROFILE" <<'CONFIG'
 [kdcdefaults]
  kdc_listen = 127.0.0.1:10088

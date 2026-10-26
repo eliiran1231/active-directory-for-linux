@@ -4,6 +4,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "adfl_native_internal.h"
 #include <sasl/sasl.h>
+#include <krb5.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +77,36 @@ restore_failed:
     fprintf(stderr,"Cache restoration FAILED at swap stage %d (errno %d); isolated lab requires recovery.\n",stage,errno);
     return 1;
 }
+static int only_tgt(const char *path) {
+    krb5_context context=NULL; krb5_ccache cache=NULL; krb5_cc_cursor cursor;
+    int failed=1, started=0, count=0; char name[128];
+    snprintf(name,sizeof(name),"FILE:%s",path);
+    if (krb5_init_context(&context) || krb5_cc_resolve(context,name,&cache) ||
+        krb5_cc_start_seq_get(context,cache,&cursor)) goto done;
+    started=1;
+    krb5_creds credentials;
+    while (1) {
+        memset(&credentials,0,sizeof(credentials));
+        krb5_error_code rc=krb5_cc_next_cred(context,cache,&cursor,&credentials);
+        if (rc==KRB5_CC_END) { failed=count!=1; break; }
+        if (rc) break;
+        if (krb5_is_config_principal(context,credentials.server)) {
+            krb5_free_cred_contents(context,&credentials); continue;
+        }
+        int tgt=krb5_princ_size(context,credentials.server)==2 &&
+            krb5_princ_component(context,credentials.server,0)->length==6 &&
+            !memcmp(krb5_princ_component(context,credentials.server,0)->data,"krbtgt",6);
+        krb5_free_cred_contents(context,&credentials);
+        if (!tgt) break;
+        count++;
+    }
+done:
+    if (started) krb5_cc_end_seq_get(context,cache,&cursor);
+    if (cache) krb5_cc_close(context,cache);
+    if (context) krb5_free_context(context);
+    if (failed) fputs("Lab requires fresh TGT-only caches before binding.\n",stderr);
+    return failed;
+}
 int main(int argc, char **argv) {
     if (argc != 4 || strcmp(argv[1], "--isolated-lab") || !argv[2][0] || !argv[3][0] || !strcmp(argv[2], argv[3])) {
         fputs("Usage: private-login-lab --isolated-lab EXACT_WHOAMI_A EXACT_WHOAMI_B\n"
@@ -88,6 +119,7 @@ int main(int argc, char **argv) {
         {ADFL_SOURCE_FILE, "/run/adfl/client-a.ccache"},
         {ADFL_SOURCE_FILE, "/run/adfl/client-b.ccache"}
     };
+    if (only_tgt(sources[0].absolute_path) || only_tgt(sources[1].absolute_path)) return 1;
     int failed = 0;
     for (unsigned sealing = 0; sealing < 2 && !failed; sealing++) {
         adfl_native_profile profile = {.host="127.0.0.1", .port=10389, .timeout_seconds=5, .signing=1, .sealing=sealing};
