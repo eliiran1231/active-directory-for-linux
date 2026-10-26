@@ -200,8 +200,23 @@ the static GSSAPI member/entry point and absence of dynamic-loader references. T
 Cyrus/plugin demo exercises initial interaction followed by missing-credential refusal with
 and without external protection; ABI-correct linker traps abort before real GSS acquisition or
 context initiation. This demonstrates the built guard, not successful credential injection or
-authentication. The archive must still be privately linked with OpenLDAP using hidden symbols;
-MIT dependencies, loadable modules and configuration are not yet a controlled closure.
+authentication. The companion bridge recipe performs that private linking with pinned OpenLDAP 2.6.10:
+
+```sh
+python3 src/AdForLinux.DirectoryServices.Native/packaging/build-private-bridge.py \
+  /path/to/cyrus-sasl-2.1.28.tar.gz /path/to/openldap-release-tag.tar.gz \
+  /new/private/bridge-directory
+bash tests/native-session/run-private-bridge-demo.sh /new/private/bridge-directory
+```
+
+Source URLs and exact archive hashes are recorded in the recipes. The bridge build verifies
+Cyrus enabled/TLS disabled, uses explicit static archive paths, hides their symbols and
+requires all link references to resolve. It checks the embedded local GSSAPI entry point and
+rejects a dynamic dependency on host LDAP/Cyrus. The actual built bridge's metadata and both
+ambient/explicit-source refusal paths are tested before credential resolution. This build
+profile cannot represent requested TLS, so it remains ineligible for that policy.
+MIT libraries, loadable modules and configuration are still system dependencies, not yet a
+controlled closure. No manifest or build result overrides the hard authentication gates.
 No `make install`, account, cache or host configuration operation is part of these scripts.
 
 Worker protocol 2 and native ABI 3 add an explicit source recipe. `LdapCredentialSource`

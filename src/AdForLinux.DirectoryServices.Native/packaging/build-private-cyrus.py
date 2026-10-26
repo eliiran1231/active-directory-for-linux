@@ -13,6 +13,7 @@ import re
 import subprocess
 import tarfile
 
+# https://github.com/cyrusimap/cyrus-sasl/releases/download/cyrus-sasl-2.1.28/cyrus-sasl-2.1.28.tar.gz
 ARCHIVE_SHA256 = '7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c'
 SOURCE_SHA256 = '732d311438c588ece922b866aa74d5833734cddedc5a8a1954ef737fa0e6cac0'
 ROOT = Path(__file__).resolve().parents[3]

@@ -9,4 +9,4 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic -I"$source_dir/include" \
   tests/native-session/private-cyrus-demo.c "$source_dir/lib/.libs/libsasl2.a" \
   -Wl,--wrap=gss_acquire_cred -Wl,--wrap=gss_init_sec_context \
   -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lresolv -o "$out/private-cyrus-demo"
-"$out/private-cyrus-demo"
+env -i PATH=/usr/bin:/bin LC_ALL=C "$out/private-cyrus-demo"
