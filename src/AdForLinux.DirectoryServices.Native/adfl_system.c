@@ -172,5 +172,5 @@ const adfl_native_ops adfl_system_ops = {
     adfl_system_search_start, adfl_system_search_poll, adfl_system_result_emit,
     adfl_system_result_free, adfl_system_abandon, adfl_system_monotonic_ms,
     adfl_system_page_start, adfl_system_message_poll, adfl_system_message_emit,
-    adfl_system_page_cookie, adfl_system_modify_start
+    adfl_system_page_cookie, adfl_system_write_start
 };

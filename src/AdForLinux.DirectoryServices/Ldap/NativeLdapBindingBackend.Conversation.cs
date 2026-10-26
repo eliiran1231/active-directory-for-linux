@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 
 internal static partial class NativeLdapBindingBackend
 {
-    internal sealed partial class BoundSession
+    internal sealed partial class BoundSession : ILdapMutationTransport
     {
         // ValueTask does not imply a background thread. These bounded native polls
         // run synchronously; cancellation is checked by C while awaiting a message.
@@ -38,17 +38,24 @@ internal static partial class NativeLdapBindingBackend
         }
 
         public ValueTask<LdapResultEnvelope> ModifyAsync(LdapModifyCommand command, LdapSubmission submission, CancellationToken cancellationToken)
+            => MutateAsync(command, submission, cancellationToken);
+
+        public ValueTask<LdapResultEnvelope> MutateAsync(LdapMutationCommand command, LdapSubmission submission, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(command);
             var budget = new PreparationBudget(command.Timeout);
-            if (command.Controls.Length != 0) throw new PlatformNotSupportedException("Native modify controls are not implemented.");
-            if (command.DistinguishedName.Contains('\0')) throw new ArgumentException("Native LDAP strings cannot contain NUL.");
-            using var changes = new ModificationPointers(command.Changes);
-            var request = new ModifyProfile
+            LdapMutationCommands.RequireCapabilities(this, command);
+            command = LdapMutationCommands.Prepare(command);
+            // Add reuses the ordered binary attribute layout, with ADD operations.
+            // Delete/Rename have no attribute allocation. Empty values stay distinct
+            // from one binary value whose byte length is zero.
+            using var changes = command switch
             {
-                Dn = command.DistinguishedName, Changes = changes.Pointer,
-                ChangeCount = (UIntPtr)command.Changes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds()
+                LdapModifyCommand modify => new ModificationPointers(modify.Changes),
+                LdapAddCommand add => new ModificationPointers(add.Attributes.Select(attribute =>
+                    new LdapAttributeChange(attribute.Name, DirectoryAttributeOperation.Add, attribute.Values)).ToArray()),
+                _ => null
             };
             var builder = new NativeSearchResultBuilder();
             Exception? callbackError = null;
@@ -65,15 +72,45 @@ internal static partial class NativeLdapBindingBackend
                 catch (Exception error) { callbackError = error; return 1; }
             };
             Cancelled check = _ => cancellationToken.IsCancellationRequested || budget.Expired ? 1 : 0;
-            var status = NativeModify(ownedHandle, ref request, check, IntPtr.Zero,
-                beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out var disposition);
+            int status, disposition;
+            switch (command)
+            {
+                case LdapModifyCommand modify:
+                {
+                    var request = new ModifyProfile { Dn = modify.DistinguishedName, Changes = changes!.Pointer,
+                        ChangeCount = (UIntPtr)modify.Changes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                    status = NativeModify(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
+                    break;
+                }
+                case LdapAddCommand add:
+                {
+                    var request = new ModifyProfile { Dn = add.DistinguishedName, Changes = changes!.Pointer,
+                        ChangeCount = (UIntPtr)add.Attributes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                    status = NativeAdd(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
+                    break;
+                }
+                case LdapDeleteCommand delete:
+                {
+                    var request = new DeleteProfile { Dn = delete.DistinguishedName, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                    status = NativeDelete(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
+                    break;
+                }
+                case LdapModifyDnCommand rename:
+                {
+                    var request = new RenameProfile { Dn = rename.DistinguishedName, NewRdn = rename.NewRdn,
+                        NewSuperior = rename.NewSuperior, DeleteOldRdn = rename.DeleteOldRdn ? 1u : 0u, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                    status = NativeRename(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
+                    break;
+                }
+                default: throw new PlatformNotSupportedException("Unknown native mutation.");
+            }
             if (callbackError is not null) ExceptionDispatchInfo.Capture(callbackError).Throw();
             if (status != 0) ThrowWithBudget(status, cancellationToken, budget);
             if (disposition != 2 || !submission.Started)
-                throw new InvalidOperationException("Native modify returned no definitive submission outcome.");
+                throw new InvalidOperationException("Native mutation returned no definitive submission outcome.");
             var result = builder.Complete();
             if (result.Entries.Length != 0 || result.References.Length != 0)
-                throw new InvalidOperationException("Native modify returned a search payload.");
+                throw new InvalidOperationException("Native mutation returned a search payload.");
             return ValueTask.FromResult(new LdapResultEnvelope(result.Code, result.MatchedDn, result.Diagnostic, result.Referrals, result.Controls));
         }
     }
@@ -183,7 +220,6 @@ internal static partial class NativeLdapBindingBackend
         {
             try
             {
-                if (changes.Length == 0) throw new ArgumentException("A modify command must include a change.");
                 var changeSize = Marshal.SizeOf<NativeModification>();
                 var valueSize = Marshal.SizeOf<NativeBytes>();
                 Pointer = Allocate(checked(changes.Length * changeSize));
@@ -227,6 +263,18 @@ internal static partial class NativeLdapBindingBackend
         public UIntPtr ChangeCount;
         public uint TimeoutMilliseconds;
     }
+    [StructLayout(LayoutKind.Sequential)] private struct DeleteProfile
+    {
+        [MarshalAs(UnmanagedType.LPUTF8Str)] public string Dn;
+        public uint TimeoutMilliseconds;
+    }
+    [StructLayout(LayoutKind.Sequential)] private struct RenameProfile
+    {
+        [MarshalAs(UnmanagedType.LPUTF8Str)] public string Dn;
+        [MarshalAs(UnmanagedType.LPUTF8Str)] public string NewRdn;
+        [MarshalAs(UnmanagedType.LPUTF8Str)] public string? NewSuperior;
+        public uint DeleteOldRdn, TimeoutMilliseconds;
+    }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Submitted(IntPtr state);
     [DllImport(Library, EntryPoint = "adfl_cursor_open", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeCursorOpen(SessionHandle session, ref SearchProfile request, uint pageSize, Cancelled cancelled, IntPtr state, out IntPtr cursor);
@@ -239,4 +287,14 @@ internal static partial class NativeLdapBindingBackend
     [DllImport(Library, EntryPoint = "adfl_session_modify", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeModify(SessionHandle session, ref ModifyProfile request, Cancelled cancelled, IntPtr cancelState,
         Submitted submitted, IntPtr submitState, ResultEvent emit, IntPtr emitState, out int disposition);
+    [DllImport(Library, EntryPoint = "adfl_session_add", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeAdd(SessionHandle session, ref ModifyProfile request, Cancelled cancelled, IntPtr cancelState,
+        Submitted submitted, IntPtr submitState, ResultEvent emit, IntPtr emitState, out int disposition);
+    [DllImport(Library, EntryPoint = "adfl_session_delete", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeDelete(SessionHandle session, ref DeleteProfile request, Cancelled cancelled, IntPtr cancelState,
+        Submitted submitted, IntPtr submitState, ResultEvent emit, IntPtr emitState, out int disposition);
+    [DllImport(Library, EntryPoint = "adfl_session_modify_dn", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeRename(SessionHandle session, ref RenameProfile request, Cancelled cancelled, IntPtr cancelState,
+        Submitted submitted, IntPtr submitState, ResultEvent emit, IntPtr emitState, out int disposition);
+
 }

@@ -95,11 +95,30 @@ typedef struct {
     size_t change_count;
     unsigned timeout_milliseconds;
 } adfl_modify_request;
+/* New writes carry no request controls. Values are borrowed for the call. */
+typedef struct {
+    const char *dn;
+    const adfl_modification *attributes; /* operation must be 0 (add) */
+    size_t attribute_count;
+    unsigned timeout_milliseconds;
+} adfl_add_request;
+typedef struct { const char *dn; unsigned timeout_milliseconds; } adfl_delete_request;
+typedef struct {
+    const char *dn, *new_rdn, *new_superior; /* NULL superior preserves current parent */
+    unsigned delete_old_rdn, timeout_milliseconds;
+} adfl_modify_dn_request;
 enum adfl_submission { ADFL_NOT_SENT = 0, ADFL_OUTCOME_UNKNOWN = 1, ADFL_COMPLETED = 2 };
 /* Invoked synchronously immediately before native dispatch, after allocation.
  * Nonzero refuses dispatch. Must not throw across the unmanaged boundary. */
 typedef int (*adfl_submitted_fn)(void *);
 ADFL_API int adfl_session_modify(adfl_bound_session *, const adfl_modify_request *,
+    adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
+
+ADFL_API int adfl_session_add(adfl_bound_session *, const adfl_add_request *,
+    adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
+ADFL_API int adfl_session_delete(adfl_bound_session *, const adfl_delete_request *,
+    adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
+ADFL_API int adfl_session_modify_dn(adfl_bound_session *, const adfl_modify_dn_request *,
     adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
 
 /* Reads library version metadata only; no credential/cache/network operations. */

@@ -106,6 +106,46 @@ if (pool.Snapshot.Total != 0 || count(7) != bufferedSelected + 3 ||
     count(4) != bufferedPages + 3 || count(3) != bufferedResults + 12)
     throw new InvalidOperationException($"Public buffered resources unbalanced: resolves={count(7)-bufferedSelected}, closes={count(1)-bufferedCloses}, frees={count(2)-bufferedFrees}, pages={count(4)-bufferedPages}, results={count(3)-bufferedResults}.");
 Console.WriteLine("PASS: public buffered DirectorySearcher FindAll/FindOne -> actual native cursor; schema fallback after cursor close; operation resources balanced.");
+// All generic mutation ABI wrappers share one receipt/result coordinator.
+var genericWrites = count(5); var genericReceipts = count(6);
+var genericCloses = count(1); var genericFrees = count(2); var genericMessages = count(3);
+LdapMutationCommand[] genericCommands =
+[
+    new LdapAddCommand("CN=new", [new("description", [Array.Empty<byte>()])], TimeSpan.FromSeconds(5), []),
+    new LdapDeleteCommand("CN=old", TimeSpan.FromSeconds(5), []),
+    new LdapModifyDnCommand("CN=old", "CN=renamed", null, true, TimeSpan.FromSeconds(5), []),
+    new LdapModifyDnCommand("CN=old", "CN=renamed", "OU=other", true, TimeSpan.FromSeconds(5), []),
+    new LdapAddCommand("CN=new", [], TimeSpan.FromSeconds(5), []),
+    new LdapModifyCommand("CN=old", [], TimeSpan.FromSeconds(5), [])
+];
+foreach (var command in genericCommands)
+{
+    var write = await LdapConversation.Mutate(AcquireConversation, command);
+    if (write.Disposition != LdapWriteDisposition.Completed || write.Result is not { Code: System.DirectoryServices.Protocols.ResultCode.UnwillingToPerform } envelope ||
+        envelope.MatchedDn != "DC=example" || envelope.Diagnostic != "synthetic complete result" || envelope.Controls.Length != 1)
+        throw new InvalidOperationException("Generic mutation lost its definitive server result.");
+}
+void ExpectRecordingRejection(Action operation)
+{
+    try { operation(); }
+    catch (DirectoryServicesCOMException error) when (error.ExtendedError == (int)System.DirectoryServices.Protocols.ResultCode.UnwillingToPerform) { return; }
+    throw new InvalidOperationException("Public mutation failed to preserve the definitive LDAP rejection.");
+}
+using (var child = entry.Children.Add("CN=new", "user"))
+{
+    child.OperationSessionFactory = Acquire; child.Options.Referral = ReferralChasingOption.None;
+    child.Properties["objectClass"].Clear(); child.Properties["description"].Add(Array.Empty<byte>());
+    ExpectRecordingRejection(child.CommitChanges);
+    ExpectRecordingRejection(() => entry.Children.Remove(child));
+}
+using (var destination = new DirectoryEntry("LDAP://directory.invalid/OU=other", null, null,
+    AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing))
+    ExpectRecordingRejection(() => entry.MoveTo(destination, "CN=renamed"));
+if (count(5) != genericWrites + 9 || count(6) != genericReceipts + 9 || count(1) != genericCloses + 9 ||
+    count(2) != genericFrees + 9 || count(3) != genericMessages + 9 || pool.Snapshot.Total != 0)
+    throw new InvalidOperationException("Generic mutation dispatch/receipt/resource counters are unbalanced.");
+Console.WriteLine("PASS: Add/Delete/ModifyDN/Modify share native outcomes; public CommitChanges/Children.Remove/MoveTo preserve definitive rejections.");
+Console.WriteLine("Zero-length binary values, empty attribute/change lists, nullable rename parent; recording native dependencies only.");
 // Resolver registration is process-lifetime; do not unload its library while
 // SafeHandle finalizers or the runtime may retain function pointers.
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Count(int kind);

@@ -18,30 +18,33 @@ internal static class LdapMutationDispatcher
         var invoked = false;
         try
         {
-            if (request is not ModifyRequest modify || transport is not ILdapConversationTransport conversation ||
-                (transport.Capabilities & LdapTransportCapabilities.Modify) == 0)
-                throw new PlatformNotSupportedException("This transport cannot represent the mutation; no request was sent.");
             if (request.RequestId is not null || request.Controls.Cast<DirectoryControl>().Any(c => !c.ServerSide))
                 throw new PlatformNotSupportedException("The native mutation cannot represent the request metadata or client-side controls; no request was sent.");
-            if (request.Controls.Count != 0 && (transport.Capabilities & LdapTransportCapabilities.ModifyControls) == 0)
-                throw new PlatformNotSupportedException("This transport cannot represent the mutation controls; no request was sent.");
-            static string Text(string value) => value is null || value.Contains('\0')
-                ? throw new ArgumentException("LDAP request strings cannot be null or contain NUL.") : value;
-            var changes = modify.Modifications.Cast<DirectoryAttributeModification>().Select(change =>
+            static byte[][] Values(DirectoryAttribute attribute) => attribute.GetValues(typeof(byte[])).Cast<byte[]>().Select(bytes => bytes.ToArray()).ToArray();
+            var controlSources = request.Controls.Cast<DirectoryControl>().ToArray();
+            // Describe the complete control policy before invoking any encoder.
+            var controls = controlSources.Select(control =>
+                new LdapTransportControl(control.Type, [], control.IsCritical)).ToArray();
+            var timeout = transport.Timeout;
+            LdapMutationCommand command = request switch
             {
-                if (change.Operation is < DirectoryAttributeOperation.Add or > DirectoryAttributeOperation.Replace)
-                    throw new ArgumentException("Invalid modification operation.");
-                return new LdapAttributeChange(Text(change.Name), change.Operation,
-                    change.GetValues(typeof(byte[])).Cast<byte[]>().Select(bytes => bytes.ToArray()).ToArray());
-            }).ToArray();
-            if (changes.Length == 0) throw new ArgumentException("A modify request must contain a change.");
-            var controls = request.Controls.Cast<DirectoryControl>().Select(control =>
-                new LdapTransportControl(Text(control.Type), control.GetValue().ToArray(), control.IsCritical)).ToArray();
-            var remaining = transport.Timeout - System.Diagnostics.Stopwatch.GetElapsedTime(started);
+                ModifyRequest modify => new LdapModifyCommand(modify.DistinguishedName,
+                    modify.Modifications.Cast<DirectoryAttributeModification>().Select(change => new LdapAttributeChange(change.Name, change.Operation, Values(change))).ToArray(), timeout, controls),
+                AddRequest add => new LdapAddCommand(add.DistinguishedName,
+                    add.Attributes.Cast<DirectoryAttribute>().Select(attribute => new LdapAttributeValues(attribute.Name, Values(attribute))).ToArray(), timeout, controls),
+                DeleteRequest delete => new LdapDeleteCommand(delete.DistinguishedName, timeout, controls),
+                ModifyDNRequest rename => new LdapModifyDnCommand(rename.DistinguishedName, rename.NewName, rename.NewParentDistinguishedName, rename.DeleteOldRdn, timeout, controls),
+                _ => throw new PlatformNotSupportedException("This transport cannot represent the mutation; no request was sent.")
+            };
+            LdapMutationCommands.RequireCapabilities(transport, command);
+            command = command with { Controls = controlSources.Select(control =>
+                new LdapTransportControl(control.Type, control.GetValue(), control.IsCritical)).ToArray() };
+            command = LdapMutationCommands.Prepare(command);
+            var remaining = timeout - System.Diagnostics.Stopwatch.GetElapsedTime(started);
             if (remaining <= TimeSpan.Zero) throw new TimeoutException("Mutation preparation exhausted the operation budget.");
-            var command = new LdapModifyCommand(Text(modify.DistinguishedName), changes, remaining, controls);
+            command = command with { Timeout = remaining };
             invoked = true;
-            var result = conversation.ModifyAsync(command, submission, CancellationToken.None).GetAwaiter().GetResult();
+            var result = LdapMutationCommands.SendAsync(transport, command, submission, CancellationToken.None).GetAwaiter().GetResult();
             if (!submission.Started || result is null) throw new InvalidOperationException("Invalid mutation completion contract.");
             return new(LdapWriteDisposition.Completed, result, null);
         }

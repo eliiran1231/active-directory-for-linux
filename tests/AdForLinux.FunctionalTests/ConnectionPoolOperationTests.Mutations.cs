@@ -60,6 +60,29 @@ public partial class ConnectionPoolOperationTests
         public void Dispose() { Entry.Dispose(); Pool.Dispose(); }
     }
 
+    private sealed class CountingControl() : DirectoryControl("1.2.3", [], true, true)
+    {
+        internal int Encodings;
+        public override byte[] GetValue() { Encodings++; throw new InvalidOperationException("Unsupported control was encoded."); }
+    }
+
+    [Fact]
+    public void Unsupported_mutation_policy_is_rejected_before_control_encoding()
+    {
+        using var fixture = new MutationFixture();
+        using var lease = fixture.Entry.AcquireConnection();
+        foreach (DirectoryRequest request in new DirectoryRequest[] { new ModifyRequest("CN=x"), new AddRequest("CN=x"), new DeleteRequest("CN=x") })
+        {
+            var control = new CountingControl();
+            request.Controls.Add(control);
+            var outcome = lease.SendWrite(request);
+            Assert.Equal(LdapWriteDisposition.NotSent, outcome.Disposition);
+            Assert.IsType<PlatformNotSupportedException>(outcome.Error);
+            Assert.Equal(0, control.Encodings);
+        }
+        Assert.Equal(0, fixture.State.Sends);
+    }
+
     [Fact]
     public void Public_property_refresh_and_commit_use_neutral_requests_without_read_override()
     {

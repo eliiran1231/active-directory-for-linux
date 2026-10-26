@@ -4,7 +4,7 @@ using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 [Flags]
-internal enum LdapTransportCapabilities { None = 0, Search = 1, SearchControls = 2, ProtocolsConnection = 4, StreamingSearch = 8, PagedSearch = 16, Modify = 32, ModifyControls = 64 }
+internal enum LdapTransportCapabilities { None = 0, Search = 1, SearchControls = 2, ProtocolsConnection = 4, StreamingSearch = 8, PagedSearch = 16, Modify = 32, ModifyControls = 64, Add = 128, Delete = 256, ModifyDn = 512 }
 // Request controls are server-side controls; response controls preserve their wire payload.
 internal sealed record LdapTransportControl(string Oid, byte[] Value, bool Critical);
 internal sealed record LdapSearchCommand(string BaseDn, string Filter, ProtocolScope Scope,

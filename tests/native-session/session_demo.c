@@ -16,7 +16,7 @@ struct fixture {
     atomic_int identity, expected_identity, cancelled, fail_bind_at;
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
-    int late_result, slow_conversion, root_reply;
+    int late_result, slow_conversion, root_reply, wrong_write_tag;
     int bad_cookie, unexpected_message, modify_send_failure, slow_prepare, reject_submit;
     atomic_int page_sends, modify_sends, submissions, submission_receipts;
     int selection_result, acquire_failure, create_failure, install_failure, probe_rejected, material_failure, untrusted_plugin;
@@ -181,8 +181,9 @@ static int message_poll(void *state, LDAP *value, int id, unsigned timeout, void
     if (f->disconnect_on_poll) { ld->guard->lc_del(value, (Sockbuf *)ld, ld->guard); return -1; }
     if (f->pending_forever) return 0;
     const int types[] = {LDAP_RES_SEARCH_ENTRY, LDAP_RES_SEARCH_REFERENCE, LDAP_RES_SEARCH_RESULT};
-    int type = ld->modify ? (int)LDAP_RES_MODIFY : types[ld->stream_index++];
+    int type = ld->modify ? ld->modify : types[ld->stream_index++];
     if (f->unexpected_message) type = LDAP_RES_INTERMEDIATE;
+    if (f->wrong_write_tag) type = LDAP_RES_SEARCH_RESULT;
     struct fake_message *m = malloc(sizeof(*m)); assert(m); *m = (struct fake_message){type, ld->page};
     if (f->late_result) { atomic_fetch_add(&f->clock, 10000); atomic_store(&f->cancelled, 1); }
     *message = m; atomic_fetch_add(&f->results, 1); return type;
@@ -202,8 +203,11 @@ static int message_emit(void *state, LDAP *ld, void *message, int type, adfl_res
                 emit(out, ADFL_REFERENCE_URL, "ldap://reference.invalid/", NULL, 0, 0) ||
                 emit(out, ADFL_REFERENCE_END, NULL, NULL, 0, 0);
         case LDAP_RES_SEARCH_RESULT:
+        case LDAP_RES_ADD:
+        case LDAP_RES_DELETE:
+        case LDAP_RES_MODDN:
         case LDAP_RES_MODIFY:
-            return emit(out, ADFL_RESULT_CODE, NULL, NULL, 0, type == LDAP_RES_MODIFY ? LDAP_UNWILLING_TO_PERFORM : LDAP_SUCCESS) ||
+            return emit(out, ADFL_RESULT_CODE, NULL, NULL, 0, type != LDAP_RES_SEARCH_RESULT ? LDAP_UNWILLING_TO_PERFORM : LDAP_SUCCESS) ||
                 emit(out, ADFL_MATCHED_DN, "DC=example", NULL, 0, 0) ||
                 emit(out, ADFL_DIAGNOSTIC, "synthetic complete result", NULL, 0, 0) ||
                 emit(out, ADFL_REFERRAL_URL, "ldap://referral.invalid/", NULL, 0, 0) ||
@@ -221,24 +225,36 @@ static int page_cookie(void *state, LDAP *ld, void *message, int *code, adfl_byt
     }
     return 0;
 }
-static int modify_start(void *state, LDAP *value, const adfl_modify_request *r,
+static int write_start(void *state, LDAP *value, const adfl_write_request *r,
     adfl_submitted_fn submitted, void *submit_state, int *disposition, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
+    if (r->terminal_type == LDAP_RES_MODIFY) {
+    if (r->change_count) {
     assert(r->change_count == 2 && r->changes[0].value_count == 1 && r->changes[0].values[0].length == 0);
     assert(r->changes[1].value_count == 0); /* one empty value differs from deleting the attribute */
+    }
+    } else if (r->terminal_type == LDAP_RES_ADD) {
+        if (r->change_count) {
+        assert(r->change_count == 1 && r->changes[0].operation == 0 && r->changes[0].value_count == 1);
+        assert(!strcmp(r->changes[0].attribute, "description") && r->changes[0].values[0].length == 0);
+        }
+    } else if (r->terminal_type == LDAP_RES_MODDN) {
+        assert(!strcmp(r->new_rdn, "CN=renamed") && r->delete_old_rdn == 1);
+        assert(!r->new_superior || !strcmp(r->new_superior, "OU=other"));
+    } else assert(r->terminal_type == LDAP_RES_DELETE && !r->change_count);
     if (f->slow_prepare) atomic_fetch_add(&f->clock, 10000);
     if (submitted(submit_state)) return LDAP_USER_CANCELLED;
     atomic_fetch_add(&f->submission_receipts, 1);
     *disposition = ADFL_OUTCOME_UNKNOWN;
     atomic_fetch_add(&f->modify_sends, 1); atomic_fetch_add(&f->wire_sent, 1);
     if (f->modify_send_failure) return LDAP_SERVER_DOWN;
-    ld->modify = 1; *id = 17; return LDAP_SUCCESS;
+    ld->modify = r->terminal_type; *id = 17; return LDAP_SUCCESS;
 }
 static const adfl_native_ops fake_ops = {
     probe, material_new, select_target, select_default, acquire_selected, credential, material_free,
     create_session, set_credential, bind_session, ldap_close, install_guard,
     search_start, search_poll, result_emit, result_free, abandon, clock_ms,
-    page_start, message_poll, message_emit, page_cookie, modify_start
+    page_start, message_poll, message_emit, page_cookie, write_start
 };
 static void balanced(struct fixture *f) {
     assert(atomic_load(&f->created) == atomic_load(&f->freed));
@@ -450,8 +466,50 @@ static void modify_outcomes(void) {
         adfl_session_close(&s); balanced(&f);
     }
 }
+static void generic_write_outcomes(void) {
+    adfl_bytes empty = {NULL, 0};
+    adfl_modification attribute = {0, "description", &empty, 1};
+    adfl_add_request add = {"CN=example", &attribute, 1, 1000};
+    adfl_delete_request del = {"CN=example", 1000};
+    adfl_modify_dn_request rename = {"CN=example", "CN=renamed", NULL, 1, 1000};
+    for (int operation = 0; operation < 3; operation++) for (int scenario = 0; scenario < 7; scenario++) {
+        struct fixture f = {0}; adfl_bound_session *s = NULL; int disposition = -1, code = -1;
+        assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
+        f.reject_submit = scenario == 1; f.modify_send_failure = scenario == 2;
+        f.pending_forever = scenario == 3; f.slow_prepare = scenario == 4;
+        f.wrong_write_tag = scenario == 5; f.late_result = scenario == 0;
+        rename.new_superior = scenario == 6 ? "OU=other" : NULL;
+        int rc;
+        if (operation == 0) rc = adfl_session_add(s, &add, cancelled, &f, submitted, &f, accept_message, &code, &disposition);
+        else if (operation == 1) rc = adfl_session_delete(s, &del, cancelled, &f, submitted, &f, accept_message, &code, &disposition);
+        else rc = adfl_session_modify_dn(s, &rename, cancelled, &f, submitted, &f, accept_message, &code, &disposition);
+        int completed = scenario == 0 || scenario == 6;
+        int not_sent = scenario == 1 || scenario == 4;
+        assert(disposition == (completed ? ADFL_COMPLETED : not_sent ? ADFL_NOT_SENT : ADFL_OUTCOME_UNKNOWN));
+        assert(completed ? rc == ADFL_OK && code == LDAP_UNWILLING_TO_PERFORM : rc != ADFL_OK);
+        assert(atomic_load(&f.modify_sends) == !not_sent);
+        assert(atomic_load(&f.submissions) == (scenario != 4));
+        assert(atomic_load(&s->retired) == (!completed && !not_sent));
+        adfl_session_close(&s); balanced(&f);
+    }
+    struct fixture f = {0}; adfl_bound_session *s = NULL; int disposition = -1, code = -1;
+    assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
+    adfl_add_request empty_add = {"CN=example", NULL, 0, 1000};
+    assert(adfl_session_add(s, &empty_add, NULL, NULL, submitted, &f, accept_message, &code, &disposition) == ADFL_OK);
+    assert(disposition == ADFL_COMPLETED && code == LDAP_UNWILLING_TO_PERFORM);
+    adfl_modify_request empty_modify = {"CN=example", NULL, 0, 1000};
+    assert(adfl_session_modify(s, &empty_modify, NULL, NULL, submitted, &f, accept_message, &code, &disposition) == ADFL_OK);
+    assert(disposition == ADFL_COMPLETED && code == LDAP_UNWILLING_TO_PERFORM);
+    attribute.operation = 2;
+    assert(adfl_session_add(s, &add, NULL, NULL, submitted, &f, accept_message, &code, &disposition) == ADFL_INVALID);
+    assert(disposition == ADFL_NOT_SENT);
+    rename.delete_old_rdn = 2;
+    assert(adfl_session_modify_dn(s, &rename, NULL, NULL, submitted, &f, accept_message, &code, &disposition) == ADFL_INVALID);
+    assert(disposition == ADFL_NOT_SENT && atomic_load(&f.submissions) == 2 && atomic_load(&f.modify_sends) == 2);
+    adfl_session_close(&s); balanced(&f);
+}
 int main(void) {
-    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes();
+    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes(); generic_write_outcomes();
     puts("PASS: actual adapter orchestration; recording native dependencies only; no credentials or network.");
     return 0;
 }

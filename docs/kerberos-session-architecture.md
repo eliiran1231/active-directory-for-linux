@@ -229,10 +229,13 @@ response, including an error result, is `Completed` with matched DN, diagnostics
 controls preserved. Cancellation racing an accepted response cannot erase that known outcome.
 The native adapter builds `LDAPMod` arrays preserving binary values, an empty value list and
 a single zero-length value as distinct inputs. A synchronous callback marks submission after
-native allocation immediately before `ldap_modify_ext`. `LDAP_RES_MODIFY` retains the full
-response envelope, including negative LDAP results. The marker records possible submission,
-not proof of delivery. Arbitrary modify controls and the Protocols conversation adapter remain
-unimplemented; public mutation routing has not changed.
+native allocation immediately before the corresponding public asynchronous libldap write.
+Add, Modify, Delete and ModifyDN use one coordinator with operation-specific terminal tags;
+its full response envelope includes negative LDAP results. Empty Add/Modify lists retain
+OpenLDAP's supported behavior. A zero-length binary value uses a nonnull pointer, as required
+by the Add encoder. The marker records possible submission, not proof of delivery.
+Arbitrary write controls and the Protocols conversation adapter remain unimplemented;
+public mutation requests route through the central lease dispatcher.
 
 Managed preparation and native conversion consume the supplied budget. Bounded polling and
 pre-send expiry checks are implemented, but `LDAP_OPT_NETWORK_TIMEOUT` only bounds connection
@@ -335,9 +338,10 @@ existing backend; this bridge does not invent SSPI credential injection.
 
 Mutation dispatch now borrows the same entry lease and selects by complete request
 capabilities. Existing Protocols mutations keep their original requests and error
-translation. Neutral transports accept ordered binary Modify requests only when
-their capabilities cover every control; Add, Delete and ModifyDN remain unsupported
-there. Commit preserves dirty intent after an unsent refusal or definitive LDAP
+translation. Neutral transports support ordered binary Add/Modify, Delete, and ModifyDN
+through an optional unified mutation interface; existing Modify-only adapters remain valid.
+Nullable rename parents preserve the difference between retaining the parent and naming the
+root. Unsupported control policies fail before encoding or invoking a backend. Commit preserves dirty intent after an unsent refusal or definitive LDAP
 rejection, quarantines an indeterminate submission for explicit reconciliation, and
 acknowledges only successful responses followed by checked local publication. No
 mutation is retried or switched to another backend after dispatch. Native binding
@@ -357,3 +361,9 @@ search materialization, including complete-read checks needed for write reconcil
 Requested security controls are never dropped: current native capabilities refuse default
 security-mask reads before encoding or sending them. Targeted property refresh and modify
 can be exercised together through recording transport without a property-read override.
+
+Generic-write source checks: [OpenLDAP Add](https://raw.githubusercontent.com/openldap/openldap/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/add.c),
+[Modify](https://raw.githubusercontent.com/openldap/openldap/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/modify.c),
+and [RFC 4511](https://www.rfc-editor.org/rfc/rfc4511.html#section-4.7). Recording demonstrations
+exercise the actual ABI and public mutation dispatch with deterministic negative responses;
+they do not execute these writes against a directory.

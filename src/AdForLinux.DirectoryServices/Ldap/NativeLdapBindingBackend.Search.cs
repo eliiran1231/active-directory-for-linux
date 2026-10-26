@@ -10,7 +10,8 @@ internal static partial class NativeLdapBindingBackend
     {
         private readonly SessionHandle ownedHandle = handle;
         public LdapTransportCapabilities Capabilities => LdapTransportCapabilities.Search |
-            LdapTransportCapabilities.StreamingSearch | LdapTransportCapabilities.PagedSearch | LdapTransportCapabilities.Modify;
+            LdapTransportCapabilities.StreamingSearch | LdapTransportCapabilities.PagedSearch | LdapTransportCapabilities.Modify |
+            LdapTransportCapabilities.Add | LdapTransportCapabilities.Delete | LdapTransportCapabilities.ModifyDn;
         public TimeSpan Timeout => timeout;
         public string? ConnectedHost => null; // a requested alias is not an observed DC
         public LdapSearchResult Search(LdapSearchCommand command, CancellationToken cancellationToken)

@@ -144,6 +144,9 @@ int adfl_system_message_emit(void *unused, LDAP *ld, void *message, int kind, ad
         case LDAP_RES_SEARCH_ENTRY: return emit_entry(ld, message, emit, state);
         case LDAP_RES_SEARCH_REFERENCE: return emit_reference(ld, message, emit, state);
         case LDAP_RES_SEARCH_RESULT:
+        case LDAP_RES_ADD:
+        case LDAP_RES_DELETE:
+        case LDAP_RES_MODDN:
         case LDAP_RES_MODIFY: return adfl_system_result_emit(unused, ld, message, emit, state);
         default: return 1;
     }
@@ -178,7 +181,7 @@ done:
     if (controls) ldap_controls_free(controls);
     return rc;
 }
-int adfl_system_modify_start(void *unused, LDAP *ld, const adfl_modify_request *r,
+int adfl_system_write_start(void *unused, LDAP *ld, const adfl_write_request *r,
                              adfl_submitted_fn submitted, void *submit_state, int *disposition, int *message_id) {
     (void)unused;
     /* This bounds connection setup only, not a proven hard socket-write deadline. */
@@ -197,14 +200,24 @@ int adfl_system_modify_start(void *unused, LDAP *ld, const adfl_modify_request *
         for (size_t j = 0; j < r->changes[i].value_count; j++) {
             struct berval *value = malloc(sizeof(*value));
             if (!value) goto done;
-            *value = (struct berval){r->changes[i].values[j].length, (char *)r->changes[i].values[j].data};
+            /* OpenLDAP rejects NULL bv_val even for an empty binary value. */
+            static char empty_value;
+            *value = (struct berval){r->changes[i].values[j].length,
+                r->changes[i].values[j].length ? (char *)r->changes[i].values[j].data : &empty_value};
             /* A zero-length value still has a descriptor, distinct from no values. */
             mods[i]->mod_bvalues[j] = value;
         }
     }
     if (submitted(submit_state)) { rc = LDAP_USER_CANCELLED; goto done; }
     *disposition = ADFL_OUTCOME_UNKNOWN;
-    rc = ldap_modify_ext(ld, r->dn, mods, NULL, NULL, message_id);
+    switch (r->terminal_type) {
+        case LDAP_RES_MODIFY: rc = ldap_modify_ext(ld, r->dn, mods, NULL, NULL, message_id); break;
+        case LDAP_RES_ADD: rc = ldap_add_ext(ld, r->dn, mods, NULL, NULL, message_id); break;
+        case LDAP_RES_DELETE: rc = ldap_delete_ext(ld, r->dn, NULL, NULL, message_id); break;
+        case LDAP_RES_MODDN: rc = ldap_rename(ld, r->dn, r->new_rdn, r->new_superior,
+            (int)r->delete_old_rdn, NULL, NULL, message_id); break;
+        default: rc = LDAP_PARAM_ERROR; break;
+    }
 done:
     for (size_t i = 0; i < r->change_count && mods[i]; i++) {
         if (mods[i]->mod_bvalues) {

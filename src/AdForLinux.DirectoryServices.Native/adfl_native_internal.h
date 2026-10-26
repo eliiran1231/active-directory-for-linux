@@ -8,6 +8,17 @@
 /* Native API dependencies injected into the SAME orchestration in offline tests.
  * Immutable table/state must outlive all authorities and sessions using it.
  * System implementations are private; this header is not the public bridge ABI. */
+/* Normalized write recipe; terminal_type also selects the async libldap API. */
+typedef struct {
+    const char *dn;
+    const adfl_modification *changes;
+    size_t change_count;
+    unsigned timeout_milliseconds;
+    int terminal_type;
+    const char *new_rdn, *new_superior;
+    unsigned delete_old_rdn;
+} adfl_write_request;
+
 typedef struct adfl_native_ops {
     int (*probe)(void *, adfl_native_capabilities *);
     int (*material_new)(void *, void **);
@@ -31,7 +42,7 @@ typedef struct adfl_native_ops {
     int (*message_poll)(void *, LDAP *, int, unsigned, void **); /* native message type, 0 timeout, -1 error */
     int (*message_emit)(void *, LDAP *, void *, int, adfl_result_fn, void *);
     int (*page_cookie)(void *, LDAP *, void *, int *, adfl_bytes *); /* malloc-owned output */
-    int (*modify_start)(void *, LDAP *, const adfl_modify_request *, adfl_submitted_fn, void *, int *, int *);
+    int (*write_start)(void *, LDAP *, const adfl_write_request *, adfl_submitted_fn, void *, int *, int *);
 
 } adfl_native_ops;
 struct adfl_authority {
@@ -61,7 +72,7 @@ int adfl_system_page_start(void *, LDAP *, const adfl_search_request *, unsigned
 int adfl_system_message_poll(void *, LDAP *, int, unsigned, void **);
 int adfl_system_message_emit(void *, LDAP *, void *, int, adfl_result_fn, void *);
 int adfl_system_page_cookie(void *, LDAP *, void *, int *, adfl_bytes *);
-int adfl_system_modify_start(void *, LDAP *, const adfl_modify_request *, adfl_submitted_fn, void *, int *, int *);
+int adfl_system_write_start(void *, LDAP *, const adfl_write_request *, adfl_submitted_fn, void *, int *, int *);
 extern const adfl_native_ops adfl_system_ops;
 int adfl_resolve_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_authority **);
 int adfl_open_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);

@@ -161,9 +161,9 @@ int adfl_cursor_next_page(adfl_search_cursor *c, unsigned budget, adfl_cancelled
     return cursor_send(c, budget, cancel, state);
 }
 
-struct modify_emit { adfl_result_fn emit; void *state; int code, seen; };
-static int modify_emit(void *state, int event, const char *name, const void *bytes, size_t length, int number) {
-    struct modify_emit *e = state;
+struct write_emit { adfl_result_fn emit; void *state; int code, seen; };
+static int write_emit(void *state, int event, const char *name, const void *bytes, size_t length, int number) {
+    struct write_emit *e = state;
     if (event == ADFL_RESULT_CODE) { e->code = number; e->seen++; }
     /* A received terminal write outcome is known even if cancellation arrives
      * while decoding. Do not replace that outcome with a late timeout/cancel. */
@@ -183,20 +183,24 @@ static int submit_checked(void *state) {
     if (!s->refused && s->submitted(s->submit_state)) s->refused = ADFL_RESULT_REJECTED;
     return s->refused;
 }
-int adfl_session_modify(adfl_bound_session *s, const adfl_modify_request *r,
+static int session_write(adfl_bound_session *s, const adfl_write_request *r,
     adfl_cancelled_fn cancel, void *cancel_state, adfl_submitted_fn submitted, void *submit_state,
     adfl_result_fn emit, void *emit_state, int *disposition) {
     if (!disposition) return ADFL_INVALID;
     *disposition = ADFL_NOT_SENT;
-    if (!s || !r || !r->dn || !r->changes || !r->change_count || !submitted || !emit ||
+    if (!s || !r || !r->dn || !submitted || !emit ||
         !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 ||
         r->change_count > SIZE_MAX / sizeof(LDAPMod *) - 1) return ADFL_INVALID;
     const adfl_native_ops *ops = s->authority->ops; void *state = s->authority->state;
     uint64_t start = ops->monotonic_ms(state);
     if (start == UINT64_MAX) return ADFL_REQUEST_FAILED;
+    if (r->change_count && !r->changes) return ADFL_INVALID;
+    if (r->terminal_type == LDAP_RES_MODDN &&
+        (!r->new_rdn || !r->new_rdn[0] || r->delete_old_rdn > 1)) return ADFL_INVALID;
     for (size_t i = 0; i < r->change_count; i++) {
         const adfl_modification *m = &r->changes[i];
         if (!m->attribute || !m->attribute[0] || m->operation < 0 || m->operation > 2 ||
+            (r->terminal_type == LDAP_RES_ADD && (m->operation != 0 || !m->value_count)) ||
             (m->value_count && !m->values) || m->value_count > SIZE_MAX / sizeof(struct berval *) - 1) return ADFL_INVALID;
         for (size_t j = 0; j < m->value_count; j++) if (m->values[j].length && !m->values[j].data) return ADFL_INVALID;
     }
@@ -205,7 +209,7 @@ int adfl_session_modify(adfl_bound_session *s, const adfl_modify_request *r,
     if (!atomic_compare_exchange_strong(&s->busy, &idle, 1)) return ADFL_BUSY;
     int id = -1, pending = 0; void *message = NULL;
     struct submission_check submission = {s, start, r->timeout_milliseconds, cancel, cancel_state, submitted, submit_state, 0, 0};
-    if (ops->modify_start(state, s->ldap, r, submit_checked, &submission, disposition, &id) != LDAP_SUCCESS) {
+    if (ops->write_start(state, s->ldap, r, submit_checked, &submission, disposition, &id) != LDAP_SUCCESS) {
         rc = submission.refused ? submission.refused : ADFL_REQUEST_FAILED; goto done;
     }
     if (submission.invoked != 1 || submission.refused || *disposition != ADFL_OUTCOME_UNKNOWN) { rc = ADFL_REQUEST_FAILED; goto done; }
@@ -218,10 +222,10 @@ int adfl_session_modify(adfl_bound_session *s, const adfl_modify_request *r,
         int type = ops->message_poll(state, s->ldap, id, left < 50 ? left : 50, &message);
         if (type < 0) { rc = ADFL_REQUEST_FAILED; break; }
         if (!type) { if (message) { ops->result_free(state, message); message = NULL; } continue; }
-        if (type != LDAP_RES_MODIFY || !message) { rc = ADFL_RESULT_REJECTED; break; }
+        if (type != r->terminal_type || !message) { rc = ADFL_RESULT_REJECTED; break; }
         pending = 0;
-        struct modify_emit e = {emit, emit_state, LDAP_OTHER, 0};
-        if (ops->message_emit(state, s->ldap, message, type, modify_emit, &e) || e.seen != 1) { rc = ADFL_RESULT_REJECTED; break; }
+        struct write_emit e = {emit, emit_state, LDAP_OTHER, 0};
+        if (ops->message_emit(state, s->ldap, message, type, write_emit, &e) || e.seen != 1) { rc = ADFL_RESULT_REJECTED; break; }
         *disposition = ADFL_COMPLETED;
         if (e.code == LDAP_PROTOCOL_ERROR || e.code == LDAP_UNAVAILABLE) atomic_store(&s->retired, 1);
         break;
@@ -234,3 +238,29 @@ done:
     }
     atomic_store(&s->busy, 0); return rc;
 }
+
+/* Typed ABI wrappers normalize only; all dispatch/outcome policy lives above. */
+#define WRITE_ARGUMENTS adfl_cancelled_fn cancel, void *cancel_state, adfl_submitted_fn submitted, void *submit_state, adfl_result_fn emit, void *emit_state, int *disposition
+#define WRITE_FORWARD cancel, cancel_state, submitted, submit_state, emit, emit_state, disposition
+int adfl_session_modify(adfl_bound_session *s, const adfl_modify_request *r, WRITE_ARGUMENTS) {
+    adfl_write_request w = {0};
+    if (r) w = (adfl_write_request){r->dn, r->changes, r->change_count, r->timeout_milliseconds, LDAP_RES_MODIFY, NULL, NULL, 0};
+    return session_write(s, r ? &w : NULL, WRITE_FORWARD);
+}
+int adfl_session_add(adfl_bound_session *s, const adfl_add_request *r, WRITE_ARGUMENTS) {
+    adfl_write_request w = {0};
+    if (r) w = (adfl_write_request){r->dn, r->attributes, r->attribute_count, r->timeout_milliseconds, LDAP_RES_ADD, NULL, NULL, 0};
+    return session_write(s, r ? &w : NULL, WRITE_FORWARD);
+}
+int adfl_session_delete(adfl_bound_session *s, const adfl_delete_request *r, WRITE_ARGUMENTS) {
+    adfl_write_request w = {0};
+    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_DELETE, NULL, NULL, 0};
+    return session_write(s, r ? &w : NULL, WRITE_FORWARD);
+}
+int adfl_session_modify_dn(adfl_bound_session *s, const adfl_modify_dn_request *r, WRITE_ARGUMENTS) {
+    adfl_write_request w = {0};
+    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_MODDN, r->new_rdn, r->new_superior, r->delete_old_rdn};
+    return session_write(s, r ? &w : NULL, WRITE_FORWARD);
+}
+#undef WRITE_FORWARD
+#undef WRITE_ARGUMENTS

@@ -24,7 +24,7 @@ internal interface ILdapSearchCursor : IAsyncDisposable
 }
 internal sealed record LdapAttributeChange(string Name, DirectoryAttributeOperation Operation, byte[][] Values);
 internal sealed record LdapModifyCommand(string DistinguishedName, LdapAttributeChange[] Changes,
-    TimeSpan Timeout, LdapTransportControl[] Controls);
+    TimeSpan Timeout, LdapTransportControl[] Controls) : LdapMutationCommand(DistinguishedName, Timeout, Controls);
 internal enum LdapWriteDisposition { NotSent, Indeterminate, Completed }
 internal sealed record LdapWriteOutcome(LdapWriteDisposition Disposition, LdapResultEnvelope? Result, Exception? Error);
 internal sealed class LdapSubmission
@@ -141,8 +141,12 @@ internal static class LdapConversation
         }
     }
 
-    internal static async ValueTask<LdapWriteOutcome> Modify(Func<LdapConnectionProvider.Session> acquire,
+    internal static ValueTask<LdapWriteOutcome> Modify(Func<LdapConnectionProvider.Session> acquire,
         LdapModifyCommand command, CancellationToken cancellationToken = default, TimeProvider? timeProvider = null)
+        => Mutate(acquire, command, cancellationToken, timeProvider);
+
+    internal static async ValueTask<LdapWriteOutcome> Mutate(Func<LdapConnectionProvider.Session> acquire,
+        LdapMutationCommand command, CancellationToken cancellationToken = default, TimeProvider? timeProvider = null)
     {
         LdapConnectionProvider.Session? lease = null;
         var submission = new LdapSubmission();
@@ -150,29 +154,15 @@ internal static class LdapConversation
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            static string Text(string value) => value is null || value.Contains('\0')
-                ? throw new ArgumentException("LDAP strings cannot be null or contain NUL.") : value;
             ArgumentNullException.ThrowIfNull(command);
-            if (command.Timeout <= TimeSpan.Zero || command.Changes.Length == 0) throw new ArgumentException("Invalid modify command.");
             var budget = new OperationBudget(command.Timeout, timeProvider);
-            var prepared = command with
-            {
-                DistinguishedName = Text(command.DistinguishedName),
-                Changes = command.Changes.Select(change => change.Operation is < DirectoryAttributeOperation.Add or > DirectoryAttributeOperation.Replace
-                    ? throw new ArgumentException("Invalid modification operation.")
-                    : change with { Name = Text(change.Name), Values = change.Values.Select(value => value.ToArray()).ToArray() }).ToArray(),
-                Controls = command.Controls.Select(control => control with { Oid = Text(control.Oid), Value = control.Value.ToArray() }).ToArray()
-            };
+            var prepared = LdapMutationCommands.Prepare(command);
             lease = acquire();
             var transport = lease.ExecuteTransport(t => t);
-            if (transport is not ILdapConversationTransport conversation ||
-                (transport.Capabilities & LdapTransportCapabilities.Modify) == 0)
-                throw new PlatformNotSupportedException("Modify is not implemented by this adapter; no request was sent.");
-            if (prepared.Controls.Length != 0 && (transport.Capabilities & LdapTransportCapabilities.ModifyControls) == 0)
-                throw new PlatformNotSupportedException("Modify controls are not supported; no request was sent.");
+            LdapMutationCommands.RequireCapabilities(transport, prepared);
             prepared = prepared with { Timeout = budget.Remaining(cancellationToken) };
             attempted = true;
-            var result = await conversation.ModifyAsync(prepared, submission, cancellationToken).ConfigureAwait(false);
+            var result = await LdapMutationCommands.SendAsync(transport, prepared, submission, cancellationToken).ConfigureAwait(false);
             if (!submission.Started || result is null) throw new InvalidOperationException("Invalid write completion contract.");
             if (result.Code is ResultCode.Unavailable or ResultCode.ProtocolError) lease.Invalidate();
             // A complete LDAP error is still a known outcome. Do not turn an arrived
