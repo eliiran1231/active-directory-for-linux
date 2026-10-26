@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Real exec/IPC/pidfd supervision with recording native dependencies. No AD or credentials.
 set -euo pipefail
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
 cd "$(dirname "$0")/../.."
 bash tests/native-session/run-worker-demo.sh
 bash tests/native-session/run-demo.sh

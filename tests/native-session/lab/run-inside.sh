@@ -5,6 +5,12 @@ umask 077
 /probe
 [ "$(id -u)" = 65534 ]
 [ -d /run/adfl ]
+if [ -f /lab/AdForLinux.NativeWorkerDemo.dll ]; then
+ export DOTNET_EnableDiagnostics=0 DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
+ if ! /dotnet/dotnet /lab/AdForLinux.NativeWorkerDemo.dll --real-lab-runtime-probe > /run/adfl/runtime.log 2>&1; then
+  echo 'FAIL: managed runtime prerequisite before credential creation'; exit 1
+ fi
+fi
 export HOME=/run/adfl
 export KRB5_CONFIG=/run/adfl/krb5.conf
 export KRB5_KDC_PROFILE=/run/adfl/kdc.conf
@@ -79,3 +85,17 @@ if ! /bin/real-bind --isolated-lab dn:uid=client-a,dc=adfl,dc=test dn:uid=client
 fi
 # Harness emits assertion summaries only, never native diagnostic or ticket data.
 echo 'PASS: real private-stack binding identities and negotiated signing/sealing assertions'
+
+if [ -f /lab/AdForLinux.NativeWorkerDemo.dll ]; then
+ # Reset to fresh test TGTs before the supervised managed path.
+ for client in client-a client-b; do
+  /bin/kinit -c FILE:/run/adfl/$client.ccache -kt /run/adfl/$client.keytab "$client@ADFL.TEST" > /run/adfl/kinit.log 2>&1
+ done
+ export DOTNET_EnableDiagnostics=0 DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
+ if /dotnet/dotnet /lab/AdForLinux.NativeWorkerDemo.dll --real-lab-parent > /run/adfl/managed-assertions.log 2>&1; then
+  :
+ else
+  status=$?; echo "FAIL: supervised real-login assertions (numeric stage $status)"; exit 1
+ fi
+ echo 'PASS: supervised managed worker, paired real native sessions and shared request dispatch'
+fi

@@ -112,7 +112,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
                 // Generated configuration is installed before exec: GSS creates
                 // contexts independently of the resolver. No parent environment is changed.
                 using var configuration = new WorkerProfileFiles(api, profile);
-                using var env = new WorkerStrings(["DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "ADFL_OFFLINE_TESTS=1", .. configuration.Environment]);
+                using var env = new WorkerStrings(["DOTNET_EnableDiagnostics=0", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "ADFL_OFFLINE_TESTS=1", .. configuration.Environment]);
                 var error = api.Spawn(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, out channel, out var child);
                 configuration.Dispose(); // child owns independent fd4/5 after successful exec
                 if (error != 0) throw new InvalidOperationException($"Worker exec failed ({error}).");

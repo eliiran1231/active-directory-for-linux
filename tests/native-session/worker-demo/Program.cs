@@ -8,6 +8,15 @@ using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 using Microsoft.Win32.SafeHandles;
 
+if (args is ["--real-lab-runtime-probe"])
+{
+    _ = System.Security.Cryptography.HMACSHA256.HashData(new byte[32], "runtime-fixture"u8);
+    Console.WriteLine("PASS: managed runtime cryptographic dependency is available; no credentials.");
+    return 0;
+}
+if (args is ["--real-lab-parent"]) return await RealLabWorker.Parent();
+if (args is ["--real-lab-child"]) return await RealLabWorker.Child();
+
 if (OfflineTestGuard.Enabled && args is ["--generate-lab-profile"])
 {
     Console.Write(Encoding.ASCII.GetString(new LdapWorkerKerberosProfile("ADFL.TEST", "127.0.0.1", "/run/adfl/plugins",
@@ -143,7 +152,8 @@ finally
 
 static async Task<int> Child(string[] arguments)
 {
-    if (!OfflineTestGuard.Enabled || arguments.Length != 5) return 2;
+    if (!OfflineTestGuard.Enabled || arguments.Length != 5 ||
+        Environment.GetEnvironmentVariable("DOTNET_EnableDiagnostics") != "0") return 2;
     var mode = arguments[3];
     if (mode == "late-identity") await Task.Delay(700);
     using var native = new WorkerNative(arguments[1]);

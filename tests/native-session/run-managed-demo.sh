@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
 cd "$(dirname "$0")/../.."
 bash tests/native-session/run-demo.sh
 native_out="${ADFL_NATIVE_OUT:-/tmp/adfl-native-demo}"

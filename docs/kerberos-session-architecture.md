@@ -327,7 +327,7 @@ archives (plus Berkeley yacc 2.0.20221106, whose digest the script checks):
 ```sh
 bash tests/native-session/lab/build-servers.sh MIT_ARCHIVE LDAP_ARCHIVE BYACC_ARCHIVE PRIVATE_BRIDGE NEW_SERVERS
 bash tests/native-session/build-private-login-lab.sh PRIVATE_BRIDGE
-dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release -f net8.0
+DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release -f net8.0
 ADFL_OFFLINE_TESTS=1 dotnet tests/native-session/worker-demo/bin/Release/net8.0/AdForLinux.NativeWorkerDemo.dll --generate-lab-profile > LAB_PROFILE
 python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_IMAGE_CONTEXT
 docker --config DOCKER_CONFIG build --network none --pull=false -t adfl-disposable-lab NEW_IMAGE_CONTEXT
@@ -389,3 +389,37 @@ Offline module-denial proof (no credentials):
 ```sh
 bash tests/native-session/run-private-plugin-probe.sh PRIVATE_BRIDGE
 ```
+
+### Real authentication through the supervised managed worker
+
+The same disposable lab can include the existing .NET 8.0.33 runtime and a separate
+lab-only native bridge. It uses the actual supervisor, sealed START profile,
+`LdapWorkerHost`, `NativeLdapOperation`, native bind and shared request dispatch.
+Only the test bridge's copied probe permits binding; production libraries retain
+their refusal. Fixed lab source/target/security recipes are checked before real
+resolution. WhoAmI identity and SSF checks run before each session is published;
+failed checks close the session. Two live workers each own two bound sessions,
+serve rootDSE searches and unpaged cursors, then confirm pidfd-based cleanup.
+This adds real supervised integration evidence, not ambient pooling eligibility.
+
+After the compile-only preparation above:
+
+```sh
+bash tests/native-session/build-lab-worker-native.sh PRIVATE_BRIDGE
+bash tests/native-session/run-worker-demo.sh
+python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_MANAGED_IMAGE_CONTEXT \
+  --dotnet EXISTING_DOTNET_ROOT \
+  --worker-demo tests/native-session/worker-demo/bin/Release/net8.0 \
+  --supervisor /tmp/adfl-worker-demo/libadfl_worker.so \
+  --lab-native /tmp/adfl-lab-worker-native/libadfl_lab_worker.so
+```
+
+Build/run/remove that image with the same explicitly authorized container commands.
+The assembler copies runtime/application dependencies only, including .NET's lazy
+OpenSSL dependency; it does not copy SDK, user state or host configuration. A
+credential-free cryptographic preflight runs before realm creation. Runtime logs
+stay in tmpfs; failures expose only fixed summaries/numeric stages. Child processes
+explicitly disable the [default .NET diagnostics port](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/diagnostic-port)
+without changing the parent or host settings. The lab resets caches to fresh TGTs
+before starting the managed workers. Production deployment admission and general
+user Kerberos-policy compatibility remain unresolved.
