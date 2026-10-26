@@ -61,6 +61,7 @@ struct adfl_bound_session {
     atomic_uint references;
     unsigned port;
 };
+int adfl_system_search_policy(LDAP *);
 int adfl_system_search_start(void *, LDAP *, const adfl_search_request *, adfl_submitted_fn, void *, int *);
 int adfl_system_search_poll(void *, LDAP *, int, unsigned, void **);
 int adfl_system_result_emit(void *, LDAP *, void *, adfl_result_fn, void *);

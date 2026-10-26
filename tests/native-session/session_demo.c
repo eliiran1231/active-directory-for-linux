@@ -613,8 +613,27 @@ static void control_ownership(void) {
         assert(!atomic_load(&slow.wire_sent)); adfl_session_close(&s); balanced(&slow);
     }
 }
+/* Public libldap handle/options only: ldap_initialize does not connect. No
+ * bind, request, credential operation or global option mutation occurs here. */
+static void search_policy_defaults(void) {
+    LDAP *ld = NULL;
+    assert(adfl_system_search_policy(NULL) == LDAP_PARAM_ERROR);
+    assert(ldap_initialize(&ld, "ldap://directory.invalid:389") == LDAP_SUCCESS && ld);
+    for (int attempt = 0; attempt < 2; attempt++) {
+        int aliases = LDAP_DEREF_ALWAYS, seconds = 37;
+        assert(ldap_set_option(ld, LDAP_OPT_DEREF, &aliases) == LDAP_OPT_SUCCESS);
+        assert(ldap_set_option(ld, LDAP_OPT_TIMELIMIT, &seconds) == LDAP_OPT_SUCCESS);
+        assert(adfl_system_search_policy(ld) == LDAP_SUCCESS);
+        aliases = seconds = -1;
+        assert(ldap_get_option(ld, LDAP_OPT_DEREF, &aliases) == LDAP_OPT_SUCCESS);
+        assert(ldap_get_option(ld, LDAP_OPT_TIMELIMIT, &seconds) == LDAP_OPT_SUCCESS);
+        assert(aliases == LDAP_DEREF_NEVER && seconds == 0);
+    }
+    assert(ldap_unbind_ext_s(ld, NULL, NULL) == LDAP_SUCCESS);
+}
 int main(void) {
     assert(adfl_native_abi_version() == 2);
+    search_policy_defaults();
     operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes(); generic_write_outcomes(); control_ownership();
     puts("PASS: actual adapter orchestration; recording native dependencies only; no credentials or network.");
     return 0;

@@ -5,10 +5,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The represented search contract is AliasesNever and server TimeLimit=0.
+ * ldap_search_ext inherits both from this handle when no timeout is supplied.
+ * Pin them for every request while the session/cursor owns the exclusive busy
+ * lease; never mutate process defaults or inherit an earlier handle policy. */
+int adfl_system_search_policy(LDAP *ld) {
+    if (!ld) return LDAP_PARAM_ERROR; /* NULL would mutate global defaults. */
+    const int aliases = LDAP_DEREF_NEVER, seconds = 0;
+    if (ldap_set_option(ld, LDAP_OPT_DEREF, &aliases) != LDAP_OPT_SUCCESS ||
+        ldap_set_option(ld, LDAP_OPT_TIMELIMIT, &seconds) != LDAP_OPT_SUCCESS)
+        return LDAP_LOCAL_ERROR;
+    return LDAP_SUCCESS;
+}
+
 int adfl_system_search_start(void *state, LDAP *ld, const adfl_search_request *r,
     adfl_submitted_fn ready, void *ready_state, int *message_id) {
     (void)state; LDAPControl **server = NULL; LDAPControl *client[] = {NULL};
-    int rc = adfl_controls_build(r->controls, r->control_count, NULL, &server);
+    int rc = adfl_system_search_policy(ld);
+    if (rc != LDAP_SUCCESS) return rc;
+    rc = adfl_controls_build(r->controls, r->control_count, NULL, &server);
     if (rc != LDAP_SUCCESS) return rc;
     if (ready(ready_state)) rc = LDAP_USER_CANCELLED;
     else rc = ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
@@ -128,7 +143,9 @@ int adfl_system_page_start(void *state, LDAP *ld, const adfl_search_request *r,
     if (!page_size) return adfl_system_search_start(state, ld, r, ready, ready_state, message_id);
     LDAPControl *page = NULL; LDAPControl *client[] = {NULL};
     struct berval value = {cookie->length, (char *)cookie->data};
-    int rc = ldap_create_page_control(ld, (ber_int_t)page_size, &value, 1, &page);
+    int rc = adfl_system_search_policy(ld);
+    if (rc != LDAP_SUCCESS) return rc;
+    rc = ldap_create_page_control(ld, (ber_int_t)page_size, &value, 1, &page);
     if (rc != LDAP_SUCCESS) return rc;
     LDAPControl **controls = NULL;
     rc = adfl_controls_build(r->controls, r->control_count, page, &controls);

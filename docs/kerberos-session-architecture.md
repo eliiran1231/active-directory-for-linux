@@ -109,7 +109,9 @@ Default property security-mask controls use a managed BER SEQUENCE/INTEGER encod
 public SecurityDescriptorFlagControl type; subclasses retain their virtual encoding behavior.
 Native ABI version 2 is checked before real resolution/bind and request dispatch. A mismatch
 cannot silently discard the new control fields. ABI agreement is not authentication proof.
-DirectorySearcher still rejects unimplemented control-response state, aliases and server limits;
+The native search adapter explicitly pins per-handle aliases to Never and server time limit
+to zero before every send; it does not inherit handle defaults. DirectorySearcher still rejects
+unimplemented control-response state, aliases and server limits;
 generic control transport does not implement those public semantics.
 
 ## Binding implementation and enablement boundary
