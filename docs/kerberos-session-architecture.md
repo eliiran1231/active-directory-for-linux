@@ -421,5 +421,44 @@ credential-free cryptographic preflight runs before realm creation. Runtime logs
 stay in tmpfs; failures expose only fixed summaries/numeric stages. Child processes
 explicitly disable the [default .NET diagnostics port](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/diagnostic-port)
 without changing the parent or host settings. The lab resets caches to fresh TGTs
-before starting the managed workers. Production deployment admission and general
-user Kerberos-policy compatibility remain unresolved.
+before starting the managed workers.
+
+### Admitted immutable worker bundles
+
+`LdapWorkerDeployment.Validate` checks a versioned Linux bundle before any custom
+native library is loaded. The caller must be non-root with no permitted/effective
+capabilities. Every ancestor and artifact must be root-owned and not writable by
+group/other; symlinks, privileged files, file capabilities, undeclared/missing files
+and digest mismatches are refused. A strict manifest inventories the private .NET
+runtime, host, supervisor and native bridge. The descriptor owner is retained by
+worker admission until confirmed exit, including workers awaiting cleanup.
+
+This assumes a trusted administrator never modifies, replaces, unmounts or removes
+an admitted version while it is in use; updates install a distinct version. Held
+file descriptors do not defeat a malicious root or pathname replacement by that
+administrator. The manifest is an inventory, not a publisher signature or proof
+that arbitrary native code is safe. The OS loader, libc/resolver and .NET's OpenSSL
+dependency remain trusted platform components.
+
+`src/AdForLinux.DirectoryServices.Native/packaging/describe-worker-bundle.py`
+generates the inventory without installing or executing it. The disposable lab
+stages a root-owned read-only bundle and validates it in both parent and child.
+Before creating credentials it also checks wrong-digest, extra-file and symlink
+fixtures. Real supervised requests check that disposing the admission owner keeps
+its descriptors alive until both workers exit. The lab host remains a separate
+test executable; production host activation is still refused.
+
+The narrowly demonstrated profile is Linux with the reviewed private stack,
+explicit FILE source, exact service target/realm and KDC route, signing plus
+sealing, no TLS/referrals, and fresh worker groups. Production policy admission
+rejects other modes centrally. This does not grant compatibility to an existing
+session merely because its cache path or principal name matches. Each operation
+must resolve its source again; concurrent external cache mutation and general
+ambient-authority reuse remain unproven.
+
+The remaining public integration decision is an explicit opt-in to this restricted
+profile and administrator-managed bundle. Recommended default: preserve stock
+behavior unless that profile is deliberately selected; never silently replace a
+host's Kerberos policy with these restrictions. Authentication/reuse gates remain
+off pending independent deployment and authority-contract review. These checks
+make the lab profile executable, not a claim of general AD interoperability.

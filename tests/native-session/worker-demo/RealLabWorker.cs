@@ -8,26 +8,54 @@ using Microsoft.Win32.SafeHandles;
 // production host. This code consumes actual disposable lab credentials if run.
 internal static class RealLabWorker
 {
-    private const string Supervisor = "/lab/libadfl_worker.so";
-    private const string Bridge = "/lab/libadfl_lab_native.so";
-    private const string Assembly = "/lab/AdForLinux.NativeWorkerDemo.dll";
+    private const string Bundle = "/bundle/lab-v1";
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(15);
     private static LdapWorkerStart Profile(int identity) => new("127.0.0.1", 10389, false, true, true, 2,
         TimeSpan.FromSeconds(5), new(LdapCredentialSourceKind.File, identity == 1 ? "/run/adfl/client-a.ccache" : "/run/adfl/client-b.ccache"),
         new("ADFL.TEST", "127.0.0.1", "/run/adfl/plugins", new("127.0.0.1", 10088)));
 
+    private static int OpenManifestHandles()
+    {
+        var count = 0;
+        foreach (var path in Directory.EnumerateFiles("/proc/self/fd"))
+            try { if (File.ResolveLinkTarget(path, false)?.FullName == Bundle + "/manifest.json") count++; }
+            catch (IOException) { } // the enumeration descriptor may already have closed
+        return count;
+    }
+    internal static void DeploymentPreflight()
+    {
+        var initial = OpenManifestHandles();
+        var deployment = LdapWorkerDeployment.Validate(Bundle);
+        var retained = deployment.Retain();
+        deployment.Dispose();
+        if (OpenManifestHandles() != initial + 1) throw new InvalidOperationException("Retained deployment handle was lost.");
+        retained.Dispose();
+        if (OpenManifestHandles() != initial) throw new InvalidOperationException("Deployment handles were not released.");
+        foreach (var kind in new[] { "digest", "extra", "symlink" })
+        {
+            var refused = false;
+            try { using var invalid = LdapWorkerDeployment.Validate("/admission-reject/" + kind); }
+            catch (InvalidDataException) { refused = true; }
+            if (!refused) throw new InvalidOperationException("Invalid bundle was admitted.");
+        }
+    }
+
     internal static async Task<int> Parent()
     {
         using var workers = new NativeLdapWorkerPool(2);
         NativeLdapWorkerPool.WorkerLease? a = null, b = null;
+        var initialManifestHandles = OpenManifestHandles();
         var stage = 10;
         try
         {
-            var launch = new WorkerLaunch("/dotnet/dotnet", [Assembly, "--real-lab-child"], Supervisor);
+            using var deployment = LdapWorkerDeployment.Validate(Bundle);
             stage = 11;
-            a = await workers.AcquireAsync(launch, Profile(1), Budget);
+            a = await workers.AcquireAsync(deployment, Profile(1), Budget);
             stage = 12;
-            b = await workers.AcquireAsync(launch, Profile(2), Budget);
+            b = await workers.AcquireAsync(deployment, Profile(2), Budget);
+            deployment.Dispose(); // admitted workers retain the bundle until confirmed exit
+            if (OpenManifestHandles() != initialManifestHandles + 1)
+                throw new InvalidOperationException("Worker admission did not retain deployment ownership.");
             var command = new LdapSearchCommand("", "(objectClass=*)", SearchScope.Base,
                 ["supportedLDAPVersion"], TimeSpan.FromSeconds(5));
             foreach (var lease in new[] { a, b })
@@ -61,7 +89,8 @@ internal static class RealLabWorker
             stage = 15;
             a.Dispose(); b.Dispose();
             await Task.WhenAll(a.Cleanup, b.Cleanup).WaitAsync(Budget);
-            if (workers.Snapshot.Tracked != 0) throw new InvalidOperationException("Real lab workers were not reaped.");
+            if (workers.Snapshot.Tracked != 0 || OpenManifestHandles() != initialManifestHandles)
+                throw new InvalidOperationException("Real lab workers or deployment were not released.");
             Console.WriteLine("PASS: real isolated supervised workers verified identities/protection before publication, paired rootDSE reads and cursors, and confirmed process cleanup.");
             return 0;
         }
@@ -83,7 +112,8 @@ internal static class RealLabWorker
     {
 
         if (Environment.GetEnvironmentVariable("DOTNET_EnableDiagnostics") != "0") return 2;
-        using var supervisor = new WorkerNative(Supervisor);
+        using var deployment = LdapWorkerDeployment.Validate(Bundle);
+        using var supervisor = new WorkerNative(deployment.CreateLaunch().SupervisorLibrary);
         if (supervisor.SendIdentity(3) != 0) return 3;
 
         using var socket = new Socket(new SafeSocketHandle((IntPtr)3, ownsHandle: true));
@@ -101,7 +131,7 @@ internal static class RealLabWorker
                 // Retained until process exit: private native libraries own static
                 // state. No recording operations and no earlier backend loading.
 
-                var library = NativeLibrary.Load(Bridge);
+                var library = NativeLibrary.Load(deployment.NativeBridgePath);
                 NativeLibrary.SetDllImportResolver(typeof(NativeLdapBindingBackend).Assembly,
                     (name, _, _) => name == "adfl_native" ? library : IntPtr.Zero);
                 var api = new LabApi(library, identity);

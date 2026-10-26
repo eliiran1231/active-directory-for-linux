@@ -72,7 +72,7 @@ public partial class ConnectionPoolOperationTests
         var sourced = profile with { CredentialSource = new(LdapCredentialSourceKind.File, "/recording/cache") };
         Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerKerberosProfile.RequireProductionPolicy(sourced));
         LdapWorkerKerberosProfile.RequireProductionPolicy(sourced with
-            { RestrictedConfiguration = new("EXAMPLE.INVALID", "directory.invalid", "/recording/plugins") });
+            { RestrictedConfiguration = new("EXAMPLE.INVALID", "directory.invalid", "/recording/plugins", new("kdc.invalid", 88)) });
         // Exercise the actual default host, with no injected backend or native load.
         using var channel = new MemoryStream();
         await LdapWorkerProtocol.WriteAsync(channel, LdapWorkerProtocol.Frame(1, 0, "START", profile.Timeout, sourced), default);
@@ -83,6 +83,25 @@ public partial class ConnectionPoolOperationTests
         var reply = await LdapWorkerProtocol.ReadAsync(channel, default);
         Assert.Equal("ERROR", reply.Kind);
         Assert.Equal("unsupported", LdapWorkerProtocol.Payload<LdapWorkerFailure>(reply).Category);
+    }
+
+    [Fact]
+    public void Restricted_production_profile_refuses_unproven_source_and_security_modes()
+    {
+        var supported = new LdapWorkerStart("directory.invalid", 389, false, true, true, 1, TimeSpan.FromSeconds(5))
+        {
+            CredentialSource = new(LdapCredentialSourceKind.File, "/recording/cache"),
+            RestrictedConfiguration = new("EXAMPLE.INVALID", "directory.invalid", "/recording/plugins", new("kdc.invalid", 88))
+        };
+        LdapWorkerKerberosProfile.RequireProductionPolicy(supported);
+        var unsupported = new[]
+        {
+            supported with { CredentialSource = new(LdapCredentialSourceKind.DirectoryCollection, "/recording/cache") },
+            supported with { UseSsl = true }, supported with { Signing = false }, supported with { Sealing = false },
+            supported with { RestrictedConfiguration = supported.RestrictedConfiguration with { Kdc = null } }
+        };
+        foreach (var profile in unsupported)
+            Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerKerberosProfile.RequireProductionPolicy(profile));
     }
 
     [Fact]

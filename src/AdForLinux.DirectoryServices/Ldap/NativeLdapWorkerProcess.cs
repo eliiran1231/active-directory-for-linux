@@ -22,8 +22,19 @@ internal sealed class NativeLdapWorkerPool : IDisposable
     internal (int Tracked, int Retiring, int Unverified) Snapshot =>
         (owners.Count, owners.Keys.Count(owner => owner.Retired), owners.Keys.Count(owner => !owner.IdentityVerified));
 
-    internal async Task<WorkerLease> AcquireAsync(WorkerLaunch launch, LdapWorkerStart profile,
+    internal Task<WorkerLease> AcquireAsync(WorkerLaunch launch, LdapWorkerStart profile,
         TimeSpan timeout, CancellationToken cancellationToken = default)
+        => AcquireCore(launch, profile, timeout, cancellationToken, null);
+
+    internal Task<WorkerLease> AcquireAsync(VerifiedDeployment deployment, LdapWorkerStart profile,
+        TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        LdapWorkerKerberosProfile.RequireProductionPolicy(profile);
+        return AcquireCore(deployment.CreateLaunch(), profile, timeout, cancellationToken, deployment);
+    }
+
+    private async Task<WorkerLease> AcquireCore(WorkerLaunch launch, LdapWorkerStart profile,
+        TimeSpan timeout, CancellationToken cancellationToken, VerifiedDeployment? deployment)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Worker authority transfer is implemented only for Linux; Windows impersonation is not transferred.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromHours(1)) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -41,7 +52,9 @@ internal sealed class NativeLdapWorkerPool : IDisposable
             lock (admissionGate)
             {
                 ObjectDisposedException.ThrowIf(disposed != 0, this);
-                owner = new WorkerOwner(launch, profile, Released);
+                var retention = deployment?.Retain();
+                try { owner = new WorkerOwner(launch, profile, Released, retention); }
+                catch { retention?.Dispose(); throw; }
                 owners.TryAdd(owner, 0);
                 startup = owner.StartAsync();
             }
@@ -92,7 +105,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         }
     }
 
-    internal sealed class WorkerOwner(WorkerLaunch launch, LdapWorkerStart profile, Action<WorkerOwner> released)
+    internal sealed class WorkerOwner(WorkerLaunch launch, LdapWorkerStart profile, Action<WorkerOwner> released, IDisposable? deploymentRetention)
     {
         private readonly TaskCompletionSource cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly object stateGate = new();
@@ -187,7 +200,8 @@ internal sealed class NativeLdapWorkerPool : IDisposable
             if (Interlocked.Exchange(ref finished, 1) != 0) return;
             if (channel >= 0) { api?.Close(channel); channel = -1; }
             if (pidfd >= 0) { api?.Close(pidfd); pidfd = -1; }
-            api?.Dispose(); released(this); cleanup.TrySetResult();
+            try { api?.Dispose(); }
+            finally { deploymentRetention?.Dispose(); released(this); cleanup.TrySetResult(); }
         }
     }
 }

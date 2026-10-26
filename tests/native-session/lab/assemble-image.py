@@ -78,6 +78,35 @@ if a.dotnet:
     runtime.write_text(json.dumps(config))
     binary(a.supervisor.resolve(), '/lab/libadfl_worker.so')
     binary(a.lab_native.resolve(), '/lab/libadfl_lab_native.so')
+    bundle = root / 'bundle/lab-v1'
+    bundle.mkdir(parents=True)
+    (root / 'dotnet').rename(bundle / 'dotnet')
+    (root / 'lab').rename(bundle / 'host')
+    (root / 'dotnet').symlink_to('bundle/lab-v1/dotnet')
+    (root / 'lab').symlink_to('bundle/lab-v1/host')
+    describe = source.parents[2] / 'src/AdForLinux.DirectoryServices.Native/packaging/describe-worker-bundle.py'
+    subprocess.run(['python3', str(describe), str(bundle), '--version', 'lab-v1',
+        '--dotnet', 'dotnet/dotnet', '--host', 'host/AdForLinux.NativeWorkerDemo.dll',
+        '--supervisor', 'host/libadfl_worker.so', '--bridge', 'host/libadfl_lab_native.so'], check=True)
+    # Tiny, non-executable negative inventories; no credential or server state.
+    import hashlib
+    for kind in ['digest', 'extra', 'symlink']:
+        bad = root / 'admission-reject' / kind
+        bad.mkdir(parents=True)
+        artifacts = []
+        for name in ['dotnet', 'host.dll', 'worker.so', 'bridge.so']:
+            (bad / name).write_bytes(b'harmless admission fixture')
+            artifacts.append({'Path': name, 'Sha256': hashlib.sha256(b'harmless admission fixture').hexdigest()})
+        if kind == 'digest': artifacts[0]['Sha256'] = '0' * 64
+        if kind == 'extra': (bad / 'unexpected').write_text('not inventoried')
+        if kind == 'symlink':
+            (bad / 'bridge.so').unlink()
+            (bad / 'bridge.so').symlink_to('worker.so')
+        (bad / 'manifest.json').write_text(json.dumps({'FormatVersion': 1, 'Version': kind,
+            'Roles': {'Dotnet': 'dotnet', 'HostAssembly': 'host.dll', 'Supervisor': 'worker.so', 'NativeBridge': 'bridge.so'},
+            'Artifacts': artifacts}))
+
+
 (root / 'Dockerfile').write_text('FROM scratch\nCOPY --chmod=755 . /\nUSER 65534:65534\nENTRYPOINT ["/bin/sh", "/run-inside.sh"]\n')
 for directory in [root, *(path for path in root.rglob('*') if path.is_dir())]:
     directory.chmod(0o755)

@@ -61,8 +61,14 @@ internal sealed record LdapWorkerKerberosProfile(string DefaultRealm, string Ser
     {
         if (profile.CredentialSource is null || profile.RestrictedConfiguration is null)
             throw new PlatformNotSupportedException("Production workers require an explicit source and restricted configuration.");
+        LdapWorkerProtocol.ValidateStart(profile);
+        if (profile.CredentialSource.Kind != LdapCredentialSourceKind.File || profile.UseSsl ||
+            !profile.Signing || !profile.Sealing || profile.RestrictedConfiguration.Kdc is null)
+            throw new PlatformNotSupportedException("The supported deployment profile requires an explicit FILE source, KDC route and signing plus sealing without TLS.");
         profile.CredentialSource.Validate();
         _ = profile.RestrictedConfiguration.Generate(profile.Host);
+        // A cache path is a source recipe, never compatible-session evidence.
+        // Every supported operation still resolves and binds a fresh worker group.
     }
     // Linux UAPI: duplicate first, then verify seals and read the same owned fd.
     // FUTURE_WRITE is insufficient: existing mappings could still mutate bytes.
