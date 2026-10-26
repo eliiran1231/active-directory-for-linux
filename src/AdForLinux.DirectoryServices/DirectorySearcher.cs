@@ -464,7 +464,12 @@ public partial class DirectorySearcher : Component
             }
         }
 
+        var neutralClock = TimeProvider;
+        var neutralStarted = neutralClock.GetTimestamp();
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var admitted = connectionLease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+            return ReadNeutralBuffered(connectionLease, admitted, operation.Origin, request, 0, neutralClock, neutralStarted, maximumResults: 1).FirstOrDefault();
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
@@ -514,7 +519,13 @@ public partial class DirectorySearcher : Component
             return FindAllStreaming(operation);
         }
 
+        var neutralClock = TimeProvider;
+        var neutralStarted = neutralClock.GetTimestamp();
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var admitted = connectionLease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+            return new SearchResultCollection(ReadNeutralBuffered(connectionLease, admitted, operation.Origin,
+                BuildRequestForDn(operation.Origin.DistinguishedName), PageSize, neutralClock, neutralStarted), GetPropertiesLoaded());
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);

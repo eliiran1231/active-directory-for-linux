@@ -61,10 +61,24 @@ internal static class LdapConversation
         }
     }
 
-    internal static async IAsyncEnumerable<LdapSearchEvent> Search(
+    internal static IAsyncEnumerable<LdapSearchEvent> Search(
         Func<LdapConnectionProvider.Session> acquire, LdapSearchCommand command, int pageSize = 0,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
+        CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
         Func<TimeSpan>? remainingBudget = null)
+        => SearchCore(acquire, true, command, pageSize, cancellationToken, timeProvider, remainingBudget);
+
+    // Buffered callers retain the exclusive lease until cursor cleanup AND schema
+    // materialization finish. This method owns only the cursor, never the lease.
+    internal static IAsyncEnumerable<LdapSearchEvent> SearchBorrowed(
+        LdapConnectionProvider.Session lease, LdapSearchCommand command, int pageSize,
+        CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
+        Func<TimeSpan>? remainingBudget = null)
+        => SearchCore(() => lease, false, command, pageSize, cancellationToken, timeProvider, remainingBudget);
+
+    private static async IAsyncEnumerable<LdapSearchEvent> SearchCore(
+        Func<LdapConnectionProvider.Session> acquire, bool ownsLease, LdapSearchCommand command, int pageSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken, TimeProvider? timeProvider,
+        Func<TimeSpan>? remainingBudget)
     {
         if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
         ArgumentNullException.ThrowIfNull(command);
@@ -78,7 +92,8 @@ internal static class LdapConversation
             return external < local ? external : local;
         }
         cancellationToken.ThrowIfCancellationRequested();
-        using var lease = acquire();
+        var lease = acquire();
+        using var ownedLease = ownsLease ? lease : null;
         ILdapSearchCursor? cursor = null;
         var complete = false;
         var opened = false;

@@ -24,7 +24,7 @@ struct fixture {
     int bind_failure, omit_callback, wrong_prompt, cancel_after_bind;
 };
 struct fake_material { struct fixture *owner; int identity; char target[254]; atomic_int sessions; };
-struct fake_ldap { struct fixture *owner; struct fake_material *credential; char target[254]; char attribute[64]; unsigned port; int page, stream_index, modify; ldap_conncb *guard; };
+struct fake_ldap { struct fixture *owner; struct fake_material *credential; char target[254]; char attribute[64]; char base_dn[256]; unsigned port; int page, stream_index, modify; ldap_conncb *guard; };
 static const adfl_native_profile profile = {"directory.invalid", 389, 5, 0, 0, 1, 1};
 static int probe(void *state, adfl_native_capabilities *caps) {
     memset(caps, 0, sizeof(*caps)); caps->reviewed_build = !((struct fixture *)state)->probe_rejected;
@@ -105,6 +105,8 @@ static int install_guard(void *state, LDAP *value, ldap_conncb *guard) {
 static int search_start(void *state, LDAP *value, const adfl_search_request *request, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
     assert(request->scope >= 0 && request->scope <= 2 && !strcmp(request->filter, "(objectClass=*)"));
+    assert(strlen(request->base_dn) < sizeof(ld->base_dn));
+    strcpy(ld->base_dn, request->base_dn);
     if (f->root_reply) {
         assert(request->scope == 0);
         assert(request->attributes && request->attributes[0] && strlen(request->attributes[0]) < sizeof(ld->attribute));
@@ -142,7 +144,7 @@ static int result_emit(void *state, LDAP *ld, void *message, adfl_result_fn emit
     }
     unsigned char bytes[] = {0, 255, 65};
     if (f->slow_conversion) atomic_fetch_add(&f->clock, 10000);
-    if (emit(out, ADFL_ENTRY_BEGIN, "", NULL, 0, 0) ||
+    if (emit(out, ADFL_ENTRY_BEGIN, ((struct fake_ldap *)ld)->base_dn, NULL, 0, 0) ||
         emit(out, ADFL_ATTRIBUTE_BEGIN, "binary", NULL, 0, 0) ||
         emit(out, ADFL_ATTRIBUTE_VALUE, NULL, bytes, sizeof(bytes), 0) ||
         emit(out, ADFL_ATTRIBUTE_END, NULL, NULL, 0, 0) ||
@@ -163,8 +165,8 @@ struct fake_message { int kind, page; };
 static int page_start(void *state, LDAP *value, const adfl_search_request *r, unsigned size, const adfl_bytes *cookie, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
     assert(r->timeout_milliseconds > 0 && r->timeout_milliseconds <= 3600000);
-    assert((!strcmp(r->base_dn, "") || !strcmp(r->base_dn, "CN=copied")) && !strcmp(r->filter, "(objectClass=*)"));
-    if (r->attributes) assert(r->attributes[0] && !strcmp(r->attributes[0], "binary") && !r->attributes[1]);
+    assert((!strcmp(r->base_dn, "") || !strcmp(r->base_dn, "CN=copied") || !strcmp(r->base_dn, "DC=example")) && !strcmp(r->filter, "(objectClass=*)"));
+    if (r->attributes && r->attributes[0]) assert(!strcmp(r->attributes[0], "binary") && !r->attributes[1]);
     if (size && ld->page) {
         const unsigned char expected[] = {0, 255, 80};
         assert(cookie->length == sizeof(expected) && !memcmp(cookie->data, expected, sizeof(expected)));

@@ -283,8 +283,11 @@ retaining the atomic search/schema pair. Non-asynchronous results buffer each pa
 successful or size-limited terminal response; asynchronous results expose partial entries.
 Unsupported control-response state, aliases and server time limits fail before query dispatch.
 This experimental producer uses one total deadline including admission and schema work;
-the stock Protocols producer retains its existing timing behavior. Cached searches and FindOne
-are not yet routed to this cursor. Default native selection and authentication remain disabled.
+the stock Protocols producer retains its existing timing behavior. Cached searches and FindOne also use the neutral cursor when admitted. They buffer raw
+entries through the terminal result and close the cursor before schema conversion on the
+same exclusive session; a pool of capacity one suffices. FindOne drains the response but
+materializes only its first entry. Cached results preserve duplicates and expose no partial
+collection on failure. Default native selection and authentication remain disabled.
 
 ## Fail-closed plugin patch and composition boundary
 
@@ -330,6 +333,16 @@ inside the producer's retained lease. Do not add method allowlists, private-hand
 in-place rebind, managed replay or home-grown SASL/security framing. Windows remains on its
 existing backend; this bridge does not invent SSPI credential injection.
 
+Mutation dispatch now borrows the same entry lease and selects by complete request
+capabilities. Existing Protocols mutations keep their original requests and error
+translation. Neutral transports accept ordered binary Modify requests only when
+their capabilities cover every control; Add, Delete and ModifyDN remain unsupported
+there. Commit preserves dirty intent after an unsent refusal or definitive LDAP
+rejection, quarantines an indeterminate submission for explicit reconciliation, and
+acknowledges only successful responses followed by checked local publication. No
+mutation is retried or switched to another backend after dispatch. Native binding
+activation remains disabled.
+
 Source basis: [MIT initiator/cache semantics](https://web.mit.edu/kerberos/krb5-latest/doc/appdev/gssapi.html),
 [MIT 1.21.3 acquisition](https://github.com/krb5/krb5/blob/krb5-1.21.3-final/src/lib/gssapi/krb5/acquire_cred.c),
 [OpenLDAP 2.6.10 callback/option implementation](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/libraries/libldap/cyrus.c),
@@ -338,3 +351,9 @@ Source basis: [MIT initiator/cache semantics](https://web.mit.edu/kerberos/krb5-
 [OpenLDAP public result-decoder usage](https://github.com/openldap/openldap/blob/OPENLDAP_REL_ENG_2_6_10/clients/tools/ldapsearch.c).
 Vendored public headers: [sasl.h](https://github.com/cyrusimap/cyrus-sasl/blob/cyrus-sasl-2.1.28/include/sasl.h)
 and [prop.h](https://github.com/cyrusimap/cyrus-sasl/blob/cyrus-sasl-2.1.28/include/prop.h).
+
+Neutral property refresh uses the same request mapper and idle-session schema reader as
+search materialization, including complete-read checks needed for write reconciliation.
+Requested security controls are never dropped: current native capabilities refuse default
+security-mask reads before encoding or sending them. Targeted property refresh and modify
+can be exercised together through recording transport without a property-read override.

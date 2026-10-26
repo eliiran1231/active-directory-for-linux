@@ -42,7 +42,8 @@ public partial class ConnectionPoolOperationTests
         internal Func<CancellationToken, ValueTask<LdapSearchEvent>>? PendingRead;
         internal Action<LdapSubmission, CancellationToken>? WriteAction;
         internal LdapResultEnvelope WriteResult = Envelope(ResultCode.Success);
-        public LdapSearchResult Search(LdapSearchCommand command, CancellationToken token) => new(ResultCode.Success, "", null, command.BaseDn == "" ? [] : [new(command.BaseDn, new(), [])], [], [], []);
+        public LdapSearchResult Search(LdapSearchCommand command, CancellationToken token)
+        { trace.Add("buffered-search"); return new(ResultCode.Success, "", null, command.BaseDn == "" ? [] : [new(command.BaseDn, new(), [])], [], [], []); }
         public ValueTask<ILdapSearchCursor> OpenSearchAsync(LdapSearchCommand command, int pageSize, CancellationToken token)
         { token.ThrowIfCancellationRequested(); OpenBudget = command.Timeout; trace.Add("open"); return ValueTask.FromResult<ILdapSearchCursor>(this); }
         public ValueTask<LdapSearchEvent> ReadAsync(TimeSpan remaining, CancellationToken token)

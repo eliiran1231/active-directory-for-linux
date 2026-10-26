@@ -34,7 +34,7 @@ public partial class DirectoryEntry
 
     // Raw retained fields remain a compatibility seam for existing controlled
     // transports. Production operations own these short-lived leases instead.
-    internal sealed class ConnectionLease : IDisposable
+    internal sealed partial class ConnectionLease : IDisposable
     {
         private readonly LdapConnectionProvider.Session? session;
         private readonly LdapConnection? connection;

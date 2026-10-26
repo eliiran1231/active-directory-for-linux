@@ -39,6 +39,8 @@ internal static class LdapRequestDispatcher
     {
         if (request.Filter is not string filter || request.Aliases != System.DirectoryServices.Protocols.DereferenceAlias.Never || request.TimeLimit != TimeSpan.Zero)
             throw new PlatformNotSupportedException("The neutral request cannot represent this filter, alias or server-time-limit policy.");
+        if (request.Controls.Count != 0 && (transport.Capabilities & LdapTransportCapabilities.SearchControls) == 0)
+            throw new PlatformNotSupportedException("The transport cannot represent search controls; no request was sent.");
         var controls = request.Controls.Cast<DirectoryControl>().Select(control =>
         {
             if (!control.ServerSide) throw new PlatformNotSupportedException("Client-side controls are not represented by the neutral transport.");

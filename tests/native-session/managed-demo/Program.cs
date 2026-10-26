@@ -81,6 +81,31 @@ try { using var impossible = NativeLdapOperation.Acquire(pool, entry.BuildOption
 catch (InvalidOperationException) { }
 if (count(7) != selectedBefore) throw new InvalidOperationException("Impossible admission resolved credentials.");
 Console.WriteLine("PASS: managed operation owner -> atomic admission -> one target resolution -> paired native binds; source replacement and failed-bind rollback verified.");
+// Public buffered searches drain their cursor before asking schema questions on
+// that same lease. This fixture intentionally omits schemaNamingContext: these
+// assertions cover ownership/routing and fallback, not AD schema fidelity.
+var bufferedSelected = count(7); var bufferedCloses = count(1); var bufferedFrees = count(2);
+var bufferedPages = count(4); var bufferedResults = count(3);
+using (var searcher = new DirectorySearcher(entry)
+{
+    Filter = "(objectClass=*)", PageSize = 2, CacheResults = true, Asynchronous = false,
+    ReferralChasing = ReferralChasingOption.None, ClientTimeout = TimeSpan.FromSeconds(10)
+})
+{
+    using var results = searcher.FindAll();
+    if (results.Count != 2 || !results[0].Path.EndsWith("/CN=first", StringComparison.Ordinal) ||
+        !results[1].Path.EndsWith("/CN=second", StringComparison.Ordinal))
+        throw new InvalidOperationException("Public buffered FindAll did not preserve native pages/results.");
+    searcher.PageSize = 0;
+    var one = searcher.FindOne();
+    if (one is null || !one.Path.EndsWith("/CN=first", StringComparison.Ordinal))
+        throw new InvalidOperationException("Public buffered FindOne did not preserve native result.");
+}
+if (pool.Snapshot.Total != 0 || count(7) != bufferedSelected + 3 ||
+    count(1) != bufferedCloses + 3 || count(2) != bufferedFrees + 3 ||
+    count(4) != bufferedPages + 3 || count(3) != bufferedResults + 12)
+    throw new InvalidOperationException($"Public buffered resources unbalanced: resolves={count(7)-bufferedSelected}, closes={count(1)-bufferedCloses}, frees={count(2)-bufferedFrees}, pages={count(4)-bufferedPages}, results={count(3)-bufferedResults}.");
+Console.WriteLine("PASS: public buffered DirectorySearcher FindAll/FindOne -> actual native cursor; schema fallback after cursor close; operation resources balanced.");
 // Resolver registration is process-lifetime; do not unload its library while
 // SafeHandle finalizers or the runtime may retain function pointers.
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Count(int kind);

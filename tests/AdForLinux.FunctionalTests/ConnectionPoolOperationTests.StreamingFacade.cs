@@ -9,6 +9,58 @@ namespace AdForLinux.FunctionalTests;
 
 public partial class ConnectionPoolOperationTests
 {
+    [Theory]
+    [InlineData(false, ResultCode.Success)]
+    [InlineData(true, ResultCode.Success)]
+    [InlineData(false, ResultCode.UnwillingToPerform)]
+    [InlineData(true, ResultCode.UnwillingToPerform)]
+    public void Buffered_public_search_drains_terminal_before_schema_on_single_capacity(bool findOne, ResultCode code)
+    {
+        using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(1, 1, startTimer: false);
+        var trace = new List<string>();
+        ConversationTransport? query = null;
+        var created = 0;
+        using var root = new Entry("LDAP://directory.invalid/DC=example", null, null, AuthenticationTypes.Secure);
+        root.Options.Referral = ReferralChasingOption.None;
+        root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
+            pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), count, () =>
+            {
+                var transport = new ConversationTransport(trace);
+                if (++created == 2)
+                {
+                    query = transport;
+                    transport.Events = new([new LdapSearchEvent.Entry(TransportRow("CN=first", new() { ["cn"] = ["first"] }))]);
+                    if (!findOne) transport.Events.Enqueue(new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true));
+                    transport.Events.Enqueue(new LdapSearchEvent.Entry(TransportRow("CN=first", new() { ["sn"] = ["second"] })));
+                    transport.Events.Enqueue(new LdapSearchEvent.PageEnd(Envelope(code), false));
+                }
+                return new BoundLdapSession(transport, transport, options, new LdapAuthenticationSource(options), referrals);
+            }, reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
+        using var searcher = new Searcher(root) { ReferralChasing = ReferralChasingOption.None, PageSize = 2 };
+        var error = Record.Exception(() =>
+        {
+            if (findOne) Assert.NotNull(searcher.FindOne());
+            else { using var result = searcher.FindAll(); Assert.Equal(2, result.Count); }
+        });
+        Assert.NotNull(query);
+        Assert.Equal(findOne ? 3 : 4, query.Reads);
+        Assert.Equal(findOne ? 0 : 1, query.Pages);
+        Assert.Equal(2, created);
+        Assert.Equal(2, trace.Count(value => value == "session-close"));
+        if (code == ResultCode.Success)
+        {
+            Assert.Null(error);
+            if (findOne) Assert.Equal(2, trace.Count(value => value == "buffered-search")); // ignored second row needs no schema
+            Assert.True(trace.LastIndexOf("buffered-search") > trace.IndexOf("cursor-close"));
+            Assert.True(trace.LastIndexOf("session-close") > trace.LastIndexOf("buffered-search"));
+        }
+        else
+        {
+            Assert.IsType<DirectoryServicesCOMException>(error);
+            Assert.Equal(1, trace.Count(value => value == "buffered-search")); // only initial object lookup
+        }
+    }
+
     [Fact]
     public void Neutral_request_mapping_rejects_unrepresented_policy_before_dispatch()
     {

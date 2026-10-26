@@ -5,6 +5,44 @@ namespace AdForLinux.DirectoryServices;
 
 public partial class DirectorySearcher
 {
+    private SearchResult[] ReadNeutralBuffered(DirectoryEntry.ConnectionLease lease,
+        ILdapRequestTransport transport, SearchResultOrigin origin, SearchRequest request,
+        int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue)
+    {
+        if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null ||
+            (pageSize > 0 && ServerPageTimeLimit > TimeSpan.Zero))
+            throw new PlatformNotSupportedException("The neutral producer cannot represent the requested control or connection policy.");
+        var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
+        TimeSpan Remaining()
+        {
+            origin.Authority.Validate();
+            var remaining = timeout - clock.GetElapsedTime(started);
+            return remaining > TimeSpan.Zero ? remaining : throw new TimeoutException("The neutral search operation deadline expired.");
+        }
+        var command = LdapRequestDispatcher.FromRequest(transport, request, Remaining());
+        var session = lease.ManagedSession ?? throw new PlatformNotSupportedException("A neutral search requires an exclusive session.");
+        async Task<List<LdapTransportEntry>> Read()
+        {
+            var entries = new List<LdapTransportEntry>();
+            await foreach (var item in LdapConversation.SearchBorrowed(session, command, pageSize,
+                timeProvider: clock, remainingBudget: Remaining).ConfigureAwait(false))
+            {
+                if (item is LdapSearchEvent.Entry entry) entries.Add(entry.Value);
+                else if (item is LdapSearchEvent.PageEnd end && end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
+                    throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+            }
+            return entries;
+        }
+        try
+        {
+            // Drain every terminal envelope and close the cursor before schema can
+            // use this same session. Buffered modes need no second pool reservation.
+            var entries = Read().GetAwaiter().GetResult();
+            return entries.Take(maximumResults).Select(entry => new SearchResult(entry, origin, transport, Remaining)).ToArray();
+        }
+        catch { lease.Invalidate(); throw; }
+    }
+
     // Capability-selected producer for the neutral backend. The default Protocols
     // producer retains its existing timing, partial-result and control behavior.
     private SearchResultCollection FindAllNeutralStreaming(DirectoryEntry root, SearchResultOrigin origin,

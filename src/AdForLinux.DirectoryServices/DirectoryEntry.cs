@@ -370,7 +370,6 @@ public partial class DirectoryEntry : Component
         }
 
         using var lease = AcquireConnection();
-        var connection = lease.Connection;
         var modification = new DirectoryAttributeModification
         {
             Name = attributeName,
@@ -380,7 +379,7 @@ public partial class DirectoryEntry : Component
 
         var request = new ModifyRequest(_path.DistinguishedName);
         request.Modifications.Add(modification);
-        connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     /// <summary>
@@ -409,7 +408,7 @@ public partial class DirectoryEntry : Component
         request.Modifications.Add(deletion);
         request.Modifications.Add(addition);
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
@@ -484,18 +483,17 @@ public partial class DirectoryEntry : Component
         }
 
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     /// <summary>Deletes this object and everything under it.</summary>
     public void DeleteTree()
     {
         using var lease = AcquireConnection();
-        var connection = lease.Connection;
         var delete = new DeleteRequest(_path.DistinguishedName);
         // Ask the server to delete the whole subtree (OID 1.2.840.113556.1.4.805).
         delete.Controls.Add(new TreeDeleteControl());
-        connection.SendRequestCompatible(delete);
+        lease.SendWriteCompatible(delete);
     }
 
     /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
@@ -506,9 +504,8 @@ public partial class DirectoryEntry : Component
             ? relativeName
             : $"{relativeName},{_path.DistinguishedName}");
         using var lease = AcquireConnection(authority.Validate);
-        var connection = lease.Connection;
         authority.Validate();
-        connection.SendRequestCompatible(new DeleteRequest(distinguishedName));
+        lease.SendWriteCompatible(new DeleteRequest(distinguishedName));
     }
 
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
@@ -802,7 +799,6 @@ public partial class DirectoryEntry : Component
             return IdentityLifetime.Checked(generation, ValidateBinding, () => controlled);
         }
         using var lease = AcquireConnection(ValidateRead);
-        var connection = lease.Connection;
         var request = new SearchRequest(
             IdentityLifetime.Checked(generation, ValidateBinding, () => _path.DistinguishedName),
             "(objectClass=*)",
@@ -816,6 +812,37 @@ public partial class DirectoryEntry : Component
                 (System.DirectoryServices.Protocols.SecurityMasks)(int)(readSecurityMasks ?? EffectiveSecurityMasks())));
         }
 
+        var admitted = lease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+        {
+            var clock = System.Diagnostics.Stopwatch.GetTimestamp();
+            TimeSpan Remaining()
+            {
+                ValidateRead();
+                var remaining = admitted.Timeout - System.Diagnostics.Stopwatch.GetElapsedTime(clock);
+                return remaining > TimeSpan.Zero ? remaining : throw new TimeoutException("Property read deadline expired.");
+            }
+            var result = LdapRequestDispatcher.Search(admitted,
+                LdapRequestDispatcher.FromRequest(admitted, request, Remaining()));
+            if (result.Code != ResultCode.Success)
+                throw LdapExceptionTranslator.Translate(result.Code, result.Diagnostic ?? "LDAP property read failed.");
+            if (requireObject && (result.Entries.Length != 1 || result.References.Length != 0 || result.Referrals.Length != 0))
+                throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
+            if (requireCompleteServiceNames)
+                ValidateCompleteServiceNameReadback(result.Entries[0].Attributes.Select(pair => (pair.Key, pair.Value.Length)));
+            var loaded = IdentityLifetime.Checked(generation, ValidateBinding,
+                () => new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation()));
+            if (result.Entries.Length > 0)
+                LoadEntryValues(SearchEntryReader.Read(result.Entries[0], admitted, Remaining), loaded,
+                    requestedProperties, loadDefaultProperties, ValidateRead);
+            return IdentityLifetime.Checked(generation, ValidateBinding, () =>
+            {
+                Remaining();
+                if (result.Entries.Length > 0) _boundDistinguishedName = result.Entries[0].DistinguishedName;
+                return loaded;
+            });
+        }
+        var connection = lease.Connection;
         var response = (SearchResponse)connection.SendRequestCompatible(request);
         if (requireObject && (response.ResultCode != ResultCode.Success || response.Entries.Count != 1
             || response.References.Count != 0 || response.Referral.Length != 0))
@@ -836,24 +863,28 @@ public partial class DirectoryEntry : Component
     }
 
     private static void ValidateCompleteServiceNameReadback(SearchResultEntry entry)
+        => ValidateCompleteServiceNameReadback(entry.Attributes.AttributeNames.Cast<string>()
+            .Select(name => (name, entry.Attributes[name].Count)));
+
+    private static void ValidateCompleteServiceNameReadback(IEnumerable<(string Name, int Count)> attributes)
     {
         // Validate the wire names before LoadEntry normalizes range options.
         // A range ending at N cannot prove absence; even N-* lacks the prefix
         // unless N is zero. Do not assemble ranges across mutable snapshots.
-        DirectoryAttribute? bare = null;
-        DirectoryAttribute? terminal = null;
-        foreach (string name in entry.Attributes.AttributeNames)
+        int? bare = null;
+        int? terminal = null;
+        foreach (var (name, count) in attributes)
         {
             var parts = name.Split(';');
             if (!parts[0].Equals(PrincipalServiceNameWrite.Attribute, StringComparison.OrdinalIgnoreCase)) continue;
-            if (parts.Length == 1) bare = entry.Attributes[name];
+            if (parts.Length == 1) bare = count;
             else if (parts.Length == 2 && parts[1].Equals("range=0-*", StringComparison.OrdinalIgnoreCase) && terminal is null)
-                terminal = entry.Attributes[name];
+                terminal = count;
             else throw new InvalidOperationException("Service-name reconciliation requires complete, unambiguous attribute values; ranged or malformed readback was refused.");
         }
         // AD can return an empty bare companion with its ranged value attribute.
         // Nonempty bare plus ranged data is ambiguous and cannot be merged here.
-        if (terminal is not null && bare is { Count: > 0 })
+        if (terminal is not null && bare is > 0)
             throw new InvalidOperationException("Service-name readback contains conflicting bare and ranged values.");
     }
 
@@ -897,8 +928,15 @@ public partial class DirectoryEntry : Component
     string[] requestedProperties,
     bool normalizeRangedNames, Action validateBinding, LdapConnection connection)
     {
+        LoadEntryValues(SearchEntryReader.Read(entry, SchemaConnectionForOperation(connection)),
+            properties, requestedProperties, normalizeRangedNames, validateBinding);
+    }
+
+    private static void LoadEntryValues(IEnumerable<(string Name, object Value)> values,
+        PropertyCollection properties, string[] requestedProperties, bool normalizeRangedNames, Action validateBinding)
+    {
         validateBinding();
-        foreach (var (name, value) in SearchEntryReader.Read(entry, SchemaConnectionForOperation(connection)))
+        foreach (var (name, value) in values)
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
@@ -1140,7 +1178,7 @@ public partial class DirectoryEntry : Component
             DeleteOldRdn = true,
         };
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
         var retainedProperties = _usePropertyCache ? null : _properties;
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
         if (!_usePropertyCache) _properties = retainedProperties;
