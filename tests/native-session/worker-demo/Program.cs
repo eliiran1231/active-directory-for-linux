@@ -111,6 +111,13 @@ foreach (var mode in new[] { "malformed", "exit" })
     catch (Exception error) when (error is not InvalidOperationException || error.Message != "Invalid worker was admitted.") { }
     await Empty();
 }
+foreach (var mode in new[] { "unsealed-profile", "partial-profile", "future-write-profile" })
+{
+    try { using var bad = await workers.AcquireAsync(Launch(mode), profile, TimeSpan.FromSeconds(3)); throw new InvalidOperationException("Mutable profile admitted."); }
+    catch (IOException error) when (error.Message == "Worker operation failed.") { }
+    await Empty();
+}
+Console.WriteLine("PASS: identical profile bytes with absent, partial, or FUTURE_WRITE-only seals are refused before the backend factory.");
 try
 {
     using var rejected = await workers.AcquireAsync(new WorkerLaunch(executable, [productionHost, supervisorPath], supervisorPath), profile, TimeSpan.FromSeconds(5));
@@ -138,6 +145,8 @@ static async Task<int> Child(string[] arguments)
     using var channel = new NetworkStream(socket, ownsSocket: false);
     if (mode == "exit") return 0;
     if (mode == "malformed") { await channel.WriteAsync(new byte[] { 255, 255, 255, 127 }); await Task.Delay(5000); return 0; }
+    if (mode is "unsealed-profile" or "partial-profile" or "future-write-profile")
+        ProfileFixture.ReplaceWithMutableCopy(mode);
     if (arguments[4].Length != 0)
     {
         // Separate test-only private MIT module; no cache/credential operations.
@@ -159,6 +168,8 @@ static async Task<int> Child(string[] arguments)
     {
         await LdapWorkerHost.RunAsync(channel, start =>
         {
+            if (mode is "unsealed-profile" or "partial-profile" or "future-write-profile")
+                throw new PlatformNotSupportedException("Fixture factory must not be reached for mutable profiles.");
             var options = new LdapConnectionOptions { Host = start.Host, Port = start.Port, UseSsl = start.UseSsl,
                 AuthenticationType = AuthType.Negotiate, Signing = start.Signing, Sealing = start.Sealing, Timeout = start.Timeout };
             var owner = NativeLdapOperation.Acquire(pool, options, start.SessionCount, api: api, source: start.CredentialSource);
@@ -176,3 +187,24 @@ static async Task<int> Child(string[] arguments)
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate IntPtr SourcePath();
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int InspectProfile();
+
+// Only disposable recording child processes replace inherited descriptors.
+static class ProfileFixture
+{
+    internal static void ReplaceWithMutableCopy(string mode)
+    {
+        using var original = new SafeFileHandle((IntPtr)4, ownsHandle: false);
+        var data = new byte[checked((int)RandomAccess.GetLength(original))];
+        if (RandomAccess.Read(original, data, 0) != data.Length) throw new IOException("Fixture read failed.");
+        var fd = MemfdCreate("adfl-unsealed-test", 3 /* CLOEXEC | ALLOW_SEALING */);
+        if (fd < 6) throw new IOException("Fixture memfd failed.");
+        using var replacement = new SafeFileHandle((IntPtr)fd, ownsHandle: true);
+        RandomAccess.Write(replacement, data, 0);
+        var seals = mode switch { "partial-profile" => 7, "future-write-profile" => 23, _ => 0 };
+        if ((seals != 0 && Fcntl(fd, 1033 /* F_ADD_SEALS */, seals) != 0) || Dup2(fd, 4) != 4)
+            throw new IOException("Fixture seal/dup failed.");
+    }
+    [DllImport("libc", EntryPoint = "memfd_create")] private static extern int MemfdCreate(string name, uint flags);
+    [DllImport("libc", EntryPoint = "fcntl")] private static extern int Fcntl(int fd, int command, int value);
+    [DllImport("libc", EntryPoint = "dup2")] private static extern int Dup2(int fd, int destination);
+}

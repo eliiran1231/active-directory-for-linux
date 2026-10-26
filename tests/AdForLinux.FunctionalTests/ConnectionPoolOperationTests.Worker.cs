@@ -35,6 +35,27 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Fact]
+    public async Task Production_worker_requires_source_and_policy_and_never_activates_from_metadata()
+    {
+        var profile = new LdapWorkerStart("directory.invalid", 389, false, true, true, 1, TimeSpan.FromSeconds(5));
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerKerberosProfile.RequireProductionPolicy(profile));
+        var sourced = profile with { CredentialSource = new(LdapCredentialSourceKind.File, "/recording/cache") };
+        Assert.Throws<PlatformNotSupportedException>(() => LdapWorkerKerberosProfile.RequireProductionPolicy(sourced));
+        LdapWorkerKerberosProfile.RequireProductionPolicy(sourced with
+            { RestrictedConfiguration = new("EXAMPLE.INVALID", "directory.invalid", "/recording/plugins") });
+        // Exercise the actual default host, with no injected backend or native load.
+        using var channel = new MemoryStream();
+        await LdapWorkerProtocol.WriteAsync(channel, LdapWorkerProtocol.Frame(1, 0, "START", profile.Timeout, sourced), default);
+        var replyOffset = channel.Length;
+        channel.Position = 0;
+        await LdapWorkerHost.RunAsync(channel);
+        channel.Position = replyOffset;
+        var reply = await LdapWorkerProtocol.ReadAsync(channel, default);
+        Assert.Equal("ERROR", reply.Kind);
+        Assert.Equal("unsupported", LdapWorkerProtocol.Payload<LdapWorkerFailure>(reply).Category);
+    }
+
+    [Fact]
     public void Worker_submission_gate_runs_before_uncertainty_and_cannot_be_reentered()
     {
         LdapSubmission? submission = null;

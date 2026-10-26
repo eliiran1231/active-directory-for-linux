@@ -355,3 +355,13 @@ Validated in the disposable lab: nine successful real binds, exact identity and
 protected WhoAmI exchanges, cache replacement and teardown. This does not prove
 that an old GSS credential handle snapshots a mutable cache, or that concurrent
 external cache mutation is safe. No production source gate was changed.
+
+Production worker admission now explicitly requires both the typed restricted
+configuration and an explicit source, independently of optional protocol fields.
+It still unconditionally rejects unavailable production composition. The child
+duplicates each inherited configuration descriptor into an owned CLOEXEC handle,
+requires kernel WRITE/GROW/SHRINK/SEAL seals before checking sizes or reading,
+and reads those same owned handles. Identical bytes in unsealed, partially sealed
+or FUTURE_WRITE-only memfds are rejected before the backend factory. These checks
+prevent mutable configuration admission; they do not establish plugin/deployment
+closure or enable authentication.

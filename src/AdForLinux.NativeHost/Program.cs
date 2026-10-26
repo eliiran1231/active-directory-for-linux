@@ -11,7 +11,7 @@ try
     if (supervisor.SendIdentity(3) != 0) return 3;
     using var socket = new Socket(new SafeSocketHandle((IntPtr)3, ownsHandle: true));
     using var channel = new NetworkStream(socket, ownsSocket: false);
-    // Private guarded dependency composition is not yet available. The production
+    // Audited production deployment admission is not yet available. The production
     // factory refuses before native credential resolution; it has no enable flag.
     await LdapWorkerHost.RunAsync(channel, CancellationToken.None);
     return 0;

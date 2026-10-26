@@ -8,7 +8,15 @@ internal sealed class LdapWorkerResources(IDisposable owner, ILdapRequestTranspo
 internal static class LdapWorkerHost
 {
     internal static Task RunAsync(Stream channel, CancellationToken cancellationToken = default) =>
-        RunAsync(channel, _ => throw new PlatformNotSupportedException("Production isolated authentication composition is unavailable."), cancellationToken);
+        RunAsync(channel, CreateProductionResources, cancellationToken);
+
+    private static LdapWorkerResources CreateProductionResources(LdapWorkerStart profile)
+    {
+        LdapWorkerKerberosProfile.RequireProductionPolicy(profile);
+        // The successful opt-in lab is not a deployment integrity attestation.
+        // Never let optional protocol metadata or a caller flag activate binding.
+        throw new PlatformNotSupportedException("Production isolated authentication composition is unavailable.");
+    }
 
     internal static async Task RunAsync(Stream channel, Func<LdapWorkerStart, LdapWorkerResources> factory,
         CancellationToken cancellationToken = default)
