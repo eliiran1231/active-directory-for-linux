@@ -17,6 +17,7 @@ typedef struct {
     int terminal_type;
     const char *new_rdn, *new_superior;
     unsigned delete_old_rdn;
+    const adfl_control *controls; size_t control_count;
 } adfl_write_request;
 
 typedef struct adfl_native_ops {
@@ -32,13 +33,13 @@ typedef struct adfl_native_ops {
     int (*bind)(void *, LDAP *, LDAP_SASL_INTERACT_PROC *, void *);
     void (*ldap_close)(void *, LDAP *);
     int (*install_connection_guard)(void *, LDAP *, ldap_conncb *);
-    int (*search_start)(void *, LDAP *, const adfl_search_request *, int *);
+    int (*search_start)(void *, LDAP *, const adfl_search_request *, adfl_submitted_fn, void *, int *);
     int (*search_poll)(void *, LDAP *, int, unsigned, void **);
     int (*result_emit)(void *, LDAP *, void *, adfl_result_fn, void *);
     void (*result_free)(void *, void *);
     void (*abandon)(void *, LDAP *, int);
     uint64_t (*monotonic_ms)(void *);
-    int (*page_start)(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, int *);
+    int (*page_start)(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, adfl_submitted_fn, void *, int *);
     int (*message_poll)(void *, LDAP *, int, unsigned, void **); /* native message type, 0 timeout, -1 error */
     int (*message_emit)(void *, LDAP *, void *, int, adfl_result_fn, void *);
     int (*page_cookie)(void *, LDAP *, void *, int *, adfl_bytes *); /* malloc-owned output */
@@ -60,7 +61,7 @@ struct adfl_bound_session {
     atomic_uint references;
     unsigned port;
 };
-int adfl_system_search_start(void *, LDAP *, const adfl_search_request *, int *);
+int adfl_system_search_start(void *, LDAP *, const adfl_search_request *, adfl_submitted_fn, void *, int *);
 int adfl_system_search_poll(void *, LDAP *, int, unsigned, void **);
 int adfl_system_result_emit(void *, LDAP *, void *, adfl_result_fn, void *);
 void adfl_system_result_free(void *, void *);
@@ -68,11 +69,16 @@ void adfl_system_abandon(void *, LDAP *, int);
 uint64_t adfl_system_monotonic_ms(void *);
 void adfl_session_retain(adfl_bound_session *);
 void adfl_session_release(adfl_bound_session *);
-int adfl_system_page_start(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, int *);
+int adfl_system_page_start(void *, LDAP *, const adfl_search_request *, unsigned, const adfl_bytes *, adfl_submitted_fn, void *, int *);
 int adfl_system_message_poll(void *, LDAP *, int, unsigned, void **);
 int adfl_system_message_emit(void *, LDAP *, void *, int, adfl_result_fn, void *);
 int adfl_system_page_cookie(void *, LDAP *, void *, int *, adfl_bytes *);
 int adfl_system_write_start(void *, LDAP *, const adfl_write_request *, adfl_submitted_fn, void *, int *, int *);
+int adfl_controls_valid(const adfl_control *, size_t);
+int adfl_controls_copy(const adfl_control *, size_t, adfl_control **);
+void adfl_controls_free(adfl_control *, size_t);
+int adfl_controls_build(const adfl_control *, size_t, LDAPControl *, LDAPControl ***);
+void adfl_controls_release(LDAPControl **, size_t);
 extern const adfl_native_ops adfl_system_ops;
 int adfl_resolve_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_authority **);
 int adfl_open_with(const adfl_native_ops *, void *, const adfl_native_profile *, adfl_cancelled_fn, void *, adfl_bound_session **);

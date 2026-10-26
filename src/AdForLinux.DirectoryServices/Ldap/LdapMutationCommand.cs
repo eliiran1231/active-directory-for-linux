@@ -27,7 +27,7 @@ internal static class LdapMutationCommands
         static byte[][] Values(byte[][] values) => values.Select(value => value.ToArray()).ToArray();
         if (command.Timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(command.Timeout));
         var dn = Text(command.DistinguishedName);
-        var controls = command.Controls.Select(control => control with { Oid = Text(control.Oid), Value = control.Value.ToArray() }).ToArray();
+        var controls = command.Controls.Select(control => LdapControlCodec.Snapshot(control with { Oid = Text(control.Oid) })).ToArray();
         LdapMutationCommand prepared = command switch
         {
             LdapModifyCommand modify => modify with
@@ -59,9 +59,8 @@ internal static class LdapMutationCommands
         if ((transport.Capabilities & required) != required ||
             (transport is not ILdapMutationTransport && (command is not LdapModifyCommand || transport is not ILdapConversationTransport)))
             throw new PlatformNotSupportedException("This transport cannot represent the mutation; no request was sent.");
-        // Only the existing Modify control contract exists. Other control support
-        // is intentionally absent until complete encoding/semantics are implemented.
-        if (command.Controls.Length != 0 && (command is not LdapModifyCommand ||
+        // Preserve legacy Modify-only implementations while allowing generic controls.
+        if (command.Controls.Length != 0 && (transport.Capabilities & LdapTransportCapabilities.MutationControls) == 0 && (command is not LdapModifyCommand ||
             (transport.Capabilities & LdapTransportCapabilities.ModifyControls) == 0))
             throw new PlatformNotSupportedException("This transport cannot represent the mutation controls; no request was sent.");
     }

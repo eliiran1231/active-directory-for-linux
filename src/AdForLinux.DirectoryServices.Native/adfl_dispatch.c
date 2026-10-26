@@ -27,10 +27,17 @@ static int emit_checked(void *state, int event, const char *name, const void *by
         e->retire_after_result = 1;
     return e->stopped;
 }
+static int search_ready(void *state) {
+    struct emission *e = state;
+    if (atomic_load(&e->session->retired)) return e->stopped = ADFL_SESSION_RETIRED;
+    if (e->cancelled && e->cancelled(e->cancel_state)) return e->stopped = ADFL_CANCELLED;
+    return e->stopped = deadline(e->session, e->start, e->timeout);
+}
 int adfl_session_search(adfl_bound_session *s, const adfl_search_request *r,
                        adfl_cancelled_fn cancelled, void *cancel_state, adfl_result_fn emit, void *emit_state) {
     if (!s || !r || !r->base_dn || !r->filter || !emit || r->scope < 0 || r->scope > 2 ||
-        !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 || r->size_limit > INT_MAX || r->types_only > 1)
+        !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 || r->size_limit > INT_MAX || r->types_only > 1 ||
+        !adfl_controls_valid(r->controls, r->control_count))
         return ADFL_INVALID;
     if (cancelled && cancelled(cancel_state)) return ADFL_CANCELLED;
     int idle = 0;
@@ -42,9 +49,10 @@ int adfl_session_search(adfl_bound_session *s, const adfl_search_request *r,
     if (atomic_load(&s->retired)) { rc = ADFL_SESSION_RETIRED; goto done; }
     uint64_t start = ops->monotonic_ms(state);
     if (start == UINT64_MAX) { rc = ADFL_REQUEST_FAILED; goto done; }
+    struct emission before_send = {s, cancelled, cancel_state, NULL, NULL, 0, 0, start, r->timeout_milliseconds};
     /* Dispatch exactly once. No retry/fallback is permitted after this call. */
-    if (ops->search_start(state, s->ldap, r, &message_id) != LDAP_SUCCESS) {
-        rc = ADFL_REQUEST_FAILED; goto done;
+    if (ops->search_start(state, s->ldap, r, search_ready, &before_send, &message_id) != LDAP_SUCCESS) {
+        rc = before_send.stopped ? before_send.stopped : ADFL_REQUEST_FAILED; goto done;
     }
     pending = 1;
     for (;;) {

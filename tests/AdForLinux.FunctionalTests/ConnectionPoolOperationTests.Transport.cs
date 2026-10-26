@@ -144,12 +144,12 @@ public partial class ConnectionPoolOperationTests
         var builder = new NativeSearchResultBuilder();
         builder.Accept(1, "CN=example", [], 0);
         builder.Accept(2, "binary", [], 0); builder.Accept(3, null, bytes, 0); builder.Accept(4, null, [], 0);
-        builder.Accept(5, "1.2.3", bytes, 1); builder.Accept(6, null, [], 0);
+        builder.Accept(5, "1.2.3", bytes, 3); builder.Accept(6, null, [], 0);
         builder.Accept(7, null, [], 0); builder.Accept(8, "ldap://reference.invalid/", [], 0);
         builder.Accept(9, "1.2.4", [], 0); builder.Accept(10, null, [], 0);
         builder.Accept(11, null, [], (int)ResultCode.SizeLimitExceeded);
         builder.Accept(12, "DC=example", [], 0); builder.Accept(13, "limit", [], 0);
-        builder.Accept(14, "ldap://referral.invalid/", [], 0); builder.Accept(15, "1.2.5", bytes, 0);
+        builder.Accept(14, "ldap://referral.invalid/", [], 0); builder.Accept(15, "1.2.5", bytes, 2);
         var result = builder.Complete();
         Assert.Equal(ResultCode.SizeLimitExceeded, result.Code);
         Assert.Equal(new byte[] { 0, 255, 65 }, result.Entries[0].Attributes["binary"][0]);

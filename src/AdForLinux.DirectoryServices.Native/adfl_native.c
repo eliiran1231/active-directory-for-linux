@@ -156,3 +156,6 @@ int adfl_operation_open(const adfl_native_profile *p, adfl_cancelled_fn c, void 
 int adfl_native_probe(adfl_native_capabilities *out) {
     return out ? adfl_system_ops.probe(NULL, out) : ADFL_INVALID;
 }
+
+/* Harmless ABI handshake: no library initialization or credential access. */
+unsigned adfl_native_abi_version(void) { return 2; }

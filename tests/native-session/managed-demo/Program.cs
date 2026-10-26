@@ -146,6 +146,37 @@ if (count(5) != genericWrites + 9 || count(6) != genericReceipts + 9 || count(1)
     throw new InvalidOperationException("Generic mutation dispatch/receipt/resource counters are unbalanced.");
 Console.WriteLine("PASS: Add/Delete/ModifyDN/Modify share native outcomes; public CommitChanges/Children.Remove/MoveTo preserve definitive rejections.");
 Console.WriteLine("Zero-length binary values, empty attribute/change lists, nullable rename parent; recording native dependencies only.");
+// Controls use the same owned ABI arrays for buffered search, cursor and writes.
+var controlCloses = count(1); var controlFrees = count(2); var controlSelected = count(7);
+LdapTransportControl[] wireControls = [new("1.2.3", [0, 255], true), new("1.2.3", [], false, true), new("1.2.5", [], true, false)];
+void CheckControls(LdapTransportControl[] controls)
+{
+    var echoed = controls.Skip(1).ToArray();
+    if (echoed.Length != 3 || !echoed[0].Value.SequenceEqual(new byte[] { 0, 255 }) || !echoed[0].Critical || !echoed[0].HasValue ||
+        echoed[1].Oid != "1.2.3" || !echoed[1].HasValue || echoed[1].Value.Length != 0 || echoed[1].Critical ||
+        echoed[2].Oid != "1.2.5" || echoed[2].HasValue || !echoed[2].Critical)
+        throw new InvalidOperationException("Native control order, presence or bytes changed.");
+}
+using (var controlled = AcquireConversation())
+    CheckControls(controlled.ExecuteTransport(transport => LdapRequestDispatcher.Search(transport,
+        new("DC=example", "(objectClass=*)", System.DirectoryServices.Protocols.SearchScope.Base, ["binary"], TimeSpan.FromSeconds(5), Controls: wireControls))).Controls);
+await foreach (var item in LdapConversation.Search(AcquireConversation,
+    new("DC=example", "(objectClass=*)", System.DirectoryServices.Protocols.SearchScope.Subtree, ["binary"], TimeSpan.FromSeconds(5), Controls: wireControls), pageSize: 2))
+    if (item is LdapSearchEvent.PageEnd page) CheckControls(page.Result.Controls);
+foreach (var command in genericCommands)
+{
+    var controlled = await LdapConversation.Mutate(AcquireConversation, command with { Controls = wireControls });
+    if (controlled.Disposition != LdapWriteDisposition.Completed || controlled.Result is null)
+        throw new InvalidOperationException("Controlled mutation lost definitive result.");
+    CheckControls(controlled.Result.Controls);
+}
+if (configure(0) != 0) throw new InvalidOperationException("Cannot restore property fixture.");
+entry.RefreshCache(); // default security mask control now crosses the real managed/C ABI
+if ((string?)entry.Properties["dnsHostName"].Value != "observed-dc.invalid")
+    throw new InvalidOperationException("Ordinary property materialization with security control failed.");
+if (pool.Snapshot.Total != 0 || count(1) != controlCloses + 9 || count(2) != controlFrees + 9 || count(7) != controlSelected + 9)
+    throw new InvalidOperationException("Controlled requests leaked session or authority ownership.");
+Console.WriteLine("PASS: buffered/paged/all mutation controls preserve binary, empty, absent and duplicate values; ordinary public property load uses managed security-mask encoding.");
 // Resolver registration is process-lifetime; do not unload its library while
 // SafeHandle finalizers or the runtime may retain function pointers.
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Count(int kind);
@@ -170,10 +201,11 @@ sealed class RecordingBindingApi : NativeLdapBindingBackend.IBindingApi
         closeSession = Marshal.GetDelegateForFunctionPointer<CloseCall>(NativeLibrary.GetExport(library, "adfl_session_close"));
     }
     public int Resolve(ref NativeLdapBindingBackend.Profile profile, NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr authority)
-        => resolve(ref profile, cancelled, state, out authority);
+        { NativeLdapBindingBackend.EnsureAbi(); return resolve(ref profile, cancelled, state, out authority); }
     public int Bind(NativeLdapBindingBackend.AuthorityHandle authority, ref NativeLdapBindingBackend.Profile profile,
         NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr session)
     {
+        NativeLdapBindingBackend.EnsureAbi();
         var result = bind(authority, ref profile, cancelled, state, out session);
         try { if (result == 0) AfterBind?.Invoke(); return result; }
         catch { if (session != IntPtr.Zero) closeSession(ref session); throw; }

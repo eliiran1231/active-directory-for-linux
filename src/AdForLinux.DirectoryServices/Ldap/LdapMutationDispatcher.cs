@@ -38,7 +38,7 @@ internal static class LdapMutationDispatcher
             };
             LdapMutationCommands.RequireCapabilities(transport, command);
             command = command with { Controls = controlSources.Select(control =>
-                new LdapTransportControl(control.Type, control.GetValue(), control.IsCritical)).ToArray() };
+                LdapControlCodec.FromProtocol(control)).ToArray() };
             command = LdapMutationCommands.Prepare(command);
             var remaining = timeout - System.Diagnostics.Stopwatch.GetElapsedTime(started);
             if (remaining <= TimeSpan.Zero) throw new TimeoutException("Mutation preparation exhausted the operation budget.");
@@ -67,7 +67,7 @@ internal static class LdapMutationDispatcher
 
     private static LdapResultEnvelope Envelope(DirectoryResponse response) => new(response.ResultCode,
         response.MatchedDN, response.ErrorMessage, response.Referral.Select(uri => uri.ToString()).ToArray(),
-        response.Controls.Select(control => new LdapTransportControl(control.Type, control.GetValue(), control.IsCritical)).ToArray());
+        response.Controls.Select(control => LdapControlCodec.FromProtocol(control)).ToArray());
 
     internal static void ThrowIfFailed(LdapWriteOutcome outcome)
     {

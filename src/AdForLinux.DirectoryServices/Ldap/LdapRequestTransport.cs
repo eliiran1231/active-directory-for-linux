@@ -4,9 +4,9 @@ using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 [Flags]
-internal enum LdapTransportCapabilities { None = 0, Search = 1, SearchControls = 2, ProtocolsConnection = 4, StreamingSearch = 8, PagedSearch = 16, Modify = 32, ModifyControls = 64, Add = 128, Delete = 256, ModifyDn = 512 }
+internal enum LdapTransportCapabilities { None = 0, Search = 1, SearchControls = 2, ProtocolsConnection = 4, StreamingSearch = 8, PagedSearch = 16, Modify = 32, ModifyControls = 64, Add = 128, Delete = 256, ModifyDn = 512, MutationControls = 1024 }
 // Request controls are server-side controls; response controls preserve their wire payload.
-internal sealed record LdapTransportControl(string Oid, byte[] Value, bool Critical);
+internal sealed record LdapTransportControl(string Oid, byte[] Value, bool Critical, bool HasValue = true);
 internal sealed record LdapSearchCommand(string BaseDn, string Filter, ProtocolScope Scope,
     string[] Attributes, TimeSpan Timeout, int SizeLimit = 0, bool TypesOnly = false,
     LdapTransportControl[]? Controls = null);
@@ -37,14 +37,14 @@ internal static class LdapRequestDispatcher
 
     internal static LdapSearchCommand FromRequest(ILdapRequestTransport transport, SearchRequest request, TimeSpan timeout)
     {
-        if (request.Filter is not string filter || request.Aliases != System.DirectoryServices.Protocols.DereferenceAlias.Never || request.TimeLimit != TimeSpan.Zero)
-            throw new PlatformNotSupportedException("The neutral request cannot represent this filter, alias or server-time-limit policy.");
+        if (request.RequestId is not null || request.Filter is not string filter || request.Aliases != System.DirectoryServices.Protocols.DereferenceAlias.Never || request.TimeLimit != TimeSpan.Zero)
+            throw new PlatformNotSupportedException("The neutral request cannot represent this request ID, filter, alias or server-time-limit policy.");
         if (request.Controls.Count != 0 && (transport.Capabilities & LdapTransportCapabilities.SearchControls) == 0)
             throw new PlatformNotSupportedException("The transport cannot represent search controls; no request was sent.");
         var controls = request.Controls.Cast<DirectoryControl>().Select(control =>
         {
             if (!control.ServerSide) throw new PlatformNotSupportedException("Client-side controls are not represented by the neutral transport.");
-            return new LdapTransportControl(control.Type, control.GetValue(), control.IsCritical);
+            return LdapControlCodec.FromProtocol(control);
         }).ToArray();
         return Prepare(transport, new(request.DistinguishedName, filter, request.Scope,
             request.Attributes.Cast<string>().ToArray(), timeout, request.SizeLimit, request.TypesOnly, controls));
@@ -68,12 +68,15 @@ internal static class LdapRequestDispatcher
         var controls = (command.Controls ?? []).Select(control =>
         {
             Text(control.Oid);
-            return control with { Value = control.Value.ToArray() };
+            return LdapControlCodec.Snapshot(control);
         }).ToArray();
         var required = LdapTransportCapabilities.Search |
             (controls.Length == 0 ? LdapTransportCapabilities.None : LdapTransportCapabilities.SearchControls);
         if ((transport.Capabilities & required) != required)
             throw new PlatformNotSupportedException("The transport cannot represent the complete request; no request was sent.");
+        if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) != 0 &&
+            controls.Any(control => control.HasValue && control.Value.Length == 0))
+            throw new PlatformNotSupportedException("Protocols cannot preserve an explicitly present empty control value.");
         // Snapshot and check the complete request before any dispatch.
         return command with { Attributes = attributes, Controls = controls };
     }
@@ -91,7 +94,7 @@ internal sealed class ProtocolsLdapTransport(LdapConnection connection) : ILdapR
         var request = new SearchRequest(command.BaseDn, command.Filter, command.Scope, command.Attributes)
         { SizeLimit = command.SizeLimit, TypesOnly = command.TypesOnly };
         foreach (var control in command.Controls ?? [])
-            request.Controls.Add(new DirectoryControl(control.Oid, control.Value, control.Critical, true));
+            request.Controls.Add(new DirectoryControl(control.Oid, control.HasValue ? control.Value : null, control.Critical, true));
         // Preserve the existing synchronous Protocols behavior/exception mapping.
         // Cancellation during that call is cooperative, not a hard interrupt.
         var response = command.Timeout == connection.Timeout
@@ -103,7 +106,7 @@ internal sealed class ProtocolsLdapTransport(LdapConnection connection) : ILdapR
             });
         cancellationToken.ThrowIfCancellationRequested();
         static LdapTransportControl[] Controls(DirectoryControl[] controls) => controls.Select(c =>
-            new LdapTransportControl(c.Type, c.GetValue(), c.IsCritical)).ToArray();
+            LdapControlCodec.FromProtocol(c)).ToArray();
         var entries = response.Entries.Cast<SearchResultEntry>().Select(entry =>
         {
             var values = new Dictionary<string, byte[][]>(StringComparer.OrdinalIgnoreCase);

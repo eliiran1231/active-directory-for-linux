@@ -11,7 +11,7 @@ internal static partial class NativeLdapBindingBackend
         private readonly SessionHandle ownedHandle = handle;
         public LdapTransportCapabilities Capabilities => LdapTransportCapabilities.Search |
             LdapTransportCapabilities.StreamingSearch | LdapTransportCapabilities.PagedSearch | LdapTransportCapabilities.Modify |
-            LdapTransportCapabilities.Add | LdapTransportCapabilities.Delete | LdapTransportCapabilities.ModifyDn;
+            LdapTransportCapabilities.Add | LdapTransportCapabilities.Delete | LdapTransportCapabilities.ModifyDn | LdapTransportCapabilities.SearchControls | LdapTransportCapabilities.MutationControls;
         public TimeSpan Timeout => timeout;
         public string? ConnectedHost => null; // a requested alias is not an observed DC
         public LdapSearchResult Search(LdapSearchCommand command, CancellationToken cancellationToken)
@@ -19,14 +19,18 @@ internal static partial class NativeLdapBindingBackend
             cancellationToken.ThrowIfCancellationRequested();
             if (command.Timeout <= TimeSpan.Zero || command.Timeout > TimeSpan.FromHours(1))
                 throw new PlatformNotSupportedException("The native transport supports request deadlines above zero and at most one hour.");
-            if (command.Controls is { Length: > 0 }) throw new PlatformNotSupportedException("Native search request controls are not implemented.");
+            var budget = new PreparationBudget(command.Timeout);
+            EnsureAbi();
+            command = LdapRequestDispatcher.Prepare(this, command);
             if (command.BaseDn.Contains('\0') || command.Filter.Contains('\0') || command.Attributes.Any(a => a.Contains('\0')))
                 throw new ArgumentException("Native LDAP request strings cannot contain NUL.");
             using var attributes = new AttributePointers(command.Attributes);
+            using var controls = new ControlPointers(command.Controls ?? []);
             var request = new SearchProfile
             {
                 BaseDn = command.BaseDn, Filter = command.Filter, Attributes = attributes.Pointer,
-                Scope = (int)command.Scope, TimeoutMilliseconds = checked((uint)Math.Ceiling(command.Timeout.TotalMilliseconds)),
+                Scope = (int)command.Scope, TimeoutMilliseconds = budget.RemainingMilliseconds(),
+                Controls = controls.Pointer, ControlCount = controls.Count,
                 SizeLimit = checked((uint)command.SizeLimit), TypesOnly = command.TypesOnly ? 1u : 0u,
             };
             var result = new NativeSearchResultBuilder();
@@ -35,16 +39,16 @@ internal static partial class NativeLdapBindingBackend
             {
                 try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    cancellationToken.ThrowIfCancellationRequested(); budget.Check();
                     result.Accept(kind, Marshal.PtrToStringUTF8(name), Copy(bytes, length), number);
                     return 0;
                 }
                 catch (Exception error) { conversionError = error; return 1; }
             };
-            Cancelled check = _ => cancellationToken.IsCancellationRequested ? 1 : 0;
+            Cancelled check = _ => cancellationToken.IsCancellationRequested || budget.Expired ? 1 : 0;
             var status = NativeSearch(ownedHandle, ref request, check, IntPtr.Zero, emit, IntPtr.Zero);
             if (conversionError is not null) ExceptionDispatchInfo.Capture(conversionError).Throw();
-            if (status != 0) Throw(status, cancellationToken);
+            if (status != 0) ThrowWithBudget(status, cancellationToken, budget);
             return result.Complete();
         }
         internal static byte[] Copy(IntPtr source, UIntPtr length)
@@ -91,6 +95,7 @@ internal static partial class NativeLdapBindingBackend
         public IntPtr Attributes;
         public int Scope;
         public uint TimeoutMilliseconds, SizeLimit, TypesOnly;
+        public IntPtr Controls; public UIntPtr ControlCount;
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int ResultEvent(IntPtr state, int kind, IntPtr name, IntPtr bytes, UIntPtr length, int number);
@@ -117,7 +122,11 @@ internal sealed class NativeSearchResultBuilder
     {
         static string Required(string? value) => value ?? throw new InvalidOperationException("Native result omitted a required name.");
         void Require(bool condition) { if (!condition) throw new InvalidOperationException("Native result events are out of sequence."); }
-        var control = () => new LdapTransportControl(Required(name), bytes, number != 0);
+        LdapTransportControl control()
+        {
+            Require((number & ~3) == 0 && ((number & 2) != 0 || bytes.Length == 0));
+            return new(Required(name), bytes, (number & 1) != 0, (number & 2) != 0);
+        }
         if (code is not null && kind <= 10)
             throw new InvalidOperationException("Native payload appeared after the final result code.");
         switch (kind)

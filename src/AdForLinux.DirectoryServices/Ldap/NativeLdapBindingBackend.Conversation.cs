@@ -16,13 +16,16 @@ internal static partial class NativeLdapBindingBackend
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(command);
             var budget = new PreparationBudget(command.Timeout);
+            EnsureAbi();
             command = LdapRequestDispatcher.Prepare(this, command);
             if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
             using var attributes = new AttributePointers(command.Attributes);
+            using var controls = new ControlPointers(command.Controls ?? []);
             var request = new SearchProfile
             {
                 BaseDn = command.BaseDn, Filter = command.Filter, Attributes = attributes.Pointer,
                 Scope = (int)command.Scope, TimeoutMilliseconds = budget.RemainingMilliseconds(),
+                Controls = controls.Pointer, ControlCount = controls.Count,
                 SizeLimit = checked((uint)command.SizeLimit), TypesOnly = command.TypesOnly ? 1u : 0u
             };
             Cancelled check = _ => cancellationToken.IsCancellationRequested || budget.Expired ? 1 : 0;
@@ -45,6 +48,7 @@ internal static partial class NativeLdapBindingBackend
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(command);
             var budget = new PreparationBudget(command.Timeout);
+            EnsureAbi();
             LdapMutationCommands.RequireCapabilities(this, command);
             command = LdapMutationCommands.Prepare(command);
             // Add reuses the ordered binary attribute layout, with ADD operations.
@@ -57,6 +61,7 @@ internal static partial class NativeLdapBindingBackend
                     new LdapAttributeChange(attribute.Name, DirectoryAttributeOperation.Add, attribute.Values)).ToArray()),
                 _ => null
             };
+            using var controls = new ControlPointers(command.Controls);
             var builder = new NativeSearchResultBuilder();
             Exception? callbackError = null;
             Submitted beforeSend = _ =>
@@ -78,27 +83,27 @@ internal static partial class NativeLdapBindingBackend
                 case LdapModifyCommand modify:
                 {
                     var request = new ModifyProfile { Dn = modify.DistinguishedName, Changes = changes!.Pointer,
-                        ChangeCount = (UIntPtr)modify.Changes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                        ChangeCount = (UIntPtr)modify.Changes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds(), Controls = controls.Pointer, ControlCount = controls.Count };
                     status = NativeModify(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
                     break;
                 }
                 case LdapAddCommand add:
                 {
                     var request = new ModifyProfile { Dn = add.DistinguishedName, Changes = changes!.Pointer,
-                        ChangeCount = (UIntPtr)add.Attributes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                        ChangeCount = (UIntPtr)add.Attributes.Length, TimeoutMilliseconds = budget.RemainingMilliseconds(), Controls = controls.Pointer, ControlCount = controls.Count };
                     status = NativeAdd(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
                     break;
                 }
                 case LdapDeleteCommand delete:
                 {
-                    var request = new DeleteProfile { Dn = delete.DistinguishedName, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                    var request = new DeleteProfile { Dn = delete.DistinguishedName, TimeoutMilliseconds = budget.RemainingMilliseconds(), Controls = controls.Pointer, ControlCount = controls.Count };
                     status = NativeDelete(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
                     break;
                 }
                 case LdapModifyDnCommand rename:
                 {
                     var request = new RenameProfile { Dn = rename.DistinguishedName, NewRdn = rename.NewRdn,
-                        NewSuperior = rename.NewSuperior, DeleteOldRdn = rename.DeleteOldRdn ? 1u : 0u, TimeoutMilliseconds = budget.RemainingMilliseconds() };
+                        NewSuperior = rename.NewSuperior, DeleteOldRdn = rename.DeleteOldRdn ? 1u : 0u, TimeoutMilliseconds = budget.RemainingMilliseconds(), Controls = controls.Pointer, ControlCount = controls.Count };
                     status = NativeRename(ownedHandle, ref request, check, IntPtr.Zero, beforeSend, IntPtr.Zero, emit, IntPtr.Zero, out disposition);
                     break;
                 }
@@ -262,11 +267,13 @@ internal static partial class NativeLdapBindingBackend
         public IntPtr Changes;
         public UIntPtr ChangeCount;
         public uint TimeoutMilliseconds;
+        public IntPtr Controls; public UIntPtr ControlCount;
     }
     [StructLayout(LayoutKind.Sequential)] private struct DeleteProfile
     {
         [MarshalAs(UnmanagedType.LPUTF8Str)] public string Dn;
         public uint TimeoutMilliseconds;
+        public IntPtr Controls; public UIntPtr ControlCount;
     }
     [StructLayout(LayoutKind.Sequential)] private struct RenameProfile
     {
@@ -274,6 +281,7 @@ internal static partial class NativeLdapBindingBackend
         [MarshalAs(UnmanagedType.LPUTF8Str)] public string NewRdn;
         [MarshalAs(UnmanagedType.LPUTF8Str)] public string? NewSuperior;
         public uint DeleteOldRdn, TimeoutMilliseconds;
+        public IntPtr Controls; public UIntPtr ControlCount;
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Submitted(IntPtr state);
     [DllImport(Library, EntryPoint = "adfl_cursor_open", CallingConvention = CallingConvention.Cdecl)]

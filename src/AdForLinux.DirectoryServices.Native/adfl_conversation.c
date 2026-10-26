@@ -15,7 +15,7 @@ struct adfl_search_cursor {
 static int valid_search(const adfl_search_request *r) {
     return r && r->base_dn && r->filter && r->scope >= 0 && r->scope <= 2 &&
         r->timeout_milliseconds && r->timeout_milliseconds <= 3600000 &&
-        r->size_limit <= INT_MAX && r->types_only <= 1;
+        r->size_limit <= INT_MAX && r->types_only <= 1 && adfl_controls_valid(r->controls, r->control_count);
 }
 static int remaining(adfl_bound_session *s, uint64_t start, unsigned timeout, unsigned *out) {
     uint64_t now = s->authority->ops->monotonic_ms(s->authority->state);
@@ -42,19 +42,35 @@ void adfl_cursor_close(adfl_search_cursor **owner) {
         for (size_t i = 0; c->request.attributes[i]; i++) free((void *)c->request.attributes[i]);
         free((void *)c->request.attributes);
     }
+    adfl_controls_free((adfl_control *)c->request.controls, c->request.control_count);
     atomic_store(&c->session->busy, 0);
     adfl_session_release(c->session); free(c);
 }
+struct cursor_ready {
+    adfl_search_cursor *cursor; uint64_t start; unsigned budget;
+    adfl_cancelled_fn cancel; void *state; int stopped;
+};
+static int cursor_ready(void *state) {
+    struct cursor_ready *r = state; unsigned left;
+    r->stopped = check(r->cursor->session, r->cancel, r->state);
+    if (!r->stopped) r->stopped = remaining(r->cursor->session, r->cursor->start, r->cursor->request.timeout_milliseconds, &left);
+    if (!r->stopped) r->stopped = remaining(r->cursor->session, r->start, r->budget, &left);
+    return r->stopped;
+}
 static int cursor_send(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn cancel, void *state) {
+    uint64_t started = c->session->authority->ops->monotonic_ms(c->session->authority->state);
     int rc = check(c->session, cancel, state); unsigned left;
+    if (!rc && started == UINT64_MAX) rc = ADFL_REQUEST_FAILED;
     if (!rc) rc = remaining(c->session, c->start, c->request.timeout_milliseconds, &left);
     if (!rc && !budget) rc = ADFL_TIMEOUT;
     if (rc) return cursor_stop(c, rc);
     adfl_search_request dispatch = c->request;
     dispatch.timeout_milliseconds = budget < left ? budget : left;
+    struct cursor_ready ready = {c, started,
+        dispatch.timeout_milliseconds, cancel, state, 0};
     if (c->session->authority->ops->page_start(c->session->authority->state, c->session->ldap,
-        &dispatch, c->page_size, &c->cookie, &c->message_id) != LDAP_SUCCESS)
-        return cursor_stop(c, ADFL_REQUEST_FAILED);
+        &dispatch, c->page_size, &c->cookie, cursor_ready, &ready, &c->message_id) != LDAP_SUCCESS)
+        return cursor_stop(c, ready.stopped ? ready.stopped : ADFL_REQUEST_FAILED);
     c->pending = 1; c->awaiting_page = 0; return ADFL_OK;
 }
 int adfl_cursor_open(adfl_bound_session *s, const adfl_search_request *r, unsigned page_size,
@@ -64,12 +80,15 @@ int adfl_cursor_open(adfl_bound_session *s, const adfl_search_request *r, unsign
     if (!s || !valid_search(r) || page_size > INT_MAX) return ADFL_INVALID;
     /* Do not reinterpret a logical total size limit as a separate per-page limit. */
     if (page_size && r->size_limit) return ADFL_UNSUPPORTED;
+    for (size_t i = 0; page_size && i < r->control_count; i++)
+        if (!strcmp(r->controls[i].oid, LDAP_CONTROL_PAGEDRESULTS)) return ADFL_INVALID;
     int rc = check(s, cancel, state), idle = 0;
     if (rc) return rc;
     if (!atomic_compare_exchange_strong(&s->busy, &idle, 1)) return ADFL_BUSY;
     adfl_search_cursor *c = calloc(1, sizeof(*c));
     if (!c) { atomic_store(&s->busy, 0); return ADFL_NO_MEMORY; }
     c->session = s; adfl_session_retain(s); c->page_size = page_size; c->request = *r;
+    c->request.controls = NULL;
     c->start = s->authority->ops->monotonic_ms(s->authority->state);
     c->request.base_dn = strdup(r->base_dn); c->request.filter = strdup(r->filter); c->request.attributes = NULL;
     if (!c->request.base_dn || !c->request.filter) { rc = ADFL_NO_MEMORY; goto failed; }
@@ -80,6 +99,10 @@ int adfl_cursor_open(adfl_bound_session *s, const adfl_search_request *r, unsign
         if (!attributes) { rc = ADFL_NO_MEMORY; goto failed; }
         for (size_t i = 0; i < count; i++) if (!(attributes[i] = strdup(r->attributes[i]))) { rc = ADFL_NO_MEMORY; goto failed; }
     }
+    adfl_control *controls = NULL;
+    rc = adfl_controls_copy(r->controls, r->control_count, &controls);
+    c->request.controls = controls;
+    if (rc) goto failed;
     if (c->start == UINT64_MAX) { rc = ADFL_REQUEST_FAILED; goto failed; }
     rc = cursor_send(c, r->timeout_milliseconds, cancel, state);
     if (rc) goto failed;
@@ -190,7 +213,7 @@ static int session_write(adfl_bound_session *s, const adfl_write_request *r,
     *disposition = ADFL_NOT_SENT;
     if (!s || !r || !r->dn || !submitted || !emit ||
         !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 ||
-        r->change_count > SIZE_MAX / sizeof(LDAPMod *) - 1) return ADFL_INVALID;
+        r->change_count > SIZE_MAX / sizeof(LDAPMod *) - 1 || !adfl_controls_valid(r->controls, r->control_count)) return ADFL_INVALID;
     const adfl_native_ops *ops = s->authority->ops; void *state = s->authority->state;
     uint64_t start = ops->monotonic_ms(state);
     if (start == UINT64_MAX) return ADFL_REQUEST_FAILED;
@@ -244,22 +267,22 @@ done:
 #define WRITE_FORWARD cancel, cancel_state, submitted, submit_state, emit, emit_state, disposition
 int adfl_session_modify(adfl_bound_session *s, const adfl_modify_request *r, WRITE_ARGUMENTS) {
     adfl_write_request w = {0};
-    if (r) w = (adfl_write_request){r->dn, r->changes, r->change_count, r->timeout_milliseconds, LDAP_RES_MODIFY, NULL, NULL, 0};
+    if (r) w = (adfl_write_request){r->dn, r->changes, r->change_count, r->timeout_milliseconds, LDAP_RES_MODIFY, NULL, NULL, 0, r->controls, r->control_count};
     return session_write(s, r ? &w : NULL, WRITE_FORWARD);
 }
 int adfl_session_add(adfl_bound_session *s, const adfl_add_request *r, WRITE_ARGUMENTS) {
     adfl_write_request w = {0};
-    if (r) w = (adfl_write_request){r->dn, r->attributes, r->attribute_count, r->timeout_milliseconds, LDAP_RES_ADD, NULL, NULL, 0};
+    if (r) w = (adfl_write_request){r->dn, r->attributes, r->attribute_count, r->timeout_milliseconds, LDAP_RES_ADD, NULL, NULL, 0, r->controls, r->control_count};
     return session_write(s, r ? &w : NULL, WRITE_FORWARD);
 }
 int adfl_session_delete(adfl_bound_session *s, const adfl_delete_request *r, WRITE_ARGUMENTS) {
     adfl_write_request w = {0};
-    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_DELETE, NULL, NULL, 0};
+    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_DELETE, NULL, NULL, 0, r->controls, r->control_count};
     return session_write(s, r ? &w : NULL, WRITE_FORWARD);
 }
 int adfl_session_modify_dn(adfl_bound_session *s, const adfl_modify_dn_request *r, WRITE_ARGUMENTS) {
     adfl_write_request w = {0};
-    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_MODDN, r->new_rdn, r->new_superior, r->delete_old_rdn};
+    if (r) w = (adfl_write_request){r->dn, NULL, 0, r->timeout_milliseconds, LDAP_RES_MODDN, r->new_rdn, r->new_superior, r->delete_old_rdn, r->controls, r->control_count};
     return session_write(s, r ? &w : NULL, WRITE_FORWARD);
 }
 #undef WRITE_FORWARD

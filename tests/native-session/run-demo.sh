@@ -19,7 +19,7 @@ read -r -a native_flags <<< "$(pkg-config --cflags --libs krb5-gssapi krb5 ldap)
 read -r -a extra_flags <<< "${ADFL_NATIVE_CFLAGS:-}"
 common=("${extra_flags[@]}" -std=c11 -Wall -Wextra -Werror -pedantic -g -fPIC -fvisibility=hidden -DADFL_REVIEWED_MIT_1_21_3
         -Isrc/AdForLinux.DirectoryServices.Native -I"$native_include")
-sources=(src/AdForLinux.DirectoryServices.Native/adfl_native.c src/AdForLinux.DirectoryServices.Native/adfl_system.c src/AdForLinux.DirectoryServices.Native/adfl_dispatch.c src/AdForLinux.DirectoryServices.Native/adfl_search_system.c src/AdForLinux.DirectoryServices.Native/adfl_conversation.c)
+sources=(src/AdForLinux.DirectoryServices.Native/adfl_controls.c src/AdForLinux.DirectoryServices.Native/adfl_native.c src/AdForLinux.DirectoryServices.Native/adfl_system.c src/AdForLinux.DirectoryServices.Native/adfl_dispatch.c src/AdForLinux.DirectoryServices.Native/adfl_search_system.c src/AdForLinux.DirectoryServices.Native/adfl_conversation.c)
 cc "${common[@]}" -shared "${sources[@]}" "${native_flags[@]}" -l:libsasl2.so.2 -o "$native_out/libadfl_native.so"
 cc "${common[@]}" tests/native-session/session_demo.c "${sources[@]}" "${native_flags[@]}" -l:libsasl2.so.2 -pthread -o "$native_out/session-demo"
 cc "${common[@]}" -shared -DADFL_TEST_BRIDGE tests/native-session/session_demo.c "${sources[@]}" "${native_flags[@]}" -l:libsasl2.so.2 -pthread -o "$native_out/libadfl_native_test.so"

@@ -5,10 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-int adfl_system_search_start(void *state, LDAP *ld, const adfl_search_request *r, int *message_id) {
-    (void)state;
-    return ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
-        (int)r->types_only, NULL, NULL, NULL, (int)r->size_limit, message_id);
+int adfl_system_search_start(void *state, LDAP *ld, const adfl_search_request *r,
+    adfl_submitted_fn ready, void *ready_state, int *message_id) {
+    (void)state; LDAPControl **server = NULL; LDAPControl *client[] = {NULL};
+    int rc = adfl_controls_build(r->controls, r->control_count, NULL, &server);
+    if (rc != LDAP_SUCCESS) return rc;
+    if (ready(ready_state)) rc = LDAP_USER_CANCELLED;
+    else rc = ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
+        (int)r->types_only, server, client, NULL, (int)r->size_limit, message_id);
+    adfl_controls_release(server, r->control_count); return rc;
 }
 int adfl_system_search_poll(void *state, LDAP *ld, int message_id, unsigned milliseconds, void **out) {
     (void)state;
@@ -22,7 +27,7 @@ int adfl_system_search_poll(void *state, LDAP *ld, int message_id, unsigned mill
 static int controls(adfl_result_fn emit, void *state, LDAPControl **values, int event) {
     for (size_t i = 0; values && values[i]; i++)
         if (emit(state, event, values[i]->ldctl_oid, values[i]->ldctl_value.bv_val,
-                 values[i]->ldctl_value.bv_len, values[i]->ldctl_iscritical)) return 1;
+                 values[i]->ldctl_value.bv_len, (values[i]->ldctl_iscritical ? 1 : 0) | (values[i]->ldctl_value.bv_val ? 2 : 0))) return 1;
     return 0;
 }
 static char *copy_name(const struct berval *value) {
@@ -116,19 +121,22 @@ uint64_t adfl_system_monotonic_ms(void *state) {
 }
 
 int adfl_system_page_start(void *state, LDAP *ld, const adfl_search_request *r,
-                           unsigned page_size, const adfl_bytes *cookie, int *message_id) {
+                           unsigned page_size, const adfl_bytes *cookie, adfl_submitted_fn ready, void *ready_state, int *message_id) {
     /* This bounds connection setup only, not a proven hard socket-write deadline. */
     struct timeval budget = {(long)(r->timeout_milliseconds / 1000), (long)(r->timeout_milliseconds % 1000) * 1000};
     if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, &budget) != LDAP_OPT_SUCCESS) return LDAP_LOCAL_ERROR;
-    if (!page_size) return adfl_system_search_start(state, ld, r, message_id);
-    LDAPControl *page = NULL;
+    if (!page_size) return adfl_system_search_start(state, ld, r, ready, ready_state, message_id);
+    LDAPControl *page = NULL; LDAPControl *client[] = {NULL};
     struct berval value = {cookie->length, (char *)cookie->data};
     int rc = ldap_create_page_control(ld, (ber_int_t)page_size, &value, 1, &page);
     if (rc != LDAP_SUCCESS) return rc;
-    LDAPControl *controls[] = {page, NULL};
-    rc = ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
-        (int)r->types_only, controls, NULL, NULL, (int)r->size_limit, message_id);
-    ldap_control_free(page); return rc;
+    LDAPControl **controls = NULL;
+    rc = adfl_controls_build(r->controls, r->control_count, page, &controls);
+    if (rc != LDAP_SUCCESS) { ldap_control_free(page); return rc; }
+    if (ready(ready_state)) rc = LDAP_USER_CANCELLED;
+    else rc = ldap_search_ext(ld, r->base_dn, r->scope, r->filter, (char **)r->attributes,
+        (int)r->types_only, controls, client, NULL, (int)r->size_limit, message_id);
+    adfl_controls_release(controls, r->control_count); ldap_control_free(page); return rc;
 }
 int adfl_system_message_poll(void *state, LDAP *ld, int message_id, unsigned milliseconds, void **out) {
     (void)state;
@@ -183,13 +191,16 @@ done:
 }
 int adfl_system_write_start(void *unused, LDAP *ld, const adfl_write_request *r,
                              adfl_submitted_fn submitted, void *submit_state, int *disposition, int *message_id) {
-    (void)unused;
+    (void)unused; LDAPControl *client[] = {NULL};
     /* This bounds connection setup only, not a proven hard socket-write deadline. */
     struct timeval budget = {(long)(r->timeout_milliseconds / 1000), (long)(r->timeout_milliseconds % 1000) * 1000};
     if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, &budget) != LDAP_OPT_SUCCESS) return LDAP_LOCAL_ERROR;
     LDAPMod **mods = calloc(r->change_count + 1, sizeof(*mods));
     if (!mods) return LDAP_NO_MEMORY;
-    int rc = LDAP_NO_MEMORY;
+    LDAPControl **server = NULL;
+    int rc = adfl_controls_build(r->controls, r->control_count, NULL, &server);
+    if (rc != LDAP_SUCCESS) goto done;
+    rc = LDAP_NO_MEMORY;
     for (size_t i = 0; i < r->change_count; i++) {
         mods[i] = calloc(1, sizeof(*mods[i]));
         if (!mods[i]) goto done;
@@ -211,11 +222,11 @@ int adfl_system_write_start(void *unused, LDAP *ld, const adfl_write_request *r,
     if (submitted(submit_state)) { rc = LDAP_USER_CANCELLED; goto done; }
     *disposition = ADFL_OUTCOME_UNKNOWN;
     switch (r->terminal_type) {
-        case LDAP_RES_MODIFY: rc = ldap_modify_ext(ld, r->dn, mods, NULL, NULL, message_id); break;
-        case LDAP_RES_ADD: rc = ldap_add_ext(ld, r->dn, mods, NULL, NULL, message_id); break;
-        case LDAP_RES_DELETE: rc = ldap_delete_ext(ld, r->dn, NULL, NULL, message_id); break;
+        case LDAP_RES_MODIFY: rc = ldap_modify_ext(ld, r->dn, mods, server, client, message_id); break;
+        case LDAP_RES_ADD: rc = ldap_add_ext(ld, r->dn, mods, server, client, message_id); break;
+        case LDAP_RES_DELETE: rc = ldap_delete_ext(ld, r->dn, server, client, message_id); break;
         case LDAP_RES_MODDN: rc = ldap_rename(ld, r->dn, r->new_rdn, r->new_superior,
-            (int)r->delete_old_rdn, NULL, NULL, message_id); break;
+            (int)r->delete_old_rdn, server, client, message_id); break;
         default: rc = LDAP_PARAM_ERROR; break;
     }
 done:
@@ -226,5 +237,5 @@ done:
         }
         free(mods[i]);
     }
-    free(mods); return rc;
+    adfl_controls_release(server, r->control_count); free(mods); return rc;
 }

@@ -46,13 +46,24 @@ typedef struct {
     int compatible_session_reuse;     /* always 0: no mutable-cache proof */
 } adfl_native_capabilities;
 
+typedef struct { const void *data; size_t length; } adfl_bytes;
+typedef struct {
+    const char *oid;
+    unsigned critical;
+    adfl_bytes value;
+    unsigned has_value; /* distinguishes omitted value from present empty bytes */
+} adfl_control;
+
 typedef struct {
     const char *base_dn, *filter;
     const char *const *attributes;    /* NULL-terminated; NULL = all attributes */
     int scope;                       /* 0 base, 1 one-level, 2 subtree */
     unsigned timeout_milliseconds, size_limit, types_only;
+    const adfl_control *controls;
+    size_t control_count;
 } adfl_search_request;
 
+/* Control events use number bit0=critical, bit1=value present. */
 enum adfl_result_event {
     ADFL_ENTRY_BEGIN = 1, ADFL_ATTRIBUTE_BEGIN, ADFL_ATTRIBUTE_VALUE, ADFL_ATTRIBUTE_END,
     ADFL_ENTRY_CONTROL, ADFL_ENTRY_END, ADFL_REFERENCE_BEGIN, ADFL_REFERENCE_URL,
@@ -82,7 +93,6 @@ ADFL_API int adfl_cursor_next_page(adfl_search_cursor *, unsigned remaining_mill
     adfl_cancelled_fn, void *);
 ADFL_API void adfl_cursor_close(adfl_search_cursor **);
 
-typedef struct { const void *data; size_t length; } adfl_bytes;
 typedef struct {
     int operation;                    /* 0 add, 1 delete, 2 replace */
     const char *attribute;
@@ -94,18 +104,26 @@ typedef struct {
     const adfl_modification *changes;
     size_t change_count;
     unsigned timeout_milliseconds;
+    const adfl_control *controls;
+    size_t control_count;
 } adfl_modify_request;
-/* New writes carry no request controls. Values are borrowed for the call. */
+/* Request controls are server-side. Values are borrowed for the call. */
 typedef struct {
     const char *dn;
     const adfl_modification *attributes; /* operation must be 0 (add) */
     size_t attribute_count;
     unsigned timeout_milliseconds;
+    const adfl_control *controls;
+    size_t control_count;
 } adfl_add_request;
-typedef struct { const char *dn; unsigned timeout_milliseconds; } adfl_delete_request;
+typedef struct {
+    const char *dn; unsigned timeout_milliseconds;
+    const adfl_control *controls; size_t control_count;
+} adfl_delete_request;
 typedef struct {
     const char *dn, *new_rdn, *new_superior; /* NULL superior preserves current parent */
     unsigned delete_old_rdn, timeout_milliseconds;
+    const adfl_control *controls; size_t control_count;
 } adfl_modify_dn_request;
 enum adfl_submission { ADFL_NOT_SENT = 0, ADFL_OUTCOME_UNKNOWN = 1, ADFL_COMPLETED = 2 };
 /* Invoked synchronously immediately before native dispatch, after allocation.
@@ -120,6 +138,9 @@ ADFL_API int adfl_session_delete(adfl_bound_session *, const adfl_delete_request
     adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
 ADFL_API int adfl_session_modify_dn(adfl_bound_session *, const adfl_modify_dn_request *,
     adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
+
+/* Must equal 2 before passing any request/profile structure across the ABI. */
+ADFL_API unsigned adfl_native_abi_version(void);
 
 /* Reads library version metadata only; no credential/cache/network operations. */
 ADFL_API int adfl_native_probe(adfl_native_capabilities *out);

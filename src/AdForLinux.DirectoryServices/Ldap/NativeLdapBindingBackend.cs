@@ -48,9 +48,9 @@ internal static partial class NativeLdapBindingBackend
     {
         internal static readonly SystemBindingApi Instance = new();
         public int Resolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority)
-        { OfflineTestGuard.RequireLiveAccess(); return NativeResolve(ref profile, cancelled, state, out authority); }
+        { OfflineTestGuard.RequireLiveAccess(); EnsureAbi(); return NativeResolve(ref profile, cancelled, state, out authority); }
         public int Bind(AuthorityHandle authority, ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr session)
-        { OfflineTestGuard.RequireLiveAccess(); return NativeBind(authority, ref profile, cancelled, state, out session); }
+        { OfflineTestGuard.RequireLiveAccess(); EnsureAbi(); return NativeBind(authority, ref profile, cancelled, state, out session); }
         public void CloseAuthority(ref IntPtr authority) => NativeAuthorityClose(ref authority);
         public void CloseSession(ref IntPtr session) => NativeSessionClose(ref session);
     }
