@@ -300,6 +300,8 @@ public partial class DirectoryEntry : Component
     {
         get
         {
+            var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+            void Validate() => IdentityLifetime.Checked(generation, ThrowIfDisposed, () => true);
             var schemaClassName = SchemaClassName;
             if (string.IsNullOrEmpty(schemaClassName))
             {
@@ -307,11 +309,12 @@ public partial class DirectoryEntry : Component
                     "The directory entry did not expose an objectClass to resolve in the schema.");
             }
 
-            using var lease = AcquireConnection(schema: true);
-            var connection = lease.Connection;
-            var rootDse = RootDse.Read(connection, "schemaNamingContext");
-            if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
-                || string.IsNullOrEmpty(schemaNamingContext))
+            using var lease = AcquireConnection(Validate, schema: true);
+            var rootDse = lease.Search(new SearchRequest("", "(objectClass=*)", ProtocolScope.Base, "schemaNamingContext"));
+            Validate();
+            var schemaNamingContext = rootDse.Entries.FirstOrDefault()?.Attributes.TryGetValue("schemaNamingContext", out var names) == true
+                && names.Length > 0 ? System.Text.Encoding.UTF8.GetString(names[0]) : null;
+            if (string.IsNullOrEmpty(schemaNamingContext))
             {
                 throw new InvalidOperationException(
                     "The directory server did not expose a schemaNamingContext in rootDSE.");
@@ -322,8 +325,9 @@ public partial class DirectoryEntry : Component
                 $"(&(objectClass=classSchema)(lDAPDisplayName={EscapeFilterValue(schemaClassName)}))",
                 ProtocolScope.OneLevel,
                 "lDAPDisplayName");
-            var response = (SearchResponse)connection.SendRequestCompatible(request);
-            if (response.Entries.Count != 1)
+            var response = lease.Search(request);
+            Validate();
+            if (response.Entries.Length != 1)
             {
                 throw new InvalidOperationException(
                     $"The schema class '{schemaClassName}' could not be resolved under '{schemaNamingContext}'.");
@@ -331,7 +335,7 @@ public partial class DirectoryEntry : Component
 
             var schemaEntry = CreateEntryForDn(response.Entries[0].DistinguishedName);
             schemaEntry._usePropertyCache = _usePropertyCache;
-            return schemaEntry;
+            return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => schemaEntry);
         }
     }
 
@@ -413,7 +417,8 @@ public partial class DirectoryEntry : Component
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
     {
-        ThrowIfDisposed();
+        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        void Validate() => IdentityLifetime.Checked(generation, ThrowIfDisposed, () => true);
         if (SecurityReadOverride is { } read) return read(masks).ToArray();
         var request = new SearchRequest(
             _path.DistinguishedName,
@@ -423,16 +428,15 @@ public partial class DirectoryEntry : Component
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
 
-        using var lease = AcquireConnection();
-        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
-        if (response.Entries.Count == 0
-            || response.Entries[0].Attributes["nTSecurityDescriptor"] is not { Count: > 0 } attribute
-            || attribute[0] is not byte[] binaryForm)
+        using var lease = AcquireConnection(Validate);
+        var response = lease.Search(request);
+        Validate();
+        if (response.FirstBinary("nTSecurityDescriptor") is not { } binaryForm)
         {
             throw new InvalidOperationException("The directory entry did not return a binary security descriptor.");
         }
 
-        return binaryForm;
+        return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => binaryForm);
     }
 
     /// <summary>

@@ -18,7 +18,17 @@ internal static class RangedAttributeReader
         var generation = entry.IdentityLifetime.Capture(entry.ThrowIfDisposed);
         void Validate() => entry.IdentityLifetime.Checked(generation, entry.ThrowIfDisposed, () => true);
         var distinguishedName = entry.IdentityLifetime.Checked(generation, entry.ThrowIfDisposed, () => entry.DistinguishedName);
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         using var lease = entry.AcquireConnection(Validate);
+        var profile = lease.ExecuteTransport(transport => (transport.Timeout, IsProtocols: (transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) != 0));
+        var timeout = profile.Timeout;
+        TimeSpan Remaining()
+        {
+            Validate();
+            if (profile.IsProtocols) return timeout;
+            var value = timeout - System.Diagnostics.Stopwatch.GetElapsedTime(started);
+            return value > TimeSpan.Zero ? value : throw new TimeoutException("Ranged LDAP read deadline expired.");
+        }
         var values = new List<object>();
         var nextStart = 0;
 
@@ -31,9 +41,9 @@ internal static class RangedAttributeReader
                 ProtocolScope.Base,
                 requestedName);
             Validate();
-            var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
+            var response = lease.Search(request, Remaining);
             Validate();
-            if (response.Entries.Count == 0)
+            if (response.Entries.Length == 0)
             {
                 return values;
             }
@@ -47,7 +57,7 @@ internal static class RangedAttributeReader
                 return values;
             }
 
-            AddValues(entry.SchemaConnectionForOperation(lease.Connection), returned.Value.Attribute, attributeName, values);
+            values.AddRange(lease.ReadValues(entry, attributeName, returned.Value.Attribute, response.OriginalAttribute(returned.Value.Name), Remaining));
             Validate();
             if (returned.Value.IsTerminal)
             {
@@ -112,20 +122,21 @@ internal static class RangedAttributeReader
     }
 
     private static ReturnedAttribute? FindReturnedAttribute(
-        SearchResultAttributeCollection attributes,
+        Dictionary<string, byte[][]> attributes,
         string attributeName,
         int expectedStart)
     {
-        DirectoryAttribute? plain = null;
+        byte[][]? plain = null;
+        string? plainName = null;
         ReturnedAttribute? emptyRange = null;
         var sawUnexpectedRange = false;
 
-        foreach (string returnedName in attributes.AttributeNames)
+        foreach (string returnedName in attributes.Keys)
         {
             var attribute = attributes[returnedName];
             if (returnedName.Equals(attributeName, StringComparison.OrdinalIgnoreCase))
             {
-                plain = attribute;
+                plain = attribute; plainName = returnedName;
                 continue;
             }
 
@@ -140,8 +151,8 @@ internal static class RangedAttributeReader
                 continue;
             }
 
-            var candidate = new ReturnedAttribute(attribute, end is null, end ?? expectedStart);
-            if (attribute.Count > 0)
+            var candidate = new ReturnedAttribute(returnedName, attribute, end is null, end ?? expectedStart);
+            if (attribute.Length > 0)
             {
                 return candidate;
             }
@@ -149,9 +160,9 @@ internal static class RangedAttributeReader
             emptyRange ??= candidate;
         }
 
-        if (plain is { Count: > 0 })
+        if (plain is { Length: > 0 })
         {
-            return new ReturnedAttribute(plain, IsTerminal: true, End: expectedStart);
+            return new ReturnedAttribute(plainName!, plain, IsTerminal: true, End: expectedStart);
         }
 
         if (sawUnexpectedRange)
@@ -165,22 +176,11 @@ internal static class RangedAttributeReader
         // either the attribute is empty or the final range has been reached.
         return emptyRange ?? (plain is null
             ? null
-            : new ReturnedAttribute(plain, IsTerminal: true, End: expectedStart));
-    }
-
-    private static void AddValues(
-        LdapConnection connection,
-        DirectoryAttribute attribute,
-        string attributeName,
-        List<object> values)
-    {
-        var kind = LdapAttributeSchema.Resolve(connection, new[] { attributeName })[attributeName];
-        var wanted = kind == LdapValueKind.Binary ? typeof(byte[]) : typeof(string);
-        values.AddRange(attribute.GetValues(wanted).Select(value => SearchEntryReader.ConvertValue(value, kind)));
+            : new ReturnedAttribute(plainName!, plain, IsTerminal: true, End: expectedStart));
     }
 
     private readonly record struct ReturnedAttribute(
-        DirectoryAttribute Attribute,
+        string Name, byte[][] Attribute,
         bool IsTerminal,
         int End);
 }

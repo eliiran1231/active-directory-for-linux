@@ -105,6 +105,11 @@ internal sealed class ProtocolsLdapTransport(LdapConnection connection) : ILdapR
                 catch (Exception error) { LdapConnectionProvider.ReportFailure(connection, error); throw; }
             });
         cancellationToken.ThrowIfCancellationRequested();
+        return Map(response);
+    }
+
+    internal static LdapSearchResult Map(SearchResponse response)
+    {
         static LdapTransportControl[] Controls(DirectoryControl[] controls) => controls.Select(c =>
             LdapControlCodec.FromProtocol(c)).ToArray();
         var entries = response.Entries.Cast<SearchResultEntry>().Select(entry =>

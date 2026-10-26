@@ -164,3 +164,9 @@ retains its existing backend; WinLDAP does not accept an arbitrary SSPI credenti
 - [Cyrus 2.1.28 GSSAPI](https://github.com/cyrusimap/cyrus-sasl/blob/cyrus-sasl-2.1.28/plugins/gssapi.c)
 - [Protocols 9 control marshaling](https://github.com/dotnet/runtime/blob/v9.0.0/src/libraries/System.DirectoryServices.Protocols/src/System/DirectoryServices/Protocols/ldap/LdapConnection.cs)
 - [MS-ADTS security-mask control](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/3888c2b7-35b9-45b7-afeb-b772aa932dd0)
+
+The borrowed entry-search dispatcher also serves schema lookup, immediate binary security
+reads and ranged attributes. Stock requests retain their original object, controls, exception
+path, raw value conversions and connection-keyed schema cache. Neutral ranges use one lease and
+a total deadline across all chunks and schema reads. Range-name priority/progress checks and
+strict stock binary-security validation are preserved; partial data is not reconciliation proof.
