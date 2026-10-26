@@ -1,6 +1,7 @@
 #include "adfl_native_internal.h"
 #include <sasl/sasl.h>
 #include <assert.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -12,7 +13,7 @@
  * adapter. NO system resolution, credential acquisition or LDAP bind is called. */
 struct fixture {
     atomic_int created, selected, defaults, acquired, freed, connections, closed, installs, binds;
-    atomic_int identity, expected_identity, cancelled;
+    atomic_int identity, expected_identity, cancelled, fail_bind_at;
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply;
@@ -72,7 +73,7 @@ static int set_credential(void *state, LDAP *value, void *credential_value) {
 }
 static int bind_session(void *state, LDAP *value, LDAP_SASL_INTERACT_PROC *callback, void *defaults) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
-    atomic_fetch_add(&f->binds, 1);
+    int ordinal = atomic_fetch_add(&f->binds, 1) + 1;
     assert(ld->guard);
     LDAPURLDesc server = {0}; server.lud_host = ld->target; server.lud_scheme = "ldap"; server.lud_port = (int)ld->port;
     int connected = ld->guard->lc_add(value, (Sockbuf *)ld, &server, NULL, ld->guard);
@@ -88,7 +89,7 @@ static int bind_session(void *state, LDAP *value, LDAP_SASL_INTERACT_PROC *callb
     assert(!strcmp(ld->credential->target, ld->target));
     assert(!strcmp(prompts[0].result, ""));
     if (f->cancel_after_bind) atomic_store(&f->cancelled, 1);
-    return f->bind_failure ? LDAP_INVALID_CREDENTIALS : LDAP_SUCCESS;
+    return f->bind_failure || atomic_load(&f->fail_bind_at) == ordinal ? LDAP_INVALID_CREDENTIALS : LDAP_SUCCESS;
 }
 static void ldap_close(void *state, LDAP *value) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
@@ -460,6 +461,29 @@ static struct fixture managed_fixture = {.root_reply = 1};
 ADFL_API int adfl_test_open(const adfl_native_profile *requested, adfl_bound_session **out) {
     return adfl_open_with(&fake_ops, &managed_fixture, requested, NULL, NULL, out);
 }
+/* Same authority orchestration as production, with recording-only dependencies.
+ * Cancellation callbacks are synchronous and never retained. */
+ADFL_API int adfl_test_resolve(const adfl_native_profile *requested, adfl_cancelled_fn check,
+    void *cancel_state, adfl_authority **out) {
+    return adfl_resolve_with(&fake_ops, &managed_fixture, requested, check, cancel_state, out);
+}
+/* Serialize these test scenario transitions with bind calls. Source identity can
+ * change while an authority/session exists; expected identity separately asserts
+ * which already-resolved resource subsequent binds actually consume. */
+ADFL_API int adfl_test_set_identity(int source_identity, int expected_binding_identity) {
+    if (source_identity < 0 || expected_binding_identity < 0) return ADFL_INVALID;
+    atomic_store(&managed_fixture.identity, source_identity);
+    atomic_store(&managed_fixture.expected_identity, expected_binding_identity);
+    return ADFL_OK;
+}
+/* nth=1 fails the next bind, nth=2 its successor, nth=0 clears the injection.
+ * Failure occurs after credential installation, exercising partial-bind cleanup. */
+ADFL_API int adfl_test_fail_nth_bind(int nth) {
+    int bound = atomic_load(&managed_fixture.binds);
+    if (nth < 0 || nth > INT_MAX - bound) return ADFL_INVALID;
+    atomic_store(&managed_fixture.fail_bind_at, nth ? bound + nth : 0);
+    return ADFL_OK;
+}
 /* Configuration changes only while no fake session is alive. Scenario1 enables
  * cursor+modify fixtures; scenario0 preserves existing RootDSE search fixture. */
 ADFL_API int adfl_test_configure(int scenario) {
@@ -475,6 +499,9 @@ ADFL_API int adfl_test_count(int kind) {
         case 4: return atomic_load(&managed_fixture.page_sends);
         case 5: return atomic_load(&managed_fixture.modify_sends);
         case 6: return atomic_load(&managed_fixture.submission_receipts);
+        case 7: return atomic_load(&managed_fixture.selected);
+        case 8: return atomic_load(&managed_fixture.acquired);
+        case 9: return atomic_load(&managed_fixture.binds);
         default: return -1;
     }
 }

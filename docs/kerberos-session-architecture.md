@@ -240,6 +240,28 @@ setup, not a general socket write. A blocking libldap send cannot yet be forcibl
 within the remaining operation budget. This is an explicit limitation, not a hard native
 deadline guarantee; production activation remains disabled.
 
+## Paired resolved-authority admission
+
+`NativeLdapOperation` reserves a same-target group atomically through the existing bounded
+pool. Its authority is resolved lazily **after capacity admission, immediately before the first
+bind**, then reused as the exact resource for every bind in that group. Search/schema pairs
+therefore do not independently consult ambient sources. Impossible admission performs no
+resolution. Second-bind failure rolls back the first session, authority and all reservations;
+there is no automatic retry. Cross-target operations still require distinct target owners.
+
+Each lease closes its session before releasing its share of the operation owner; the final
+lease closes the managed authority reference. Native session references independently protect
+credential lifetime. This also works through the existing factory returning `Session[]`,
+without requiring the caller to retain a separate group object.
+
+The binding API is injected explicitly per owner. The real implementation retains its permanent
+offline live-access guards; matching API cleanup remains attached to each SafeHandle. The
+isolated demo supplies only recording native operations. There is no global eligibility switch.
+The demo now traverses managed resolution/binding as well as request dispatch, and changes the
+synthetic source between paired binds: both consume the selected resource; the next operation
+resolves the new source. This proves ownership/routing, not immutable MIT cache contents or
+permission to enable ambient pooling. Production backend selection remains disabled.
+
 ## Shared schema and result materialization
 
 `LdapAttributeSchema.Transport.cs` adds schema resolution keyed by the persistent transport
@@ -296,7 +318,8 @@ then use the same lease, single-dispatch, cancellation, result ownership and ret
 Native add/delete/modify-DN/compare/extended adapters and full DirectorySearcher
 paging/streaming integration have not been implemented. Native search/modify adapters now
 implement the conversation boundary above; neutral schema/result materialization is available,
-but full facade routing and paired resolved-authority acquisition still need integration. Move their existing raw-connection consumers to
+but full facade routing still needs integration. Paired same-target authority acquisition is
+implemented above; real authority compatibility and controlled composition remain unproven. Move their existing raw-connection consumers to
 this transport contract before enabling a native backend for them; keep streaming cursors
 inside the producer's retained lease. Do not add method allowlists, private-handle reflection,
 in-place rebind, managed replay or home-grown SASL/security framing. Windows remains on its

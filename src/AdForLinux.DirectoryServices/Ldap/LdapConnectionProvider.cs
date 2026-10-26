@@ -96,8 +96,9 @@ internal static partial class LdapConnectionProvider
         private readonly BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease;
         private readonly LdapConnection? connection;
         private int disposed;
-        internal Session(BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease)
-        { this.lease = lease; connection = lease.Value.ProtocolsConnection; if (connection is not null) Active.Add(connection, this); }
+        private Action? afterDispose;
+        internal Session(BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease, Action? afterDispose = null)
+        { this.lease = lease; this.afterDispose = afterDispose; connection = lease.Value.ProtocolsConnection; if (connection is not null) Active.Add(connection, this); }
         internal LdapConnection Connection => lease.Value.Connection;
         internal void Invalidate() => lease.Invalidate();
         internal TResult Execute<TResult>(Func<LdapConnection, TResult> operation)
@@ -113,8 +114,15 @@ internal static partial class LdapConnectionProvider
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            if (connection is not null) Active.Remove(connection);
-            lease.Dispose();
+            try
+            {
+                if (connection is not null) Active.Remove(connection);
+            }
+            finally
+            {
+                try { lease.Dispose(); }
+                finally { Interlocked.Exchange(ref afterDispose, null)?.Invoke(); }
+            }
         }
     }
 

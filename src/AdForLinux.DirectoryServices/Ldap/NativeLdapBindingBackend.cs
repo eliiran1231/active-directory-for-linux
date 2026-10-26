@@ -7,7 +7,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 /// <summary>
 /// Ownership adapter for the experimental OpenLDAP binding bridge. This is a
 /// separate transport resource, never a fabricated Protocols LdapConnection.
-/// The facade must not select it until request transport capability is implemented.
+/// The facade must not select it until authority enforcement and complete request semantics are established.
 /// </summary>
 internal static partial class NativeLdapBindingBackend
 {
@@ -31,57 +31,89 @@ internal static partial class NativeLdapBindingBackend
         return true;
     }
 
-    // This flag is deliberately independent of native library availability. A
+    // This flag is deliberately independent of native library availability. An
     // implemented search bridge does not establish pre-authentication authority enforcement.
     internal static bool SupportsFacadeRequests => false;
 
+    // Dependency injection is explicit and local to the owner. The real API keeps
+    // its live-access guards; no process/global switch can change those checks.
+    internal interface IBindingApi
+    {
+        int Resolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority);
+        int Bind(AuthorityHandle authority, ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr session);
+        void CloseAuthority(ref IntPtr authority);
+        void CloseSession(ref IntPtr session);
+    }
+    private sealed class SystemBindingApi : IBindingApi
+    {
+        internal static readonly SystemBindingApi Instance = new();
+        public int Resolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority)
+        { OfflineTestGuard.RequireLiveAccess(); return NativeResolve(ref profile, cancelled, state, out authority); }
+        public int Bind(AuthorityHandle authority, ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr session)
+        { OfflineTestGuard.RequireLiveAccess(); return NativeBind(authority, ref profile, cancelled, state, out session); }
+        public void CloseAuthority(ref IntPtr authority) => NativeAuthorityClose(ref authority);
+        public void CloseSession(ref IntPtr session) => NativeSessionClose(ref session);
+    }
+
     internal static Authority ResolveForBinding(LdapConnectionOptions options,
         ReferralChasingOption referrals, CancellationToken cancellationToken = default)
+        => ResolveForBinding(options, referrals, SystemBindingApi.Instance, cancellationToken);
+
+    internal static Authority ResolveForBinding(LdapConnectionOptions options,
+        ReferralChasingOption referrals, IBindingApi api, CancellationToken cancellationToken = default)
     {
-        OfflineTestGuard.RequireLiveAccess();
+        ArgumentNullException.ThrowIfNull(api);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!CanRepresentBinding(options, referrals))
             throw new PlatformNotSupportedException("The native binding prototype cannot represent this complete authentication/transport/referral profile.");
         var snapshot = options.Clone();
         var profile = Profile.From(snapshot);
         Cancelled check = _ => cancellationToken.IsCancellationRequested ? 1 : 0;
-        var status = NativeResolve(ref profile, check, IntPtr.Zero, out var handle);
-        if (status != 0)
+        var status = api.Resolve(ref profile, check, IntPtr.Zero, out var handle);
+        if (status != 0 || handle == IntPtr.Zero)
         {
-            if (handle != IntPtr.Zero) NativeAuthorityClose(ref handle);
-            Throw(status, cancellationToken);
+            if (handle != IntPtr.Zero) api.CloseAuthority(ref handle);
+            if (status != 0) Throw(status, cancellationToken);
+            throw new InvalidOperationException("Native resolution returned no authority.");
         }
-        return new Authority(new AuthorityHandle(handle), snapshot);
+        return new Authority(new AuthorityHandle(handle, api), snapshot, api);
     }
 
-    internal sealed class Authority(AuthorityHandle handle, LdapConnectionOptions profile) : IDisposable
+    internal sealed class Authority(AuthorityHandle handle, LdapConnectionOptions profile, IBindingApi api) : IDisposable
     {
-        // Each bind consumes this native resolved authority; replacement/parallel
-        // binds do not reacquire ambient credentials. New operations resolve anew.
+        // Every bind consumes the same selected resource/profile/API. This is
+        // not an assertion that mutable credential-cache contents were snapshotted.
         internal BoundSession Bind(CancellationToken cancellationToken = default)
         {
-            OfflineTestGuard.RequireLiveAccess();
+            ObjectDisposedException.ThrowIf(handle.IsClosed, this);
+            cancellationToken.ThrowIfCancellationRequested();
             var native = Profile.From(profile);
             Cancelled check = _ => cancellationToken.IsCancellationRequested ? 1 : 0;
-            var status = NativeBind(handle, ref native, check, IntPtr.Zero, out var session);
-            if (status != 0)
+            var status = api.Bind(handle, ref native, check, IntPtr.Zero, out var session);
+            if (status != 0 || session == IntPtr.Zero)
             {
-                if (session != IntPtr.Zero) NativeSessionClose(ref session);
-                Throw(status, cancellationToken);
+                if (session != IntPtr.Zero) api.CloseSession(ref session);
+                if (status != 0) Throw(status, cancellationToken);
+                throw new InvalidOperationException("Native bind returned no session.");
             }
-            return new BoundSession(new SessionHandle(session), profile.Timeout);
+            return new BoundSession(new SessionHandle(session, api), profile.Timeout);
         }
         public void Dispose() => handle.Dispose();
     }
 
     internal sealed class AuthorityHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
-        internal AuthorityHandle(IntPtr value) : base(true) => SetHandle(value);
-        protected override bool ReleaseHandle() { NativeAuthorityClose(ref handle); return true; }
+        private readonly IBindingApi api;
+        internal AuthorityHandle(IntPtr value, IBindingApi? api = null) : base(true)
+        { this.api = api ?? SystemBindingApi.Instance; SetHandle(value); }
+        protected override bool ReleaseHandle() { api.CloseAuthority(ref handle); return true; }
     }
     internal sealed class SessionHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
-        internal SessionHandle(IntPtr value) : base(true) => SetHandle(value);
-        protected override bool ReleaseHandle() { NativeSessionClose(ref handle); return true; }
+        private readonly IBindingApi api;
+        internal SessionHandle(IntPtr value, IBindingApi? api = null) : base(true)
+        { this.api = api ?? SystemBindingApi.Instance; SetHandle(value); }
+        protected override bool ReleaseHandle() { api.CloseSession(ref handle); return true; }
     }
 
     private static void Throw(int status, CancellationToken cancellationToken)
@@ -105,7 +137,7 @@ internal static partial class NativeLdapBindingBackend
         };
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate int Cancelled(IntPtr state);
+    internal delegate int Cancelled(IntPtr state);
     private const string Library = "adfl_native";
     [DllImport(Library, EntryPoint = "adfl_authority_resolve", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeResolve(ref Profile profile, Cancelled cancelled, IntPtr state, out IntPtr authority);

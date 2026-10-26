@@ -10,21 +10,13 @@ var library = NativeLibrary.Load(args[0]);
 // test library. This does not change credential environment or system library policy.
 NativeLibrary.SetDllImportResolver(typeof(NativeLdapBindingBackend).Assembly,
     (name, _, _) => name == "adfl_native" ? library : IntPtr.Zero);
-var open = Marshal.GetDelegateForFunctionPointer<Open>(NativeLibrary.GetExport(library, "adfl_test_open"));
+var bindingApi = new RecordingBindingApi(library);
 var count = Marshal.GetDelegateForFunctionPointer<Count>(NativeLibrary.GetExport(library, "adfl_test_count"));
 using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2, startTimer: false);
 LdapConnectionProvider.Session[] Acquire(LdapConnectionOptions options, int amount,
     ReferralChasingOption referrals, bool fresh, long minimum)
-    => pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), amount, () =>
-    {
-        if (!NativeLdapBindingBackend.CanRepresentBinding(options, referrals))
-            throw new InvalidOperationException("Facade profile is not representable by the native binding seam.");
-        var profile = NativeLdapBindingBackend.Profile.From(options);
-        profile.Referrals = (uint)referrals;
-        if (open(ref profile, out var pointer) != 0 || pointer == IntPtr.Zero) throw new InvalidOperationException("Recording adapter failed to open.");
-        var native = new NativeLdapBindingBackend.BoundSession(new NativeLdapBindingBackend.SessionHandle(pointer), options.Timeout);
-        return new BoundLdapSession(native, native, options, new LdapAuthenticationSource(options), referrals);
-    }, reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
+    => NativeLdapOperation.Acquire(pool, options, amount, referrals, api: bindingApi).Sessions.ToArray();
+
 using var entry = new DirectoryEntry("LDAP://directory.invalid/DC=example", null, null, AuthenticationTypes.Secure | AuthenticationTypes.Signing | AuthenticationTypes.Sealing);
 entry.Options.Referral = ReferralChasingOption.None;
 entry.OperationSessionFactory = Acquire;
@@ -62,9 +54,70 @@ if (count(1) != 5 || count(2) != 5 || count(3) != 10 || count(4) != 2 || count(5
     throw new InvalidOperationException("Native conversation ownership/submission counters were not balanced.");
 Console.WriteLine("PASS: native two-page streaming, opaque cookie continuation and complete modify error through the production managed/C adapters.");
 Console.WriteLine("One lease across pages; one write submission; owned binary results. Recording dependencies only.");
+// Same-target search/schema admission consumes one resolved resource even when
+// the synthetic source changes between binds. Next operation resolves afresh.
+var identity = Marshal.GetDelegateForFunctionPointer<SetIdentity>(NativeLibrary.GetExport(library, "adfl_test_set_identity"));
+var failBind = Marshal.GetDelegateForFunctionPointer<Configure>(NativeLibrary.GetExport(library, "adfl_test_fail_nth_bind"));
+if (identity(7, 7) != 0) throw new InvalidOperationException("Recording identity setup failed.");
+var selectedBefore = count(7); var acquiredBefore = count(8); var bindsBefore = count(9); var pairBinds = 0;
+bindingApi.AfterBind = () => { if (++pairBinds == 1 && identity(9, 7) != 0) throw new InvalidOperationException("Source transition failed."); };
+using (var pair = NativeLdapOperation.Acquire(pool, entry.BuildOptions(), 2, api: bindingApi))
+{
+    if (pair.Sessions.Count != 2 || count(7) != selectedBefore + 1 || count(8) != acquiredBefore + 1 || count(9) != bindsBefore + 2)
+        throw new InvalidOperationException("Search/schema pair did not share one resolved authority.");
+}
+bindingApi.AfterBind = null;
+if (identity(9, 9) != 0) throw new InvalidOperationException("Next source setup failed.");
+using (var next = NativeLdapOperation.Acquire(pool, entry.BuildOptions(), 1, api: bindingApi)) { }
+var closesBefore = count(1); var freesBefore = count(2);
+if (failBind(2) != 0) throw new InvalidOperationException("Bind failure setup failed.");
+var failed = false;
+try { using var rejected = NativeLdapOperation.Acquire(pool, entry.BuildOptions(), 2, api: bindingApi); }
+catch (InvalidOperationException) { failed = true; }
+if (!failed || pool.Snapshot.Total != 0 || count(1) != closesBefore + 2 || count(2) != freesBefore + 1)
+    throw new InvalidOperationException("Failed paired admission did not roll back resources/capacity.");
+selectedBefore = count(7);
+try { using var impossible = NativeLdapOperation.Acquire(pool, entry.BuildOptions(), 3, api: bindingApi); }
+catch (InvalidOperationException) { }
+if (count(7) != selectedBefore) throw new InvalidOperationException("Impossible admission resolved credentials.");
+Console.WriteLine("PASS: managed operation owner -> atomic admission -> one target resolution -> paired native binds; source replacement and failed-bind rollback verified.");
 // Resolver registration is process-lifetime; do not unload its library while
 // SafeHandle finalizers or the runtime may retain function pointers.
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Open(ref NativeLdapBindingBackend.Profile profile, out IntPtr session);
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Count(int kind);
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Configure(int scenario);
+
+[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SetIdentity(int source, int expected);
+
+// Only this isolated demo supplies recording operations. The system binding API
+// retains its permanent live-access guard and the native pre-auth gate remains0.
+sealed class RecordingBindingApi : NativeLdapBindingBackend.IBindingApi
+{
+    private readonly ResolveCall resolve;
+    private readonly BindCall bind;
+    private readonly CloseCall closeAuthority, closeSession;
+    internal Action? AfterBind;
+    internal RecordingBindingApi(IntPtr library)
+    {
+        resolve = Marshal.GetDelegateForFunctionPointer<ResolveCall>(NativeLibrary.GetExport(library, "adfl_test_resolve"));
+        bind = Marshal.GetDelegateForFunctionPointer<BindCall>(NativeLibrary.GetExport(library, "adfl_authority_bind"));
+        closeAuthority = Marshal.GetDelegateForFunctionPointer<CloseCall>(NativeLibrary.GetExport(library, "adfl_authority_close"));
+        closeSession = Marshal.GetDelegateForFunctionPointer<CloseCall>(NativeLibrary.GetExport(library, "adfl_session_close"));
+    }
+    public int Resolve(ref NativeLdapBindingBackend.Profile profile, NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr authority)
+        => resolve(ref profile, cancelled, state, out authority);
+    public int Bind(NativeLdapBindingBackend.AuthorityHandle authority, ref NativeLdapBindingBackend.Profile profile,
+        NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr session)
+    {
+        var result = bind(authority, ref profile, cancelled, state, out session);
+        try { if (result == 0) AfterBind?.Invoke(); return result; }
+        catch { if (session != IntPtr.Zero) closeSession(ref session); throw; }
+    }
+    public void CloseAuthority(ref IntPtr authority) => closeAuthority(ref authority);
+    public void CloseSession(ref IntPtr session) => closeSession(ref session);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ResolveCall(ref NativeLdapBindingBackend.Profile profile,
+        NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr authority);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int BindCall(NativeLdapBindingBackend.AuthorityHandle authority,
+        ref NativeLdapBindingBackend.Profile profile, NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr session);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void CloseCall(ref IntPtr value);
+}
