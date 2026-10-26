@@ -13,7 +13,7 @@ namespace AdForLinux.DirectoryServices;
 /// <see cref="PropertiesToLoad"/>, then call <see cref="FindOne"/> or
 /// <see cref="FindAll"/>.
 /// </summary>
-public class DirectorySearcher : Component
+public partial class DirectorySearcher : Component
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(-1);
 
@@ -583,19 +583,28 @@ public class DirectorySearcher : Component
     {
         // Use a separate connection because a result collection can outlive the searcher/root,
         // and an in-flight request must not share mutable timeout/referral state with callers.
+        var clock = TimeProvider;
+        var started = clock.GetTimestamp();
         var resultRoot = operation.Origin.Copy();
         var origin = operation.Origin;
-        LdapConnection connection;
+        LdapConnection connection = null!;
+        ILdapRequestTransport? neutral = null;
         DirectoryEntry.ConnectionLease[]? leases = null;
         SearchRequest request;
         try
         {
             StreamingRootCreated?.Invoke(resultRoot);
             leases = resultRoot.AcquireConnections(2, origin.Authority.Validate, ReferralChasing);
-            connection = leases[0].Connection;
-            if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null)
-                foreach (var lease in leases) lease.Invalidate();
-            ConfigureConnection(connection);
+            var transport = leases[0].ExecuteTransport(value => value);
+            if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+                neutral = transport;
+            else
+            {
+                connection = leases[0].Connection;
+                if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null)
+                    foreach (var lease in leases) lease.Invalidate();
+                ConfigureConnection(connection);
+            }
             request = BuildRequestForDn(origin.DistinguishedName);
         }
         catch
@@ -604,6 +613,8 @@ public class DirectorySearcher : Component
             resultRoot.Dispose();
             throw;
         }
+        if (neutral is not null)
+            return FindAllNeutralStreaming(resultRoot, origin, leases, neutral, request, clock, started);
         StreamingSearchResultSource? source = null;
         try
         {

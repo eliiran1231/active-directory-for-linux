@@ -35,6 +35,19 @@ internal static class LdapRequestDispatcher
         return transport.Search(Prepare(transport, command), cancellationToken);
     }
 
+    internal static LdapSearchCommand FromRequest(ILdapRequestTransport transport, SearchRequest request, TimeSpan timeout)
+    {
+        if (request.Filter is not string filter || request.Aliases != System.DirectoryServices.Protocols.DereferenceAlias.Never || request.TimeLimit != TimeSpan.Zero)
+            throw new PlatformNotSupportedException("The neutral request cannot represent this filter, alias or server-time-limit policy.");
+        var controls = request.Controls.Cast<DirectoryControl>().Select(control =>
+        {
+            if (!control.ServerSide) throw new PlatformNotSupportedException("Client-side controls are not represented by the neutral transport.");
+            return new LdapTransportControl(control.Type, control.GetValue(), control.IsCritical);
+        }).ToArray();
+        return Prepare(transport, new(request.DistinguishedName, filter, request.Scope,
+            request.Attributes.Cast<string>().ToArray(), timeout, request.SizeLimit, request.TypesOnly, controls));
+    }
+
     internal static LdapSearchCommand Prepare(ILdapRequestTransport transport, LdapSearchCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);

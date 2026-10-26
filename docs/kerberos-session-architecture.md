@@ -277,9 +277,14 @@ validation and recipe-copy behavior are preserved. The neutral path copies binar
 materializes while the caller owns a distinct schema lease; returned results retain no schema
 transport. Its per-operation remaining-budget/cancellation parameters cover schema queries and
 conversion. Recording comparisons against actual Protocols response objects verify parity,
-including invalid UTF-8 fallback. This prepares broad facade integration but does not yet route
-public DirectorySearcher operations to the native cursor. That producer must retain the atomic
-search/schema lease pair and ensure both sessions consume the same resolved authority owner.
+including invalid UTF-8 fallback. The existing public DirectorySearcher streaming path
+(`Asynchronous` or `!CacheResults`) now selects the neutral cursor by session capabilities,
+retaining the atomic search/schema pair. Non-asynchronous results buffer each page until a
+successful or size-limited terminal response; asynchronous results expose partial entries.
+Unsupported control-response state, aliases and server time limits fail before query dispatch.
+This experimental producer uses one total deadline including admission and schema work;
+the stock Protocols producer retains its existing timing behavior. Cached searches and FindOne
+are not yet routed to this cursor. Default native selection and authentication remain disabled.
 
 ## Fail-closed plugin patch and composition boundary
 

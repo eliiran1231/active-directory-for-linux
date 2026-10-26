@@ -63,12 +63,20 @@ internal static class LdapConversation
 
     internal static async IAsyncEnumerable<LdapSearchEvent> Search(
         Func<LdapConnectionProvider.Session> acquire, LdapSearchCommand command, int pageSize = 0,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default, TimeProvider? timeProvider = null)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
+        Func<TimeSpan>? remainingBudget = null)
     {
         if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
         ArgumentNullException.ThrowIfNull(command);
         if (command.Timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(command.Timeout));
         var budget = new OperationBudget(command.Timeout, timeProvider);
+        TimeSpan Remaining()
+        {
+            var local = budget.Remaining(cancellationToken);
+            var external = remainingBudget?.Invoke() ?? local;
+            if (external <= TimeSpan.Zero) throw new TimeoutException("The enclosing LDAP operation deadline expired.");
+            return external < local ? external : local;
+        }
         cancellationToken.ThrowIfCancellationRequested();
         using var lease = acquire();
         ILdapSearchCursor? cursor = null;
@@ -82,14 +90,14 @@ internal static class LdapConversation
             if (transport is not ILdapConversationTransport conversation || (transport.Capabilities & required) != required)
                 throw new PlatformNotSupportedException("Streaming/paging is not implemented by this adapter; no request was sent.");
             var prepared = LdapRequestDispatcher.Prepare(transport, command);
-            prepared = prepared with { Timeout = budget.Remaining(cancellationToken) };
+            prepared = prepared with { Timeout = Remaining() };
             opened = true; // Open may send before throwing; cleanup uncertainty retires.
             cursor = await conversation.OpenSearchAsync(prepared, pageSize, cancellationToken).ConfigureAwait(false);
             while (true)
             {
-                var item = await cursor.ReadAsync(budget.Remaining(cancellationToken), cancellationToken).ConfigureAwait(false)
+                var item = await cursor.ReadAsync(Remaining(), cancellationToken).ConfigureAwait(false)
                     ?? throw new InvalidOperationException("Search ended without a result envelope.");
-                budget.Remaining(cancellationToken);
+                Remaining();
                 if (item is LdapSearchEvent.PageEnd end)
                 {
                     if (pageSize == 0 && end.Result.Code == ResultCode.Success && end.HasMore)
@@ -100,7 +108,7 @@ internal static class LdapConversation
                     yield return end;
                     if (complete) yield break;
                     // Same cursor, opaque cookie, lease and authority; never reacquire/replay.
-                    await cursor.NextPageAsync(budget.Remaining(cancellationToken), cancellationToken).ConfigureAwait(false);
+                    await cursor.NextPageAsync(Remaining(), cancellationToken).ConfigureAwait(false);
                 }
                 else if (item is LdapSearchEvent.Entry or LdapSearchEvent.Reference) yield return item;
                 else throw new InvalidOperationException("Unknown search event.");

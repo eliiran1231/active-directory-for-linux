@@ -42,6 +42,7 @@ public partial class DirectoryEntry
         internal ConnectionLease(LdapConnectionProvider.Session session)
         { this.session = session; }
         internal LdapConnection Connection => session?.Connection ?? connection!;
+        internal LdapConnectionProvider.Session? ManagedSession => session;
         internal TResult ExecuteTransport<TResult>(Func<ILdapRequestTransport, TResult> operation) =>
             session is not null ? session.ExecuteTransport(operation) : operation(new ProtocolsLdapTransport(connection!));
         internal void Invalidate() => session?.Invalidate();

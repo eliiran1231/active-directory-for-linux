@@ -765,15 +765,27 @@ public partial class DirectoryEntry : Component
             ProtocolScope.Base,
             "1.1");
         using var lease = AcquireConnection(ValidateRead);
-        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
-        if (response.Entries.Count == 0)
+        var boundDn = lease.ExecuteTransport(transport =>
+        {
+            if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) != 0)
+            {
+                var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
+                return response.Entries.Count == 0 ? null : response.Entries[0].DistinguishedName;
+            }
+            var result = LdapRequestDispatcher.Search(transport,
+                LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout));
+            if (result.Code != ResultCode.Success)
+                throw LdapExceptionTranslator.Translate(result.Code, result.Diagnostic ?? "LDAP bind-object lookup failed.");
+            return result.Entries.Length == 0 ? null : result.Entries[0].DistinguishedName;
+        });
+        if (boundDn is null)
         {
             throw LdapExceptionTranslator.Translate(
                 ResultCode.NoSuchObject,
                 $"The directory object '{snapshot.Dn}' does not exist.");
         }
 
-        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = response.Entries[0].DistinguishedName);
+        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = boundDn);
     }
 
     private PropertyCollection ReadProperties(
