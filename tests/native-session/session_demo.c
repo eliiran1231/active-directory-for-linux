@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* Recording native dependencies, not a second pool/binder implementation.
  * Tests call adfl_open_with/adfl_resolve_with/adfl_authority_bind from the real
@@ -17,6 +18,7 @@ struct fixture {
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply, wrong_write_tag, expect_controls, cancel_prepare;
+    int block_phase; /* test-only child process: 1read, 2pre-submit, 3post-submit, 4close */
     int bad_cookie, unexpected_message, modify_send_failure, slow_prepare, reject_submit;
     atomic_int page_sends, modify_sends, submissions, submission_receipts;
     int selection_result, acquire_failure, create_failure, install_failure, probe_rejected, material_failure, untrusted_plugin;
@@ -91,9 +93,13 @@ static int bind_session(void *state, LDAP *value, LDAP_SASL_INTERACT_PROC *callb
     if (f->cancel_after_bind) atomic_store(&f->cancelled, 1);
     return f->bind_failure || atomic_load(&f->fail_bind_at) == ordinal ? LDAP_INVALID_CREDENTIALS : LDAP_SUCCESS;
 }
+static void block_dependency(struct fixture *f, int phase) {
+    if (f->block_phase == phase) for (;;) pause();
+}
 static void ldap_close(void *state, LDAP *value) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
     if (!ld) return;
+    block_dependency(f, 4);
     if (ld->guard) ld->guard->lc_del(value, (Sockbuf *)ld, ld->guard);
     if (ld->credential) atomic_fetch_sub(&ld->credential->sessions, 1);
     atomic_fetch_add(&f->closed, 1); free(ld);
@@ -133,6 +139,7 @@ static int echo_controls(struct fake_ldap *ld, adfl_result_fn emit, void *out) {
 }
 static int search_start(void *state, LDAP *value, const adfl_search_request *request, adfl_submitted_fn ready, void *ready_state, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
+    block_dependency(f, 1);
     record_controls(f, ld, request->controls, request->control_count);
     assert(request->scope >= 0 && request->scope <= 2 && !strcmp(request->filter, "(objectClass=*)"));
     assert(strlen(request->base_dn) < sizeof(ld->base_dn));
@@ -295,7 +302,9 @@ static int write_start(void *state, LDAP *value, const adfl_write_request *r,
     } else assert(r->terminal_type == LDAP_RES_DELETE && !r->change_count);
     if (f->cancel_prepare) atomic_store(&f->cancelled, 1);
     if (f->slow_prepare) atomic_fetch_add(&f->clock, 10000);
+    block_dependency(f, 2);
     if (submitted(submit_state)) return LDAP_USER_CANCELLED;
+    block_dependency(f, 3);
     atomic_fetch_add(&f->submission_receipts, 1);
     *disposition = ADFL_OUTCOME_UNKNOWN;
     atomic_fetch_add(&f->modify_sends, 1); atomic_fetch_add(&f->wire_sent, 1);
@@ -674,6 +683,12 @@ ADFL_API int adfl_test_fail_nth_bind(int nth) {
 ADFL_API int adfl_test_configure(int scenario) {
     if (scenario < 0 || scenario > 1 || atomic_load(&managed_fixture.created) != atomic_load(&managed_fixture.freed)) return ADFL_INVALID;
     managed_fixture.root_reply = scenario == 0; return ADFL_OK;
+}
+/* Only exported from the recording test library, never the production adapter.
+ * A worker-process test sets one phase then exercises the real coordinator. */
+ADFL_API int adfl_test_set_block(int phase) {
+    if (phase < 0 || phase > 4) return ADFL_INVALID;
+    managed_fixture.block_phase = phase; return ADFL_OK;
 }
 ADFL_API int adfl_test_count(int kind) {
     switch (kind) {

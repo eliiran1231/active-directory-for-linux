@@ -66,7 +66,7 @@ internal static partial class NativeLdapBindingBackend
             Exception? callbackError = null;
             Submitted beforeSend = _ =>
             {
-                try { cancellationToken.ThrowIfCancellationRequested(); budget.Check(); submission.BeforeSend(); return 0; }
+                try { cancellationToken.ThrowIfCancellationRequested(); budget.Check(); submission.BeforeSend(); cancellationToken.ThrowIfCancellationRequested(); budget.Check(); return 0; }
                 catch (Exception error) { callbackError = error; return 1; }
             };
             // Once a complete response arrives, preserve its known outcome even

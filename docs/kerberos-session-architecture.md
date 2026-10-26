@@ -148,14 +148,48 @@ This verifies the source hash, applies the patch and runs an extracted-source or
 It does not verify a built plugin or deployment. Activation requires controlled dependency
 composition from Cyrus initialization onward; a plugin name, GETPATH/VERIFYFILE callback or
 version string cannot retrofit an already initialized host-global instance. A separately owned
-helper process with a pinned private dependency/plugin closure is the proposed packaging
-boundary; it is not implemented or attested here.
+helper process with a pinned private dependency/plugin closure is the selected packaging
+boundary. The process/IPC boundary is executable; the private dependency closure and
+credential-source transfer are not yet implemented or attested. The production host refuses
+before credential resolution; only the separate demo host injects recording dependencies.
+
+Run the actual exec/IPC/native-dispatch demonstration (Linux with pidfd and glibc closefrom):
+
+```sh
+ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/native-session/run-process-demo.sh net8.0
+```
+
+`NativeLdapWorkerPool` separates worker ownership from an exclusive operation lease. One
+worker owns both search/schema sessions and cursor pages; current policy retires it after
+one operation. Future reuse still needs target-aware authority compatibility. The libc-only
+supervisor starts an exact executable over a private socketpair with explicit environment,
+closed inherited descriptors and no shell. The child supplies a kernel-verified pidfd before
+backend initialization. Retirement signals that retained handle and reaps asynchronously;
+caller timeout does not wait for blocked IPC, native sends, exit or drains. Dying workers
+retain their capacity slot. An unverifiable startup remains quarantined: this implementation
+cannot promise bounded OS cleanup, and never falls back to rediscovering a numeric PID.
+Windows identity transfer is unsupported; ordinary process creation does not transfer thread
+impersonation. The helper environment deliberately disables live access and inherits no
+credential or loader environment.
+
+Bounded, versioned IPC preserves binary values, result/error categories and request sequence.
+A mutation is prepared with its immutable request and operation ID before the child asks to
+execute. The parent checks cancellation/deadline and marks potential submission *before*
+sending authorization. Unknown delivery after that point is indeterminate, never replayed.
+The child rechecks its remaining preparation budget after authorization. Killing a worker
+does not prove cancellation of server execution. Complete responses remain complete.
+
+The recording demo blocks real native dependency callbacks before/after write authorization,
+checks parent return and verified reaping, exercises late startup/capacity retention, malformed
+peers, paging and dependent schema reads, and verifies production refusal. These are process
+and orchestration proofs, not real Kerberos authentication or private-plugin attestation.
 
 Remaining proofs/work include mutable-cache authority compatibility, controlled native
-composition, hard socket-write deadlines, requested referral/TLS semantics, paged total-size
+composition, native/helper facade activation, requested referral/TLS semantics, paged total-size
 limits, advanced search response-state handling, and remaining raw Protocols consumers.
 `LDAP_OPT_NETWORK_TIMEOUT` bounds connection setup, not arbitrary blocked sends. Cancellation
-and bounded polling are cooperative; a complete hard native deadline is not claimed. Windows
+and bounded polling in the in-process adapter are cooperative. The isolated boundary bounds
+parent waiting; neither OS resource reclamation nor managed CPU work has a hard deadline. Windows
 retains its existing backend; WinLDAP does not accept an arbitrary SSPI credential handle.
 
 ## Primary source basis

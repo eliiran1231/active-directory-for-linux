@@ -27,16 +27,18 @@ internal sealed record LdapModifyCommand(string DistinguishedName, LdapAttribute
     TimeSpan Timeout, LdapTransportControl[] Controls) : LdapMutationCommand(DistinguishedName, Timeout, Controls);
 internal enum LdapWriteDisposition { NotSent, Indeterminate, Completed }
 internal sealed record LdapWriteOutcome(LdapWriteDisposition Disposition, LdapResultEnvelope? Result, Exception? Error);
-internal sealed class LdapSubmission
+internal sealed class LdapSubmission(Action? beforeMark = null)
 {
-    private int started;
+    private int started, entered;
     internal bool Started => Volatile.Read(ref started) != 0;
     // Call immediately BEFORE entering a native send, not after it returns.
     // Failure after this boundary cannot establish whether the server applied a write.
     internal void BeforeSend()
     {
-        if (Interlocked.Exchange(ref started, 1) != 0)
+        if (Interlocked.Exchange(ref entered, 1) != 0)
             throw new InvalidOperationException("A write cannot be submitted twice.");
+        beforeMark?.Invoke();
+        Volatile.Write(ref started, 1);
     }
 }
 internal interface ILdapConversationTransport : ILdapRequestTransport

@@ -184,37 +184,3 @@ Console.WriteLine("PASS: buffered/paged/all mutation controls preserve binary, e
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int Configure(int scenario);
 
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate int SetIdentity(int source, int expected);
-
-// Only this isolated demo supplies recording operations. The system binding API
-// retains its permanent live-access guard and the native pre-auth gate remains0.
-sealed class RecordingBindingApi : NativeLdapBindingBackend.IBindingApi
-{
-    private readonly ResolveCall resolve;
-    private readonly BindCall bind;
-    private readonly CloseCall closeAuthority, closeSession;
-    internal Action? AfterBind;
-    internal RecordingBindingApi(IntPtr library)
-    {
-        resolve = Marshal.GetDelegateForFunctionPointer<ResolveCall>(NativeLibrary.GetExport(library, "adfl_test_resolve"));
-        bind = Marshal.GetDelegateForFunctionPointer<BindCall>(NativeLibrary.GetExport(library, "adfl_authority_bind"));
-        closeAuthority = Marshal.GetDelegateForFunctionPointer<CloseCall>(NativeLibrary.GetExport(library, "adfl_authority_close"));
-        closeSession = Marshal.GetDelegateForFunctionPointer<CloseCall>(NativeLibrary.GetExport(library, "adfl_session_close"));
-    }
-    public int Resolve(ref NativeLdapBindingBackend.Profile profile, NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr authority)
-        { NativeLdapBindingBackend.EnsureAbi(); return resolve(ref profile, cancelled, state, out authority); }
-    public int Bind(NativeLdapBindingBackend.AuthorityHandle authority, ref NativeLdapBindingBackend.Profile profile,
-        NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr session)
-    {
-        NativeLdapBindingBackend.EnsureAbi();
-        var result = bind(authority, ref profile, cancelled, state, out session);
-        try { if (result == 0) AfterBind?.Invoke(); return result; }
-        catch { if (session != IntPtr.Zero) closeSession(ref session); throw; }
-    }
-    public void CloseAuthority(ref IntPtr authority) => closeAuthority(ref authority);
-    public void CloseSession(ref IntPtr session) => closeSession(ref session);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ResolveCall(ref NativeLdapBindingBackend.Profile profile,
-        NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr authority);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int BindCall(NativeLdapBindingBackend.AuthorityHandle authority,
-        ref NativeLdapBindingBackend.Profile profile, NativeLdapBindingBackend.Cancelled cancelled, IntPtr state, out IntPtr session);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void CloseCall(ref IntPtr value);
-}
