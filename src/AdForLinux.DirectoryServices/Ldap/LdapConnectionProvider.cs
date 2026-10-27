@@ -19,6 +19,13 @@ internal static partial class LdapConnectionProvider
         ReferralChasingOption referrals = ReferralChasingOption.None) =>
         new LdapAuthenticationSource(options).Freshness(referrals) == LdapSessionFreshness.CompatibleEstablishedSession;
 
+    // Plan the whole operation before admission. The restricted backend retires
+    // an unfinished cursor's worker group, so buffered page materialization needs
+    // a sibling schema session while that group is still alive. Stock Protocols
+    // keeps its existing one-connection behavior.
+    internal static int RequiredSessionCount(LdapConnectionOptions options, int requested, bool independentNativeSchema)
+        => independentNativeSchema && options.RestrictedKerberos is not null ? Math.Max(2, requested) : requested;
+
     internal static long NewGeneration() => Pool.NewGeneration();
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<LdapConnection, Session> Active = new();
 

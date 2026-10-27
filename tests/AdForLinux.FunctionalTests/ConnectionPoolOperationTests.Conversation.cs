@@ -38,7 +38,7 @@ public partial class ConnectionPoolOperationTests
         internal TimeSpan OpenBudget, WriteBudget, ServerLimit;
         internal readonly List<TimeSpan> ReadBudgets = [], PageBudgets = [], ServerLimits = [];
         internal bool CleanupFails;
-        internal Action? OnRead;
+        internal Action? OnRead, OnCleanup;
         internal Func<CancellationToken, ValueTask<LdapSearchEvent>>? PendingRead;
         internal Action<LdapSubmission, CancellationToken>? WriteAction;
         internal LdapResultEnvelope WriteResult = Envelope(ResultCode.Success);
@@ -51,7 +51,7 @@ public partial class ConnectionPoolOperationTests
         public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken token, TimeSpan? serverTimeLimit = null)
         { token.ThrowIfCancellationRequested(); PageBudgets.Add(remaining); if (serverTimeLimit is { } limit) { ServerLimit = limit; ServerLimits.Add(limit); } Pages++; trace.Add("next-page"); return ValueTask.CompletedTask; }
         public ValueTask DisposeAsync()
-        { trace.Add("cursor-close"); if (CleanupFails) throw new InvalidOperationException("cleanup uncertain"); return ValueTask.CompletedTask; }
+        { trace.Add("cursor-close"); OnCleanup?.Invoke(); if (CleanupFails) throw new InvalidOperationException("cleanup uncertain"); return ValueTask.CompletedTask; }
         public ValueTask<LdapResultEnvelope> ModifyAsync(LdapModifyCommand command, LdapSubmission submission, CancellationToken token)
         {
             WriteBudget = command.Timeout; Writes++; trace.Add("modify");

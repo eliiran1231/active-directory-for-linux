@@ -113,7 +113,7 @@ Native ABI version 4 is checked before real resolution/bind and request dispatch
 cannot silently discard control or server-time-limit fields. ABI agreement is not authentication proof.
 The native search adapter explicitly pins per-handle aliases to Never and the requested
 server time limit before every send, including zero resets. DirectorySearcher still rejects
-unimplemented control-response state, aliases and finite search-wide limits with buffered paging;
+unimplemented control-response state and aliases;
 generic control transport does not implement those public semantics.
 
 ## Binding implementation and enablement boundary
@@ -500,16 +500,19 @@ adoption is a separate deployment action; the library performs neither.
 Searchers preserve their existing defaults. This profile requires callers to select
 `ReferralChasingOption.None`. Server-side search limits are distinct from the client deadline: the neutral request
 preserves `TimeSpan`, and the native boundary truncates it to whole seconds like
-Protocols (subsecond values become zero). Raw transport commands keep their per-request server limit across pages. Public streaming
+Protocols (subsecond values become zero). Raw transport commands keep their per-request server limit across pages. Public
 `DirectorySearcher` instead reuses its existing search-wide server budget and page
 cap, forwarding each remaining limit through the same cursor and stopping before
 another page when less than one whole second remains. Its client budget decreases
 independently. OpenLDAP receives that limit through the exclusively
 owned handle, including an explicit zero reset; polling still uses the client budget.
-Buffered paged searches with a finite overall server limit are rejected before
-search dispatch: their current single-session schema materialization cannot survive
-retiring an unfinished cursor at budget exhaustion. Use streaming (`CacheResults=false`)
-or an unpaged search; the existing default API path is unchanged.
+Buffered restricted paging with a finite overall server limit atomically admits
+a query/schema pair before binding. Accepted pages are completely materialized
+using the sibling before advancing the cursor, so budget exhaustion can retire the
+whole worker without losing prior rows. Stock Protocols admission remains one session;
+other neutral backends lacking an admitted sibling still refuse this combination.
+Worker cursor cleanup is local once the group has retired: it sends no CLOSE on a
+closed channel and does not replace cancellation or the original failure.
 Server `TimeLimitExceeded` remains an LDAP result, not a client timeout or replay trigger.
 Unsupported settings fail rather than being silently removed. Alternate credential validation, foreign-domain discovery and global
 catalog probing cannot escape the selected endpoint/source.
@@ -518,11 +521,14 @@ The authorized .NET 8 public lab uses `RealPublicLab.cs` with the production hos
 restricted bridge, without injected binding APIs. Its MDB fixture supports paging. For
 each of two synthetic clients, protected entry reads and a two-entry paged search
 with page size one require the correct identity plus SSF >=56; an empty principal-context query exercises dispatch but
-not AD principal materialization. The principal search selects streaming and retains its default 30-second
+not AD principal materialization. The principal search retains its default buffering and 30-second
 server limit; the fixture demonstrates multiple nonempty page transitions. Native/worker identity and signing/sealing tests
 also pass. Container, image and tmpfs credential cleanup is verified after testing.
 The SSF getter uses OpenLDAP's `ber_len_t`, not the narrower Cyrus `sasl_ssf_t`; corrected
 artifact reruns supersede earlier tests affected by that buffer-width defect.
+
+The preliminary facade authority check remains a separate group; atomic query/schema
+admission does not claim one capture across that earlier check.
 
 Each admitted group resolves the FILE source afresh, owns one or two sessions, and
 retires its worker when its last lease ends. Invalidation retires the whole group.

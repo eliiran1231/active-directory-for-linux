@@ -64,7 +64,8 @@ public partial class DirectoryEntry
         => AcquireConnections(1, validate, referrals, schema, forceFresh)[0];
 
     internal ConnectionLease[] AcquireConnections(int count, Action? validate = null,
-        ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false)
+        ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false,
+        bool independentNativeSchema = false)
     {
         void Validate() { ThrowIfDisposed(); validate?.Invoke(); }
         var generation = IdentityLifetime.Capture(Validate);
@@ -72,6 +73,7 @@ public partial class DirectoryEntry
             (Options: BuildOptions(), Referral: referrals ?? Options.Referral,
              Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired || forceFresh,
              Existing: forceFresh ? null : schema ? _schemaConnection : _connection, Schema: forceFresh ? null : _schemaConnection));
+        count = LdapConnectionProvider.RequiredSessionCount(snapshot.Options, count, independentNativeSchema);
         if (snapshot.Existing is not null && CanUseRetainedConnection(snapshot.Options))
             return Enumerable.Range(0, count).Select(index =>
                 new ConnectionLease(index == 0 ? snapshot.Existing : snapshot.Schema ?? snapshot.Existing)).ToArray();

@@ -26,7 +26,8 @@ internal static class RealPublicLab
                 stage = 3;
                 using var root = profile.CreateDirectoryEntry("dc=adfl,dc=test");
                 using var search = new DirectorySearcher(root, "(objectClass=organizationalRole)", ["description"], SearchScope.Subtree)
-                { ReferralChasing = ReferralChasingOption.None, PageSize = 1, CacheResults = false };
+                { ReferralChasing = ReferralChasingOption.None, PageSize = 1, CacheResults = true,
+                    ServerTimeLimit = TimeSpan.FromSeconds(30), ServerPageTimeLimit = TimeSpan.FromSeconds(7) };
                 using var results = search.FindAll();
                 var seen = results.Cast<SearchResult>().ToArray();
                 if (seen.Length != 2 || seen.Any(value => (string?)value.Properties["description"][0] != client))
@@ -39,7 +40,6 @@ internal static class RealPublicLab
                 // no-referral policy required by this exact-target profile.
                 var underlying = (DirectorySearcher)principalSearch.GetUnderlyingSearcher();
                 underlying.ReferralChasing = ReferralChasingOption.None;
-                underlying.CacheResults = false; // separate schema lease for a finite paged budget
                 // Keep PrincipalSearcher's separate 30-second server limit.
                 using var principals = principalSearch.FindAll();
                 if (principals.Any()) throw new InvalidDataException("Test directory unexpectedly contained AD user objects.");

@@ -7,14 +7,13 @@ public partial class DirectorySearcher
 {
     private SearchResult[] ReadNeutralBuffered(DirectoryEntry.ConnectionLease lease,
         ILdapRequestTransport transport, SearchResultOrigin origin, SearchRequest request,
-        int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue)
+        int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue,
+        ILdapRequestTransport? schema = null)
     {
-        // Buffered materialization currently borrows this same native session for
-        // schema reads after cursor disposal. Exhausting a search-wide page budget
-        // retires that unfinished session; do not pretend partial rows can still
-        // be materialized. Streaming owns a separate schema lease and supports it.
-        if (pageSize > 0 && ServerTimeLimit.TotalSeconds >= 1)
-            throw new PlatformNotSupportedException("Buffered native paging with a finite overall server limit requires a separate schema lease. Use streaming results or an unpaged search.");
+        // A bounded group must provide the sibling before the first search is
+        // sent; never acquire it while holding the search lease.
+        if (pageSize > 0 && ServerTimeLimit.TotalSeconds >= 1 && schema is null)
+            throw new PlatformNotSupportedException("Buffered native paging with a finite server budget requires atomically admitted search and schema sessions.");
         if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null)
             throw new PlatformNotSupportedException("The neutral producer cannot represent the requested control or connection policy.");
         var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
@@ -28,6 +27,7 @@ public partial class DirectorySearcher
         TimeSpan? NextServerLimit() => serverBudget.TryApply(request) ? request.TimeLimit : null;
         var command = LdapRequestDispatcher.FromRequest(transport, request, Remaining());
         var session = lease.ManagedSession ?? throw new PlatformNotSupportedException("A neutral search requires an exclusive session.");
+        var materialized = new List<SearchResult>();
         async Task<List<LdapTransportEntry>> Read()
         {
             var entries = new List<LdapTransportEntry>();
@@ -35,17 +35,31 @@ public partial class DirectorySearcher
                 timeProvider: clock, remainingBudget: Remaining, nextServerLimit: NextServerLimit).ConfigureAwait(false))
             {
                 if (item is LdapSearchEvent.Entry entry) entries.Add(entry.Value);
-                else if (item is LdapSearchEvent.PageEnd end && end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
-                    throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+                else if (item is LdapSearchEvent.PageEnd end)
+                {
+                    if (end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
+                        throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+                    if (schema is not null)
+                    {
+                        // Finish this accepted page while both sibling sessions
+                        // remain alive. Advancing the iterator may retire the whole
+                        // worker at server-budget exhaustion or cursor failure.
+                        foreach (var value in entries)
+                            materialized.Add(new SearchResult(value, origin, schema, Remaining));
+                        entries.Clear();
+                    }
+                }
             }
             return entries;
         }
         try
         {
-            // Drain every terminal envelope and close the cursor before schema can
-            // use this same session. Buffered modes need no second pool reservation.
+            // A single-session path waits for terminal cleanup before schema use;
+            // the atomically admitted pair materializes each accepted page first.
             var entries = Read().GetAwaiter().GetResult();
-            return entries.Take(maximumResults).Select(entry => new SearchResult(entry, origin, transport, Remaining)).ToArray();
+            _ = Remaining(); // cleanup cannot publish rows after client deadline/authority expiry
+            return schema is not null ? materialized.Take(maximumResults).ToArray() :
+                entries.Take(maximumResults).Select(entry => new SearchResult(entry, origin, transport, Remaining)).ToArray();
         }
         catch { lease.Invalidate(); throw; }
     }

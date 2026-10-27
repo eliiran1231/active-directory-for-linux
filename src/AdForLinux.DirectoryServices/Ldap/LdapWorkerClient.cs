@@ -198,6 +198,10 @@ internal sealed class LdapWorkerClient(Stream channel, Action retireWorker) : ID
         public async ValueTask DisposeAsync()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+            // Retirement already owns process termination and closes the channel.
+            // Sending CLOSE now would mask the original error/cancellation, or
+            // turn intentional server-budget completion into ObjectDisposedException.
+            if (Volatile.Read(ref owner.retired) != 0) return;
             try
             {
                 var frame = await owner.CallAsync<object?>(session, "CLOSE", null,

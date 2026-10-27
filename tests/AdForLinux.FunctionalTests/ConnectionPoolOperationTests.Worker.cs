@@ -115,9 +115,9 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Theory]
-    [InlineData("{\"Version\":4,\"Version\":4,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
-    [InlineData("{\"Version\":4,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
-    [InlineData("{\"Version\":4,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":5,\"Version\":5,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
+    [InlineData("{\"Version\":5,\"Id\":1,\"Session\":0,\"Kind\":\"READY\",\"Payload\":null}")]
+    [InlineData("{\"Version\":5,\"Id\":1,\"Session\":2,\"Kind\":\"READY\",\"TimeoutTicks\":0,\"Payload\":null}")]
     public async Task Worker_frames_reject_duplicate_missing_and_invalid_fields(string json)
     {
         var bytes = Encoding.UTF8.GetBytes(json); using var stream = new MemoryStream();
@@ -146,6 +146,68 @@ public partial class ConnectionPoolOperationTests
         Assert.Equal(1, retired); Assert.True(channel.Disposed);
         channel.Release.TrySetResult(0);
     }
+
+    [Theory]
+    [InlineData("budget")]
+    [InlineData("cancel")]
+    [InlineData("error")]
+    public async Task Retired_worker_cursor_cleanup_preserves_partial_budget_and_original_failures(string outcome)
+    {
+        using var replies = new MemoryStream();
+        var caps = LdapTransportCapabilities.Search | LdapTransportCapabilities.StreamingSearch | LdapTransportCapabilities.PagedSearch;
+        await LdapWorkerProtocol.WriteAsync(replies, LdapWorkerProtocol.Frame(1, 0, "READY", TimeSpan.Zero,
+            new LdapWorkerReady([caps, LdapTransportCapabilities.Search])), default);
+        await LdapWorkerProtocol.WriteAsync(replies, LdapWorkerProtocol.Frame<object?>(2, 0, "OK", TimeSpan.Zero, null), default);
+        await LdapWorkerProtocol.WriteAsync(replies, LdapWorkerProtocol.Frame(3, 0, "ENTRY", TimeSpan.Zero,
+            TransportRow("CN=kept", new() { ["cn"] = ["kept"] })), default);
+        if (outcome == "error")
+            await LdapWorkerProtocol.WriteAsync(replies, LdapWorkerProtocol.Frame(4, 0, "ERROR", TimeSpan.Zero, new LdapWorkerFailure("state")), default);
+        else
+            await LdapWorkerProtocol.WriteAsync(replies, LdapWorkerProtocol.Frame(4, 0, "PAGE", TimeSpan.Zero,
+                new LdapSearchEvent.PageEnd(Envelope(System.DirectoryServices.Protocols.ResultCode.Success), true)), default);
+        using var channel = new WorkerScriptedStream(replies.ToArray());
+        var retired = 0;
+        using var client = await LdapWorkerClient.StartAsync(channel, () => retired++,
+            new("directory.invalid", 389, false, true, true, 2, TimeSpan.FromSeconds(10)), TimeSpan.FromSeconds(10));
+        var sessions = LdapRestrictedOperation.Wrap(client.Sessions, client, RestrictedRecipe().Options());
+        using var sibling = sessions[1]; using var cancellation = new CancellationTokenSource();
+        var limits = 0; var rows = new List<LdapTransportEntry>();
+        await using var iterator = LdapConversation.Search(() => sessions[0], SearchCommand(), 1,
+            cancellation.Token, nextServerLimit: () => ++limits == 1 ? TimeSpan.FromSeconds(30) : null).GetAsyncEnumerator();
+        Assert.True(await iterator.MoveNextAsync());
+        rows.Add(Assert.IsType<LdapSearchEvent.Entry>(iterator.Current).Value);
+        if (outcome == "cancel") cancellation.Cancel();
+        var error = await Record.ExceptionAsync(async () => { while (await iterator.MoveNextAsync()) { } });
+        if (outcome == "budget") Assert.Null(error);
+        else if (outcome == "cancel") Assert.IsAssignableFrom<OperationCanceledException>(error);
+        else Assert.Equal("Worker operation failed (state).", Assert.IsType<IOException>(error).Message);
+        Assert.Single(rows); Assert.Equal(1, retired); Assert.True(channel.Disposed);
+        Assert.Throws<ObjectDisposedException>(() => sibling.ExecuteTransport(value => value.Timeout));
+        using var writes = new MemoryStream(channel.Writes.ToArray());
+        var kinds = new List<string>();
+        while (writes.Position < writes.Length) kinds.Add((await LdapWorkerProtocol.ReadAsync(writes, default)).Kind);
+        Assert.DoesNotContain("CLOSE", kinds); Assert.DoesNotContain("NEXT", kinds);
+        Assert.Equal(outcome == "cancel" ? 3 : 4, kinds.Count);
+    }
+
+    private sealed class WorkerScriptedStream(byte[] replies) : Stream
+    {
+        private readonly MemoryStream input = new(replies);
+        internal readonly MemoryStream Writes = new();
+        internal bool Disposed;
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        { ObjectDisposedException.ThrowIf(Disposed, this); return input.ReadAsync(buffer, cancellationToken); }
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        { ObjectDisposedException.ThrowIf(Disposed, this); return Writes.WriteAsync(buffer, cancellationToken); }
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        protected override void Dispose(bool disposing) { Disposed = true; base.Dispose(disposing); }
+        public override bool CanRead => true; public override bool CanSeek => false; public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException(); public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { } public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException(); public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
     private sealed class WorkerStalledStream : Stream
     {
         internal readonly TaskCompletionSource ReadEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);

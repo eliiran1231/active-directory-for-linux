@@ -521,11 +521,15 @@ public partial class DirectorySearcher : Component
 
         var neutralClock = TimeProvider;
         var neutralStarted = neutralClock.GetTimestamp();
-        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var searchLeases = root.AcquireConnections(1, operation.Origin.Authority.Validate, ReferralChasing,
+            independentNativeSchema: PageSize > 0 && ServerTimeLimit.TotalSeconds >= 1);
+        using var connectionLease = searchLeases[0];
+        using var schemaLease = searchLeases.Length > 1 ? searchLeases[1] : null;
         var admitted = connectionLease.ExecuteTransport(value => value);
         if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
             return new SearchResultCollection(ReadNeutralBuffered(connectionLease, admitted, operation.Origin,
-                BuildRequestForDn(operation.Origin.DistinguishedName), PageSize, neutralClock, neutralStarted), GetPropertiesLoaded());
+                BuildRequestForDn(operation.Origin.DistinguishedName), PageSize, neutralClock, neutralStarted,
+                schema: schemaLease?.ExecuteTransport(value => value)), GetPropertiesLoaded());
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
