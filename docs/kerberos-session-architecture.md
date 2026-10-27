@@ -109,11 +109,11 @@ it cannot represent. Response criticality and value presence are independent fla
 
 Default property security-mask controls use a managed BER SEQUENCE/INTEGER encoder for the exact
 public SecurityDescriptorFlagControl type; subclasses retain their virtual encoding behavior.
-Native ABI version 3 is checked before real resolution/bind and request dispatch. A mismatch
-cannot silently discard the new control fields. ABI agreement is not authentication proof.
-The native search adapter explicitly pins per-handle aliases to Never and server time limit
-to zero before every send; it does not inherit handle defaults. DirectorySearcher still rejects
-unimplemented control-response state, aliases and server limits;
+Native ABI version 4 is checked before real resolution/bind and request dispatch. A mismatch
+cannot silently discard control or server-time-limit fields. ABI agreement is not authentication proof.
+The native search adapter explicitly pins per-handle aliases to Never and the requested
+server time limit before every send, including zero resets. DirectorySearcher still rejects
+unimplemented control-response state, aliases and finite search-wide limits with buffered paging;
 generic control transport does not implement those public semantics.
 
 ## Binding implementation and enablement boundary
@@ -268,7 +268,7 @@ Real credential acquisition, wire authentication/security layers, deployment int
 policy compatibility remain unverified; authentication/reuse gates stay closed.
 No `make install`, account, cache or host configuration operation is part of these scripts.
 
-Worker protocol 4 and native ABI 3 carry an explicit source recipe. Protocol 4
+Worker protocol 5 and native ABI 4 carry an explicit source recipe. Protocol 5
 requires the new optional KDC field to be present (possibly null); older internal
 worker frames are deliberately rejected. `LdapCredentialSource`
 represents only a FILE absolute path or DIR collection absolute path, supplied explicitly;
@@ -288,8 +288,7 @@ Recording tests carry synthetic names through actual worker/native orchestration
 one source selection for paired binds and rejection before acquisition on mismatch.
 
 Remaining proofs/work include mutable-cache authority compatibility, trusted deployment
-provenance, requested referral/TLS semantics, separate server-side search time limits,
-paged total-size limits, advanced search response-state handling, and raw Protocols consumers.
+provenance, requested referral/TLS semantics, paged total-size limits, advanced search response-state handling, and raw Protocols consumers.
 `LDAP_OPT_NETWORK_TIMEOUT` bounds connection setup, not arbitrary blocked sends. Cancellation
 and bounded polling in the in-process adapter are cooperative. The isolated boundary bounds
 parent waiting; neither OS resource reclamation nor managed CPU work has a hard deadline. Windows
@@ -499,18 +498,28 @@ supervisor using the existing inventory builder. Actual installation/administrat
 adoption is a separate deployment action; the library performs neither.
 
 Searchers preserve their existing defaults. This profile requires callers to select
-`ReferralChasingOption.None`. The current neutral request also cannot represent a
-separate server time limit: a `PrincipalSearcher` example explicitly sets its underlying
-`DirectorySearcher.ServerTimeLimit` to zero. Unsupported settings fail rather than being
-silently removed. Alternate credential validation, foreign-domain discovery and global
+`ReferralChasingOption.None`. Server-side search limits are distinct from the client deadline: the neutral request
+preserves `TimeSpan`, and the native boundary truncates it to whole seconds like
+Protocols (subsecond values become zero). Raw transport commands keep their per-request server limit across pages. Public streaming
+`DirectorySearcher` instead reuses its existing search-wide server budget and page
+cap, forwarding each remaining limit through the same cursor and stopping before
+another page when less than one whole second remains. Its client budget decreases
+independently. OpenLDAP receives that limit through the exclusively
+owned handle, including an explicit zero reset; polling still uses the client budget.
+Buffered paged searches with a finite overall server limit are rejected before
+search dispatch: their current single-session schema materialization cannot survive
+retiring an unfinished cursor at budget exhaustion. Use streaming (`CacheResults=false`)
+or an unpaged search; the existing default API path is unchanged.
+Server `TimeLimitExceeded` remains an LDAP result, not a client timeout or replay trigger.
+Unsupported settings fail rather than being silently removed. Alternate credential validation, foreign-domain discovery and global
 catalog probing cannot escape the selected endpoint/source.
 
 The authorized .NET 8 public lab uses `RealPublicLab.cs` with the production host and
 restricted bridge, without injected binding APIs. Its MDB fixture supports paging. For
-each of two synthetic clients, protected entry reads and a paged search require the
-correct identity plus SSF >=56; an empty principal-context query exercises dispatch but
-not AD principal materialization. Each client sees one entry, so this is not proof of
-multiple nonempty page transitions. Native/worker identity and signing/sealing tests
+each of two synthetic clients, protected entry reads and a two-entry paged search
+with page size one require the correct identity plus SSF >=56; an empty principal-context query exercises dispatch but
+not AD principal materialization. The principal search selects streaming and retains its default 30-second
+server limit; the fixture demonstrates multiple nonempty page transitions. Native/worker identity and signing/sealing tests
 also pass. Container, image and tmpfs credential cleanup is verified after testing.
 The SSF getter uses OpenLDAP's `ber_len_t`, not the narrower Cyrus `sasl_ssf_t`; corrected
 artifact reruns supersede earlier tests affected by that buffer-width defect.

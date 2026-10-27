@@ -16,6 +16,7 @@ struct fixture {
     atomic_int created, selected, defaults, acquired, freed, connections, closed, installs, binds;
     atomic_int identity, expected_identity, cancelled, fail_bind_at;
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
+    unsigned expected_server_limit;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply, wrong_write_tag, expect_controls, cancel_prepare;
     atomic_int source_sets, source_checks; unsigned source_kind; char source_path[4097];
@@ -161,6 +162,7 @@ static int echo_controls(struct fake_ldap *ld, adfl_result_fn emit, void *out) {
 static int search_start(void *state, LDAP *value, const adfl_search_request *request, adfl_submitted_fn ready, void *ready_state, int *id) {
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
     block_dependency(f, 1);
+    assert(request->server_time_limit_seconds == f->expected_server_limit);
     record_controls(f, ld, request->controls, request->control_count);
     assert(request->scope >= 0 && request->scope <= 2 && !strcmp(request->filter, "(objectClass=*)"));
     assert(strlen(request->base_dn) < sizeof(ld->base_dn));
@@ -427,7 +429,7 @@ static void early_refusal(void) {
     assert(!atomic_load(&f.connections)); adfl_authority_close(&a); balanced(&f);
 }
 struct events { int values, references, referrals, controls, code, reject; adfl_bound_session *session; };
-static const adfl_search_request request = {"", "(objectClass=*)", NULL, 0, 1000, 0, 0, NULL, 0};
+static const adfl_search_request request = {"", "(objectClass=*)", NULL, 0, 1000, 0, 0, NULL, 0, 0};
 static int receive(void *state, int event, const char *name, const void *bytes, size_t length, int number) {
     struct events *e = state;
     if (e->session) {
@@ -485,10 +487,12 @@ static void conversation_ownership(void) {
     assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
     char base[] = "CN=copied"; char filter[] = "(objectClass=*)"; char attr[] = "binary"; const char *attrs[] = {attr, NULL};
     adfl_search_request r = request; r.base_dn = base; r.filter = filter; r.attributes = attrs;
+    r.server_time_limit_seconds = f.expected_server_limit = 30;
     assert(adfl_cursor_open(s, &r, 1, NULL, NULL, &c) == ADFL_OK);
     int code = -1;
     assert(adfl_session_search(s, &request, NULL, NULL, accept_message, &code) == ADFL_BUSY);
     adfl_session_close(&s); assert(!atomic_load(&f.closed));
+    r.server_time_limit_seconds = 99;
     base[0] = 'X'; filter[1] = 'X'; attr[0] = 'X'; /* all future pages must use owned recipe */
     for (int page = 0; page < 2; page++) {
         for (int expected = 1; expected <= 3; expected++) {
@@ -498,7 +502,8 @@ static void conversation_ownership(void) {
         }
         int kind, more;
         assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_INVALID);
-        assert(adfl_cursor_next_page(c, 1000, NULL, NULL) == (page ? ADFL_INVALID : ADFL_OK));
+        if (!page) { f.expected_server_limit = 17; assert(adfl_cursor_next_page_with_limit(c, 1000, 17, NULL, NULL) == ADFL_OK); }
+        else assert(adfl_cursor_next_page(c, 1000, NULL, NULL) == ADFL_INVALID);
     }
     assert(code == LDAP_SUCCESS && atomic_load(&f.binds) == 1 && atomic_load(&f.page_sends) == 2);
     adfl_cursor_close(&c); adfl_cursor_close(&c); balanced(&f);
@@ -647,17 +652,17 @@ static void control_ownership(void) {
  * bind, request, credential operation or global option mutation occurs here. */
 static void search_policy_defaults(void) {
     LDAP *ld = NULL;
-    assert(adfl_system_search_policy(NULL) == LDAP_PARAM_ERROR);
+    assert(adfl_system_search_policy(NULL, 0) == LDAP_PARAM_ERROR);
     assert(ldap_initialize(&ld, "ldap://directory.invalid:389") == LDAP_SUCCESS && ld);
     for (int attempt = 0; attempt < 2; attempt++) {
         int aliases = LDAP_DEREF_ALWAYS, seconds = 37;
         assert(ldap_set_option(ld, LDAP_OPT_DEREF, &aliases) == LDAP_OPT_SUCCESS);
         assert(ldap_set_option(ld, LDAP_OPT_TIMELIMIT, &seconds) == LDAP_OPT_SUCCESS);
-        assert(adfl_system_search_policy(ld) == LDAP_SUCCESS);
+        assert(adfl_system_search_policy(ld, attempt ? 0 : 19) == LDAP_SUCCESS);
         aliases = seconds = -1;
         assert(ldap_get_option(ld, LDAP_OPT_DEREF, &aliases) == LDAP_OPT_SUCCESS);
         assert(ldap_get_option(ld, LDAP_OPT_TIMELIMIT, &seconds) == LDAP_OPT_SUCCESS);
-        assert(aliases == LDAP_DEREF_NEVER && seconds == 0);
+        assert(aliases == LDAP_DEREF_NEVER && seconds == (attempt ? 0 : 19));
     }
     assert(ldap_unbind_ext_s(ld, NULL, NULL) == LDAP_SUCCESS);
 }
@@ -700,7 +705,7 @@ static void explicit_source_resolution(void) {
     }
 }
 int main(void) {
-    assert(adfl_native_abi_version() == 3);
+    assert(adfl_native_abi_version() == 4);
     explicit_source_resolution();
     search_policy_defaults();
     operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes(); generic_write_outcomes(); control_ownership();

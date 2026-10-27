@@ -21,7 +21,7 @@ internal sealed partial class VerifiedDeployment
         using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 8 });
         var root = document.RootElement;
         Exact(root, "FormatVersion", "Contract", "NativeAbi", "NativeBridgeSha256", "Inputs", "Sources", "Archives");
-        if (root.GetProperty("FormatVersion").GetInt32() != 1 || root.GetProperty("NativeAbi").GetInt32() != 3 ||
+        if (root.GetProperty("FormatVersion").GetInt32() != 1 || root.GetProperty("NativeAbi").GetInt32() != 4 ||
             root.GetProperty("Contract").GetString() != RestrictedContract ||
             !string.Equals(root.GetProperty("NativeBridgeSha256").GetString(), bridgeHash, StringComparison.OrdinalIgnoreCase))
             throw new PlatformNotSupportedException("Deployment does not identify the restricted composition and exact bridge.");

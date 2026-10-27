@@ -83,7 +83,7 @@ def main():
     if not {'adfl_restricted_authority_resolve_from','adfl_restricted_authority_bind'} <= names:
         raise ValueError('Restricted entry points missing')
     source_records = sources+headers+[Path(__file__).resolve()]
-    receipt = {'FormatVersion':1,'Contract':CONTRACT,'NativeAbi':3,'NativeBridgeSha256':digest(bridge),
+    receipt = {'FormatVersion':1,'Contract':CONTRACT,'NativeAbi':4,'NativeBridgeSha256':digest(bridge),
                'Inputs':INPUTS,'Sources':[{'Path':str(p.relative_to(ROOT)),'Sha256':digest(p)} for p in source_records],
                'Archives':[{'Path':str(p.relative_to(private)),'Sha256':digest(p)} for p in archives+mit_archives]}
     (out/'composition.json').write_text(json.dumps(receipt,indent=2)+'\n')

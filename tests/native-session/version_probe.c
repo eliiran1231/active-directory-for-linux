@@ -1,7 +1,7 @@
 #include "adfl_native.h"
 #include <stdio.h>
 int main(void) {
-    if (adfl_native_abi_version() != 3) return 5;
+    if (adfl_native_abi_version() != 4) return 5;
     adfl_native_capabilities c;
     if (adfl_native_probe(&c)) return 1;
     printf("OpenLDAP=%d Cyrus=%d.%d.%d reviewed-build=%d binding-enforced=%d request-transport=%d session-reuse=%d\n",

@@ -20,7 +20,7 @@ internal abstract record LdapSearchEvent
 internal interface ILdapSearchCursor : IAsyncDisposable
 {
     ValueTask<LdapSearchEvent> ReadAsync(TimeSpan remaining, CancellationToken cancellationToken);
-    ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken);
+    ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken, TimeSpan? serverTimeLimit = null);
 }
 internal sealed record LdapAttributeChange(string Name, DirectoryAttributeOperation Operation, byte[][] Values);
 internal sealed record LdapModifyCommand(string DistinguishedName, LdapAttributeChange[] Changes,
@@ -66,21 +66,21 @@ internal static class LdapConversation
     internal static IAsyncEnumerable<LdapSearchEvent> Search(
         Func<LdapConnectionProvider.Session> acquire, LdapSearchCommand command, int pageSize = 0,
         CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
-        Func<TimeSpan>? remainingBudget = null)
-        => SearchCore(acquire, true, command, pageSize, cancellationToken, timeProvider, remainingBudget);
+        Func<TimeSpan>? remainingBudget = null, Func<TimeSpan?>? nextServerLimit = null)
+        => SearchCore(acquire, true, command, pageSize, cancellationToken, timeProvider, remainingBudget, nextServerLimit);
 
     // Buffered callers retain the exclusive lease until cursor cleanup AND schema
     // materialization finish. This method owns only the cursor, never the lease.
     internal static IAsyncEnumerable<LdapSearchEvent> SearchBorrowed(
         LdapConnectionProvider.Session lease, LdapSearchCommand command, int pageSize,
         CancellationToken cancellationToken = default, TimeProvider? timeProvider = null,
-        Func<TimeSpan>? remainingBudget = null)
-        => SearchCore(() => lease, false, command, pageSize, cancellationToken, timeProvider, remainingBudget);
+        Func<TimeSpan>? remainingBudget = null, Func<TimeSpan?>? nextServerLimit = null)
+        => SearchCore(() => lease, false, command, pageSize, cancellationToken, timeProvider, remainingBudget, nextServerLimit);
 
     private static async IAsyncEnumerable<LdapSearchEvent> SearchCore(
         Func<LdapConnectionProvider.Session> acquire, bool ownsLease, LdapSearchCommand command, int pageSize,
         [EnumeratorCancellation] CancellationToken cancellationToken, TimeProvider? timeProvider,
-        Func<TimeSpan>? remainingBudget)
+        Func<TimeSpan>? remainingBudget, Func<TimeSpan?>? nextServerLimit)
     {
         if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
         ArgumentNullException.ThrowIfNull(command);
@@ -107,6 +107,12 @@ internal static class LdapConversation
             if (transport is not ILdapConversationTransport conversation || (transport.Capabilities & required) != required)
                 throw new PlatformNotSupportedException("Streaming/paging is not implemented by this adapter; no request was sent.");
             var prepared = LdapRequestDispatcher.Prepare(transport, command);
+            if (nextServerLimit is not null)
+            {
+                var limit = nextServerLimit();
+                if (limit is null) yield break;
+                prepared = LdapRequestDispatcher.Prepare(transport, prepared with { ServerTimeLimit = limit.Value });
+            }
             prepared = prepared with { Timeout = Remaining() };
             opened = true; // Open may send before throwing; cleanup uncertainty retires.
             cursor = await conversation.OpenSearchAsync(prepared, pageSize, cancellationToken).ConfigureAwait(false);
@@ -125,7 +131,13 @@ internal static class LdapConversation
                     yield return end;
                     if (complete) yield break;
                     // Same cursor, opaque cookie, lease and authority; never reacquire/replay.
-                    await cursor.NextPageAsync(Remaining(), cancellationToken).ConfigureAwait(false);
+                    TimeSpan? pageLimit = null;
+                    if (nextServerLimit is not null)
+                    {
+                        pageLimit = nextServerLimit();
+                        if (pageLimit is null) yield break; // retire/close unfinished continuation, never send
+                    }
+                    await cursor.NextPageAsync(Remaining(), cancellationToken, pageLimit).ConfigureAwait(false);
                 }
                 else if (item is LdapSearchEvent.Entry or LdapSearchEvent.Reference) yield return item;
                 else throw new InvalidOperationException("Unknown search event.");

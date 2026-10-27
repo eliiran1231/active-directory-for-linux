@@ -15,7 +15,7 @@ struct adfl_search_cursor {
 static int valid_search(const adfl_search_request *r) {
     return r && r->base_dn && r->filter && r->scope >= 0 && r->scope <= 2 &&
         r->timeout_milliseconds && r->timeout_milliseconds <= 3600000 &&
-        r->size_limit <= INT_MAX && r->types_only <= 1 && adfl_controls_valid(r->controls, r->control_count);
+        r->size_limit <= INT_MAX && r->types_only <= 1 && r->server_time_limit_seconds <= INT_MAX && adfl_controls_valid(r->controls, r->control_count);
 }
 static int remaining(adfl_bound_session *s, uint64_t start, unsigned timeout, unsigned *out) {
     uint64_t now = s->authority->ops->monotonic_ms(s->authority->state);
@@ -178,6 +178,12 @@ int adfl_cursor_read(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn c
     }
     if (message) ops->result_free(s->authority->state, message);
     return rc ? cursor_stop(c, rc) : ADFL_OK;
+}
+int adfl_cursor_next_page_with_limit(adfl_search_cursor *c, unsigned budget, unsigned server_seconds,
+    adfl_cancelled_fn cancel, void *state) {
+    if (!c || c->terminal || !c->awaiting_page || !c->cookie.length || server_seconds > INT_MAX) return ADFL_INVALID;
+    c->request.server_time_limit_seconds = server_seconds;
+    return cursor_send(c, budget, cancel, state);
 }
 int adfl_cursor_next_page(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn cancel, void *state) {
     if (!c || c->terminal || !c->awaiting_page || !c->cookie.length) return ADFL_INVALID;

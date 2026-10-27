@@ -12,7 +12,7 @@ internal static partial class NativeLdapBindingBackend
     }
     internal static void ValidateAbi(uint version)
     {
-        if (version != 3) throw new PlatformNotSupportedException("The native LDAP library has an incompatible ABI; no operation was dispatched.");
+        if (version != 4) throw new PlatformNotSupportedException("The native LDAP library has an incompatible ABI; no operation was dispatched.");
     }
     [DllImport(Library, EntryPoint = "adfl_native_abi_version", CallingConvention = CallingConvention.Cdecl)]
     private static extern uint NativeAbiVersion();

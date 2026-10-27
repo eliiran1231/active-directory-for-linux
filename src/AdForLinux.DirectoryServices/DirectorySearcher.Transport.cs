@@ -9,8 +9,13 @@ public partial class DirectorySearcher
         ILdapRequestTransport transport, SearchResultOrigin origin, SearchRequest request,
         int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue)
     {
-        if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null ||
-            (pageSize > 0 && ServerPageTimeLimit > TimeSpan.Zero))
+        // Buffered materialization currently borrows this same native session for
+        // schema reads after cursor disposal. Exhausting a search-wide page budget
+        // retires that unfinished session; do not pretend partial rows can still
+        // be materialized. Streaming owns a separate schema lease and supports it.
+        if (pageSize > 0 && ServerTimeLimit.TotalSeconds >= 1)
+            throw new PlatformNotSupportedException("Buffered native paging with a finite overall server limit requires a separate schema lease. Use streaming results or an unpaged search.");
+        if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null)
             throw new PlatformNotSupportedException("The neutral producer cannot represent the requested control or connection policy.");
         var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
         TimeSpan Remaining()
@@ -19,13 +24,15 @@ public partial class DirectorySearcher
             var remaining = timeout - clock.GetElapsedTime(started);
             return remaining > TimeSpan.Zero ? remaining : throw new TimeoutException("The neutral search operation deadline expired.");
         }
+        var serverBudget = CreateServerTimeLimitBudget(pageSize > 0);
+        TimeSpan? NextServerLimit() => serverBudget.TryApply(request) ? request.TimeLimit : null;
         var command = LdapRequestDispatcher.FromRequest(transport, request, Remaining());
         var session = lease.ManagedSession ?? throw new PlatformNotSupportedException("A neutral search requires an exclusive session.");
         async Task<List<LdapTransportEntry>> Read()
         {
             var entries = new List<LdapTransportEntry>();
             await foreach (var item in LdapConversation.SearchBorrowed(session, command, pageSize,
-                timeProvider: clock, remainingBudget: Remaining).ConfigureAwait(false))
+                timeProvider: clock, remainingBudget: Remaining, nextServerLimit: NextServerLimit).ConfigureAwait(false))
             {
                 if (item is LdapSearchEvent.Entry entry) entries.Add(entry.Value);
                 else if (item is LdapSearchEvent.PageEnd end && end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
@@ -52,8 +59,8 @@ public partial class DirectorySearcher
         StreamingSearchResultSource? source = null;
         try
         {
-            if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null || (PageSize > 0 && ServerPageTimeLimit > TimeSpan.Zero))
-                throw new PlatformNotSupportedException("Public control-response state, connection overrides and server page limits require an adapter that represents them.");
+            if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null)
+                throw new PlatformNotSupportedException("Public control-response state and connection overrides require an adapter that represents them.");
             var pageSize = PageSize;
             var partial = Asynchronous;
             var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
@@ -73,6 +80,8 @@ public partial class DirectorySearcher
             {
                 async Task Produce()
                 {
+                    var serverBudget = CreateServerTimeLimitBudget(pageSize > 0);
+                    TimeSpan? NextServerLimit() => serverBudget.TryApply(request) ? request.TimeLimit : null;
                     var pending = new List<LdapTransportEntry>();
                     // Preserve existing public per-page duplicate suppression. Native
                     // MSG_ONE itself introduces no partial/final overlap.
@@ -84,7 +93,7 @@ public partial class DirectorySearcher
                         add(new SearchResult(entry, origin, schema, Remaining, cancellationToken));
                     }
                     await foreach (var item in LdapConversation.Search(() => searchSession,
-                        command with { Timeout = Remaining() }, pageSize, cancellationToken, clock, Remaining).ConfigureAwait(false))
+                        command with { Timeout = Remaining() }, pageSize, cancellationToken, clock, Remaining, NextServerLimit).ConfigureAwait(false))
                     {
                         origin.Authority.Validate();
                         switch (item)

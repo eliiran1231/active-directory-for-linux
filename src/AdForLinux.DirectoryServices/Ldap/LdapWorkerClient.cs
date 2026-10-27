@@ -187,11 +187,11 @@ internal sealed class LdapWorkerClient(Stream channel, Action retireWorker) : ID
                 _ => throw Unexpected()
             };
         }
-        public async ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken)
+        public async ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken, TimeSpan? serverTimeLimit = null)
         {
             ObjectDisposedException.ThrowIf(disposed != 0, this);
             lastStarted = Stopwatch.GetTimestamp(); lastBudget = remaining;
-            var frame = await owner.CallAsync<object?>(session, "NEXT", null, remaining, cancellationToken).ConfigureAwait(false); owner.Expect(frame, "OK");
+            var frame = await owner.CallAsync(session, "NEXT", new LdapWorkerNext(serverTimeLimit), remaining, cancellationToken).ConfigureAwait(false); owner.Expect(frame, "OK");
         }
         private Exception Unexpected()
         { owner.Dispose(); return new InvalidDataException("Unexpected worker cursor event."); }

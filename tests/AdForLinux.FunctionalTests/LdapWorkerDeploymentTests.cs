@@ -35,7 +35,7 @@ public class LdapWorkerDeploymentTests
     // credential source is read by these deterministic receipt-policy tests.
     private static JsonObject Composition() => new()
     {
-        ["FormatVersion"] = 1, ["Contract"] = "adfl-restricted-file-gssapi-v1", ["NativeAbi"] = 3,
+        ["FormatVersion"] = 1, ["Contract"] = "adfl-restricted-file-gssapi-v1", ["NativeAbi"] = 4,
         ["NativeBridgeSha256"] = ReceiptBridgeHash,
         ["Inputs"] = new JsonObject
         {
@@ -85,7 +85,7 @@ public class LdapWorkerDeploymentTests
         Assert.ThrowsAny<Exception>(() => VerifiedDeployment.ValidateComposition(Encoding.UTF8.GetBytes(receipt.ToJsonString()), ReceiptBridgeHash));
     }
     [Theory]
-    [InlineData("\"NativeAbi\":3", "\"NativeAbi\":3,\"NativeAbi\":3")]
+    [InlineData("\"NativeAbi\":4", "\"NativeAbi\":4,\"NativeAbi\":4")]
     [InlineData("\"Path\":\"src/adfl_restricted.c\"", "\"Path\":\"src/adfl_restricted.c\",\"Path\":\"src/adfl_restricted.c\"")]
     public void Composition_receipt_rejects_duplicate_fields(string from, string to)
     {

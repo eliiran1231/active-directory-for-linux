@@ -10,11 +10,12 @@ namespace AdForLinux.DirectoryServices.Ldap;
 internal sealed record LdapWorkerStart(string Host, int Port, bool UseSsl, bool Signing, bool Sealing,
     int SessionCount, TimeSpan Timeout, LdapCredentialSource? CredentialSource = null, LdapWorkerKerberosProfile? RestrictedConfiguration = null);
 internal sealed record LdapWorkerReady(LdapTransportCapabilities[] Capabilities);
+internal sealed record LdapWorkerNext(TimeSpan? ServerTimeLimit);
 internal sealed record LdapWorkerFailure(string Category);
 internal sealed record LdapWorkerFrame(int Version, long Id, int Session, string Kind, long TimeoutTicks, JsonElement Payload);
 internal static class LdapWorkerProtocol
 {
-    internal const int Version = 4, MaximumFrame = 4 * 1024 * 1024;
+    internal const int Version = 5, MaximumFrame = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = Options();
     private static JsonSerializerOptions Options()
     {

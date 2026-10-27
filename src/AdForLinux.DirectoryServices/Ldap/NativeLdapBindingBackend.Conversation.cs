@@ -24,6 +24,7 @@ internal static partial class NativeLdapBindingBackend
             var request = new SearchProfile
             {
                 BaseDn = command.BaseDn, Filter = command.Filter, Attributes = attributes.Pointer,
+                ServerTimeLimitSeconds = checked((uint)(command.ServerTimeLimit.Ticks / TimeSpan.TicksPerSecond)),
                 Scope = (int)command.Scope, TimeoutMilliseconds = budget.RemainingMilliseconds(),
                 Controls = controls.Pointer, ControlCount = controls.Count,
                 SizeLimit = checked((uint)command.SizeLimit), TypesOnly = command.TypesOnly ? 1u : 0u
@@ -150,7 +151,7 @@ internal static partial class NativeLdapBindingBackend
                 return ValueTask.FromResult(builder.CompleteEvent(kind, hasMore != 0));
             }
         }
-        public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken)
+        public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken cancellationToken, TimeSpan? serverTimeLimit = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var budget = new PreparationBudget(remaining);
@@ -158,7 +159,11 @@ internal static partial class NativeLdapBindingBackend
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Cancelled check = _ => cancellationToken.IsCancellationRequested || budget.Expired ? 1 : 0;
-                var status = NativeCursorNext(handle, budget.RemainingMilliseconds(), check, IntPtr.Zero);
+                if (serverTimeLimit is { } limit && (limit < TimeSpan.Zero || limit.TotalSeconds > int.MaxValue))
+                    throw new ArgumentOutOfRangeException(nameof(serverTimeLimit));
+                var status = serverTimeLimit is { } requested
+                    ? NativeCursorNextWithLimit(handle, budget.RemainingMilliseconds(), checked((uint)(requested.Ticks / TimeSpan.TicksPerSecond)), check, IntPtr.Zero)
+                    : NativeCursorNext(handle, budget.RemainingMilliseconds(), check, IntPtr.Zero);
                 if (status != 0) ThrowWithBudget(status, cancellationToken, budget);
                 return ValueTask.CompletedTask;
             }
@@ -288,6 +293,8 @@ internal static partial class NativeLdapBindingBackend
     private static extern int NativeCursorOpen(SessionHandle session, ref SearchProfile request, uint pageSize, Cancelled cancelled, IntPtr state, out IntPtr cursor);
     [DllImport(Library, EntryPoint = "adfl_cursor_read", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeCursorRead(CursorHandle cursor, uint remaining, Cancelled cancelled, IntPtr cancelState, ResultEvent emit, IntPtr emitState, out int kind, out int hasMore);
+    [DllImport(Library, EntryPoint = "adfl_cursor_next_page_with_limit", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int NativeCursorNextWithLimit(CursorHandle cursor, uint remaining, uint serverSeconds, Cancelled cancelled, IntPtr state);
     [DllImport(Library, EntryPoint = "adfl_cursor_next_page", CallingConvention = CallingConvention.Cdecl)]
     private static extern int NativeCursorNext(CursorHandle cursor, uint remaining, Cancelled cancelled, IntPtr state);
     [DllImport(Library, EntryPoint = "adfl_cursor_close", CallingConvention = CallingConvention.Cdecl)]

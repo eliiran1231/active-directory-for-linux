@@ -2,16 +2,17 @@
 #include "adfl_native_internal.h"
 #include <sys/time.h>
 #include <time.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* The represented search contract is AliasesNever and server TimeLimit=0.
+/* The represented search contract pins AliasesNever and the requested server limit.
  * ldap_search_ext inherits both from this handle when no timeout is supplied.
  * Pin them for every request while the session/cursor owns the exclusive busy
  * lease; never mutate process defaults or inherit an earlier handle policy. */
-int adfl_system_search_policy(LDAP *ld) {
-    if (!ld) return LDAP_PARAM_ERROR; /* NULL would mutate global defaults. */
-    const int aliases = LDAP_DEREF_NEVER, seconds = 0;
+int adfl_system_search_policy(LDAP *ld, unsigned server_seconds) {
+    if (!ld || server_seconds > INT_MAX) return LDAP_PARAM_ERROR; /* NULL would mutate global defaults. */
+    const int aliases = LDAP_DEREF_NEVER, seconds = (int)server_seconds;
     if (ldap_set_option(ld, LDAP_OPT_DEREF, &aliases) != LDAP_OPT_SUCCESS ||
         ldap_set_option(ld, LDAP_OPT_TIMELIMIT, &seconds) != LDAP_OPT_SUCCESS)
         return LDAP_LOCAL_ERROR;
@@ -21,7 +22,7 @@ int adfl_system_search_policy(LDAP *ld) {
 int adfl_system_search_start(void *state, LDAP *ld, const adfl_search_request *r,
     adfl_submitted_fn ready, void *ready_state, int *message_id) {
     (void)state; LDAPControl **server = NULL; LDAPControl *client[] = {NULL};
-    int rc = adfl_system_search_policy(ld);
+    int rc = adfl_system_search_policy(ld, r->server_time_limit_seconds);
     if (rc != LDAP_SUCCESS) return rc;
     rc = adfl_controls_build(r->controls, r->control_count, NULL, &server);
     if (rc != LDAP_SUCCESS) return rc;
@@ -143,7 +144,7 @@ int adfl_system_page_start(void *state, LDAP *ld, const adfl_search_request *r,
     if (!page_size) return adfl_system_search_start(state, ld, r, ready, ready_state, message_id);
     LDAPControl *page = NULL; LDAPControl *client[] = {NULL};
     struct berval value = {cookie->length, (char *)cookie->data};
-    int rc = adfl_system_search_policy(ld);
+    int rc = adfl_system_search_policy(ld, r->server_time_limit_seconds);
     if (rc != LDAP_SUCCESS) return rc;
     rc = ldap_create_page_control(ld, (ber_int_t)page_size, &value, 1, &page);
     if (rc != LDAP_SUCCESS) return rc;

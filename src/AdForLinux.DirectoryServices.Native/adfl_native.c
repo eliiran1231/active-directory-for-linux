@@ -206,4 +206,4 @@ int adfl_native_probe(adfl_native_capabilities *out) {
 }
 
 /* Harmless ABI handshake: no library initialization or credential access. */
-unsigned adfl_native_abi_version(void) { return 3; }
+unsigned adfl_native_abi_version(void) { return 4; }

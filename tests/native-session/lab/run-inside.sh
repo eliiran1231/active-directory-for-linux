@@ -61,8 +61,8 @@ sasl-host 127.0.0.1
 sasl-realm ADFL.TEST
 sasl-secprops minssf=1,maxssf=256,noanonymous,noplain
 authz-regexp "^uid=(client-[ab]),cn=(adfl.test,cn=)?gssapi,cn=auth$" "uid=$1,dc=adfl,dc=test"
-access to dn.exact="cn=client-a,dc=adfl,dc=test" by dn.exact="uid=client-a,dc=adfl,dc=test" ssf=56 read by * none
-access to dn.exact="cn=client-b,dc=adfl,dc=test" by dn.exact="uid=client-b,dc=adfl,dc=test" ssf=56 read by * none
+access to dn.regex="^cn=client-a(-2)?,dc=adfl,dc=test$" by dn.exact="uid=client-a,dc=adfl,dc=test" ssf=56 read by * none
+access to dn.regex="^cn=client-b(-2)?,dc=adfl,dc=test$" by dn.exact="uid=client-b,dc=adfl,dc=test" ssf=56 read by * none
 access to * by * read
 database mdb
 maxsize 16777216
@@ -78,14 +78,16 @@ dc: adfl
 
 ENTRY
 for client in client-a client-b; do
+ for entry in "$client" "$client-2"; do
  cat >> /run/adfl/entries.ldif <<ENTRY
-dn: cn=$client,dc=adfl,dc=test
+dn: cn=$entry,dc=adfl,dc=test
 objectClass: top
 objectClass: organizationalRole
-cn: $client
+cn: $entry
 description: $client
 
 ENTRY
+ done
 done
 # MDB supplies the paged-results control exercised by the public cursor.
 if ! /bin/slapd -Ta -f /run/adfl/slapd.conf -l /run/adfl/entries.ldif > /run/adfl/import.log 2>&1; then

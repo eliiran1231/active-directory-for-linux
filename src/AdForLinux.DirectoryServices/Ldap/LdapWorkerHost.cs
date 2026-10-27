@@ -79,9 +79,9 @@ internal static class LdapWorkerHost
                         }
                         break;
                     case "NEXT":
-                        RequireNull(request); Require(cursor is not null && ended[request.Session] && more[request.Session]);
+                        var next = LdapWorkerProtocol.Payload<LdapWorkerNext>(request); Require(cursor is not null && ended[request.Session] && more[request.Session]);
                         ended[request.Session] = false;
-                        await cursor!.NextPageAsync(remaining, cancellationToken).ConfigureAwait(false);
+                        await cursor!.NextPageAsync(remaining, cancellationToken, next.ServerTimeLimit).ConfigureAwait(false);
                         await Reply<object?>("OK", null).ConfigureAwait(false); break;
                     case "CLOSE":
                         RequireNull(request); Require(cursor is not null);

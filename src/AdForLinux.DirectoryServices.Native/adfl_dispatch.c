@@ -36,7 +36,7 @@ static int search_ready(void *state) {
 int adfl_session_search(adfl_bound_session *s, const adfl_search_request *r,
                        adfl_cancelled_fn cancelled, void *cancel_state, adfl_result_fn emit, void *emit_state) {
     if (!s || !r || !r->base_dn || !r->filter || !emit || r->scope < 0 || r->scope > 2 ||
-        !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 || r->size_limit > INT_MAX || r->types_only > 1 ||
+        !r->timeout_milliseconds || r->timeout_milliseconds > 3600000 || r->size_limit > INT_MAX || r->types_only > 1 || r->server_time_limit_seconds > INT_MAX ||
         !adfl_controls_valid(r->controls, r->control_count))
         return ADFL_INVALID;
     if (cancelled && cancelled(cancel_state)) return ADFL_CANCELLED;

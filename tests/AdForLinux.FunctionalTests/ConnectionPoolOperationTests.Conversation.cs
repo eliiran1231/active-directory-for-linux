@@ -35,8 +35,8 @@ public partial class ConnectionPoolOperationTests
         public string? ConnectedHost => null;
         internal Queue<LdapSearchEvent> Events = new();
         internal int Pages, Reads, Writes;
-        internal TimeSpan OpenBudget, WriteBudget;
-        internal readonly List<TimeSpan> ReadBudgets = [], PageBudgets = [];
+        internal TimeSpan OpenBudget, WriteBudget, ServerLimit;
+        internal readonly List<TimeSpan> ReadBudgets = [], PageBudgets = [], ServerLimits = [];
         internal bool CleanupFails;
         internal Action? OnRead;
         internal Func<CancellationToken, ValueTask<LdapSearchEvent>>? PendingRead;
@@ -45,11 +45,11 @@ public partial class ConnectionPoolOperationTests
         public LdapSearchResult Search(LdapSearchCommand command, CancellationToken token)
         { trace.Add("buffered-search"); return new(ResultCode.Success, "", null, command.BaseDn == "" ? [] : [new(command.BaseDn, new(), [])], [], [], []); }
         public ValueTask<ILdapSearchCursor> OpenSearchAsync(LdapSearchCommand command, int pageSize, CancellationToken token)
-        { token.ThrowIfCancellationRequested(); OpenBudget = command.Timeout; trace.Add("open"); return ValueTask.FromResult<ILdapSearchCursor>(this); }
+        { token.ThrowIfCancellationRequested(); OpenBudget = command.Timeout; ServerLimit = command.ServerTimeLimit; ServerLimits.Add(ServerLimit); trace.Add("open"); return ValueTask.FromResult<ILdapSearchCursor>(this); }
         public ValueTask<LdapSearchEvent> ReadAsync(TimeSpan remaining, CancellationToken token)
         { token.ThrowIfCancellationRequested(); ReadBudgets.Add(remaining); Reads++; trace.Add("read"); OnRead?.Invoke(); return PendingRead is null ? ValueTask.FromResult(Events.Dequeue()) : PendingRead(token); }
-        public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken token)
-        { token.ThrowIfCancellationRequested(); PageBudgets.Add(remaining); Pages++; trace.Add("next-page"); return ValueTask.CompletedTask; }
+        public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken token, TimeSpan? serverTimeLimit = null)
+        { token.ThrowIfCancellationRequested(); PageBudgets.Add(remaining); if (serverTimeLimit is { } limit) { ServerLimit = limit; ServerLimits.Add(limit); } Pages++; trace.Add("next-page"); return ValueTask.CompletedTask; }
         public ValueTask DisposeAsync()
         { trace.Add("cursor-close"); if (CleanupFails) throw new InvalidOperationException("cleanup uncertain"); return ValueTask.CompletedTask; }
         public ValueTask<LdapResultEnvelope> ModifyAsync(LdapModifyCommand command, LdapSubmission submission, CancellationToken token)
@@ -140,9 +140,10 @@ public partial class ConnectionPoolOperationTests
             new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), false)]);
         LdapConnectionProvider.Session Acquire()
         { var lease = f.Acquire(); clock.Ticks += TimeSpan.FromSeconds(9).Ticks; return lease; }
-        await using var stream = LdapConversation.Search(Acquire, SearchCommand(), 25, timeProvider: clock).GetAsyncEnumerator();
+        await using var stream = LdapConversation.Search(Acquire, SearchCommand() with { ServerTimeLimit = TimeSpan.FromSeconds(30) }, 25, timeProvider: clock).GetAsyncEnumerator();
         Assert.True(await stream.MoveNextAsync());
         Assert.Equal(TimeSpan.FromSeconds(1), f.Transport.OpenBudget);
+        Assert.Equal(TimeSpan.FromSeconds(30), f.Transport.ServerLimit);
         Assert.Equal(TimeSpan.FromSeconds(1), f.Transport.ReadBudgets[0]);
         clock.Ticks += TimeSpan.FromMilliseconds(750).Ticks;
         Assert.True(await stream.MoveNextAsync());

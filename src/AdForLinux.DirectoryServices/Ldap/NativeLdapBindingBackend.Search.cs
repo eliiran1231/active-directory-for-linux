@@ -29,6 +29,7 @@ internal static partial class NativeLdapBindingBackend
             var request = new SearchProfile
             {
                 BaseDn = command.BaseDn, Filter = command.Filter, Attributes = attributes.Pointer,
+                ServerTimeLimitSeconds = checked((uint)(command.ServerTimeLimit.Ticks / TimeSpan.TicksPerSecond)),
                 Scope = (int)command.Scope, TimeoutMilliseconds = budget.RemainingMilliseconds(),
                 Controls = controls.Pointer, ControlCount = controls.Count,
                 SizeLimit = checked((uint)command.SizeLimit), TypesOnly = command.TypesOnly ? 1u : 0u,
@@ -96,6 +97,7 @@ internal static partial class NativeLdapBindingBackend
         public int Scope;
         public uint TimeoutMilliseconds, SizeLimit, TypesOnly;
         public IntPtr Controls; public UIntPtr ControlCount;
+        public uint ServerTimeLimitSeconds;
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int ResultEvent(IntPtr state, int kind, IntPtr name, IntPtr bytes, UIntPtr length, int number);

@@ -69,8 +69,12 @@ public partial class ConnectionPoolOperationTests
         request.Aliases = System.DirectoryServices.Protocols.DereferenceAlias.Always;
         Assert.Throws<PlatformNotSupportedException>(() => LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout));
         request.Aliases = System.DirectoryServices.Protocols.DereferenceAlias.Never;
-        request.TimeLimit = TimeSpan.FromSeconds(1);
-        Assert.Throws<PlatformNotSupportedException>(() => LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout));
+        request.TimeLimit = TimeSpan.FromMilliseconds(1500);
+        var mapped = LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout);
+        Assert.Equal(request.TimeLimit, mapped.ServerTimeLimit);
+        Assert.Equal(transport.Timeout, mapped.Timeout);
+        Assert.Throws<ArgumentOutOfRangeException>(() => LdapRequestDispatcher.Prepare(transport, mapped with { ServerTimeLimit = TimeSpan.FromTicks(-1) }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LdapRequestDispatcher.Prepare(transport, mapped with { ServerTimeLimit = TimeSpan.FromSeconds((double)int.MaxValue + 1) }));
         request.TimeLimit = TimeSpan.Zero;
         request.Controls.Add(new DirectoryControl("1.2.3", [], false, false));
         Assert.Throws<PlatformNotSupportedException>(() => LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout));
@@ -83,6 +87,8 @@ public partial class ConnectionPoolOperationTests
     [InlineData(false, ResultCode.SizeLimitExceeded, 1)]
     [InlineData(false, ResultCode.UnwillingToPerform, 0)]
     [InlineData(true, ResultCode.UnwillingToPerform, 1)]
+    [InlineData(false, ResultCode.TimeLimitExceeded, 0)]
+    [InlineData(true, ResultCode.TimeLimitExceeded, 1)]
     public void Public_streaming_facade_preserves_partial_result_policy_and_releases_pair(bool partial, ResultCode result, int expected)
     {
         using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2, startTimer: false);
@@ -101,9 +107,44 @@ public partial class ConnectionPoolOperationTests
         var found = new List<SearchResult>();
         var error = Record.Exception(() => { foreach (SearchResult entry in results) found.Add(entry); });
         Assert.Equal(expected, found.Count);
-        if (result == ResultCode.UnwillingToPerform) Assert.IsType<DirectoryServicesCOMException>(error);
+        if (result is ResultCode.UnwillingToPerform or ResultCode.TimeLimitExceeded) Assert.IsType<DirectoryServicesCOMException>(error);
         else Assert.Null(error);
         Assert.Equal(3, trace.Count(value => value == "session-close"));
         Assert.True(trace.IndexOf("cursor-close") < trace.LastIndexOf("session-close"));
     }
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Neutral_public_paging_preserves_search_wide_and_page_server_budgets(bool buffered)
+    {
+        using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2, startTimer: false);
+        var clock = new ConversationClock();
+        var transport = new ConversationTransport([]);
+        transport.Events = new([new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true),
+            new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true)]);
+        transport.OnRead = () => clock.Ticks += TimeSpan.FromSeconds(transport.Reads == 1 ? 25 : 5).Ticks;
+        using var root = new Entry("LDAP://directory.invalid/DC=example", null, null, AuthenticationTypes.Secure);
+        root.Options.Referral = ReferralChasingOption.None;
+        root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
+            pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), count,
+                () => new BoundLdapSession(transport, transport, options, new LdapAuthenticationSource(options), referrals),
+                reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
+        using var searcher = new Searcher(root) { CacheResults = buffered, PageSize = 1,
+            ServerTimeLimit = TimeSpan.FromSeconds(30), ServerPageTimeLimit = TimeSpan.FromSeconds(7),
+            ClientTimeout = TimeSpan.FromSeconds(60), TimeProvider = clock, ReferralChasing = ReferralChasingOption.None };
+        if (buffered)
+        {
+            Assert.Throws<PlatformNotSupportedException>(() => searcher.FindAll());
+            Assert.Empty(transport.ServerLimits);
+            Assert.Equal(0, transport.Pages);
+            return;
+        }
+        using var results = searcher.FindAll();
+        Assert.Empty(results.Cast<SearchResult>());
+        Assert.Equal(new[] { TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(5) }, transport.ServerLimits);
+        Assert.Equal(1, transport.Pages); // expired server budget forbids the next request
+        Assert.Equal(TimeSpan.FromSeconds(35), Assert.Single(transport.PageBudgets));
+        Assert.Equal(0, pool.Snapshot.Total);
+    }
+
 }

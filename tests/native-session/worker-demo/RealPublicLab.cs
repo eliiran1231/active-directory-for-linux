@@ -29,7 +29,7 @@ internal static class RealPublicLab
                 { ReferralChasing = ReferralChasingOption.None, PageSize = 1, CacheResults = false };
                 using var results = search.FindAll();
                 var seen = results.Cast<SearchResult>().ToArray();
-                if (seen.Length != 1 || (string?)seen[0].Properties["description"][0] != client)
+                if (seen.Length != 2 || seen.Any(value => (string?)value.Properties["description"][0] != client))
                     throw new InvalidDataException("Public cursor identity isolation failed.");
                 stage = 4;
                 using var context = RestrictedKerberosContext.Create(profile, "dc=adfl,dc=test");
@@ -39,9 +39,8 @@ internal static class RealPublicLab
                 // no-referral policy required by this exact-target profile.
                 var underlying = (DirectorySearcher)principalSearch.GetUnderlyingSearcher();
                 underlying.ReferralChasing = ReferralChasingOption.None;
-                // The current neutral request has a client deadline but no
-                // distinct server-side time-limit field. Select it explicitly.
-                underlying.ServerTimeLimit = TimeSpan.Zero;
+                underlying.CacheResults = false; // separate schema lease for a finite paged budget
+                // Keep PrincipalSearcher's separate 30-second server limit.
                 using var principals = principalSearch.FindAll();
                 if (principals.Any()) throw new InvalidDataException("Test directory unexpectedly contained AD user objects.");
             }

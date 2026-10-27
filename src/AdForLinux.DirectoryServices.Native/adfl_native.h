@@ -66,6 +66,7 @@ typedef struct {
     unsigned timeout_milliseconds, size_limit, types_only;
     const adfl_control *controls;
     size_t control_count;
+    unsigned server_time_limit_seconds; /* LDAP wire limit, separate from client budget */
 } adfl_search_request;
 
 /* Control events use number bit0=critical, bit1=value present. */
@@ -94,6 +95,8 @@ ADFL_API int adfl_cursor_open(adfl_bound_session *, const adfl_search_request *,
     adfl_cancelled_fn, void *, adfl_search_cursor **);
 ADFL_API int adfl_cursor_read(adfl_search_cursor *, unsigned remaining_milliseconds,
     adfl_cancelled_fn, void *, adfl_result_fn, void *, int *kind, int *has_more);
+ADFL_API int adfl_cursor_next_page_with_limit(adfl_search_cursor *, unsigned remaining_milliseconds,
+    unsigned server_time_limit_seconds, adfl_cancelled_fn, void *);
 ADFL_API int adfl_cursor_next_page(adfl_search_cursor *, unsigned remaining_milliseconds,
     adfl_cancelled_fn, void *);
 ADFL_API void adfl_cursor_close(adfl_search_cursor **);
@@ -144,7 +147,7 @@ ADFL_API int adfl_session_delete(adfl_bound_session *, const adfl_delete_request
 ADFL_API int adfl_session_modify_dn(adfl_bound_session *, const adfl_modify_dn_request *,
     adfl_cancelled_fn, void *, adfl_submitted_fn, void *, adfl_result_fn, void *, int *disposition);
 
-/* Must equal 3 before passing any request/profile structure across the ABI. */
+/* Must equal 4 before passing any request/profile structure across the ABI. */
 ADFL_API unsigned adfl_native_abi_version(void);
 
 /* Reads library version metadata only; no credential/cache/network operations. */
