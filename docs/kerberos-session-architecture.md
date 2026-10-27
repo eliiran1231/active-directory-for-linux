@@ -112,9 +112,12 @@ public SecurityDescriptorFlagControl type; subclasses retain their virtual encod
 Native ABI version 4 is checked before real resolution/bind and request dispatch. A mismatch
 cannot silently discard control or server-time-limit fields. ABI agreement is not authentication proof.
 The native search adapter explicitly pins per-handle aliases to Never and the requested
-server time limit before every send, including zero resets. DirectorySearcher still rejects
-unimplemented control-response state and aliases;
-generic control transport does not implement those public semantics.
+server time limit before every send, including zero resets. The neutral facade encodes the built-in sort, synchronization, VLV and extended-DN
+controls using public properties and managed BER. It structurally validates recognized response controls
+before publishing synchronization cookies or VLV state. Per-control sort/VLV results are
+not reclassified as LDAP terminal errors. Unsupported aliases, VLV with paging or DirSync,
+and raw connection overrides still fail explicitly. AD-specific control semantics have
+offline codec/facade coverage, not a live AD validation claim.
 
 ## Binding implementation and enablement boundary
 
@@ -288,7 +291,7 @@ Recording tests carry synthetic names through actual worker/native orchestration
 one source selection for paired binds and rejection before acquisition on mismatch.
 
 Remaining proofs/work include mutable-cache authority compatibility, trusted deployment
-provenance, requested referral/TLS semantics, paged total-size limits, advanced search response-state handling, and raw Protocols consumers.
+provenance, requested referral/TLS semantics, advanced control combinations and raw Protocols consumers.
 `LDAP_OPT_NETWORK_TIMEOUT` bounds connection setup, not arbitrary blocked sends. Cancellation
 and bounded polling in the in-process adapter are cooperative. The isolated boundary bounds
 parent waiting; neither OS resource reclamation nor managed CPU work has a hard deadline. Windows
@@ -502,7 +505,11 @@ Searchers preserve their existing defaults. This profile requires callers to sel
 preserves `TimeSpan`, and the native boundary truncates it to whole seconds like
 Protocols (subsecond values become zero). Raw transport commands keep their per-request server limit across pages. Public
 `DirectorySearcher` instead reuses its existing search-wide server budget and page
-cap, forwarding each remaining limit through the same cursor and stopping before
+cap. RFC2696 continuation requests retain the initial wire timeLimit; the elapsed
+overall server budget admits or stops subsequent pages, without shortening an active
+page or manufacturing TimeLimitExceeded. Client deadlines continue shrinking on every
+wait. This deliberately differs from stock Protocols shrinking per-page wire limits.
+The same cursor stops before
 another page when less than one whole second remains. Its client budget decreases
 independently. OpenLDAP receives that limit through the exclusively
 owned handle, including an explicit zero reset; polling still uses the client budget.
@@ -537,3 +544,14 @@ include admission elapsed time; synchronous filesystem validation remains cooper
 Pidfd exit diagnostics are pool-wide hints, not per-operation execution proofs.
 Concurrent cache mutation, general AD interoperability and ambient pooling remain
 unproven. Matching usernames, cache paths or caller tokens do not enable reuse.
+
+Paged total-size limits count entry messages across pages (including duplicate DNs);
+references do not consume the limit. The native cursor keeps wire sizeLimit unchanged,
+shrinks only pageSize, and uses an ordinary unpaged request if the first page already
+covers the limit. The coordinator drains the real terminal response before stopping;
+remaining cookies retire the lease after the consumer finishes that page. Buffered
+restricted searches reserve their schema sibling atomically for finite size budgets too.
+Overdelivery is rejected before publishing excess entries, preserving the delivered
+prefix; it cannot preserve a later server result that was never received.
+See [RFC2696 section 3](https://www.rfc-editor.org/rfc/rfc2696.html#section-3) and
+[RFC2891](https://www.rfc-editor.org/rfc/rfc2891.html) for paging/sort encoding.

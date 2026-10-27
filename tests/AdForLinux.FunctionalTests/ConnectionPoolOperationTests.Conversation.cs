@@ -65,6 +65,39 @@ public partial class ConnectionPoolOperationTests
     private static LdapSearchCommand SearchCommand() => new("", "(objectClass=*)", ProtocolScope.Subtree, ["cn"], TimeSpan.FromSeconds(10));
     private static LdapModifyCommand ModifyCommand() => new("CN=recording", [new("description", DirectoryAttributeOperation.Replace, [[0, 255]])], TimeSpan.FromSeconds(10), []);
 
+    [Theory]
+    [InlineData(ResultCode.Success)]
+    [InlineData(ResultCode.SizeLimitExceeded)]
+    [InlineData(ResultCode.TimeLimitExceeded)]
+    public async Task Total_size_budget_drains_real_terminal_and_never_advances_after_limit(ResultCode code)
+    {
+        using var f = new ConversationFixture();
+        var row = new LdapSearchEvent.Entry(new("CN=same", new(), []));
+        var terminal = Envelope(code);
+        // Duplicate DNs are still two wire entries. References consume no size budget.
+        f.Transport.Events = new([row, new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true),
+            new LdapSearchEvent.Reference(new([], [])), row, new LdapSearchEvent.PageEnd(terminal, true)]);
+        var events = new List<LdapSearchEvent>();
+        await foreach (var item in LdapConversation.Search(f.Acquire, SearchCommand() with { SizeLimit = 2 }, 1)) events.Add(item);
+        Assert.Equal(2, events.OfType<LdapSearchEvent.Entry>().Count());
+        Assert.Same(terminal, Assert.IsType<LdapSearchEvent.PageEnd>(events[^1]).Result);
+        Assert.Equal(1, f.Transport.Pages);
+        if (code == ResultCode.Success) Assert.Contains("session-close", f.Trace);
+    }
+
+    [Fact]
+    public async Task Excess_entry_is_rejected_without_emitting_it_or_replaying()
+    {
+        using var f = new ConversationFixture();
+        var row = new LdapSearchEvent.Entry(new("CN=one", new(), []));
+        f.Transport.Events = new([row, row]);
+        await using var stream = LdapConversation.Search(f.Acquire, SearchCommand() with { SizeLimit = 1 }).GetAsyncEnumerator();
+        Assert.True(await stream.MoveNextAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await stream.MoveNextAsync());
+        Assert.Equal(1, f.Acquisitions); Assert.Equal(0, f.Transport.Pages);
+        Assert.Contains("session-close", f.Trace);
+    }
+
     [Fact]
     public async Task Streaming_holds_one_lease_across_demand_driven_pages_and_preserves_partial_terminal_result()
     {

@@ -522,7 +522,7 @@ public partial class DirectorySearcher : Component
         var neutralClock = TimeProvider;
         var neutralStarted = neutralClock.GetTimestamp();
         var searchLeases = root.AcquireConnections(1, operation.Origin.Authority.Validate, ReferralChasing,
-            independentNativeSchema: PageSize > 0 && ServerTimeLimit.TotalSeconds >= 1);
+            independentNativeSchema: PageSize > 0 && (ServerTimeLimit.TotalSeconds >= 1 || SizeLimit > 0));
         using var connectionLease = searchLeases[0];
         using var schemaLease = searchLeases.Length > 1 ? searchLeases[1] : null;
         var admitted = connectionLease.ExecuteTransport(value => value);

@@ -5,6 +5,20 @@ namespace AdForLinux.DirectoryServices;
 
 public partial class DirectorySearcher
 {
+    private void ValidateNeutralControls(int pageSize)
+    {
+        if (_virtualListView is not null && (pageSize > 0 || DirectorySynchronization is not null))
+            throw new PlatformNotSupportedException("VLV cannot be combined with native paging or directory synchronization.");
+    }
+
+    private void UpdateNeutralControlState(LdapTransportControl[] controls, SearchResultOrigin origin)
+    {
+        var state = LdapControlCodec.DecodeResponse(controls);
+        origin.Authority.Validate();
+        if (state.SyncCookie is { } cookie) DirectorySynchronization?.ResetDirectorySynchronizationCookie(cookie);
+        if (state.Vlv is { } vlv) _virtualListView?.Update(vlv.Position, vlv.Count, vlv.Context);
+    }
+
     private SearchResult[] ReadNeutralBuffered(DirectoryEntry.ConnectionLease lease,
         ILdapRequestTransport transport, SearchResultOrigin origin, SearchRequest request,
         int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue,
@@ -12,10 +26,11 @@ public partial class DirectorySearcher
     {
         // A bounded group must provide the sibling before the first search is
         // sent; never acquire it while holding the search lease.
-        if (pageSize > 0 && ServerTimeLimit.TotalSeconds >= 1 && schema is null)
-            throw new PlatformNotSupportedException("Buffered native paging with a finite server budget requires atomically admitted search and schema sessions.");
-        if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null)
-            throw new PlatformNotSupportedException("The neutral producer cannot represent the requested control or connection policy.");
+        if (pageSize > 0 && (ServerTimeLimit.TotalSeconds >= 1 || request.SizeLimit > 0) && schema is null)
+            throw new PlatformNotSupportedException("Buffered native paging with a finite server or size budget requires atomically admitted search and schema sessions.");
+        if (ConfigureConnectionOverride is not null)
+            throw new PlatformNotSupportedException("The neutral producer cannot represent a raw connection override.");
+        ValidateNeutralControls(pageSize);
         var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
         TimeSpan Remaining()
         {
@@ -39,6 +54,7 @@ public partial class DirectorySearcher
                 {
                     if (end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
                         throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+                    UpdateNeutralControlState(end.Result.Controls, origin);
                     if (schema is not null)
                     {
                         // Finish this accepted page while both sibling sessions
@@ -73,9 +89,10 @@ public partial class DirectorySearcher
         StreamingSearchResultSource? source = null;
         try
         {
-            if (request.Controls.Count != 0 || ConfigureConnectionOverride is not null)
-                throw new PlatformNotSupportedException("Public control-response state and connection overrides require an adapter that represents them.");
+            if (ConfigureConnectionOverride is not null)
+                throw new PlatformNotSupportedException("The neutral producer cannot represent a raw connection override.");
             var pageSize = PageSize;
+            ValidateNeutralControls(pageSize);
             var partial = Asynchronous;
             var timeout = ClientTimeout >= TimeSpan.Zero ? ClientTimeout : transport.Timeout;
             TimeSpan Remaining()
@@ -118,6 +135,7 @@ public partial class DirectorySearcher
                             case LdapSearchEvent.PageEnd end:
                                 if (end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
                                     throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+                                UpdateNeutralControlState(end.Result.Controls, origin);
                                 foreach (var entry in pending) Add(entry);
                                 pending.Clear(); returnedDns.Clear();
                                 break;

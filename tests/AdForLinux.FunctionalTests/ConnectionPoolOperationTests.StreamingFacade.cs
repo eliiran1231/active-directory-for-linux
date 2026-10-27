@@ -31,7 +31,8 @@ public partial class ConnectionPoolOperationTests
                     query = transport;
                     transport.Events = new([new LdapSearchEvent.Entry(TransportRow("CN=first", new() { ["cn"] = ["first"] }))]);
                     if (!findOne) transport.Events.Enqueue(new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true));
-                    transport.Events.Enqueue(new LdapSearchEvent.Entry(TransportRow("CN=first", new() { ["sn"] = ["second"] })));
+                    transport.Events.Enqueue(findOne ? new LdapSearchEvent.Reference(new([], [])) :
+                        new LdapSearchEvent.Entry(TransportRow("CN=first", new() { ["sn"] = ["second"] })));
                     transport.Events.Enqueue(new LdapSearchEvent.PageEnd(Envelope(code), false));
                 }
                 return new BoundLdapSession(transport, transport, options, new LdapAuthenticationSource(options), referrals);
@@ -50,7 +51,7 @@ public partial class ConnectionPoolOperationTests
         if (code == ResultCode.Success)
         {
             Assert.Null(error);
-            if (findOne) Assert.Equal(2, trace.Count(value => value == "buffered-search")); // ignored second row needs no schema
+            if (findOne) Assert.Equal(2, trace.Count(value => value == "buffered-search")); // references need no schema
             Assert.True(trace.LastIndexOf("buffered-search") > trace.IndexOf("cursor-close"));
             Assert.True(trace.LastIndexOf("session-close") > trace.LastIndexOf("buffered-search"));
         }
@@ -141,7 +142,7 @@ public partial class ConnectionPoolOperationTests
         }
         using var results = searcher.FindAll();
         Assert.Empty(results.Cast<SearchResult>());
-        Assert.Equal(new[] { TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(5) }, transport.ServerLimits);
+        Assert.Equal(new[] { TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(7) }, transport.ServerLimits);
         Assert.Equal(1, transport.Pages); // expired server budget forbids the next request
         Assert.Equal(TimeSpan.FromSeconds(35), Assert.Single(transport.PageBudgets));
         Assert.Equal(0, pool.Snapshot.Total);

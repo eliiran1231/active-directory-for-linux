@@ -95,6 +95,9 @@ ADFL_API int adfl_cursor_open(adfl_bound_session *, const adfl_search_request *,
     adfl_cancelled_fn, void *, adfl_search_cursor **);
 ADFL_API int adfl_cursor_read(adfl_search_cursor *, unsigned remaining_milliseconds,
     adfl_cancelled_fn, void *, adfl_result_fn, void *, int *kind, int *has_more);
+/* Compatibility entry point: server limit must equal the initial request.
+ * has_more describes the server cookie even at the total entry limit; callers
+ * must drain PAGE_END then close, never start a zero-size continuation. */
 ADFL_API int adfl_cursor_next_page_with_limit(adfl_search_cursor *, unsigned remaining_milliseconds,
     unsigned server_time_limit_seconds, adfl_cancelled_fn, void *);
 ADFL_API int adfl_cursor_next_page(adfl_search_cursor *, unsigned remaining_milliseconds,

@@ -59,6 +59,7 @@ public partial class ConnectionPoolOperationTests
     }
     [Theory]
     [InlineData("success")]
+    [InlineData("size-limit")]
     [InlineData("schema-error")]
     [InlineData("schema-cancel")]
     [InlineData("late-client-timeout")]
@@ -71,7 +72,7 @@ public partial class ConnectionPoolOperationTests
         var query = new ConversationTransport([]);
         query.Events = new([new LdapSearchEvent.Entry(TransportRow("CN=kept,DC=example", new() { ["number"] = ["42"] })),
             new LdapSearchEvent.PageEnd(Envelope(ResultCode.Success), true)]);
-        query.OnRead = () => { if (query.Reads == 2) clock.Ticks += TimeSpan.FromSeconds(30).Ticks; };
+        query.OnRead = () => { if (query.Reads == 2 && outcome != "size-limit") clock.Ticks += TimeSpan.FromSeconds(30).Ticks; };
         if (outcome == "late-client-timeout") query.OnCleanup = () => clock.Ticks += TimeSpan.FromSeconds(40).Ticks;
         var schemaReads = 0; LdapConnectionProvider.Session[]? admittedPair = null;
         root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
@@ -93,7 +94,8 @@ public partial class ConnectionPoolOperationTests
             return admittedPair = LdapRestrictedOperation.Wrap([query, schema], owner, options);
         };
         using var searcher = new AdForLinux.DirectoryServices.DirectorySearcher(root)
-        { PageSize = 1, CacheResults = true, ServerTimeLimit = TimeSpan.FromSeconds(30),
+        { PageSize = 1, CacheResults = true, ServerTimeLimit = outcome == "size-limit" ? TimeSpan.FromSeconds(-1) : TimeSpan.FromSeconds(30),
+            SizeLimit = outcome == "size-limit" ? 1 : 0,
             ClientTimeout = TimeSpan.FromSeconds(60), TimeProvider = clock, ReferralChasing = ReferralChasingOption.None };
         var error = Record.Exception(() =>
         {
@@ -101,7 +103,7 @@ public partial class ConnectionPoolOperationTests
             var result = Assert.Single(results.Cast<SearchResult>());
             Assert.Equal(42, Assert.IsType<int>(result.Properties["number"][0]));
         });
-        if (outcome == "success") { Assert.Null(error); Assert.Equal(2, schemaReads); }
+        if (outcome is "success" or "size-limit") { Assert.Null(error); Assert.Equal(2, schemaReads); }
         else if (outcome == "late-client-timeout") Assert.IsType<TimeoutException>(error);
         else if (outcome == "schema-error") Assert.Equal("original schema error", Assert.IsType<IOException>(error).Message);
         else Assert.Equal("original schema cancellation", Assert.IsType<OperationCanceledException>(error).Message);

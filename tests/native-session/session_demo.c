@@ -16,7 +16,8 @@ struct fixture {
     atomic_int created, selected, defaults, acquired, freed, connections, closed, installs, binds;
     atomic_int identity, expected_identity, cancelled, fail_bind_at;
     atomic_int sends, wire_sent, polls, results, results_freed, abandons, clock;
-    unsigned expected_server_limit;
+    unsigned expected_server_limit, expected_size_limit, last_page_size;
+    int always_more, excess_entry;
     int reconnect_on_send, disconnect_on_poll, pending_forever, cancel_on_send, partial_result;
     int late_result, slow_conversion, root_reply, wrong_write_tag, expect_controls, cancel_prepare;
     atomic_int source_sets, source_checks; unsigned source_kind; char source_path[4097];
@@ -163,6 +164,7 @@ static int search_start(void *state, LDAP *value, const adfl_search_request *req
     struct fixture *f = state; struct fake_ldap *ld = (struct fake_ldap *)value;
     block_dependency(f, 1);
     assert(request->server_time_limit_seconds == f->expected_server_limit);
+    assert(request->size_limit == f->expected_size_limit);
     record_controls(f, ld, request->controls, request->control_count);
     assert(request->scope >= 0 && request->scope <= 2 && !strcmp(request->filter, "(objectClass=*)"));
     assert(strlen(request->base_dn) < sizeof(ld->base_dn));
@@ -251,6 +253,7 @@ static int page_start(void *state, LDAP *value, const adfl_search_request *r, un
         const unsigned char expected[] = {0, 255, 80};
         assert(cookie->length == sizeof(expected) && !memcmp(cookie->data, expected, sizeof(expected)));
     } else assert(!cookie->length);
+    f->last_page_size = size;
     ld->page++; ld->stream_index = 0; ld->modify = 0;
     atomic_fetch_add(&f->page_sends, 1);
     return search_start(state, value, r, ready, ready_state, id);
@@ -262,6 +265,7 @@ static int message_poll(void *state, LDAP *value, int id, unsigned timeout, void
     if (f->pending_forever) return 0;
     const int types[] = {LDAP_RES_SEARCH_ENTRY, LDAP_RES_SEARCH_REFERENCE, LDAP_RES_SEARCH_RESULT};
     int type = ld->modify ? ld->modify : types[ld->stream_index++];
+    if (f->excess_entry) type = LDAP_RES_SEARCH_ENTRY;
     if (f->unexpected_message) type = LDAP_RES_INTERMEDIATE;
     if (f->wrong_write_tag) type = LDAP_RES_SEARCH_RESULT;
     struct fake_message *m = malloc(sizeof(*m)); assert(m); *m = (struct fake_message){type, ld->page};
@@ -299,7 +303,7 @@ static int page_cookie(void *state, LDAP *ld, void *message, int *code, adfl_byt
     (void)ld; struct fixture *f = state; struct fake_message *m = message;
     *cookie = (adfl_bytes){0}; *code = LDAP_SUCCESS;
     if (f->bad_cookie) return 1;
-    if (m->page == 1) {
+    if (m->page == 1 || f->always_more) {
         const unsigned char bytes[] = {0, 255, 80}; void *copy = malloc(sizeof(bytes)); assert(copy);
         memcpy(copy, bytes, sizeof(bytes)); cookie->data = copy; cookie->length = sizeof(bytes);
     }
@@ -482,6 +486,35 @@ static int accept_message(void *state, int event, const char *name, const void *
 static int submitted(void *state) {
     struct fixture *f = state; atomic_fetch_add(&f->submissions, 1); return f->reject_submit;
 }
+static void conversation_size_budget(void) {
+    struct fixture f = {0}; adfl_bound_session *s = NULL; adfl_search_cursor *c = NULL;
+    adfl_search_request r = request; r.size_limit = f.expected_size_limit = 3; f.always_more = 1;
+    assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
+    assert(adfl_cursor_open(s, &r, 2, NULL, NULL, &c) == ADFL_OK);
+    for (int page = 0; page < 3; page++) {
+        assert(f.last_page_size == (page == 2 ? 1u : 2u));
+        for (int expected = 1; expected <= 3; expected++) {
+            int kind, more, code;
+            assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_OK);
+            assert(kind == expected);
+            if (expected == 3) assert(more && code == LDAP_SUCCESS);
+        }
+        int rc = adfl_cursor_next_page(c, 1000, NULL, NULL);
+        assert(rc == (page == 2 ? ADFL_INVALID : ADFL_OK));
+    }
+    assert(atomic_load(&f.page_sends) == 3);
+    adfl_cursor_close(&c); adfl_session_close(&s); balanced(&f);
+    struct fixture g = {0}; r.size_limit = g.expected_size_limit = 1;
+    assert(adfl_open_with(&fake_ops, &g, &profile, NULL, NULL, &s) == ADFL_OK);
+    assert(adfl_cursor_open(s, &r, 5, NULL, NULL, &c) == ADFL_OK);
+    assert(g.last_page_size == 0); /* RFC permits ignoring control; ordinary search */
+    int kind, more, code;
+    assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_OK);
+    g.excess_entry = 1;
+    assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_RESULT_REJECTED);
+    assert(!kind && atomic_load(&g.abandons) == 1);
+    adfl_cursor_close(&c); adfl_session_close(&s); balanced(&g);
+}
 static void conversation_ownership(void) {
     struct fixture f = {0}; adfl_bound_session *s = NULL; adfl_search_cursor *c = NULL;
     assert(adfl_open_with(&fake_ops, &f, &profile, NULL, NULL, &s) == ADFL_OK);
@@ -502,7 +535,7 @@ static void conversation_ownership(void) {
         }
         int kind, more;
         assert(adfl_cursor_read(c, 1000, NULL, NULL, accept_message, &code, &kind, &more) == ADFL_INVALID);
-        if (!page) { f.expected_server_limit = 17; assert(adfl_cursor_next_page_with_limit(c, 1000, 17, NULL, NULL) == ADFL_OK); }
+        if (!page) { assert(adfl_cursor_next_page_with_limit(c, 1000, 17, NULL, NULL) == ADFL_INVALID); assert(adfl_cursor_next_page_with_limit(c, 1000, 30, NULL, NULL) == ADFL_OK); }
         else assert(adfl_cursor_next_page(c, 1000, NULL, NULL) == ADFL_INVALID);
     }
     assert(code == LDAP_SUCCESS && atomic_load(&f.binds) == 1 && atomic_load(&f.page_sends) == 2);
@@ -708,7 +741,7 @@ int main(void) {
     assert(adfl_native_abi_version() == 4);
     explicit_source_resolution();
     search_policy_defaults();
-    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_ownership(); modify_outcomes(); generic_write_outcomes(); control_ownership();
+    operation_routing(); replacement_and_parallel_ownership(); fallback_and_failure(); early_refusal(); dispatch_ownership(); conversation_size_budget(); conversation_ownership(); modify_outcomes(); generic_write_outcomes(); control_ownership();
     puts("PASS: actual adapter orchestration; recording native dependencies only; no credentials or network.");
     return 0;
 }

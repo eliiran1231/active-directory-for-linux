@@ -99,6 +99,7 @@ internal static class LdapConversation
         ILdapSearchCursor? cursor = null;
         var complete = false;
         var opened = false;
+        var entries = 0;
         try
         {
             var transport = lease.ExecuteTransport(t => t);
@@ -129,7 +130,7 @@ internal static class LdapConversation
                     if (end.Result.Code is ResultCode.Unavailable or ResultCode.ProtocolError) lease.Invalidate();
                     // Mark terminal before yield: a consumer may stop at this result.
                     yield return end;
-                    if (complete) yield break;
+                    if (complete || (prepared.SizeLimit > 0 && entries >= prepared.SizeLimit)) yield break;
                     // Same cursor, opaque cookie, lease and authority; never reacquire/replay.
                     TimeSpan? pageLimit = null;
                     if (nextServerLimit is not null)
@@ -137,9 +138,18 @@ internal static class LdapConversation
                         pageLimit = nextServerLimit();
                         if (pageLimit is null) yield break; // retire/close unfinished continuation, never send
                     }
-                    await cursor.NextPageAsync(Remaining(), cancellationToken, pageLimit).ConfigureAwait(false);
+                    // The callback admits another page, but RFC 2696 requires the
+                    // original wire timeLimit. Client budgets still shrink normally.
+                    await cursor.NextPageAsync(Remaining(), cancellationToken, prepared.ServerTimeLimit).ConfigureAwait(false);
                 }
-                else if (item is LdapSearchEvent.Entry or LdapSearchEvent.Reference) yield return item;
+                else if (item is LdapSearchEvent.Entry)
+                {
+                    if (prepared.SizeLimit > 0 && entries >= prepared.SizeLimit)
+                        throw new InvalidOperationException("LDAP search exceeded its total entry limit.");
+                    entries++;
+                    yield return item;
+                }
+                else if (item is LdapSearchEvent.Reference) yield return item;
                 else throw new InvalidOperationException("Unknown search event.");
             }
         }

@@ -7,7 +7,7 @@
 struct adfl_search_cursor {
     adfl_bound_session *session;
     adfl_search_request request;
-    unsigned page_size;
+    unsigned page_size, page_requested, page_entries, entries;
     uint64_t start;
     adfl_bytes cookie;
     int message_id, pending, awaiting_page, terminal;
@@ -66,10 +66,17 @@ static int cursor_send(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn
     if (rc) return cursor_stop(c, rc);
     adfl_search_request dispatch = c->request;
     dispatch.timeout_milliseconds = budget < left ? budget : left;
+    unsigned page_size = c->page_size;
+    if (page_size && c->request.size_limit) {
+        unsigned left_entries = c->request.size_limit - c->entries;
+        if (!left_entries) return cursor_stop(c, ADFL_INVALID);
+        if (page_size > left_entries) page_size = left_entries;
+    }
+    c->page_requested = page_size; c->page_entries = 0;
     struct cursor_ready ready = {c, started,
         dispatch.timeout_milliseconds, cancel, state, 0};
     if (c->session->authority->ops->page_start(c->session->authority->state, c->session->ldap,
-        &dispatch, c->page_size, &c->cookie, cursor_ready, &ready, &c->message_id) != LDAP_SUCCESS)
+        &dispatch, page_size, &c->cookie, cursor_ready, &ready, &c->message_id) != LDAP_SUCCESS)
         return cursor_stop(c, ready.stopped ? ready.stopped : ADFL_REQUEST_FAILED);
     c->pending = 1; c->awaiting_page = 0; return ADFL_OK;
 }
@@ -78,8 +85,6 @@ int adfl_cursor_open(adfl_bound_session *s, const adfl_search_request *r, unsign
     if (!out) return ADFL_INVALID;
     *out = NULL;
     if (!s || !valid_search(r) || page_size > INT_MAX) return ADFL_INVALID;
-    /* Do not reinterpret a logical total size limit as a separate per-page limit. */
-    if (page_size && r->size_limit) return ADFL_UNSUPPORTED;
     for (size_t i = 0; page_size && i < r->control_count; i++)
         if (!strcmp(r->controls[i].oid, LDAP_CONTROL_PAGEDRESULTS)) return ADFL_INVALID;
     int rc = check(s, cancel, state), idle = 0;
@@ -88,6 +93,9 @@ int adfl_cursor_open(adfl_bound_session *s, const adfl_search_request *r, unsign
     adfl_search_cursor *c = calloc(1, sizeof(*c));
     if (!c) { atomic_store(&s->busy, 0); return ADFL_NO_MEMORY; }
     c->session = s; adfl_session_retain(s); c->page_size = page_size; c->request = *r;
+    /* RFC 2696 permits ignoring paging when pageSize >= sizeLimit.
+     * Use one ordinary search in that case; no response cookie is required. */
+    if (r->size_limit && page_size >= r->size_limit) c->page_size = 0;
     c->request.controls = NULL;
     c->start = s->authority->ops->monotonic_ms(s->authority->state);
     c->request.base_dn = strdup(r->base_dn); c->request.filter = strdup(r->filter); c->request.attributes = NULL;
@@ -154,6 +162,11 @@ int adfl_cursor_read(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn c
         if (!message || (type != LDAP_RES_SEARCH_ENTRY && type != LDAP_RES_SEARCH_REFERENCE && type != LDAP_RES_SEARCH_RESULT)) {
             rc = ADFL_RESULT_REJECTED; break;
         }
+        if (type == LDAP_RES_SEARCH_ENTRY &&
+            ((c->request.size_limit && c->entries >= c->request.size_limit) ||
+             (c->page_requested && c->page_entries >= c->page_requested))) {
+            rc = ADFL_RESULT_REJECTED; break; /* never emit an excess entry */
+        }
         if (type == LDAP_RES_SEARCH_RESULT) c->pending = 0;
         struct stream_emit e = {s, cancel, state, emit, emit_state, start, budget, 0, LDAP_OTHER, 0};
         adfl_bytes cookie = {0}; int page_code = LDAP_OTHER;
@@ -167,6 +180,7 @@ int adfl_cursor_read(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn c
         if (!rc && type == LDAP_RES_SEARCH_RESULT && (e.code_seen != 1 || (c->page_size && e.code != page_code))) rc = ADFL_RESULT_REJECTED;
         if (!rc) {
             *kind = type == LDAP_RES_SEARCH_ENTRY ? ADFL_CURSOR_ENTRY : type == LDAP_RES_SEARCH_REFERENCE ? ADFL_CURSOR_REFERENCE : ADFL_CURSOR_PAGE_END;
+            if (*kind == ADFL_CURSOR_ENTRY) { c->entries++; c->page_entries++; }
             if (*kind == ADFL_CURSOR_PAGE_END) {
                 free((void *)c->cookie.data); c->cookie = cookie; cookie = (adfl_bytes){0};
                 *has_more = e.code == LDAP_SUCCESS && c->cookie.length != 0;
@@ -182,7 +196,8 @@ int adfl_cursor_read(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn c
 int adfl_cursor_next_page_with_limit(adfl_search_cursor *c, unsigned budget, unsigned server_seconds,
     adfl_cancelled_fn cancel, void *state) {
     if (!c || c->terminal || !c->awaiting_page || !c->cookie.length || server_seconds > INT_MAX) return ADFL_INVALID;
-    c->request.server_time_limit_seconds = server_seconds;
+    /* Continuations retain every SearchRequest field (RFC 2696 section 3). */
+    if (server_seconds != c->request.server_time_limit_seconds) return ADFL_INVALID;
     return cursor_send(c, budget, cancel, state);
 }
 int adfl_cursor_next_page(adfl_search_cursor *c, unsigned budget, adfl_cancelled_fn cancel, void *state) {
