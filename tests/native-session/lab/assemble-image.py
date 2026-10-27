@@ -16,9 +16,14 @@ p.add_argument('--dotnet', type=Path, help='Existing trusted .NET root; copies r
 p.add_argument('--worker-demo', type=Path)
 p.add_argument('--supervisor', type=Path)
 p.add_argument('--lab-native', type=Path)
+p.add_argument('--production-host', type=Path)
+p.add_argument('--restricted-native', type=Path)
+p.add_argument('--composition', type=Path)
 a = p.parse_args()
 if any((a.dotnet, a.worker_demo, a.supervisor, a.lab_native)) and not all((a.dotnet, a.worker_demo, a.supervisor, a.lab_native)):
     p.error('Managed lab requires dotnet, worker-demo, supervisor and lab-native together.')
+if any((a.production_host, a.restricted_native, a.composition)) and not all((a.production_host, a.restricted_native, a.composition, a.dotnet)):
+    p.error('Public activation lab requires production-host, restricted-native, composition and managed lab.')
 root = a.output.resolve()
 root.mkdir(exist_ok=False)
 def copy(source, destination):
@@ -51,6 +56,7 @@ copy(source / 'run-inside.sh', '/run-inside.sh')
 copy(a.profile.resolve(), '/etc/lab-krb5.conf')
 (root / 'etc').mkdir(exist_ok=True)
 copy(a.servers.resolve() / 'openldap-OPENLDAP_REL_ENG_2_6_10/servers/slapd/schema/core.schema', '/etc/core.schema')
+copy(a.servers.resolve() / 'openldap-OPENLDAP_REL_ENG_2_6_10/servers/slapd/schema/cosine.schema', '/etc/cosine.schema')
 (root / 'etc/hosts').write_text('127.0.0.1 localhost\n')
 (root / 'etc/passwd').write_text('nobody:x:65534:65534::/run/adfl:/bin/sh\n')
 (root / 'etc/group').write_text('nogroup:x:65534:\n')
@@ -88,6 +94,24 @@ if a.dotnet:
     subprocess.run(['python3', str(describe), str(bundle), '--version', 'lab-v1',
         '--dotnet', 'dotnet/dotnet', '--host', 'host/AdForLinux.NativeWorkerDemo.dll',
         '--supervisor', 'host/libadfl_worker.so', '--bridge', 'host/libadfl_lab_native.so'], check=True)
+    if a.production_host:
+        production = root / 'bundle/production-v1'
+        shutil.copytree(bundle, production)
+        (production / 'manifest.json').unlink()
+        for path in a.production_host.resolve().rglob('*'):
+            if path.is_file() and path.suffix in {'.dll', '.json'}:
+                copy(path, '/bundle/production-v1/host/' + str(path.relative_to(a.production_host.resolve())))
+        runtime = production / 'host/AdForLinux.NativeHost.runtimeconfig.json'
+        config = json.loads(runtime.read_text())
+        config['runtimeOptions'].setdefault('configProperties', {})['System.Globalization.Invariant'] = True
+        runtime.write_text(json.dumps(config))
+        # Exact dedicated bridge bytes; no test bridge is a production role.
+        (production / 'host/libadfl_lab_native.so').unlink()
+        binary(a.restricted_native.resolve(), '/bundle/production-v1/host/libadfl_restricted.so')
+        copy(a.composition.resolve(), '/bundle/production-v1/composition.json')
+        subprocess.run(['python3', str(describe), str(production), '--version', 'production-v1',
+            '--dotnet', 'dotnet/dotnet', '--host', 'host/AdForLinux.NativeHost.dll',
+            '--supervisor', 'host/libadfl_worker.so', '--bridge', 'host/libadfl_restricted.so'], check=True)
     # Tiny, non-executable negative inventories; no credential or server state.
     import hashlib
     for kind in ['digest', 'extra', 'symlink']:

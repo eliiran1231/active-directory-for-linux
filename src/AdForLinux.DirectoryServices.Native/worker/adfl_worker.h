@@ -26,6 +26,10 @@ ADFL_WORKER_API int adfl_worker_signal_kill(int);
  * EAGAIN means still running; ECHILD without readiness is unverified.
  * Never waits for exit. Caller retains pidfd until reaping or explicit handoff. */
 ADFL_WORKER_API int adfl_worker_reap_nonblocking(int);
+/* Additive optional diagnostic: outcome = si_code * 256 + si_status for
+ * CLD_EXITED/KILLED/DUMPED; zero when another reaper consumed the status.
+ * Return status/exit proof are identical to reap_nonblocking. No raw diagnostics. */
+ADFL_WORKER_API int adfl_worker_reap_nonblocking_status(int, int *);
 ADFL_WORKER_API int adfl_worker_closefd(int);
 #ifdef __cplusplus
 }

@@ -28,7 +28,7 @@ public partial class ConnectionPoolOperationTests
         entry.Path = "LDAP://directory.invalid:389/CN=other,DC=example,DC=invalid";
         Assert.Same(profile, entry.BuildOptions().RestrictedKerberos);
         Assert.Equal(ReferralChasingOption.None, entry.Options.Referral);
-        Assert.Throws<PlatformNotSupportedException>(() => entry.RefreshCache());
+        Assert.Throws<InvalidOperationException>(() => entry.RefreshCache());
         Assert.Throws<PlatformNotSupportedException>(() => LdapConnectionFactory.Create(entry.BuildOptions()));
         Assert.Throws<PlatformNotSupportedException>(() => LdapConnectionProvider.AcquireValidation(entry.BuildOptions()));
     }
@@ -60,7 +60,7 @@ public partial class ConnectionPoolOperationTests
         Assert.Throws<PlatformNotSupportedException>(() => context.ValidateCredentials("alternate", "synthetic-unused", ContextOptions.SimpleBind));
         Assert.Throws<PlatformNotSupportedException>(() => { _ = context.CanUseGlobalCatalog; });
         Assert.Throws<PlatformNotSupportedException>(() => context.GetForeignDomainContext("other.invalid"));
-        Assert.Throws<PlatformNotSupportedException>(() => { _ = context.ConnectedServer; });
+        Assert.Throws<InvalidOperationException>(() => { _ = context.ConnectedServer; });
         using var gc = context.CreateGlobalCatalogEntry("");
         Assert.Throws<InvalidOperationException>(() => gc.BuildOptions());
         using var stock = new PrincipalContext(ContextType.Domain, "directory.invalid");

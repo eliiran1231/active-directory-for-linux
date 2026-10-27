@@ -77,8 +77,9 @@ internal static class LdapWorkerDeployment
             if (EffectiveAccess(-100, executable, 1 /* X_OK */, 0x200 /* AT_EACCESS */) != 0)
                 throw new InvalidDataException("Deployment dotnet role is not executable by this caller.");
             return new VerifiedDeployment(manifest.Version,
-                new WorkerLaunch(executable, [Path.Combine(directory, roles.HostAssembly), Path.Combine(directory, roles.Supervisor)], Path.Combine(directory, roles.Supervisor)),
-                Path.Combine(directory, roles.NativeBridge), handles, manifest.Artifacts.ToDictionary(artifact => artifact.Path, artifact => Path.Combine(directory, artifact.Path), StringComparer.Ordinal));
+                new WorkerLaunch(executable, [Path.Combine(directory, roles.HostAssembly), Path.Combine(directory, roles.Supervisor), directory], Path.Combine(directory, roles.Supervisor)),
+                Path.Combine(directory, roles.NativeBridge), handles, manifest.Artifacts.ToDictionary(artifact => artifact.Path, artifact => Path.Combine(directory, artifact.Path), StringComparer.Ordinal),
+                manifest.Artifacts.Single(artifact => artifact.Path == roles.NativeBridge).Sha256);
         }
         catch { foreach (var handle in handles) handle.Dispose(); throw; }
     }
@@ -243,16 +244,17 @@ internal static class LdapWorkerDeployment
 
 // Opaque validated authority, retaining artifact handles until all admitted
 // workers release their references. This does not activate the backend.
-internal sealed class VerifiedDeployment : IDisposable
+internal sealed partial class VerifiedDeployment : IDisposable
 {
     private readonly WorkerLaunch launch;
     private readonly SafeFileHandle[] handles;
     private readonly IReadOnlyDictionary<string, string> artifacts;
+    private readonly string nativeBridgeSha256;
     private int references = 1, disposed;
     internal string Version { get; }
     internal string NativeBridgePath { get; }
-    internal VerifiedDeployment(string version, WorkerLaunch launch, string nativeBridge, List<SafeFileHandle> handles, IReadOnlyDictionary<string, string> artifacts)
-    { Version = version; this.launch = launch; NativeBridgePath = nativeBridge; this.handles = handles.ToArray(); this.artifacts = artifacts; }
+    internal VerifiedDeployment(string version, WorkerLaunch launch, string nativeBridge, List<SafeFileHandle> handles, IReadOnlyDictionary<string, string> artifacts, string nativeBridgeSha256)
+    { this.nativeBridgeSha256 = nativeBridgeSha256; Version = version; this.launch = launch; NativeBridgePath = nativeBridge; this.handles = handles.ToArray(); this.artifacts = artifacts; }
     internal string GetArtifact(string relativePath)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);

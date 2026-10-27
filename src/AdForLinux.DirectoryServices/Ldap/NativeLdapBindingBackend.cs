@@ -132,12 +132,16 @@ internal static partial class NativeLdapBindingBackend
         protected override bool ReleaseHandle() { api.CloseSession(ref handle); return true; }
     }
 
+    internal sealed class NativeFailureException(int status) : InvalidOperationException("Native LDAP operation failed without retry.")
+    {
+        internal int Status { get; } = status;
+    }
     private static void Throw(int status, CancellationToken cancellationToken)
     {
         if (status == 3) throw new OperationCanceledException(cancellationToken);
         if (status == 13) throw new TimeoutException("Native LDAP request deadline expired; session retired without replay.");
         if (status == 1) throw new PlatformNotSupportedException("Native library composition or profile is unsupported; preserve the caller's profile in the existing fresh backend.");
-        throw new InvalidOperationException($"Native authority/binding failed (status {status}); no retry was performed.");
+        throw new NativeFailureException(status);
     }
 
     [StructLayout(LayoutKind.Sequential)]

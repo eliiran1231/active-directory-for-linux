@@ -29,7 +29,8 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
     {
-        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
+        if (options.RestrictedKerberos is not null)
+            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only
@@ -56,8 +57,13 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquirePair(LdapConnectionOptions first, LdapConnectionOptions second,
         Func<TimeSpan> remaining, CancellationToken cancellationToken)
     {
-        first.RestrictedKerberos?.RefuseUnavailableBackend(first);
-        second.RestrictedKerberos?.RefuseUnavailableBackend(second);
+        if (first.RestrictedKerberos is not null || second.RestrictedKerberos is not null)
+        {
+            if (first.RestrictedKerberos is null || !ReferenceEquals(first.RestrictedKerberos, second.RestrictedKerberos) ||
+                !ConnectionKey.Create(first, ReferralChasingOption.None).Equals(ConnectionKey.Create(second, ReferralChasingOption.None)))
+                throw new PlatformNotSupportedException("Restricted paired admission requires the same profile and complete connection recipe.");
+            return LdapRestrictedOperation.Acquire(first, 2, ReferralChasingOption.None, cancellationToken, remaining());
+        }
         OfflineTestGuard.RequireLiveAccess();
         var requests = new[] { first.Clone(), second.Clone() }.Select(snapshot =>
         {
@@ -97,22 +103,38 @@ internal static partial class LdapConnectionProvider
 
     internal sealed class Session : IDisposable
     {
-        private readonly BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease;
+        private readonly BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease? lease;
+        private readonly BoundLdapSession? owned;
+        private readonly Action? invalidateOwned, validateOwned;
         private readonly LdapConnection? connection;
         private int disposed;
         private Action? afterDispose;
         internal Session(BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease, Action? afterDispose = null)
         { this.lease = lease; this.afterDispose = afterDispose; connection = lease.Value.ProtocolsConnection; if (connection is not null) Active.Add(connection, this); }
-        internal LdapConnection Connection => lease.Value.Connection;
-        internal void Invalidate() => lease.Invalidate();
+        internal Session(BoundLdapSession owned, Action invalidate, Action validate)
+        { this.owned = owned; invalidateOwned = invalidate; validateOwned = validate; }
+        private BoundLdapSession Value
+        {
+            get
+            {
+                ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+                validateOwned?.Invoke();
+                return owned ?? lease!.Value;
+            }
+        }
+        internal LdapConnection Connection => Value.Connection;
+        internal void Invalidate()
+        { if (lease is not null) lease.Invalidate(); else invalidateOwned!.Invoke(); }
         internal TResult Execute<TResult>(Func<LdapConnection, TResult> operation)
         {
-            try { return operation(lease.Value.Connection); }
+            var value = Value;
+            try { return operation(value.Connection); }
             catch (Exception error) { if (IsConnectionFailure(error)) Invalidate(); throw; }
         }
         internal TResult ExecuteTransport<TResult>(Func<ILdapRequestTransport, TResult> operation)
         {
-            try { return operation(lease.Value.Transport); }
+            var value = Value;
+            try { return operation(value.Transport); }
             catch (Exception error) { if (IsConnectionFailure(error)) Invalidate(); throw; }
         }
         public void Dispose()
@@ -124,7 +146,7 @@ internal static partial class LdapConnectionProvider
             }
             finally
             {
-                try { lease.Dispose(); }
+                try { if (lease is not null) lease.Dispose(); else owned!.Dispose(); }
                 finally { Interlocked.Exchange(ref afterDispose, null)?.Invoke(); }
             }
         }

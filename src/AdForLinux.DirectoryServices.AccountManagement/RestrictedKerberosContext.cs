@@ -7,8 +7,8 @@ public static class RestrictedKerberosContext
 {
     /// <summary>
     /// Creates an inert domain context using the profile's exact endpoint and FILE
-    /// source. No cache or deployment is opened. Directory operations currently
-    /// throw PlatformNotSupportedException because production activation is disabled.
+    /// source. Construction opens no cache or deployment. Operations require
+    /// the admitted private worker composition and never fall back to ambient identity.
     /// Alternate credential validation and cross-authority discovery are unavailable.
     /// </summary>
     public static PrincipalContext Create(RestrictedKerberosProfile profile, string? container = null)

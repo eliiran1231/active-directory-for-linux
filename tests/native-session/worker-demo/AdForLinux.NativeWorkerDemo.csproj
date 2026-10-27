@@ -7,5 +7,6 @@
   <ItemGroup>
     <Compile Include="../RecordingBindingApi.cs" />
     <ProjectReference Include="../../../src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj" />
+    <ProjectReference Include="../../../src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj" />
   </ItemGroup>
 </Project>

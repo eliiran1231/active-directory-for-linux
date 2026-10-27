@@ -12,12 +12,18 @@ if (args is ["--real-lab-runtime-probe"])
 {
     _ = System.Security.Cryptography.HMACSHA256.HashData(new byte[32], "runtime-fixture"u8);
     RealLabWorker.DeploymentPreflight();
+    if (Directory.Exists("/bundle/production-v1"))
+    {
+        using var production = LdapWorkerDeployment.Validate("/bundle/production-v1");
+        production.RequireRestrictedComposition();
+    }
     Console.WriteLine("PASS: managed runtime and immutable bundle admission/retention; malformed bundles refused before credentials.");
     return 0;
 }
+if (args is ["--real-public-lab"]) return await RealPublicLab.Run();
 if (args is ["--real-lab-parent"]) return await RealLabWorker.Parent();
 // The admitted test bundle uses the same fixed host+supervisor argv contract as NativeHost.
-if (args is ["/bundle/lab-v1/host/libadfl_worker.so"]) return await RealLabWorker.Child();
+if (args is ["/bundle/lab-v1/host/libadfl_worker.so", "/bundle/lab-v1"]) return await RealLabWorker.Child();
 if (args is ["--real-lab-child"]) return await RealLabWorker.Child();
 
 if (OfflineTestGuard.Enabled && args is ["--generate-lab-profile"])

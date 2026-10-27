@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,12 +30,14 @@ static int wait_identity(int channel, int pid, int *pidfd) {
 }
 static void reap(int pidfd) {
     long until = milliseconds() + 5000;
-    int rc;
-    while ((rc = adfl_worker_reap_nonblocking(pidfd)) == EAGAIN || rc == EINTR) {
+    int rc, outcome = -1;
+    while ((rc = adfl_worker_reap_nonblocking_status(pidfd, &outcome)) == EAGAIN || rc == EINTR) {
         assert(milliseconds() < until);
         struct pollfd p = {pidfd, POLLIN, 0}; (void)poll(&p, 1, 20);
     }
     assert(rc == 0);
+    assert(outcome == CLD_KILLED * 256 + SIGKILL);
+    assert(adfl_worker_reap_nonblocking_status(pidfd, &outcome) == 0 && outcome == 0);
     assert(adfl_worker_reap_nonblocking(pidfd) == 0);
     assert(!adfl_worker_closefd(pidfd));
 }

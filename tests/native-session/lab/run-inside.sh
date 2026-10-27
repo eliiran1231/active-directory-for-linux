@@ -54,17 +54,43 @@ done
 kdc_pid=$!
 cat > /run/adfl/slapd.conf <<'CONFIG'
 include /etc/core.schema
+include /etc/cosine.schema
 pidfile /run/adfl/slapd.pid
 argsfile /run/adfl/slapd.args
 sasl-host 127.0.0.1
 sasl-realm ADFL.TEST
 sasl-secprops minssf=1,maxssf=256,noanonymous,noplain
 authz-regexp "^uid=(client-[ab]),cn=(adfl.test,cn=)?gssapi,cn=auth$" "uid=$1,dc=adfl,dc=test"
+access to dn.exact="cn=client-a,dc=adfl,dc=test" by dn.exact="uid=client-a,dc=adfl,dc=test" ssf=56 read by * none
+access to dn.exact="cn=client-b,dc=adfl,dc=test" by dn.exact="uid=client-b,dc=adfl,dc=test" ssf=56 read by * none
 access to * by * read
-database ldif
+database mdb
+maxsize 16777216
 suffix "dc=adfl,dc=test"
 directory /run/adfl/db
 CONFIG
+# Synthetic read-only ACL witnesses, confined to the disposable test database.
+cat > /run/adfl/entries.ldif <<'ENTRY'
+dn: dc=adfl,dc=test
+objectClass: top
+objectClass: domain
+dc: adfl
+
+ENTRY
+for client in client-a client-b; do
+ cat >> /run/adfl/entries.ldif <<ENTRY
+dn: cn=$client,dc=adfl,dc=test
+objectClass: top
+objectClass: organizationalRole
+cn: $client
+description: $client
+
+ENTRY
+done
+# MDB supplies the paged-results control exercised by the public cursor.
+if ! /bin/slapd -Ta -f /run/adfl/slapd.conf -l /run/adfl/entries.ldif > /run/adfl/import.log 2>&1; then
+ echo 'FAIL: synthetic directory fixture import'; exit 1
+fi
 /bin/slapd -f /run/adfl/slapd.conf -h ldap://127.0.0.1:10389 -d 0 > /run/adfl/ldap.log 2>&1 &
 ldap_pid=$!
 # Bounded readiness retries do not replay library operations under test.
@@ -98,4 +124,15 @@ if [ -f /lab/AdForLinux.NativeWorkerDemo.dll ]; then
   status=$?; echo "FAIL: supervised real-login assertions (numeric stage $status)"; exit 1
  fi
  echo 'PASS: supervised managed worker, paired real native sessions and shared request dispatch'
+fi
+
+if [ -f /bundle/production-v1/composition.json ]; then
+ for client in client-a client-b; do
+  /bin/kinit -c FILE:/run/adfl/$client.ccache -kt /run/adfl/$client.keytab "$client@ADFL.TEST" > /run/adfl/kinit.log 2>&1
+ done
+ if /dotnet/dotnet /lab/AdForLinux.NativeWorkerDemo.dll --real-public-lab > /run/adfl/public-assertions.log 2>&1; then
+  echo 'PASS: public API uses admitted production source-only host; identity/SSF ACLs, paging and context operations verified'
+ else
+  status=$?; echo "FAIL: restricted public API assertions (numeric stage $status)"; cat /run/adfl/public-assertions.log; exit 1
+ fi
 fi

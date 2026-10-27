@@ -48,7 +48,8 @@ ADFL_API int adfl_lab_verify(adfl_bound_session *session, unsigned expected_iden
     int free = 0;
     if (!atomic_compare_exchange_strong(&session->busy,&free,1)) return ADFL_BUSY;
     int status = ADFL_BIND_FAILED;
-    sasl_ssf_t ssf = 0;
+    /* OpenLDAP writes ber_len_t here, not Cyrus sasl_ssf_t. */
+    ber_len_t ssf = 0;
     struct berval *identity = NULL;
     LDAPControl *empty[] = {NULL};
     if (ldap_get_option(session->ldap,LDAP_OPT_X_SASL_SSF,&ssf) == LDAP_OPT_SUCCESS && ssf >= 56) {

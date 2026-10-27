@@ -24,7 +24,8 @@ static int lab_bind(void *state, LDAP *ld, LDAP_SASL_INTERACT_PROC *callback, vo
     return rc;
 }
 static int verify(adfl_bound_session *session, const char *expected, unsigned minimum) {
-    sasl_ssf_t ssf = 0;
+    /* OpenLDAP writes ber_len_t here, not Cyrus sasl_ssf_t. */
+    ber_len_t ssf = 0;
     if (ldap_get_option(session->ldap, LDAP_OPT_X_SASL_SSF, &ssf) != LDAP_OPT_SUCCESS || ssf < minimum) {
         fprintf(stderr, "Negotiated SASL SSF %u is below required %u.\n", (unsigned)ssf, minimum);
         return 1;

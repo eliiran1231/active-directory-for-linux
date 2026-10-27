@@ -4,7 +4,8 @@ using System.Runtime.ExceptionServices;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 // One admitted, same-target operation; not an ambient session-reuse authority.
-// Public provider selection remains disabled. Cross-target pairs need distinct owners.
+// Generic provider selection remains disabled; admitted restricted workers use this owner.
+// Cross-target pairs need distinct owners.
 internal sealed class NativeLdapOperation : IDisposable
 {
     private readonly LdapConnectionOptions recipe;

@@ -105,7 +105,10 @@ internal sealed class LdapWorkerClient(Stream channel, Action retireWorker) : ID
             {
                 var error = LdapWorkerProtocol.Payload<LdapWorkerFailure>(reply);
                 throw error.Category == "unsupported" ? new PlatformNotSupportedException("Worker capability unavailable.")
-                    : new IOException("Worker operation failed.");
+                    : new IOException(error.Category.StartsWith("native-", StringComparison.Ordinal) &&
+                        int.TryParse(error.Category.AsSpan(7), out var status) && status is >= 2 and <= 13
+                        ? "Worker native operation failed (status " + status + ")." : error.Category is "marshal" or "library" or "argument" or "state"
+                            ? "Worker operation failed (" + error.Category + ")." : "Worker operation failed.");
             }
             if (submission is not null && !submission.Started) throw new InvalidDataException("Write completed without the submission handshake.");
             // This complete, validated response is accepted. Do not turn it into

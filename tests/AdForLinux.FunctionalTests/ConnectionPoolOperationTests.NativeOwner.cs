@@ -59,7 +59,7 @@ public partial class ConnectionPoolOperationTests
         if (!OperatingSystem.IsLinux()) return;
         using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2, startTimer: false);
         var api = new RecordingBindingApi { FailBind = 2 };
-        Assert.Throws<InvalidOperationException>(() => NativeLdapOperation.Acquire(pool, NativeOwnerOptions(), 2, api: api));
+        Assert.Throws<NativeLdapBindingBackend.NativeFailureException>(() => NativeLdapOperation.Acquire(pool, NativeOwnerOptions(), 2, api: api));
         Assert.Equal(2, api.Binds); Assert.Equal(1, api.Resolutions);
         Assert.Equal(new[] { "session-close", "session-close", "authority-close" }, api.Trace.TakeLast(3));
         Assert.Equal(0, pool.Snapshot.Total);

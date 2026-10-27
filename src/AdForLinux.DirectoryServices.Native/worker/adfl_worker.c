@@ -182,7 +182,9 @@ int adfl_worker_parent_receive_identity(int channel, int expected, int *out) {
 int adfl_worker_signal_kill(int pidfd) {
     return syscall(SYS_pidfd_send_signal, pidfd, SIGKILL, NULL, 0) == 0 ? 0 : errno;
 }
-int adfl_worker_reap_nonblocking(int pidfd) {
+int adfl_worker_reap_nonblocking_status(int pidfd, int *outcome) {
+    if (!outcome) return EINVAL;
+    *outcome = 0;
     siginfo_t info = {0};
     if (waitid(P_PIDFD, (id_t)pidfd, &info, WEXITED | WNOHANG)) {
         int status = errno;
@@ -194,5 +196,13 @@ int adfl_worker_reap_nonblocking(int pidfd) {
         if (ready < 0) return errno;
         return ready && (descriptor.revents & POLLIN) ? 0 : ECHILD;
     }
-    return info.si_pid ? 0 : EAGAIN;
+    if (!info.si_pid) return EAGAIN;
+    if ((info.si_code == CLD_EXITED || info.si_code == CLD_KILLED || info.si_code == CLD_DUMPED) &&
+        info.si_status >= 0 && info.si_status <= 255)
+        *outcome = info.si_code * 256 + info.si_status;
+    return 0;
+}
+int adfl_worker_reap_nonblocking(int pidfd) {
+    int outcome;
+    return adfl_worker_reap_nonblocking_status(pidfd, &outcome);
 }

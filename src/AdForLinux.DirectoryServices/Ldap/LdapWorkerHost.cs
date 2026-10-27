@@ -116,7 +116,7 @@ internal static class LdapWorkerHost
         catch (Exception error)
         {
             if (request is not null)
-                try { await Reply("ERROR", new LdapWorkerFailure(error is PlatformNotSupportedException ? "unsupported" : "failed")).ConfigureAwait(false); }
+                try { await Reply("ERROR", new LdapWorkerFailure(error is PlatformNotSupportedException ? "unsupported" : error is NativeLdapBindingBackend.NativeFailureException native && native.Status is >= 2 and <= 13 ? "native-" + native.Status.ToString(System.Globalization.CultureInfo.InvariantCulture) : error is System.Runtime.InteropServices.MarshalDirectiveException ? "marshal" : error is DllNotFoundException ? "library" : error is InvalidDataException ? "data" : error is ArgumentException ? "argument" : error is InvalidOperationException ? "state" : "failed")).ConfigureAwait(false); }
                 catch { /* parent may already have closed the channel */ }
         }
         finally

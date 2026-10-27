@@ -1,9 +1,11 @@
 # Bound sessions and Kerberos policy
 
 This implementation keeps the existing public APIs and Protocols behavior. It supplies a
-native OpenLDAP/MIT transport and executable recording demonstrations, but **production native
-authentication and ambient Kerberos reuse remain disabled**. No real credentials or directory
-authentication were used to validate this work. The branch starts at PR235 head
+native OpenLDAP/MIT transport and executable recording demonstrations. **Default native
+authentication and ambient Kerberos reuse remain disabled.** An explicit restricted profile
+can use an admitted private deployment with fresh worker groups. Real authentication was
+validated only in an authorized disposable loopback realm with synthetic identities; no
+user credentials or live AD were used. The branch starts at PR235 head
 `3efcdf45e2d6d2f676e73abbe86c8155007f29a8` and does not change that completed PR.
 
 ## Run offline
@@ -149,9 +151,9 @@ It does not verify a built plugin or deployment. Activation requires controlled 
 composition from Cyrus initialization onward; a plugin name, GETPATH/VERIFYFILE callback or
 version string cannot retrofit an already initialized host-global instance. A separately owned
 helper process with a pinned private dependency/plugin closure is the selected packaging
-boundary. The process/IPC boundary and explicit source-recipe transfer are executable; the full
-private dependency closure and live authority semantics are not yet proven. The production host refuses
-before credential resolution; only the separate demo host injects recording dependencies.
+boundary. The process/IPC boundary and explicit source-recipe transfer are executable.
+The following recording demo uses a separate host; the later restricted public path
+requires the full private composition and independent parent/child admission.
 
 Run the actual exec/IPC/native-dispatch demonstration (Linux with pidfd and glibc closefrom):
 
@@ -285,9 +287,9 @@ a selected principal proves mutable-cache compatibility; session reuse stays dis
 Recording tests carry synthetic names through actual worker/native orchestration and verify
 one source selection for paired binds and rejection before acquisition on mismatch.
 
-Remaining proofs/work include mutable-cache authority compatibility, controlled native
-composition, native/helper facade activation, requested referral/TLS semantics, paged total-size
-limits, advanced search response-state handling, and remaining raw Protocols consumers.
+Remaining proofs/work include mutable-cache authority compatibility, trusted deployment
+provenance, requested referral/TLS semantics, separate server-side search time limits,
+paged total-size limits, advanced search response-state handling, and raw Protocols consumers.
 `LDAP_OPT_NETWORK_TIMEOUT` bounds connection setup, not arbitrary blocked sends. Cancellation
 and bounded polling in the in-process adapter are cooperative. The isolated boundary bounds
 parent waiting; neither OS resource reclamation nor managed CPU work has a hard deadline. Windows
@@ -360,22 +362,23 @@ This lab does not establish safe dynamic ambient reuse, Windows identity transfe
 referrals, TLS/channel binding, deployment integrity, or a production-compatible
 restricted configuration. Production must require an audited configuration and
 composition policy; optional protocol metadata and static linking alone are not
-sufficient. All existing production authentication and reuse gates remain closed.
+sufficient. Generic authentication and ambient reuse gates remain closed; the later
+restricted path requires both policies before source access.
 
 Validated in the disposable lab: nine successful real binds, exact identity and
 protected WhoAmI exchanges, cache replacement and teardown. This does not prove
 that an old GSS credential handle snapshots a mutable cache, or that concurrent
-external cache mutation is safe. No production source gate was changed.
+external cache mutation is safe. That initial lab used a separate source gate.
 
 Production worker admission now explicitly requires both the typed restricted
 configuration and an explicit source, independently of optional protocol fields.
-It still unconditionally rejects unavailable production composition. The child
+It rejects unavailable or unadmitted production composition. The child
 duplicates each inherited configuration descriptor into an owned CLOEXEC handle,
 requires kernel WRITE/GROW/SHRINK/SEAL seals before checking sizes or reading,
 and reads those same owned handles. Identical bytes in unsealed, partially sealed
 or FUTURE_WRITE-only memfds are rejected before the backend factory. These checks
 prevent mutable configuration admission; they do not establish plugin/deployment
-closure or enable authentication.
+closure by themselves.
 
 The real-login lab also passes with the module-restricted private client build and
 configuration emitted by the actual production profile generator. Before binding,
@@ -395,8 +398,8 @@ bash tests/native-session/run-private-plugin-probe.sh PRIVATE_BRIDGE
 The same disposable lab can include the existing .NET 8.0.33 runtime and a separate
 lab-only native bridge. It uses the actual supervisor, sealed START profile,
 `LdapWorkerHost`, `NativeLdapOperation`, native bind and shared request dispatch.
-Only the test bridge's copied probe permits binding; production libraries retain
-their refusal. Fixed lab source/target/security recipes are checked before real
+This historical lab path uses a separate test bridge. The generic native API retains
+its refusal; the explicitly admitted restricted path is described below. Fixed lab source/target/security recipes are checked before real
 resolution. WhoAmI identity and SSF checks run before each session is published;
 failed checks close the session. Two live workers each own two bound sessions,
 serve rootDSE searches and unpaged cursors, then confirm pidfd-based cleanup.
@@ -447,8 +450,8 @@ generates the inventory without installing or executing it. The disposable lab
 stages a root-owned read-only bundle and validates it in both parent and child.
 Before creating credentials it also checks wrong-digest, extra-file and symlink
 fixtures. Real supervised requests check that disposing the admission owner keeps
-its descriptors alive until both workers exit. The lab host remains a separate
-test executable; production host activation is still refused.
+its descriptors alive until both workers exit. This admission demonstration uses a
+separate test executable; the restricted public path below uses the production host.
 
 The narrowly demonstrated profile is Linux with the reviewed private stack,
 explicit FILE source, exact service target/realm and KDC route, signing plus
@@ -458,7 +461,7 @@ session merely because its cache path or principal name matches. Each operation
 must resolve its source again; concurrent external cache mutation and general
 ambient-authority reuse remain unproven.
 
-The public selection boundary is explicit and inert. Existing constructors retain
+Public profile construction is explicit and inert. Existing constructors retain
 stock behavior. `RestrictedKerberosProfile` is immutable, validates syntax only,
 and never reads the bundle or cache during construction. Its entry factory and
 `RestrictedKerberosContext.Create` return the existing public types carrying the
@@ -473,21 +476,49 @@ using var entry = profile.CreateDirectoryEntry("DC=example,DC=invalid");
 using var context = AdForLinux.DirectoryServices.AccountManagement
     .RestrictedKerberosContext.Create(profile, "DC=example,DC=invalid");
 // Construction is inert, even when these paths do not exist.
-// entry.RefreshCache() currently throws PlatformNotSupportedException before I/O.
+// Operations require an administrator-adopted immutable private deployment.
+// There is no installation or host-configuration change during construction.
 ```
 
-Selecting this profile is not activation. Both shared provider admission and raw
-connection creation refuse it before pool lookup or native access; there is no
-ambient fallback. Alternate credential validation, foreign-domain discovery and
-global-catalog probing cannot escape the selection. Requested referrals are not
-silently disabled; profile-created entries initially request none, while an
-explicit changed request remains visible and fails with the unavailable backend.
-The example's executable assertions run in `ConnectionPoolOperationTests` through
-`docs/examples/kerberos-session-demo.sh`; no credentials or deployment are needed.
+Selected operations validate the exact recipe, referral policy and group size before
+source access. Parent and child independently admit caller identity, immutable deployment,
+roles and composition receipt before loading the private bridge. The child additionally
+requires the exact sealed MIT/GSS policy and `LDAPNOINIT=1`. Generic native binding and raw
+Protocols access remain refused; no environment enable switch or ambient fallback exists.
+The receipt binds the exact library hash to the pinned build recipe. It is trusted
+administrator adoption, not a cryptographic attestation against that administrator.
 
-Authentication/reuse gates remain off. Remaining activation work must connect
-this selection to the admitted production host and reviewed native composition,
-with application authorization for its explicit FILE-source semantics. The lab
-proves controlled acquisition and binding, not arbitrary concurrent cache mutation
-or general AD interoperability. Fresh groups remain required; this API cannot
-claim compatible reuse from a username, path or caller-provided generation.
+Build the dedicated artifact from the reviewed private stack (compile only):
+
+```sh
+python3 src/AdForLinux.DirectoryServices.Native/packaging/build-restricted-bridge.py PRIVATE_BRIDGE NEW_OUTPUT
+```
+
+Bundle `libadfl_restricted.so` and `composition.json` with the production host and
+supervisor using the existing inventory builder. Actual installation/administrator
+adoption is a separate deployment action; the library performs neither.
+
+Searchers preserve their existing defaults. This profile requires callers to select
+`ReferralChasingOption.None`. The current neutral request also cannot represent a
+separate server time limit: a `PrincipalSearcher` example explicitly sets its underlying
+`DirectorySearcher.ServerTimeLimit` to zero. Unsupported settings fail rather than being
+silently removed. Alternate credential validation, foreign-domain discovery and global
+catalog probing cannot escape the selected endpoint/source.
+
+The authorized .NET 8 public lab uses `RealPublicLab.cs` with the production host and
+restricted bridge, without injected binding APIs. Its MDB fixture supports paging. For
+each of two synthetic clients, protected entry reads and a paged search require the
+correct identity plus SSF >=56; an empty principal-context query exercises dispatch but
+not AD principal materialization. Each client sees one entry, so this is not proof of
+multiple nonempty page transitions. Native/worker identity and signing/sealing tests
+also pass. Container, image and tmpfs credential cleanup is verified after testing.
+The SSF getter uses OpenLDAP's `ber_len_t`, not the narrower Cyrus `sasl_ssf_t`; corrected
+artifact reruns supersede earlier tests affected by that buffer-width defect.
+
+Each admitted group resolves the FILE source afresh, owns one or two sessions, and
+retires its worker when its last lease ends. Invalidation retires the whole group.
+Referrals/reconnect remain fail-closed; no operation replay occurs. Parent wait deadlines
+include admission elapsed time; synchronous filesystem validation remains cooperative.
+Pidfd exit diagnostics are pool-wide hints, not per-operation execution proofs.
+Concurrent cache mutation, general AD interoperability and ambient pooling remain
+unproven. Matching usernames, cache paths or caller tokens do not enable reuse.

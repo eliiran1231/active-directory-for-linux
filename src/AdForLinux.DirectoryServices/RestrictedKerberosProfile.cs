@@ -6,7 +6,8 @@ namespace AdForLinux.DirectoryServices;
 /// <summary>
 /// Explicit opt-in to an isolated Linux Kerberos recipe. Construction performs
 /// syntax validation only; it does not inspect caches, install bundles or bind.
-/// Production activation is currently unavailable: operations fail before I/O.
+/// Operations require an admitted private source-only deployment; unsupported
+/// configurations fail before credential access, without ambient fallback.
 /// </summary>
 public sealed class RestrictedKerberosProfile
 {
@@ -42,8 +43,8 @@ public sealed class RestrictedKerberosProfile
 
     /// <summary>
     /// Creates an inert entry carrying this explicit selection. Descendants retain
-    /// the selection. Authentication is not enabled; directory I/O currently throws
-    /// <see cref="PlatformNotSupportedException"/> instead of using ambient credentials.
+    /// the selection. Operations use fresh isolated worker groups only after
+    /// deployment and policy admission; ambient credentials are never substituted.
     /// </summary>
     public DirectoryEntry CreateDirectoryEntry(string distinguishedName)
     {
@@ -81,6 +82,6 @@ public sealed class RestrictedKerberosProfile
     internal void RefuseUnavailableBackend(LdapConnectionOptions options)
     {
         ValidateRecipe(options);
-        throw new PlatformNotSupportedException("Restricted Kerberos selection is recorded, but production activation is unavailable. No ambient fallback or credential access was attempted.");
+        throw new PlatformNotSupportedException("This operation requires a raw platform connection or alternate credential validation, which the restricted worker transport cannot provide. No ambient fallback or credential access was attempted.");
     }
 }

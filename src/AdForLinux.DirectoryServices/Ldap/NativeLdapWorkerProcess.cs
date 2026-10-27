@@ -14,6 +14,8 @@ internal sealed class NativeLdapWorkerPool : IDisposable
     private readonly object admissionGate = new();
     private readonly ConcurrentDictionary<WorkerOwner, byte> owners = new();
     private int disposed;
+    private int lastExitOutcome;
+    internal int LastExitOutcome => Volatile.Read(ref lastExitOutcome);
     internal NativeLdapWorkerPool(int maximumWorkers)
     {
         if (maximumWorkers <= 0) throw new ArgumentOutOfRangeException(nameof(maximumWorkers));
@@ -76,6 +78,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
     }
     private void Released(WorkerOwner owner)
     {
+        if (owner.ExitOutcome is { } outcome) Volatile.Write(ref lastExitOutcome, outcome);
         if (owners.TryRemove(owner, out _)) capacity.Release();
     }
     public void Dispose()
@@ -114,6 +117,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         private int channel = -1, pidfd = -1, retired, cleanupStarted, finished;
         internal bool Retired => Volatile.Read(ref retired) != 0;
         internal bool IdentityVerified => Volatile.Read(ref pidfd) >= 0;
+        internal int? ExitOutcome { get; private set; }
         internal Task Cleanup => cleanup.Task;
         internal Task<NetworkStream> StartAsync() => Task.Run(async () =>
         {
@@ -125,7 +129,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
                 // Generated configuration is installed before exec: GSS creates
                 // contexts independently of the resolver. No parent environment is changed.
                 using var configuration = new WorkerProfileFiles(api, profile);
-                using var env = new WorkerStrings(["DOTNET_EnableDiagnostics=0", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", "ADFL_OFFLINE_TESTS=1", .. configuration.Environment]);
+                using var env = new WorkerStrings(["LDAPNOINIT=1", "DOTNET_EnableDiagnostics=0", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", .. (OfflineTestGuard.Enabled ? new[] { "ADFL_OFFLINE_TESTS=1" } : Array.Empty<string>()), .. configuration.Environment]);
                 var error = api.Spawn(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, out channel, out var child);
                 configuration.Dispose(); // child owns independent fd4/5 after successful exec
                 if (error != 0) throw new InvalidOperationException($"Worker exec failed ({error}).");
@@ -188,8 +192,8 @@ internal sealed class NativeLdapWorkerPool : IDisposable
                 try { stream?.Dispose(); } catch { }
                 while (true)
                 {
-                    var status = api!.Reap(pidfd);
-                    if (status == 0) { Finish(); return; } // verified exit, possibly reaped elsewhere
+                    var status = api!.ReapWithOutcome(pidfd, out var outcome);
+                    if (status == 0) { ExitOutcome = outcome; Finish(); return; } // verified exit, possibly reaped elsewhere
                     // EAGAIN or uncertain errors keep the bounded slot occupied.
                     await Task.Delay(25).ConfigureAwait(false);
                 }
@@ -226,6 +230,7 @@ internal sealed class WorkerNative : IDisposable
     internal readonly ReceiveCall Receive;
     internal readonly ProfileCall CreateProfile;
     internal readonly FdCall Kill, Reap, Close, SendIdentity;
+    private readonly ReapStatusCall? reapStatus;
     internal WorkerNative(string path)
     {
         if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("An absolute supervisor path is required.");
@@ -237,16 +242,24 @@ internal sealed class WorkerNative : IDisposable
             CreateProfile = Get<ProfileCall>("adfl_worker_profile_create");
             Spawn = Get<SpawnCall>("adfl_worker_spawn"); Receive = Get<ReceiveCall>("adfl_worker_parent_receive_identity");
             Kill = Get<FdCall>("adfl_worker_signal_kill"); Reap = Get<FdCall>("adfl_worker_reap_nonblocking");
+            if (NativeLibrary.TryGetExport(library, "adfl_worker_reap_nonblocking_status", out var diagnostic))
+                reapStatus = Marshal.GetDelegateForFunctionPointer<ReapStatusCall>(diagnostic);
             Close = Get<FdCall>("adfl_worker_closefd"); SendIdentity = Get<FdCall>("adfl_worker_child_send_identity");
         }
         catch { NativeLibrary.Free(library); throw; }
     }
     public void Dispose() => NativeLibrary.Free(library);
+    internal int ReapWithOutcome(int descriptor, out int outcome)
+    {
+        outcome = 0;
+        return reapStatus is null ? Reap(descriptor) : reapStatus(descriptor, out outcome);
+    }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint VersionCall();
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int SpawnCall([MarshalAs(UnmanagedType.LPUTF8Str)] string executable, IntPtr argv, IntPtr environment, int configuration, int mechanisms, out int channel, out int childPid);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ProfileCall(byte[] bytes, UIntPtr length, out int descriptor);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ReceiveCall(int channel, int expectedChildPid, out int pidfd);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int FdCall(int fd);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ReapStatusCall(int fd, out int outcome);
 }
 // Parent copies are startup-owned and closed on every spawn path. Child fd4/5
 // remain process-owned across operation leases and are released by worker exit.
