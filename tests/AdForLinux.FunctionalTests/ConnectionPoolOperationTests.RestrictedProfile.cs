@@ -8,7 +8,7 @@ namespace AdForLinux.FunctionalTests;
 public partial class ConnectionPoolOperationTests
 {
     private static RestrictedKerberosProfile RestrictedRecipe() => new(
-        "/nonexistent-adfl-bundle/version-1", "/nonexistent-adfl-cache/client", "EXAMPLE.INVALID",
+        Path.GetFullPath("/nonexistent-adfl-bundle/version-1"), "/nonexistent-adfl-cache/client", "EXAMPLE.INVALID",
         "directory.invalid", 389, "kdc.invalid");
 
     [Fact]

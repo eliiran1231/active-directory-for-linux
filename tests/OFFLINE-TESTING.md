@@ -4,6 +4,7 @@ Use the reviewed runner for offline work:
 
 ```sh
 python tests/test_offline_runner.py
+python tests/test_samba_runner.py
 python tests/run-offline-tests.py functional --framework net8.0
 python tests/run-offline-tests.py functional --framework net10.0
 python tests/run-offline-tests.py functional --framework net8.0 --class OfflineExecutionGuardTests
@@ -14,6 +15,12 @@ python tests/run-offline-tests.py functional --framework net8.0 --class OfflineE
 records TRX output; `--check-only` prints the bounded command without executing it.
 Dependencies must already be restored. The runner always builds current sources,
 so a stale unguarded assembly cannot be selected with `--no-build`.
+
+The disposable Samba compose entry point uses `run-samba-tests.py` to run these
+offline classes (including the optional functional classes) in a guarded child,
+then their exact complement in a separate live-test process. No tests are omitted
+and the parent guard is never removed. This entry point requires explicit live
+Samba authorization; it is not an offline command or an authorization to use AD.
 
 The allowlist is in `run-offline-tests.py`. Only exact reviewed class names are
 accepted, with a trailing class/method boundary in generated filters. Unknown

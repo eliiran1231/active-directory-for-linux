@@ -66,7 +66,13 @@ public class ConnectionPoolTests
         { Host = "directory.invalid", UseSsl = false, AuthenticationType = AuthType.Negotiate, Signing = true, BindDn = "reader" }, ReferralChasingOption.None));
         Assert.False(NativeLdapBindingBackend.CanRepresentBinding(new LdapConnectionOptions
         { Host = "directory..invalid", UseSsl = false, AuthenticationType = AuthType.Negotiate, Signing = true }, ReferralChasingOption.None));
-        // The guard rejects before loading the native library or reading a cache.
+        // Unsupported operating systems reject the profile before the offline
+        // guard; neither branch loads a native library or reads a cache.
+        if (!OperatingSystem.IsLinux())
+        {
+            Assert.Throws<PlatformNotSupportedException>(() => NativeLdapBindingBackend.ResolveForBinding(options, ReferralChasingOption.None));
+            return;
+        }
         var error = Assert.Throws<InvalidOperationException>(() => NativeLdapBindingBackend.ResolveForBinding(options, ReferralChasingOption.None));
         Assert.Equal(OfflineTestGuard.Message, error.Message);
     }
