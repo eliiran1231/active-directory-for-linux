@@ -12,7 +12,8 @@ GROUPS = {
         "CoreSidTests", "SecurityDescriptorCodecTests", "MicrosoftObservableProjectorTests",
         "AclMutationEngineTests", "AclMutationReplayTests", "PortableSecurityFoundationTests",
         "V1PrincipalAuditTests", "Issue216RegressionTests", "AccountManagementPublicTypesTests",
-        "PrincipalValueCollectionTests", "OfflineExecutionGuardTests",
+        "PrincipalValueCollectionTests", "OfflineExecutionGuardTests", "ConnectionPoolTests", "ConnectionPoolOperationTests",
+        "WindowsContextScopedReadTests",
     ]),
     "surface": ("AdForLinux.DifferentialTests", [
         "LowLevelPublicSurfaceComparisonTests", "PublicApiSurfaceComparisonTests",

@@ -168,7 +168,7 @@ internal static class LdapAttributeSchema
                             "lDAPDisplayName",
                             "attributeSyntax",
                             "oMSyntax");
-                        var response = (SearchResponse)_connection.SendRequest(request);
+                        var response = (SearchResponse)_connection.SendRequestTracked(request);
                         foreach (SearchResultEntry entry in response.Entries)
                         {
                             var name = FirstString(entry, "lDAPDisplayName");

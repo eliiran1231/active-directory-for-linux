@@ -87,11 +87,23 @@ internal sealed class CrossContextSaveOperation : IDisposable
     {
         if (prepared) throw new InvalidOperationException("Preflight belongs to one operation and cannot be repeated.");
         prepared = true;
-        sourceSession = capture.OpenSource(capture.Source.Clone(Remaining()));
-        _ = Remaining();
-        destinationSession = openControlledDestination is null
-            ? capture.OpenDestination(capture.Destination.Clone(Remaining()))
-            : new CrossContextSaveSession(openControlledDestination(capture.Destination.Clone(Remaining())));
+        if (openControlledDestination is null && capture.OpenSource == CrossContextSaveSession.DefaultFactory
+            && capture.OpenDestination == CrossContextSaveSession.DefaultFactory)
+        {
+            using var deadline = new CancellationTokenSource(Remaining());
+            var pair = LdapConnectionProvider.AcquirePair(capture.Source, capture.Destination, Remaining, deadline.Token);
+            sourceSession = new CrossContextSaveSession(pair[0]);
+            destinationSession = new CrossContextSaveSession(pair[1]);
+        }
+        else
+        {
+            // Explicitly injected test transports preserve their ownership contract.
+            sourceSession = capture.OpenSource(capture.Source.Clone(Remaining()));
+            _ = Remaining();
+            destinationSession = openControlledDestination is null
+                ? capture.OpenDestination(capture.Destination.Clone(Remaining()))
+                : new CrossContextSaveSession(openControlledDestination(capture.Destination.Clone(Remaining())));
+        }
         _ = Remaining();
         const System.DirectoryServices.Protocols.SearchScope Base = System.DirectoryServices.Protocols.SearchScope.Base;
         const System.DirectoryServices.Protocols.SearchScope Subtree = System.DirectoryServices.Protocols.SearchScope.Subtree;

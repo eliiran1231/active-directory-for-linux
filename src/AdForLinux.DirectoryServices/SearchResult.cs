@@ -15,7 +15,7 @@ public class SearchResult
     internal SearchResult(SearchResultEntry entry, DirectoryEntry searchRoot)
         : this(entry, new SearchResultOrigin(searchRoot, searchRoot.CaptureBindingAuthority()), searchRoot) { }
 
-    internal SearchResult(SearchResultEntry entry, SearchResultOrigin origin, DirectoryEntry schemaRoot)
+    internal SearchResult(SearchResultEntry entry, SearchResultOrigin origin, DirectoryEntry schemaRoot, LdapConnection? schemaConnection = null)
     {
         _authority = origin.Authority;
         _searchRoot = origin.Copy(entry.DistinguishedName);
@@ -30,7 +30,10 @@ public class SearchResult
             grouped[name] = new List<object>();
         }
 
-        foreach (var (name, value) in SearchEntryReader.Read(entry, schemaRoot.GetAuthorityConnection(_authority, schema: true)))
+        using var schemaLease = schemaConnection is null ? schemaRoot.AcquireConnection(_authority.Validate, schema: true) : null;
+        _authority.Validate();
+        foreach (var (name, value) in SearchEntryReader.Read(entry,
+            schemaConnection ?? schemaLease!.Connection))
         {
             if (!grouped.TryGetValue(name, out var list))
             {

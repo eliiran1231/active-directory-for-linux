@@ -17,20 +17,12 @@ internal interface IIdentitySearchSession : IDisposable
 }
 internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
 {
-    private readonly LdapConnection connection;
+    private readonly LdapConnectionProvider.Session session;
     internal LdapIdentitySearchSession(LdapConnectionOptions options)
-    {
-        connection = LdapConnectionFactory.Create(options);
-        try
-        {
-            LdapConnectionFactory.ConfigureReferralChasing(connection, ReferralChasingOption.None);
-            connection.Bind();
-        }
-        catch { connection.Dispose(); throw; }
-    }
+        => session = LdapConnectionProvider.Acquire(options);
     public IReadOnlyList<IdentitySearchRow> Search(SearchRequest request, TimeSpan remaining)
     {
-        var response = (SearchResponse)LdapExceptionTranslator.Execute(() => connection.SendRequest(request, remaining));
+        var response = (SearchResponse)LdapExceptionTranslator.Execute(() => session.Execute(connection => connection.SendRequest(request, remaining)));
         RequireCompleteResult(response.ResultCode, response.References.Count);
         var result = new List<IdentitySearchRow>();
         foreach (SearchResultEntry row in response.Entries)
@@ -51,7 +43,7 @@ internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
         if (resultCode != ResultCode.Success || referenceCount != 0)
             throw new NotSupportedException("Identity lookup did not return a complete result within the authorized domain.");
     }
-    public void Dispose() => connection.Dispose();
+    public void Dispose() => session.Dispose();
 }
 
 // AD domain lookup, not Windows LSA/trust traversal. No guessed server, domain label,

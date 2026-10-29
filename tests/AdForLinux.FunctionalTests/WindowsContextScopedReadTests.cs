@@ -1,0 +1,464 @@
+using System.DirectoryServices.Protocols;
+using System.Runtime.InteropServices;
+using AdForLinux.DirectoryServices.Ldap;
+using Xunit;
+using ReferralChasingOption = AdForLinux.DirectoryServices.ReferralChasingOption;
+
+namespace AdForLinux.FunctionalTests;
+
+public sealed class WindowsContextScopedReadTests
+{
+    private static readonly WindowsLdapContext A = new(1, 10, 100, 2, 2, true);
+    private static readonly WindowsLdapContext B = new(2, 10, 200, 2, 2, true);
+    private static readonly LdapConnectionOptions Options = new()
+    { Host = "127.0.0.1", Port = 1636, BindDn = "synthetic", BindPassword = "synthetic" };
+
+    private sealed class Resource(int id, bool disposeThrows = false) : IDisposable
+    {
+        internal int Id = id, Disposed, Users;
+        public void Dispose() { Interlocked.Increment(ref Disposed); if (disposeThrows) throw new IOException("synthetic disposal"); }
+    }
+    private sealed class Harness : IDisposable
+    {
+        internal readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, Resource> Pool =
+            new(perKeyLimit: 2, totalLimit: 8, startTimer: false);
+        internal readonly List<Resource> Resources = [];
+        internal readonly List<bool> Reusable = [];
+        internal Func<WindowsLdapContext?> Capture = () => A;
+        internal Action? Preparing;
+        internal Func<Resource, int>? Sending;
+        internal bool DisposeThrows, CreateThrows;
+        internal int Sends;
+        private readonly object gate = new();
+        internal int Run(CancellationToken cancellation = default) =>
+            ContextScopedRequest.Execute(() => Capture(), (context, reusable) => Acquire(context, reusable, cancellation), cancellation);
+        private IContextRequestLease<int> Acquire(WindowsLdapContext? context, bool reusable, CancellationToken cancellation)
+        {
+            lock (gate) Reusable.Add(reusable);
+            var key = LdapConnectionProvider.ConnectionKey.CreateContextScoped(Options, ReferralChasingOption.External, context);
+            var lease = Pool.Acquire(key, () =>
+            {
+                if (CreateThrows) throw new IOException("synthetic creation");
+                lock (gate) { var resource = new Resource(Resources.Count + 1, DisposeThrows); Resources.Add(resource); return resource; }
+            }, cancellation, reusable: reusable);
+            return new Adapter(this, lease);
+        }
+        private sealed class Adapter(Harness owner, BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, Resource>.Lease lease)
+            : IContextRequestLease<int>
+        {
+            public void Prepare() => owner.Preparing?.Invoke();
+            public int Send()
+            {
+                Interlocked.Increment(ref owner.Sends);
+                var resource = lease.Value;
+                Assert.Equal(1, Interlocked.Increment(ref resource.Users));
+                try { return owner.Sending?.Invoke(resource) ?? resource.Id; }
+                finally { Assert.Equal(0, Interlocked.Decrement(ref resource.Users)); }
+            }
+            public void Invalidate() => lease.Invalidate();
+            public void Dispose() => lease.Dispose();
+        }
+        public void Dispose() => Pool.Dispose();
+    }
+
+    [Fact]
+    public void Partial_search_exception_reaches_outer_materialization_after_eviction_without_replay()
+    {
+        using var h = new Harness();
+        var partial = (SearchResponse)Activator.CreateInstance(typeof(SearchResponse),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            null, new object?[] { null, Array.Empty<DirectoryControl>(), ResultCode.SizeLimitExceeded, null, Array.Empty<Uri>() }, null)!;
+        var original = new DirectoryOperationException(partial);
+        h.Sending = _ => throw original;
+        var observed = Assert.Throws<DirectoryOperationException>(() => h.Run());
+        Assert.Same(original, observed); Assert.Same(partial, observed.Response);
+        Assert.Equal(1, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+        Assert.Equal(1, h.Resources.Single().Disposed);
+    }
+
+    [Theory]
+    [InlineData(SearchScope.OneLevel)]
+    [InlineData(SearchScope.Subtree)]
+    public void Nonbase_scope_requires_the_audited_FindOne_result_limit(SearchScope scope)
+    {
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", scope) { SizeLimit = 1 };
+        Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+        foreach (int limit in new[] { 0, 2, 100 })
+        {
+            request.SizeLimit = limit;
+            Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+        }
+    }
+
+    [Fact]
+    public void Scalar_decoder_accepts_only_written_byte_or_dword_boolean_patterns()
+    {
+        uint upper = WindowsLdapContextQuery.QuerySentinel & 0xffffff00u;
+        Assert.Equal(0u, WindowsLdapContextQuery.DecodeScalarFlag(upper, 1));
+        Assert.Equal(1u, WindowsLdapContextQuery.DecodeScalarFlag(upper | 1, 1));
+        Assert.Equal(0u, WindowsLdapContextQuery.DecodeScalarFlag(0, 4));
+        Assert.Equal(1u, WindowsLdapContextQuery.DecodeScalarFlag(1, 4));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(WindowsLdapContextQuery.QuerySentinel, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(upper | 2, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(upper, 4));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 1));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 2));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 0));
+        Assert.Null(WindowsLdapContextQuery.DecodeScalarFlag(0, 8));
+    }
+
+    [Fact]
+    public void Query_diagnostics_preserve_classification_and_never_include_identifiers()
+    {
+        var stats = new WindowsLdapContextQuery.Statistics { TokenId = 123456789, AuthenticationId = 987654321,
+            ModifiedId = 99887766, TokenType = 2, ImpersonationLevel = 2 };
+        Assert.NotNull(WindowsLdapContextQuery.Classify(stats, true, false, 0, 0, out var good));
+        Assert.Equal("eligible", good.Stage);
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 1, 0, out var restricted));
+        Assert.Equal("restricted", restricted.Stage);
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, true, 0, 0, out var anonymous));
+        Assert.Equal("anonymous", anonymous.Stage);
+        var encoded = System.Text.Json.JsonSerializer.Serialize(new[] { good, restricted, anonymous });
+        Assert.DoesNotContain("123456789", encoded); Assert.DoesNotContain("987654321", encoded);
+        Assert.DoesNotContain("99887766", encoded);
+        if (OfflineTestGuard.Enabled || !OperatingSystem.IsWindows())
+        {
+            Assert.Null(WindowsLdapContextQuery.Capture(out var guarded));
+            Assert.Contains(guarded.Stage, new[] { "offline", "platform" });
+        }
+    }
+
+    [Fact]
+    public void Stable_context_reuses_and_context_changes_partition_actual_pool()
+    {
+        using var h = new Harness();
+        Assert.Equal(1, h.Run()); Assert.Equal(1, h.Run());
+        h.Capture = () => B; Assert.Equal(2, h.Run());
+        h.Capture = () => A; Assert.Equal(1, h.Run());
+        Assert.Equal(2, h.Resources.Count); Assert.Equal(4, h.Sends);
+        Assert.All(h.Reusable, Assert.True);
+    }
+
+    [Fact]
+    public void Every_context_component_and_legacy_key_are_isolated()
+    {
+        var contexts = new[] { A, A with { TokenId = 2 }, A with { AuthenticationId = 11 },
+            A with { ModifiedId = 101 }, A with { TokenType = 1 }, A with { ImpersonationLevel = 3 },
+            A with { ThreadToken = false } };
+        var keys = contexts.Select(c => LdapConnectionProvider.ConnectionKey.CreateContextScoped(Options, ReferralChasingOption.External, c)).ToList();
+        keys.Add(LdapConnectionProvider.ConnectionKey.CreateContextScoped(Options, ReferralChasingOption.External, null));
+        keys.Add(LdapConnectionProvider.ConnectionKey.Create(Options, ReferralChasingOption.External));
+        Assert.Equal(keys.Count, keys.Distinct().Count());
+        Assert.Equal("Windows LDAP context (redacted)", A.ToString());
+    }
+
+    [Fact]
+    public void Unknown_or_throwing_query_never_promotes_a_fresh_connection()
+    {
+        using var h = new Harness { Capture = () => null };
+        Assert.Equal(1, h.Run()); Assert.Equal(2, h.Run());
+        h.Capture = () => throw new UnauthorizedAccessException();
+        Assert.Equal(3, h.Run());
+        Assert.All(h.Reusable, value => Assert.False(value));
+        Assert.All(h.Resources, r => Assert.Equal(1, r.Disposed));
+        Assert.Equal(0, h.Pool.Snapshot.Total);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Change_after_acquisition_or_immediately_before_send_falls_back_once(int changedRead)
+    {
+        using var h = new Harness();
+        int reads = 0;
+        h.Capture = () => Interlocked.Increment(ref reads) < changedRead ? A : B;
+        Assert.Equal(2, h.Run());
+        Assert.Equal(new[] { true, false }, h.Reusable);
+        Assert.Equal(1, h.Sends);
+        Assert.All(h.Resources, r => Assert.Equal(1, r.Disposed));
+    }
+
+    [Fact]
+    public void Query_failure_after_acquisition_falls_back_not_process_identity()
+    {
+        using var h = new Harness();
+        int reads = 0;
+        h.Capture = () => ++reads == 1 ? A : throw new UnauthorizedAccessException();
+        Assert.Equal(2, h.Run()); Assert.Equal(1, h.Sends);
+        Assert.Equal(new[] { true, false }, h.Reusable);
+    }
+
+    [Fact]
+    public void Context_change_during_prepare_is_seen_before_any_send()
+    {
+        using var h = new Harness();
+        var current = A;
+        h.Capture = () => current;
+        h.Preparing = () => current = B;
+        Assert.Equal(2, h.Run()); Assert.Equal(1, h.Sends);
+        Assert.Equal(new[] { true, false }, h.Reusable);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void Change_at_completion_or_return_preserves_success_and_evicts(int changedRead)
+    {
+        using var h = new Harness();
+        int reads = 0;
+        h.Capture = () => ++reads < changedRead ? A : B;
+        Assert.Equal(1, h.Run()); Assert.Equal(1, h.Sends);
+        Assert.Equal(1, h.Resources.Single().Disposed); Assert.Equal(0, h.Pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public void Send_failure_is_not_replayed_or_replaced_by_query_or_disposal_failure()
+    {
+        using var h = new Harness { DisposeThrows = true };
+        var original = new InvalidOperationException("synthetic send");
+        h.Sending = _ => { h.Capture = () => throw new UnauthorizedAccessException(); throw original; };
+        Assert.Same(original, Assert.Throws<InvalidOperationException>(() => h.Run()));
+        Assert.Equal(1, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+        Assert.Equal(1, h.Resources.Single().Disposed);
+    }
+
+    [Fact]
+    public void Successful_send_survives_post_query_and_disposal_failure_without_caching()
+    {
+        using var h = new Harness { DisposeThrows = true };
+        h.Sending = _ => { h.Capture = () => null; return 42; };
+        Assert.Equal(42, h.Run()); Assert.Equal(1, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public void Creation_and_prepare_failure_release_reservations_without_sending()
+    {
+        using var h = new Harness { CreateThrows = true };
+        Assert.Throws<IOException>(() => h.Run()); Assert.Equal(0, h.Pool.Snapshot.Total);
+        h.CreateThrows = false; h.Preparing = () => throw new ArgumentException("synthetic preparation");
+        Assert.Throws<ArgumentException>(() => h.Run());
+        Assert.Equal(0, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+        Assert.Equal(1, h.Resources.Single().Disposed);
+    }
+
+    [Fact]
+    public void Cancellation_before_acquire_or_send_does_not_send_or_cache()
+    {
+        using var h = new Harness();
+        using var canceled = new CancellationTokenSource(); canceled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => h.Run(canceled.Token)); Assert.Empty(h.Resources);
+        using var during = new CancellationTokenSource();
+        h.Preparing = during.Cancel;
+        Assert.Throws<OperationCanceledException>(() => h.Run(during.Token));
+        Assert.Equal(0, h.Sends); Assert.Equal(0, h.Pool.Snapshot.Total);
+    }
+
+    [Fact]
+    public async Task Concurrent_scopes_get_exclusive_resources_and_return_them()
+    {
+        using var h = new Harness();
+        using var arrived = new CountdownEvent(2);
+        h.Sending = r => { arrived.Signal(); Assert.True(arrived.Wait(TimeSpan.FromSeconds(5))); return r.Id; };
+        var tasks = Enumerable.Range(0, 2).Select(_ => Task.Factory.StartNew(() => h.Run(),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
+        var ids = await Task.WhenAll(tasks);
+        Assert.Equal(2, ids.Distinct().Count()); Assert.Equal(2, h.Pool.Snapshot.Total);
+        h.Pool.Dispose(); Assert.All(h.Resources, r => Assert.Equal(1, r.Disposed));
+    }
+
+    [Fact]
+    public async Task Waiting_scope_cancellation_releases_waiter_without_an_extra_send()
+    {
+        using var h = new Harness();
+        using var arrived = new CountdownEvent(2);
+        using var release = new ManualResetEventSlim();
+        h.Sending = r => { arrived.Signal(); Assert.True(release.Wait(TimeSpan.FromSeconds(5))); return r.Id; };
+        var tasks = Enumerable.Range(0, 2).Select(_ => Task.Factory.StartNew(() => h.Run(),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)).ToArray();
+        try
+        {
+            Assert.True(arrived.Wait(TimeSpan.FromSeconds(5)));
+            using var canceled = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+            Assert.Throws<OperationCanceledException>(() => h.Run(canceled.Token));
+            Assert.Equal(0, h.Pool.Snapshot.Waiting); Assert.Equal(2, h.Sends);
+        }
+        finally { release.Set(); await Task.WhenAll(tasks); }
+    }
+
+    [Fact]
+    public void Native_classifier_rejects_unsupported_contexts_and_normalizes_primary_level()
+    {
+        var stats = new WindowsLdapContextQuery.Statistics
+        { TokenId = 1, AuthenticationId = 10, ModifiedId = 100, TokenType = 2, ImpersonationLevel = 2 };
+        Assert.Equal(A, WindowsLdapContextQuery.Classify(stats, true, false, 0, 0));
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, true, 0, 0));
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, null, 0, 0));
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 1, 0));
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 0, 1));
+        foreach (uint level in new uint[] { 0, 1, 3, 99 })
+        { stats.ImpersonationLevel = level; Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 0, 0)); }
+        stats.TokenType = 1;
+        Assert.Equal(0u, WindowsLdapContextQuery.Classify(stats, false, false, 0, 0)!.Value.ImpersonationLevel);
+        Assert.Null(WindowsLdapContextQuery.Classify(stats, true, false, 0, 0));
+        Assert.Equal(56, Marshal.SizeOf<WindowsLdapContextQuery.Statistics>());
+        Assert.Equal(48, Marshal.OffsetOf<WindowsLdapContextQuery.Statistics>("ModifiedId").ToInt32());
+        Assert.True(WindowsLdapContextQuery.IsAnonymousSid(new byte[] { 1, 1, 0, 0, 0, 0, 0, 5, 7, 0, 0, 0 }));
+        Assert.False(WindowsLdapContextQuery.IsAnonymousSid(new byte[] { 1, 1, 0, 0, 0, 0, 0, 5, 18, 0, 0, 0 }));
+        Assert.True(WindowsLdapContextQuery.CanUseProcessToken(1008));
+        foreach (int error in new[] { 0, 5, 1347, 122 }) Assert.False(WindowsLdapContextQuery.CanUseProcessToken(error));
+        // Never execute token queries from this pure class, even in live test mode.
+        if (OfflineTestGuard.Enabled || !OperatingSystem.IsWindows()) Assert.Null(WindowsLdapContextQuery.Capture());
+    }
+
+    [Fact]
+    public void Token_user_parser_checks_embedded_pointer_revision_and_length_without_native_queries()
+    {
+        int offset = IntPtr.Size == 8 ? 16 : 8;
+        var buffer = Marshal.AllocHGlobal(128);
+        try
+        {
+            var sid = IntPtr.Add(buffer, offset);
+            Marshal.WriteIntPtr(buffer, sid);
+            Marshal.Copy(new byte[] { 1, 1, 0, 0, 0, 0, 0, 5, 7, 0, 0, 0 }, 0, sid, 12);
+            Assert.True(WindowsLdapContextQuery.ReadAnonymousSid(buffer, (uint)(offset + 12)));
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(buffer, (uint)(offset + 11)));
+            Marshal.WriteByte(sid, 0, 0);
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(buffer, 128));
+            Marshal.WriteByte(sid, 0, 1); Marshal.WriteByte(sid, 1, 16);
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(buffer, 128));
+            Marshal.WriteIntPtr(buffer, IntPtr.Add(buffer, 129));
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(buffer, 128));
+            Marshal.WriteIntPtr(buffer, IntPtr.Subtract(buffer, 1));
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(buffer, 128));
+            Assert.Null(WindowsLdapContextQuery.ReadAnonymousSid(IntPtr.Zero, 128));
+        }
+        finally { Marshal.FreeHGlobal(buffer); }
+    }
+
+    [Fact]
+    public void Scoped_materialization_requests_fresh_external_schema_despite_root_policy()
+    {
+        using var root = new AdForLinux.DirectoryServices.DirectoryEntry("LDAP://127.0.0.1:1636/CN=synthetic");
+        root.Options.Referral = ReferralChasingOption.None;
+        var sentinel = new InvalidOperationException("synthetic factory stop");
+        root.OperationSessionFactory = (_, count, referral, fresh, _) =>
+        {
+            Assert.Equal(1, count); Assert.Equal(ReferralChasingOption.External, referral); Assert.True(fresh);
+            throw sentinel; // Stop before any native allocation/bind.
+        };
+        Assert.Same(sentinel, Assert.Throws<InvalidOperationException>(() =>
+            root.AcquireContextScopedReadSchemaConnection(root.CaptureBindingAuthority())));
+    }
+
+    [Theory]
+    [InlineData(SearchScope.Base)]
+    [InlineData(SearchScope.OneLevel)]
+    [InlineData(SearchScope.Subtree)]
+    public void Production_configuration_rejects_unsupported_transports_and_ambiguous_hosts(SearchScope scope)
+    {
+        LdapConnectionOptions Make(string host = "127.0.0.1", int port = 636, bool ssl = true,
+            bool startTls = false, bool skip = false, AuthType auth = AuthType.Basic,
+            string? user = "synthetic", string? password = "synthetic", bool sign = false, bool seal = false)
+            => new() { Host = host, Port = port, UseSsl = ssl, UseStartTls = startTls,
+                SkipCertificateCheck = skip, AuthenticationType = auth, BindDn = user,
+                BindPassword = password, Signing = sign, Sealing = seal };
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", scope) { SizeLimit = 1 };
+        Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Make(), ReferralChasingOption.External, request));
+        foreach (var options in new[] { Make(host: "dc.example.test other.example.test"), Make(host: "ldaps://dc.example.test"), Make(host: "::1"),
+            Make(host: "dc.example.test:636"), Make(port: 0), Make(port: 65536), Make(ssl: false), Make(startTls: true),
+            Make(skip: true), Make(auth: AuthType.Negotiate), Make(auth: AuthType.Kerberos), Make(auth: AuthType.Anonymous),
+            Make(user: null), Make(user: ""), Make(password: null), Make(password: ""), Make(sign: true), Make(seal: true) })
+            Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request));
+    }
+
+    [Fact]
+    public void Explicit_remote_host_eligibility_preserves_native_names_and_exact_key_isolation()
+    {
+        string[] names = ["127.0.0.1", "192.0.2.10", "198.51.100.20", "dc.example.test", "DC.example.test", "dc-1.example.test", "dc1", "xn--example-9d0b.test"];
+        var keys = new HashSet<LdapConnectionProvider.ConnectionKey>();
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        foreach (var name in names)
+        {
+            Assert.True(LdapConnectionProvider.IsExplicitWindowsLdapsHost(name));
+            var options = new LdapConnectionOptions { Host = name, BindDn = "synthetic", BindPassword = "synthetic" };
+            Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(options, ReferralChasingOption.External, request));
+            Assert.Equal(name, options.Clone().Host);
+            Assert.True(keys.Add(LdapConnectionProvider.ConnectionKey.CreateContextScoped(options, ReferralChasingOption.External, A)));
+        }
+        foreach (var name in new string?[] { null, "", " ", "dc.example.test other.example.test", "dc.example.test\0suffix",
+            "ldaps://dc.example.test", "dc.example.test:636", "dc.example.test/path", "user@dc.example.test", "dc.example.test.",
+            ".dc.example.test", "dc..example.test", "-dc.example.test", "dc-.example.test", "_ldap.example.test", "dç.example.test",
+            "::1", "[::1]", "127.1", "2130706433", "0177.0.0.1", "127.0.0.01", "999.0.0.1", "12345.678",
+            new string('a', 64) + ".test", string.Join('.', Enumerable.Repeat(new string('a', 63), 4)) })
+            Assert.False(LdapConnectionProvider.IsExplicitWindowsLdapsHost(name));
+        var independent = new LdapConnectionOptions { Host = "dc.example.test", BindDn = "synthetic", BindPassword = "different" };
+        Assert.DoesNotContain(LdapConnectionProvider.ConnectionKey.CreateContextScoped(independent, ReferralChasingOption.External, A), keys);
+        var sameCredentials = new LdapConnectionOptions { Host = "dc.example.test", BindDn = "synthetic", BindPassword = "synthetic" };
+        Assert.DoesNotContain(LdapConnectionProvider.ConnectionKey.CreateContextScoped(sameCredentials, ReferralChasingOption.External, B), keys);
+    }
+
+    [Theory]
+    [InlineData(SearchScope.Base)]
+    [InlineData(SearchScope.OneLevel)]
+    [InlineData(SearchScope.Subtree)]
+    public void FindOne_routing_excludes_mutable_control_async_and_override_paths(SearchScope scope)
+    {
+        using var searcher = new AdForLinux.DirectoryServices.DirectorySearcher();
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", scope) { SizeLimit = 1 };
+        Assert.True(searcher.CanUseContextScopedRead(request));
+        searcher.Asynchronous = true; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.Asynchronous = false;
+        searcher.PageSize = 1; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.PageSize = 0;
+        searcher.DirectorySynchronization = new(); Assert.False(searcher.CanUseContextScopedRead(request)); searcher.DirectorySynchronization = null;
+        searcher.VirtualListView = new(); Assert.False(searcher.CanUseContextScopedRead(request)); searcher.VirtualListView = null;
+        searcher.SearchScope = AdForLinux.DirectoryServices.SearchScope.Base;
+        searcher.AttributeScopeQuery = "member"; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.AttributeScopeQuery = "";
+        searcher.ConfigureConnectionOverride = _ => { }; Assert.False(searcher.CanUseContextScopedRead(request)); searcher.ConfigureConnectionOverride = null;
+        request.Controls.Add(new PageResultRequestControl(1)); Assert.False(searcher.CanUseContextScopedRead(request)); request.Controls.Clear();
+        Assert.True(searcher.CanUseContextScopedRead(request));
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", SearchScope.Base)]
+    [InlineData("dc.example.test", SearchScope.Base)]
+    [InlineData("192.0.2.10", SearchScope.Base)]
+    [InlineData("127.0.0.1", SearchScope.OneLevel)]
+    [InlineData("dc.example.test", SearchScope.OneLevel)]
+    [InlineData("192.0.2.10", SearchScope.OneLevel)]
+    [InlineData("127.0.0.1", SearchScope.Subtree)]
+    [InlineData("dc.example.test", SearchScope.Subtree)]
+    [InlineData("192.0.2.10", SearchScope.Subtree)]
+    public void Ordinary_route_selects_only_supported_Windows_path_and_respects_retained_seams(string host, SearchScope scope)
+    {
+        using var root = new AdForLinux.DirectoryServices.DirectoryEntry($"LDAP://{host}:1636/CN=synthetic", "synthetic", "synthetic",
+            AdForLinux.DirectoryServices.AuthenticationTypes.SecureSocketsLayer);
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", scope) { SizeLimit = 1 };
+        var authority = root.CaptureBindingAuthority();
+        // No diagnostic capability. On Windows, selection reaches the offline
+        // guard before any token/native call; other platforms keep ordinary routing.
+        if (OperatingSystem.IsWindows() && OfflineTestGuard.Enabled)
+            Assert.Equal(OfflineTestGuard.Message, Assert.Throws<InvalidOperationException>(() =>
+                root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _)).Message);
+        else if (!OperatingSystem.IsWindows())
+            Assert.False(root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _));
+        foreach (var mode in new[] { ReferralChasingOption.Subordinate, ReferralChasingOption.All })
+            Assert.False(root.TryContextScopedRead(request, mode, null, authority, out _));
+        root.OperationSessionFactory = (_, _, _, _, _) => throw new Exception("Must not enter retained seam");
+        Assert.False(root.TryContextScopedRead(request, ReferralChasingOption.External, null, authority, out _));
+    }
+
+    [Fact]
+    public void Scoped_production_is_Windows_only_and_general_provider_remains_guarded()
+    {
+        Assert.Equal(OperatingSystem.IsWindows(), LdapConnectionProvider.ContextScopedProductionEnabled);
+        var request = new SearchRequest("CN=synthetic", "(objectClass=*)", SearchScope.Base);
+        Assert.True(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+        foreach (var mode in new[] { ReferralChasingOption.None, ReferralChasingOption.Subordinate, ReferralChasingOption.All })
+            Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, mode, request));
+        request.Scope = SearchScope.Subtree; request.SizeLimit = 0;
+        Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+        request.Scope = SearchScope.Base; request.Controls.Add(new PageResultRequestControl(1));
+        Assert.False(LdapConnectionProvider.IsContextScopedReadConfiguration(Options, ReferralChasingOption.External, request));
+        Assert.Equal(OperatingSystem.IsLinux(), LdapConnectionProvider.CanReuse(Options, ReferralChasingOption.External));
+        Assert.True(LdapConnectionProvider.CanReuse(Options, ReferralChasingOption.None));
+    }
+}

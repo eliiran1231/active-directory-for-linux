@@ -17,7 +17,7 @@ internal static class LdapExceptionTranslator
     {
         try
         {
-            return connection.SendRequest(request);
+            return connection.SendRequestTracked(request);
         }
         catch (Exception exception) when (IsProtocolFailure(exception))
         {

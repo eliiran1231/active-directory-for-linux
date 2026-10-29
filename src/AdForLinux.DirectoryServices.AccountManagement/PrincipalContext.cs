@@ -495,7 +495,7 @@ public partial class PrincipalContext : IDisposable
     }
 
     internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
-        = static options => new CrossContextSaveSession(options);
+        = CrossContextSaveSession.DefaultFactory;
 
     // Offline request-contract tests intercept execution, not context construction.
     internal Func<DirectorySearcher, SearchResultCollection>? DateFinderSearchOverride { get; set; }
@@ -569,8 +569,7 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
-            return RootDse.GetConnectedServerName(connection);
+            return LdapConnectionProvider.Execute(BuildOptions(), RootDse.GetConnectedServerName);
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {
@@ -582,9 +581,9 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
-            return RootDse.GetDefaultNamingContext(connection)
-                ?? throw new InvalidOperationException("The server did not report a default naming context.");
+            return LdapConnectionProvider.Execute(BuildOptions(), connection =>
+                RootDse.GetDefaultNamingContext(connection)
+                ?? throw new InvalidOperationException("The server did not report a default naming context."));
         }
         catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
         {
@@ -594,8 +593,8 @@ public partial class PrincipalContext : IDisposable
 
     private string DiscoverRootDomainNamingContext()
     {
-        using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
-        var values = RootDse.Read(connection, "rootDomainNamingContext");
+        var values = LdapConnectionProvider.Execute(BuildOptions(),
+            connection => RootDse.Read(connection, "rootDomainNamingContext"));
         return values.TryGetValue("rootDomainNamingContext", out var namingContext)
             ? namingContext
             : DefaultNamingContext;
@@ -614,13 +613,15 @@ public partial class PrincipalContext : IDisposable
                 return;
             }
 
-            using var connection = LdapConnectionFactory.CreateBound(BuildOptions());
+            // Resolve nested discovery before reserving a connection, including at capacity one.
+            var namingContext = DefaultNamingContext;
             var request = new SearchRequest(
-                DefaultNamingContext,
+                namingContext,
                 "(objectClass=*)",
                 System.DirectoryServices.Protocols.SearchScope.Base,
                 "wellKnownObjects");
-            var response = (SearchResponse)connection.SendRequest(request);
+            var response = LdapConnectionProvider.Execute(BuildOptions(),
+                connection => (SearchResponse)connection.SendRequest(request));
 
             string? users = null;
             string? computers = null;
@@ -791,7 +792,7 @@ public partial class PrincipalContext : IDisposable
         string? password,
         ContextOptions options)
     {
-        using var connection = LdapConnectionFactory.CreateBound(
+        using var session = LdapConnectionProvider.AcquireValidation(
             BuildOptions(userName, password, options, useContextPort: false));
     }
 
