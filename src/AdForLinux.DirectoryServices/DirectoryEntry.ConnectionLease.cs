@@ -39,6 +39,7 @@ public partial class DirectoryEntry
     internal ConnectionLease[] AcquireConnections(int count, Action? validate = null,
         ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         void Validate() { ThrowIfDisposed(); validate?.Invoke(); }
         var generation = IdentityLifetime.Capture(Validate);
         var snapshot = IdentityLifetime.Checked(generation, Validate, () =>
@@ -46,8 +47,14 @@ public partial class DirectoryEntry
              Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired || forceFresh,
              Existing: forceFresh ? null : schema ? _schemaConnection : _connection, Schema: forceFresh ? null : _schemaConnection));
         if (snapshot.Existing is not null)
-            return Enumerable.Range(0, count).Select(index =>
-                new ConnectionLease(index == 0 ? snapshot.Existing : snapshot.Schema ?? snapshot.Existing)).ToArray();
+        {
+            if (count == 1) return [new ConnectionLease(snapshot.Existing)];
+            // Retained handles remain entry-owned. Never hand out two leases
+            // for one physical connection, or partially acquire a batch.
+            if (count != 2 || snapshot.Schema is null || ReferenceEquals(snapshot.Existing, snapshot.Schema))
+                throw new InvalidOperationException("The retained connections cannot supply distinct operation leases.");
+            return [new ConnectionLease(snapshot.Existing), new ConnectionLease(snapshot.Schema)];
+        }
         var sessions = LdapExceptionTranslator.Execute(() => OperationSessionFactory is { } open
             ? open(snapshot.Options, count, snapshot.Referral, snapshot.Fresh, snapshot.Minimum)
             : LdapConnectionProvider.AcquireBatch(snapshot.Options, count, referrals: snapshot.Referral,

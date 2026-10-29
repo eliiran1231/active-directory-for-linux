@@ -130,6 +130,13 @@ internal static partial class LdapConnectionProvider
 
     internal static bool IsConnectionFailure(Exception error)
     {
+        // LDAP_FILTER_ERROR is a local search-filter encoding failure, not a
+        // damaged connection. Keep this narrow: other client errors can leave
+        // delivery/completion uncertain. DirectorySearcher preserves it as the
+        // inner exception when translating the public Filter argument error.
+        if (error is LdapException { ErrorCode: 87 } ||
+            error is ArgumentException { InnerException: LdapException { ErrorCode: 87 } })
+            return false;
         if (error is DirectoryOperationException operation)
             return operation.Response is null || operation.Response.ResultCode is ResultCode.Unavailable or ResultCode.ProtocolError;
         if (error is DirectoryServicesCOMException { InnerException: DirectoryOperationException protocol })
