@@ -606,3 +606,98 @@ Overdelivery is rejected before publishing excess entries, preserving the delive
 prefix; it cannot preserve a later server result that was never received.
 See [RFC2696 section 3](https://www.rfc-editor.org/rfc/rfc2696.html#section-3) and
 [RFC2891](https://www.rfc-editor.org/rfc/rfc2891.html) for paging/sort encoding.
+
+## User-run real AD Kerberos interop
+
+The existing **Differential (real AD)** workflow defaults to Windows LDAPS Basic
+comparison. That result does not validate this Linux backend. Its new manual `backend`
+choice, `restricted-linux-kerberos`, selects a separate read-only job; the Windows job
+and its OU creation/deletion are excluded from that selection. This is an interop test
+of the restricted implementation, not a Microsoft-versus-Linux Kerberos differential.
+No real AD run was dispatched while preparing this harness.
+
+Before selecting it, an administrator must already have supplied:
+
+- An unprivileged Linux runner labelled `ad-kerberos-runner`, with .NET SDK 10 and
+  both .NET 8/10 runtimes. Existing `ad-lab` environment protections still apply.
+  Runner availability is not verified here; without that runner GitHub will queue
+  the job, not report a successful prerequisite check.
+- An immutable, administrator-adopted native bundle built from the reviewed pooling
+  code, including the owned-cache/context-lifetime bridge. Follow the existing build
+  and admission instructions above. The harness neither builds/installs this deployment
+  nor changes trust, capabilities, host configuration or credentials.
+- Reachable exact LDAP and KDC endpoints, correct realm/DNS/time and the matching
+  `ldap/<ServiceHost>` service identity. Use LDAP with GSSAPI signing/sealing, normally
+  port 389; this restricted profile does not support LDAPS, referrals, cross-realm
+  routing or ambient configuration fallback.
+- Two explicit, sufficiently long-lived, test-only FILE-cache snapshots for distinct
+  principals, provisioned outside the harness. Paths are runner-local configuration,
+  not Windows password secrets. Keep them stable during import. The harness copies
+  and zeroes its managed buffers; it does not delete or refresh administrator-owned
+  source files, so the provisioning owner remains responsible for their lifecycle.
+- Four existing read fixtures under one search base: two visible only to identity A,
+  two only to B. Both searches use the same filter. Each identity must see exactly
+  its two expected DNs and marker values, and permit normal rootDSE/schema reads.
+  The test does not provision objects or ACLs.
+  If these fixtures/identities do not exist, their creation or permission changes
+  require a separately authorized setup; do not reuse two unrestricted admin caches.
+
+Set the `ad-lab` GitHub environment variable **`AD_KERBEROS_TEST_CONFIG`** to an
+absolute path on that Linux runner. Store this JSON there, replacing placeholders
+with the existing test configuration (never commit the real file):
+
+```json
+{
+  "DeploymentDirectory": "/opt/adfl/approved-version",
+  "Realm": "LAB.EXAMPLE",
+  "ServiceHost": "dc01.lab.example", "ServicePort": 389,
+  "KdcHost": "dc01.lab.example", "KdcPort": 88,
+  "CacheA": "/run/adfl-tests/client-a.ccache",
+  "CacheB": "/run/adfl-tests/client-b.ccache",
+  "SearchBaseDn": "OU=KerberosReadTests,DC=lab,DC=example",
+  "SearchFilter": "(description=adfl-pool-*)",
+  "MarkerAttribute": "description",
+  "MarkerValueA": "adfl-pool-a", "MarkerValueB": "adfl-pool-b",
+  "ExpectedDnsA": ["CN=A1,OU=KerberosReadTests,DC=lab,DC=example", "CN=A2,OU=KerberosReadTests,DC=lab,DC=example"],
+  "ExpectedDnsB": ["CN=B1,OU=KerberosReadTests,DC=lab,DC=example", "CN=B2,OU=KerberosReadTests,DC=lab,DC=example"]
+}
+```
+
+In Actions, choose **Differential (real AD) → Run workflow**, select the reviewed
+feature branch, and choose **restricted-linux-kerberos**. Merely entering a PR number
+does not check out that PR. The workflow builds the harness, preflights both runtimes
+without reading credential bytes/binding, then explicitly runs both against AD.
+It installs nothing and uploads no configuration, cache, directory-value or raw-log artifacts.
+
+For a trusted clean local checkout, the equivalent commands are:
+
+```sh
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
+dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release
+revision=$(git rev-parse HEAD)
+for framework in net8.0 net10.0; do
+  dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+    --ad-kerberos-preflight "$ADFL_AD_KERBEROS_CONFIG" "$revision"
+done
+# Only after reviewing the selected AD target, test snapshots and fixture scope:
+for framework in net8.0 net10.0; do
+  dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+    --ad-kerberos-run "$ADFL_AD_KERBEROS_CONFIG" "$revision"
+done
+```
+
+Do not clear `ADFL_OFFLINE_TESTS` in an offline verification job: authenticated mode
+refuses it. Reports identify backend, authentication policy, runtime and matching build
+revision. Exit 2 / `MISSING_PREREQUISITES` is non-success; preflight success says
+`READY_NOT_AUTHENTICATED`, never Kerberos passed. Exit 1 is an authenticated-stage or
+cleanup failure. Only exit 0 with final `PASSED` means the selected interop checks finished.
+
+Checks cover two nonempty pages, zero additional group creations on a repeated public
+operation plus positive reuse delta, independent identity contexts, publication switching,
+Close freshness, disposed-manager rejection, pre-cancelled central admission and verified
+worker cleanup. The counter deltas are printed; they are not wire Bind counts. Identity
+evidence comes from the configured server ACL fixture's exact result sets, not independent
+WhoAmI or ACL inspection. The admitted native binder enforces negotiated signing/sealing.
+Expiry/renewal, in-flight publication races, native fault injection, Windows Kerberos,
+ambient reuse and wire Bind counting are explicitly excluded and remain separate offline,
+isolated-lab or future implementation work. A passing run does not establish all AD APIs.

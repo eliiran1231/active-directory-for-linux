@@ -31,6 +31,14 @@ jobs:
       - run: dotnet build tests/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }}
       - run: python tests/test_offline_runner.py
       - run: python tests/run-offline-tests.py functional --framework ${{ matrix.framework }} --results-directory artifacts/functional
+      - name: Compile AD Kerberos harness and check negative admission offline
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release --framework '${{ matrix.framework }}'
+          python3 tests/test_ad_kerberos_entrypoint.py --dotnet dotnet \
+            --assembly 'tests/native-session/worker-demo/bin/Release/${{ matrix.framework }}/AdForLinux.NativeWorkerDemo.dll'
       - if: runner.os == 'Windows'
         run: python tests/run-offline-tests.py surface --framework ${{ matrix.framework }} --results-directory artifacts/surface
       - if: runner.os == 'Windows'

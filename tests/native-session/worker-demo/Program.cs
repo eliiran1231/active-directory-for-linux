@@ -8,6 +8,11 @@ using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 using Microsoft.Win32.SafeHandles;
 
+if (args is ["--ad-kerberos-preflight", var preflightConfig, var preflightCommit])
+    return await AdKerberosIntegration.Run(preflightConfig, preflightCommit, execute: false);
+if (args is ["--ad-kerberos-run", var adConfig, var adCommit])
+    return await AdKerberosIntegration.Run(adConfig, adCommit, execute: true);
+
 if (args is ["--real-lab-runtime-probe"])
 {
     _ = System.Security.Cryptography.HMACSHA256.HashData(new byte[32], "runtime-fixture"u8);

@@ -24,9 +24,15 @@ on:
         description: "Optional PR number for the run name; dispatch from that trusted PR branch separately"
         required: false
         default: ""
+      backend:
+        description: "Windows differential, or explicit read-only restricted Linux Kerberos interop"
+        type: choice
+        options: [windows-differential, restricted-linux-kerberos]
+        default: windows-differential
 
 jobs:
   differential-tests:
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.backend == 'windows-differential' || inputs.backend == '')) }}
     # Must match the label(s) you gave the runner when you registered it.
     runs-on: [self-hosted, windows, ad-runner]
     timeout-minutes: 180
@@ -134,6 +140,55 @@ jobs:
             -Credential $credential `
             -Recursive `
             -Confirm:$false
+
+  restricted-linux-kerberos:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.backend == 'restricted-linux-kerberos' }}
+    # A separately provisioned unprivileged Linux runner is required. No runner,
+    # credential source, native bundle or security configuration is created here.
+    runs-on: [self-hosted, linux, ad-kerberos-runner]
+    environment: ad-lab
+    timeout-minutes: 15
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      ADFL_AD_KERBEROS_CONFIG: ${{ vars.AD_KERBEROS_TEST_CONFIG }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check existing Linux runtime prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing() { echo '{"status":"MISSING_PREREQUISITES","stage":"dotnet-sdk-or-runtime"}'; exit 2; }
+          command -v dotnet >/dev/null || missing
+          dotnet --list-sdks | grep -q '^10\.' || missing
+          dotnet --list-runtimes | grep -q '^Microsoft.NETCore.App 8\.' || missing
+          dotnet --list-runtimes | grep -q '^Microsoft.NETCore.App 10\.' || missing
+      - name: Build reviewed test harness (existing SDK and runtimes required)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release
+      - name: Preflight without credential reads or authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          for framework in net8.0 net10.0; do
+            dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+              --ad-kerberos-preflight "$ADFL_AD_KERBEROS_CONFIG" "$GITHUB_SHA"
+          done
+      - name: Read-only owned Kerberos interop (no Basic fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for framework in net8.0 net10.0; do
+            dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+              --ad-kerberos-run "$ADFL_AD_KERBEROS_CONFIG" "$GITHUB_SHA"
+          done
+      # Deliberately no upload: configuration, caches, native diagnostics and
+      # directory values must not become workflow artifacts. Only fixed JSON
+      # statuses and aggregate counters are printed by this harness.
 
 # --- One-time self-hosted runner setup (do this once on your Windows box) ---
 #
