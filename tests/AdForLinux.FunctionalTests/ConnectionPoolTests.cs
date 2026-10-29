@@ -412,6 +412,15 @@ public class ConnectionPoolTests
             Assert.False(LdapConnectionProvider.IsConnectionFailure(LdapExceptionTranslator.Translate(Failure(result))));
         }
         Assert.True(LdapConnectionProvider.IsConnectionFailure(new LdapException(81)));
+        Assert.False(LdapConnectionProvider.IsConnectionFailure(new LdapException(87)));
+        // A plain COM translation drops the cause; do not infer health from HRESULT alone.
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(LdapExceptionTranslator.Translate(new LdapException(87))));
+        Assert.False(LdapConnectionProvider.IsConnectionFailure(new ArgumentException("filter", "Filter", new LdapException(87))));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new ArgumentException("unknown")));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new ArgumentException("transport", new LdapException(81))));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new LdapException(82)));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new LdapException(85)));
+        Assert.True(LdapConnectionProvider.IsConnectionFailure(new LdapException(999)));
         Assert.True(LdapConnectionProvider.IsConnectionFailure(Failure(ResultCode.Unavailable)));
         Assert.True(LdapConnectionProvider.IsConnectionFailure(new OperationCanceledException()));
     }

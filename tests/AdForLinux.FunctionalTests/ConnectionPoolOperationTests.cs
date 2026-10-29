@@ -335,6 +335,140 @@ public partial class ConnectionPoolOperationTests
         Assert.Equal(1, fixture.Pool.Snapshot.Total); Assert.Equal(0, fixture.Connections[0].Disposals);
     }
 
+    [Theory]
+    [InlineData(false, 87, false)]
+    [InlineData(false, 81, true)]
+    [InlineData(true, 87, true)]
+    public void Buffered_search_failure_preserves_only_healthy_unpaged_session(bool paged, int code, bool retired)
+    {
+        using var fixture = new Fixture(); using var root = fixture.Entry();
+        using var search = new Searcher(root) { ReferralChasing = ReferralChasingOption.None, PageSize = paged ? 10 : 0 };
+        using (var initial = search.FindAll()) Assert.Single(initial.Cast<SearchResult>());
+        var before = fixture.Requests.Count;
+        var failure = new LdapException(code);
+        fixture.OnRequest = request =>
+        {
+            if (request is SearchRequest query && !query.Attributes.Contains("1.1")) throw failure;
+        };
+        if (code == 87)
+        {
+            using var failed = search.FindAll();
+            var error = Assert.Throws<ArgumentException>(() => failed.Cast<SearchResult>().ToArray());
+            Assert.Null(error.ParamName); Assert.Same(failure, error.InnerException);
+        }
+        else Assert.ThrowsAny<System.Runtime.InteropServices.COMException>(() => search.FindAll());
+        Assert.Equal(1, fixture.Requests.Skip(before).OfType<SearchRequest>().Count(r => !r.Attributes.Contains("1.1")));
+        Assert.Equal(retired ? 1 : 0, fixture.Connections[0].Disposals);
+        fixture.OnRequest = null;
+        using var recovered = search.FindAll();
+        Assert.Single(recovered.Cast<SearchResult>());
+        // Each factory invocation represents one bound session; recovery is a
+        // separate caller operation, never a retry of the failed request.
+        Assert.Equal(retired ? 2 : 1, fixture.Connections.Count);
+    }
+
+    [Theory]
+    [InlineData(false, 87, false)]
+    [InlineData(false, 81, true)]
+    [InlineData(true, 87, true)]
+    public void Streaming_begin_failure_preserves_only_healthy_unpaged_pair(bool paged, int code, bool retired)
+    {
+        using var fixture = new Fixture(2); using var root = fixture.Entry();
+        root.RefreshCache(["description"]);
+        using var search = new Searcher(root) { ReferralChasing = ReferralChasingOption.None,
+            Asynchronous = true, PageSize = paged ? 10 : 0 };
+        var attempts = 0;
+        var failure = new LdapException(code);
+        search.BeginSearchOverride = (_, _, _, _) =>
+        {
+            attempts++;
+            if (paged) search.PageSize = 0; // Cleanup follows the captured request, not mutable searcher settings.
+            throw failure;
+        };
+        using (var results = search.FindAll())
+        {
+            if (code == 87)
+            {
+                var error = Assert.Throws<ArgumentException>(() => results.Cast<SearchResult>().ToArray());
+                Assert.Same(failure, error.InnerException);
+            }
+            else Assert.ThrowsAny<System.Runtime.InteropServices.COMException>(() => results.Cast<SearchResult>().ToArray());
+        }
+        Assert.Equal(1, attempts);
+        Assert.Equal(retired ? 0 : 2, fixture.Pool.Snapshot.Total);
+        Assert.All(fixture.Connections, c => Assert.Equal(retired ? 1 : 0, c.Disposals));
+        using var next = new LeasePair(root.AcquireConnections(2));
+        Assert.Equal(retired ? 4 : 2, fixture.Connections.Count);
+    }
+
+    [Theory]
+    [InlineData(1, 0, false, true)]
+    [InlineData(2, 0, false, false)]
+    [InlineData(2, 1, false, false)]
+    [InlineData(2, 2, false, true)]
+    [InlineData(3, 2, false, false)]
+    [InlineData(1, 2, true, true)]
+    [InlineData(2, 2, true, false)]
+    [InlineData(0, 2, false, false)]
+    [InlineData(-1, 2, false, false)]
+    public void Retained_batch_requires_distinct_handles_without_transferring_ownership(int count, int schemaKind, bool schema, bool succeeds)
+    {
+        using var entry = new Entry("LDAP://directory.invalid/CN=retained",
+            new LdapConnectionOptions { Host = "directory.invalid", BindDn = "reader", BindPassword = "synthetic-unused" });
+        var first = Connection.Create(_ => throw new InvalidOperationException());
+        var second = schemaKind == 2 ? Connection.Create(_ => throw new InvalidOperationException()) : null;
+        typeof(Entry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(entry, first);
+        typeof(Entry).GetField("_schemaConnection", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(entry, schemaKind == 1 ? first : second);
+        entry.OperationSessionFactory = (_, _, _, _, _) => throw new Xunit.Sdk.XunitException("No partial pool acquisition allowed.");
+        if (succeeds)
+        {
+            var leases = entry.AcquireConnections(count, schema: schema);
+            Assert.Equal(count, leases.Select(l => l.Connection).Distinct().Count());
+            Assert.Same(schema ? second : first, leases[0].Connection);
+            foreach (var lease in leases) { lease.Invalidate(); lease.Dispose(); lease.Dispose(); }
+        }
+        else if (count <= 0) Assert.Throws<ArgumentOutOfRangeException>(() => entry.AcquireConnections(count, schema: schema));
+        else Assert.Throws<InvalidOperationException>(() => entry.AcquireConnections(count, schema: schema));
+        Assert.Equal(0, first.Disposals); if (second is not null) Assert.Equal(0, second.Disposals);
+        Assert.Throws<OperationCanceledException>(() => entry.AcquireConnections(1, () => throw new OperationCanceledException()));
+        Assert.Equal(0, first.Disposals);
+        entry.Close(); // The entry still owns both retained handles, including aliases.
+        // Close retains its existing per-field disposal behavior for aliased handles.
+        Assert.Equal(schemaKind == 1 ? 2 : 1, first.Disposals); if (second is not null) Assert.Equal(1, second.Disposals);
+    }
+
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, false)]
+    [InlineData(2, true)]
+    public void Provider_batch_does_not_borrow_unselected_retained_handles(int count, bool forceFresh)
+    {
+        using var fixture = new Fixture(3); using var entry = fixture.Entry();
+        var retained = Connection.Create(_ => throw new InvalidOperationException());
+        typeof(Entry).GetField("_schemaConnection", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(entry, retained);
+        if (forceFresh)
+            typeof(Entry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(entry, retained);
+        using (var pair = new LeasePair(entry.AcquireConnections(count, forceFresh: forceFresh)))
+        {
+            Assert.Equal(count, pair.Leases.Select(l => l.Connection).Distinct().Count());
+            Assert.DoesNotContain(pair.Leases, l => ReferenceEquals(l.Connection, retained));
+        }
+        Assert.Equal(0, retained.Disposals);
+        Assert.Equal(count, fixture.Pool.Snapshot.Total);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Empty_batch_is_rejected_before_factory(int count)
+    {
+        using var fixture = new Fixture(); using var entry = fixture.Entry();
+        Assert.Throws<ArgumentOutOfRangeException>(() => entry.AcquireConnections(count));
+        Assert.Empty(fixture.Connections);
+    }
+
     [Fact]
     public void Ranged_read_rejects_rebind_during_request_before_publishing_values()
     {

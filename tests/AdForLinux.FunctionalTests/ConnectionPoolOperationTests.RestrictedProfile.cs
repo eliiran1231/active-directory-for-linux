@@ -11,6 +11,41 @@ public partial class ConnectionPoolOperationTests
         Path.GetFullPath("/nonexistent-adfl-bundle/version-1"), "/nonexistent-adfl-cache/client", "EXAMPLE.INVALID",
         "directory.invalid", 389, "kdc.invalid");
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Restricted_schema_planning_cannot_promote_invalid_batch_counts(int count)
+    {
+        using var entry = RestrictedRecipe().CreateDirectoryEntry("");
+        entry.OperationSessionFactory = (_, _, _, _, _) => throw new Xunit.Sdk.XunitException("Invalid count reached admission.");
+        Assert.Throws<ArgumentOutOfRangeException>(() => entry.AcquireConnections(count, independentNativeSchema: true));
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    public void Restricted_schema_planning_preserves_profile_and_ignores_unmarked_retained_aliases(bool independent, int expected)
+    {
+        var profile = RestrictedRecipe();
+        using var entry = profile.CreateDirectoryEntry("");
+        var retained = Connection.Create(_ => throw new Exception("Retained identity used"));
+        typeof(DirectoryEntry).GetField("_connection", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(entry, retained);
+        typeof(DirectoryEntry).GetField("_schemaConnection", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(entry, retained);
+        var admission = new InvalidOperationException("Recording admission boundary");
+        var calls = 0;
+        entry.OperationSessionFactory = (options, count, referrals, _, _) =>
+        {
+            calls++;
+            Assert.Same(profile, options.RestrictedKerberos);
+            Assert.Equal(expected, count);
+            Assert.Equal(ReferralChasingOption.None, referrals);
+            throw admission;
+        };
+        Assert.Same(admission, Assert.Throws<InvalidOperationException>(() => entry.AcquireConnections(1, independentNativeSchema: independent)));
+        Assert.Equal(1, calls);
+        Assert.Equal(0, retained.Disposals);
+    }
+
     [Fact]
     public void Explicit_restricted_selection_is_inert_preserved_and_never_ambient_fallback()
     {

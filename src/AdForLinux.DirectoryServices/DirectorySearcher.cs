@@ -674,9 +674,10 @@ public partial class DirectorySearcher : Component
                         pageControl.Cookie = cookie;
                     }
                 }
-                catch
+                catch (Exception error)
                 {
-                    foreach (var lease in leases) lease.Invalidate();
+                    if (pageControl is not null || LdapConnectionProvider.IsConnectionFailure(error))
+                        foreach (var lease in leases) lease.Invalidate();
                     throw;
                 }
                 finally
@@ -701,7 +702,11 @@ public partial class DirectorySearcher : Component
         }
     }
 
-    private static SearchResponse SendSearchAsynchronously(
+    // Protocols BeginSendRequest is nonvirtual. This internal dispatch seam lets
+    // controlled tests exercise producer cleanup when initiation fails.
+    internal Func<LdapConnection, SearchRequest, TimeSpan, PartialResultProcessing, IAsyncResult>? BeginSearchOverride { get; set; }
+
+    private SearchResponse SendSearchAsynchronously(
         LdapConnection connection,
         LdapConnection schemaConnection,
         SearchRequest request,
@@ -733,7 +738,7 @@ public partial class DirectorySearcher : Component
         try
         {
             origin.Authority.Validate();
-            asyncResult = timeout >= TimeSpan.Zero
+            asyncResult = BeginSearchOverride is { } begin ? begin(connection, request, timeout, partialMode) : timeout >= TimeSpan.Zero
                 ? connection.BeginSendRequest(request, timeout, partialMode, null, null)
                 : connection.BeginSendRequest(request, partialMode, null, null);
 
