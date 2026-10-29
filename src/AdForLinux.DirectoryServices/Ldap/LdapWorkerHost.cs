@@ -1,7 +1,8 @@
 namespace AdForLinux.DirectoryServices.Ldap;
 
-internal sealed class LdapWorkerResources(IDisposable owner, ILdapRequestTransport[] sessions) : IDisposable
+internal sealed class LdapWorkerResources(IDisposable owner, ILdapRequestTransport[] sessions, uint credentialLifetimeSeconds = 0) : IDisposable
 {
+    internal uint CredentialLifetimeSeconds { get; } = credentialLifetimeSeconds;
     internal ILdapRequestTransport[] Sessions { get; } = sessions;
     public void Dispose() => owner.Dispose();
 }
@@ -38,7 +39,7 @@ internal static class LdapWorkerHost
             resources = factory(profile);
             if (resources.Sessions.Length != profile.SessionCount || resources.Sessions.Any(value => value is null))
                 throw new InvalidDataException("Factory returned invalid sessions.");
-            await Reply("READY", new LdapWorkerReady(resources.Sessions.Select(value => value.Capabilities & ~LdapTransportCapabilities.ProtocolsConnection).ToArray())).ConfigureAwait(false);
+            await Reply("READY", new LdapWorkerReady(resources.Sessions.Select(value => value.Capabilities & ~LdapTransportCapabilities.ProtocolsConnection).ToArray(), resources.CredentialLifetimeSeconds)).ConfigureAwait(false);
             previous = request.Id;
             while (true)
             {

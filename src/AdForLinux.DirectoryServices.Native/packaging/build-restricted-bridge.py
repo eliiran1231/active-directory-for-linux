@@ -67,7 +67,8 @@ def main():
     exports = out/'restricted.exports'; exports.write_text('{ global: adfl_*; local: *; };\n')
     bridge = out/'libadfl_restricted.so'
     subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-pedantic','-O2','-fPIC',
-        '-fvisibility=hidden','-DADFL_REVIEWED_MIT_1_21_3','-shared','-I'+str(native),
+        '-fvisibility=hidden','-DADFL_REVIEWED_MIT_1_21_3','-DADFL_CAPTURE_CONTEXT_LIFETIME',
+        '-Wl,--wrap=gss_init_sec_context','-shared','-I'+str(native),
         '-I'+str(ldap/'include'),'-I'+str(private/'include'),'-I'+str(mit/'include'),
         *map(str,sources),*map(str,archives),'-Wl,--start-group',*map(str,mit_archives),'-Wl,--end-group',
         '-lresolv','-pthread','-Wl,--exclude-libs,ALL','-Wl,--version-script='+str(exports),

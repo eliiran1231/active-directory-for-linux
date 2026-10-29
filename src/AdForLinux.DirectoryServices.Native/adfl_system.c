@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #include "adfl_native_internal.h"
 #include <sasl/sasl.h>
@@ -6,10 +7,54 @@
 #include <gssapi/gssapi_ext.h>
 #include <gssapi/gssapi_krb5.h>
 #include <sys/random.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Final private static linkage only: observe the actual context without changing
+ * GSS flags, tokens or framing. No process-global symbol interposition. */
+#ifdef ADFL_CAPTURE_CONTEXT_LIFETIME
+static _Thread_local struct {
+    int active;
+    gss_cred_id_t expected;
+    LDAP *completed;
+    unsigned seconds;
+} binding_scope __attribute__((tls_model("initial-exec")));
+OM_uint32 __real_gss_init_sec_context(OM_uint32 *, gss_cred_id_t, gss_ctx_id_t *,
+    gss_name_t, gss_OID, OM_uint32, OM_uint32, gss_channel_bindings_t,
+    gss_buffer_t, gss_OID *, gss_buffer_t, OM_uint32 *, OM_uint32 *);
+OM_uint32 __wrap_gss_init_sec_context(OM_uint32 *minor, gss_cred_id_t credential,
+    gss_ctx_id_t *context, gss_name_t target, gss_OID mechanism, OM_uint32 flags,
+    OM_uint32 requested, gss_channel_bindings_t bindings, gss_buffer_t input,
+    gss_OID *actual, gss_buffer_t output, OM_uint32 *returned, OM_uint32 *time_rec) {
+    OM_uint32 local_time = 0;
+    if (binding_scope.active) binding_scope.seconds = 0;
+    OM_uint32 major = __real_gss_init_sec_context(minor, credential, context,
+        target, mechanism, flags, requested, bindings, input, actual, output,
+        returned, time_rec ? time_rec : &local_time);
+    if (binding_scope.active && credential != GSS_C_NO_CREDENTIAL &&
+        credential == binding_scope.expected && major == GSS_S_COMPLETE) {
+        OM_uint32 query_minor = 0, seconds = 0;
+        if (gss_inquire_context(&query_minor, *context, NULL, NULL, &seconds,
+                NULL, NULL, NULL, NULL) == GSS_S_COMPLETE && seconds && seconds != GSS_C_INDEFINITE)
+            binding_scope.seconds = seconds;
+    }
+    return major;
+}
+#endif
+unsigned adfl_system_bound_lifetime(LDAP *ld) {
+#ifdef ADFL_CAPTURE_CONTEXT_LIFETIME
+    unsigned seconds = binding_scope.completed == ld ? binding_scope.seconds : 0;
+    memset(&binding_scope, 0, sizeof(binding_scope));
+    return seconds;
+#else
+    (void)ld; return 0;
+#endif
+}
 
 #ifndef ADFL_REVIEWED_MIT_1_21_3
 #error Build requires the reviewed MIT 1.21.3 development package.
@@ -23,7 +68,7 @@
 
 struct material {
     krb5_context context;
-    krb5_ccache cache;
+    krb5_ccache cache, owned_cache;
     krb5_principal principal;
     krb5_keytab empty_keytab;
     gss_cred_id_t credential;
@@ -57,8 +102,39 @@ static int material_new(void *state, void **out) {
     if (!m) return ADFL_NO_MEMORY;
     return krb5_init_context(&m->context) ? ADFL_RESOLVE_FAILED : ADFL_OK;
 }
+/* Only the inherited sealed descriptor is accepted. MIT parses the immutable
+ * FILE image; all subsequent acquisition/cache writes use private MEMORY state. */
+static int import_owned(struct material *m) {
+    int fd = fcntl(6, F_DUPFD_CLOEXEC, 7);
+    if (fd < 0) return ADFL_RESOLVE_FAILED;
+    close(6); /* One import per isolated host; the private MEMORY cache owns future use. */
+    struct stat st;
+    int required = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
+    int seals = fcntl(fd, F_GET_SEALS);
+    if (seals < 0 || (seals & required) != required || fstat(fd, &st) ||
+        !S_ISREG(st.st_mode) || st.st_size <= 0 || st.st_size > 1048576) {
+        close(fd); return ADFL_RESOLVE_FAILED;
+    }
+    char name[64]; snprintf(name, sizeof(name), "FILE:/proc/self/fd/%d", fd);
+    krb5_ccache input = NULL;
+    krb5_principal principal = NULL;
+    char *owned_name = NULL;
+    krb5_error_code rc = krb5_cc_resolve(m->context, name, &input);
+    if (!rc) rc = krb5_cc_get_principal(m->context, input, &principal);
+    if (!rc) rc = krb5_cc_new_unique(m->context, "MEMORY", NULL, &m->owned_cache);
+    if (!rc) rc = krb5_cc_initialize(m->context, m->owned_cache, principal);
+    if (!rc) rc = krb5_cc_copy_creds(m->context, input, m->owned_cache);
+    if (!rc) rc = krb5_cc_get_full_name(m->context, m->owned_cache, &owned_name);
+    if (!rc) rc = krb5_cc_set_default_name(m->context, owned_name);
+    if (owned_name) krb5_free_string(m->context, owned_name);
+    if (principal) krb5_free_principal(m->context, principal);
+    if (input) krb5_cc_close(m->context, input);
+    close(fd);
+    return rc ? ADFL_RESOLVE_FAILED : ADFL_OK;
+}
 static int set_source(void *state, void *value, const adfl_credential_source *source) {
     (void)state; struct material *m = value;
+    if (source->kind == ADFL_SOURCE_OWNED) return import_owned(m);
     size_t length = strlen(source->absolute_path);
     if (length > SIZE_MAX - 6) return ADFL_INVALID;
     char *name = malloc(length + 6);
@@ -71,7 +147,13 @@ static int set_source(void *state, void *value, const adfl_credential_source *so
 static int check_source(void *state, void *value, const adfl_credential_source *source) {
     (void)state; struct material *m = value; char *name = NULL;
     if (krb5_cc_get_full_name(m->context, m->cache, &name)) return ADFL_RESOLVE_FAILED;
-    int matches = adfl_source_matches(source, name);
+    int matches;
+    if (source->kind == ADFL_SOURCE_OWNED) {
+        char *owned_name = NULL;
+        matches = m->owned_cache && !krb5_cc_get_full_name(m->context, m->owned_cache, &owned_name) &&
+            !strcmp(name, owned_name);
+        if (owned_name) krb5_free_string(m->context, owned_name);
+    } else matches = adfl_source_matches(source, name);
     krb5_free_string(m->context, name);
     /* Lexical source check, not a filesystem sandbox, snapshot, or identity proof. */
     return matches ? ADFL_OK : ADFL_RESOLVE_FAILED;
@@ -143,6 +225,17 @@ done:
 static void *credential(void *state, void *value) {
     (void)state; return ((struct material *)value)->credential;
 }
+ADFL_API int adfl_owned_authority_lifetime(adfl_authority *authority, unsigned *seconds) {
+    if (!authority || !seconds || authority->ops->material_new != adfl_system_ops.material_new) return ADFL_INVALID;
+    *seconds = 0;
+    struct material *m = authority->material;
+    if (!m || !m->owned_cache || m->credential == GSS_C_NO_CREDENTIAL) return ADFL_UNSUPPORTED;
+    OM_uint32 minor = 0, lifetime = 0;
+    if (gss_inquire_cred(&minor, m->credential, NULL, &lifetime, NULL, NULL) != GSS_S_COMPLETE ||
+        !lifetime || lifetime == GSS_C_INDEFINITE) return ADFL_RESOLVE_FAILED;
+    *seconds = lifetime;
+    return ADFL_OK;
+}
 static void material_free(void *state, void *value) {
     (void)state; struct material *m = value;
     if (!m) return;
@@ -150,6 +243,7 @@ static void material_free(void *state, void *value) {
     if (m->credential != GSS_C_NO_CREDENTIAL) gss_release_cred(&minor, &m->credential);
     if (m->empty_keytab) krb5_kt_close(m->context, m->empty_keytab);
     if (m->cache) krb5_cc_close(m->context, m->cache);
+    if (m->owned_cache) krb5_cc_destroy(m->context, m->owned_cache);
     if (m->principal) krb5_free_principal(m->context, m->principal);
     if (m->context) krb5_free_context(m->context);
     free(m);
@@ -173,11 +267,25 @@ static int create_session(void *state, const adfl_native_profile *p, LDAP **out)
     return ADFL_OK;
 }
 static int set_credential(void *state, LDAP *ld, void *cred) {
-    (void)state; return ldap_set_option(ld, LDAP_OPT_X_SASL_GSS_CREDS, cred);
+    (void)state;
+#ifdef ADFL_CAPTURE_CONTEXT_LIFETIME
+    if (binding_scope.active) binding_scope.expected = cred;
+#endif
+    return ldap_set_option(ld, LDAP_OPT_X_SASL_GSS_CREDS, cred);
 }
 static int bind_session(void *state, LDAP *ld, LDAP_SASL_INTERACT_PROC *callback, void *defaults) {
     (void)state;
-    return ldap_sasl_interactive_bind_s(ld, NULL, "GSSAPI", NULL, NULL, LDAP_SASL_QUIET, callback, defaults);
+#ifdef ADFL_CAPTURE_CONTEXT_LIFETIME
+    if (binding_scope.active) return LDAP_LOCAL_ERROR;
+    memset(&binding_scope, 0, sizeof(binding_scope)); binding_scope.active = 1;
+#endif
+    int rc = ldap_sasl_interactive_bind_s(ld, NULL, "GSSAPI", NULL, NULL, LDAP_SASL_QUIET, callback, defaults);
+#ifdef ADFL_CAPTURE_CONTEXT_LIFETIME
+    binding_scope.active = 0; binding_scope.expected = GSS_C_NO_CREDENTIAL;
+    if (rc == LDAP_SUCCESS) binding_scope.completed = ld;
+    else memset(&binding_scope, 0, sizeof(binding_scope));
+#endif
+    return rc;
 }
 static void ldap_close(void *state, LDAP *ld) {
     (void)state; if (ld) ldap_unbind_ext_s(ld, NULL, NULL);

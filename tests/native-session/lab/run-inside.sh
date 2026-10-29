@@ -133,7 +133,7 @@ if [ -f /bundle/production-v1/composition.json ]; then
   /bin/kinit -c FILE:/run/adfl/$client.ccache -kt /run/adfl/$client.keytab "$client@ADFL.TEST" > /run/adfl/kinit.log 2>&1
  done
  if /dotnet/dotnet /lab/AdForLinux.NativeWorkerDemo.dll --real-public-lab > /run/adfl/public-assertions.log 2>&1; then
-  echo 'PASS: public API uses admitted production source-only host; identity/SSF ACLs, paging and context operations verified'
+  echo 'PASS: public API identity/SSF ACLs, paging, owned cross-operation group reuse and identity replacement verified'
  else
   status=$?; echo "FAIL: restricted public API assertions (numeric stage $status)"; cat /run/adfl/public-assertions.log; exit 1
  fi

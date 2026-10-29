@@ -5,17 +5,22 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
-// Only an explicit source recipe may cross; no credential material, selected identity,
-// native handle or ambient environment lookup is transferred.
+// JSON carries a source recipe, never credential bytes or native handles. Owned
+// credentials cross separately through the supervisor's sealed inherited fd6.
 internal sealed record LdapWorkerStart(string Host, int Port, bool UseSsl, bool Signing, bool Sealing,
-    int SessionCount, TimeSpan Timeout, LdapCredentialSource? CredentialSource = null, LdapWorkerKerberosProfile? RestrictedConfiguration = null);
-internal sealed record LdapWorkerReady(LdapTransportCapabilities[] Capabilities);
+    int SessionCount, TimeSpan Timeout, LdapCredentialSource? CredentialSource = null, LdapWorkerKerberosProfile? RestrictedConfiguration = null)
+{
+    // Parent-only startup material. Never serialize credentials into the JSON protocol.
+    internal byte[]? OwnedCache { get; init; }
+    internal Func<IDisposable>? RetainOwnedCache { get; init; }
+}
+internal sealed record LdapWorkerReady(LdapTransportCapabilities[] Capabilities, uint CredentialLifetimeSeconds = 0);
 internal sealed record LdapWorkerNext(TimeSpan? ServerTimeLimit);
 internal sealed record LdapWorkerFailure(string Category);
 internal sealed record LdapWorkerFrame(int Version, long Id, int Session, string Kind, long TimeoutTicks, JsonElement Payload);
 internal static class LdapWorkerProtocol
 {
-    internal const int Version = 5, MaximumFrame = 4 * 1024 * 1024;
+    internal const int Version = 6, MaximumFrame = 4 * 1024 * 1024;
     private static readonly JsonSerializerOptions Json = Options();
     private static JsonSerializerOptions Options()
     {

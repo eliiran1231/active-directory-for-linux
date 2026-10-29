@@ -37,7 +37,7 @@ internal static partial class LdapConnectionProvider
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
     {
         if (options.RestrictedKerberos is not null)
-            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken);
+            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only
@@ -185,7 +185,11 @@ internal static partial class LdapConnectionProvider
             => CreateCore(options, referrals, false, null);
         internal static ConnectionKey CreateContextScoped(LdapConnectionOptions options, ReferralChasingOption referrals, WindowsLdapContext? context)
             => CreateCore(options, referrals, true, context);
-        private static ConnectionKey CreateCore(LdapConnectionOptions options, ReferralChasingOption referrals, bool scoped, WindowsLdapContext? context)
+        internal static ConnectionKey CreateManagedKerberos(LdapConnectionOptions options, ReferralChasingOption referrals,
+            Guid contextId, long compatibilityVersion, int sessions)
+            => CreateCore(options, referrals, false, null, (contextId, compatibilityVersion, sessions));
+        private static ConnectionKey CreateCore(LdapConnectionOptions options, ReferralChasingOption referrals, bool scoped, WindowsLdapContext? context,
+            (Guid Id, long Version, int Sessions)? managed = null)
         {
             using var data = new MemoryStream(checked((scoped ? 256 : 100) + 2 * (options.Host.Length +
                 (options.BindDn?.Length ?? 0) + (options.BindPassword?.Length ?? 0))));
@@ -196,6 +200,16 @@ internal static partial class LdapConnectionProvider
                 writer.Write((int)options.AuthenticationType); writer.Write(options.Signing); writer.Write(options.Sealing);
                 WriteNullable(writer, options.BindDn); WriteNullable(writer, options.BindPassword);
                 writer.Write(options.Timeout.Ticks); writer.Write((int)referrals);
+                if (managed is { } owned)
+                {
+                    var profile = options.RestrictedKerberos ?? throw new ArgumentException("Managed credentials require a restricted profile.");
+                    writer.Write("RestrictedWorkerGroup/v1"); writer.Write(owned.Id.ToByteArray());
+                    writer.Write(owned.Version); writer.Write(owned.Sessions);
+                    WriteNullable(writer, profile.DeploymentDirectory); WriteNullable(writer, profile.Realm);
+                    WriteNullable(writer, profile.ServiceHost); writer.Write(profile.ServicePort);
+                    WriteNullable(writer, profile.KdcHost); writer.Write(profile.KdcPort);
+                    WriteNullable(writer, profile.CredentialCacheFile);
+                }
                 if (scoped)
                 {
                     writer.Write("WindowsContextScopedRead/v1");

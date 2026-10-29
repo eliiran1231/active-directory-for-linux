@@ -62,7 +62,7 @@ internal sealed record LdapWorkerKerberosProfile(string DefaultRealm, string Ser
         if (profile.CredentialSource is null || profile.RestrictedConfiguration is null)
             throw new PlatformNotSupportedException("Production workers require an explicit source and restricted configuration.");
         LdapWorkerProtocol.ValidateStart(profile);
-        if (profile.CredentialSource.Kind != LdapCredentialSourceKind.File || profile.UseSsl ||
+        if (profile.CredentialSource.Kind is not (LdapCredentialSourceKind.File or LdapCredentialSourceKind.Owned) || profile.UseSsl ||
             !profile.Signing || !profile.Sealing || profile.RestrictedConfiguration.Kdc is null)
             throw new PlatformNotSupportedException("The supported deployment profile requires an explicit FILE source, KDC route and signing plus sealing without TLS.");
         profile.CredentialSource.Validate();

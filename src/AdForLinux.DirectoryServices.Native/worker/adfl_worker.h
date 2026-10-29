@@ -18,6 +18,10 @@ ADFL_WORKER_API unsigned adfl_worker_abi_version(void);
  * -1/-1 for legacy mode. Parent descriptors are never consumed by spawn. */
 ADFL_WORKER_API int adfl_worker_profile_create(const unsigned char *, size_t, int *);
 ADFL_WORKER_API int adfl_worker_spawn(const char *, const char *const *, const char *const *, int, int, int *, int *);
+/* Additive owned-cache transfer: sealed anonymous bytes <=1MiB, inherited fd6.
+ * The child imports through MIT into a private MEMORY cache before binding. */
+ADFL_WORKER_API int adfl_worker_credential_create(const unsigned char *, size_t, int *);
+ADFL_WORKER_API int adfl_worker_spawn_owned(const char *, const char *const *, const char *const *, int, int, int, int *, int *);
 ADFL_WORKER_API int adfl_worker_child_send_identity(int);
 /* EAGAIN means no identity yet. Output owns one CLOEXEC pidfd on success. */
 ADFL_WORKER_API int adfl_worker_parent_receive_identity(int, int expected_spawn_pid, int *);

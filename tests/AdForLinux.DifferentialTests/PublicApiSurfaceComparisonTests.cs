@@ -433,6 +433,7 @@ public class PublicApiSurfaceComparisonTests
         new(DifferenceSide.AdForLinux, "DirectoryIdentityResolver", "type", "exported type"),
         Ours("PrincipalContext", "method public static=False abstract=False virtual=False final=False newslot=False DirectoryServices.DirectoryIdentityResolver CreateIdentityResolver()"),
         // Explicit inert opt-in factories; existing constructors/defaults remain unchanged.
+        new(DifferenceSide.AdForLinux, "KerberosCredentialContext", "type", "exported type"),
         new(DifferenceSide.AdForLinux, "RestrictedKerberosProfile", "type", "exported type"),
         new(DifferenceSide.AdForLinux, "RestrictedKerberosContext", "type", "exported type"),
         // Linux/LDAP conveniences that have no Microsoft counterpart.

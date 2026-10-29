@@ -20,6 +20,8 @@ public class LowLevelPublicSurfaceComparisonTests
         // removals consistent with PublicApiSurfaceComparisonTests; extras still fail.
         Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
         Assert.Equal(typeof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), helper);
+        Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.KerberosCredentialContext), out var credentials));
+        Assert.Equal(typeof(AdForLinux.DirectoryServices.KerberosCredentialContext), credentials);
         Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), out var profile));
         Assert.Equal(typeof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), profile);
         var microsoft = microsoftTypes.Keys

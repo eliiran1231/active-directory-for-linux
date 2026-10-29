@@ -67,14 +67,14 @@ static void malformed_identity(void) {
         close(source); close(pair[0]); close(pair[1]); assert(fd_count() == before);
     }
 }
-static void profile_transfer(const char *executable) {
+static void profile_transfer(const char *executable, int owned) {
     int before = fd_count(), config = -1, mechanisms = -1, channel = -1, child = -1;
     const unsigned char bytes[] = "synthetic-profile\n";
     assert(!adfl_worker_profile_create(bytes, sizeof(bytes) - 1, &config));
     assert(!adfl_worker_profile_create(NULL, 0, &mechanisms));
     assert(write(config, "x", 1) < 0 && errno == EPERM);
     assert(ftruncate(config, 0) < 0 && errno == EPERM);
-    const char *args[] = {executable, "--profile-child", NULL};
+    const char *args[] = {executable, owned ? "--owned-child" : "--profile-child", NULL};
     const char *env[] = {"KRB5_CONFIG=/proc/self/fd/4", "GSS_MECH_CONFIG=/proc/self/fd/5", NULL};
     int held = fd_count();
     assert(adfl_worker_spawn(executable, args, env, config, -1, &channel, &child) == EINVAL);
@@ -87,14 +87,23 @@ static void profile_transfer(const char *executable) {
     /* Deliberately place borrowed sources on the child targets themselves. */
     assert(fcntl(4, F_GETFD) < 0 && fcntl(5, F_GETFD) < 0);
     assert(dup2(config, 4) == 4 && dup2(mechanisms, 5) == 5);
-    assert(!adfl_worker_spawn(executable, args, env, 4, 5, &channel, &child));
+    int credential = -1;
+    if (owned) {
+        const unsigned char synthetic[] = {0, 1, 2, 3};
+        assert(!adfl_worker_credential_create(synthetic, sizeof(synthetic), &credential));
+        assert(dup2(credential, 6) == 6);
+        assert(adfl_worker_spawn_owned(executable, args, env, 4, 5, -1, &channel, &child) == EINVAL);
+        assert(adfl_worker_spawn_owned(executable, args, env, 4, 5, 5, &channel, &child) == EINVAL);
+        assert(!adfl_worker_spawn_owned(executable, args, env, 4, 5, 6, &channel, &child));
+        close(6); close(credential);
+    } else assert(!adfl_worker_spawn(executable, args, env, 4, 5, &channel, &child));
     close(4); close(5); close(config); close(mechanisms);
     int pidfd = -1; assert(!wait_identity(channel, child, &pidfd));
     assert(!adfl_worker_signal_kill(pidfd)); reap(pidfd); close(channel);
     assert(fd_count() == before);
 }
 int main(int argc, char **argv) {
-    if (argc == 2 && !strcmp(argv[1], "--profile-child")) {
+    if (argc == 2 && (!strcmp(argv[1], "--profile-child") || !strcmp(argv[1], "--owned-child"))) {
         assert(!strcmp(getenv("KRB5_CONFIG"), "/proc/self/fd/4"));
         assert(!strcmp(getenv("GSS_MECH_CONFIG"), "/proc/self/fd/5"));
         char bytes[32] = {0}; assert(pread(4, bytes, sizeof(bytes), 0) == 18);
@@ -102,7 +111,14 @@ int main(int argc, char **argv) {
         assert(lseek(4, 0, SEEK_CUR) == 0);
         int seals = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
         assert((fcntl(4, F_GET_SEALS) & seals) == seals && (fcntl(5, F_GET_SEALS) & seals) == seals);
-        for (int fd = 6; fd < 128; fd++) assert(fcntl(fd, F_GETFD) < 0 && errno == EBADF);
+        int owned = !strcmp(argv[1], "--owned-child");
+        if (owned) {
+            unsigned char material[4]; assert(pread(6, material, 4, 0) == 4);
+            assert(material[0] == 0 && material[1] == 1 && material[2] == 2 && material[3] == 3);
+            assert((fcntl(6, F_GET_SEALS) & seals) == seals);
+            assert(write(6, "x", 1) < 0 && errno == EPERM);
+        }
+        for (int fd = owned ? 7 : 6; fd < 128; fd++) assert(fcntl(fd, F_GETFD) < 0 && errno == EBADF);
         assert(!adfl_worker_child_send_identity(3)); for (;;) pause();
     }
     if (argc == 2 && !strcmp(argv[1], "--child")) {
@@ -145,7 +161,8 @@ int main(int argc, char **argv) {
     assert(!adfl_worker_signal_kill(pidfd)); reap(pidfd);
     close(channel); close(unrelated);
     malformed_identity();
-    profile_transfer(executable);
+    profile_transfer(executable, 0);
+    profile_transfer(executable, 1);
     puts("PASS: real exec isolation, kernel pidfd identity, blocked-child kill/reap and malformed handoff cleanup; no LDAP or credentials.");
     return 0;
 }

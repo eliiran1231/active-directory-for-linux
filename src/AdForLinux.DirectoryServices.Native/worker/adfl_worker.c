@@ -24,15 +24,15 @@ int adfl_worker_closefd(int fd) {
     return errno;
 }
 static int high_fd(int fd) {
-    int copy = fcntl(fd, F_DUPFD_CLOEXEC, 6);
+    int copy = fcntl(fd, F_DUPFD_CLOEXEC, 7);
     int saved = errno; close(fd); errno = saved; return copy;
 }
 #define PROFILE_MAX 32768
 #define PROFILE_SEALS (F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL)
-int adfl_worker_profile_create(const unsigned char *bytes, size_t length, int *out) {
+static int blob_create(const unsigned char *bytes, size_t length, size_t maximum, int *out) {
     if (!out) return EINVAL;
     *out = -1;
-    if (length > PROFILE_MAX || (length && !bytes)) return EINVAL;
+    if (length > maximum || (length && !bytes)) return EINVAL;
     int fd = (int)syscall(SYS_memfd_create, "adfl-worker-profile", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) return errno;
     size_t offset = 0;
@@ -49,36 +49,48 @@ int adfl_worker_profile_create(const unsigned char *bytes, size_t length, int *o
     if (fd < 0) return errno;
     *out = fd; return 0;
 }
-static int profile_valid(int fd, int empty) {
+int adfl_worker_profile_create(const unsigned char *bytes, size_t length, int *out) {
+    return blob_create(bytes, length, PROFILE_MAX, out);
+}
+int adfl_worker_credential_create(const unsigned char *bytes, size_t length, int *out) {
+    if (!length) return EINVAL;
+    return blob_create(bytes, length, 1048576, out);
+}
+static int profile_valid(int fd, int empty, size_t maximum) {
     int seals = fcntl(fd, F_GET_SEALS);
     if (seals < 0) return errno;
     if ((seals & PROFILE_SEALS) != PROFILE_SEALS) return EINVAL;
     struct stat status;
     if (fstat(fd, &status)) return errno;
     if (!S_ISREG(status.st_mode) ||
-        (empty ? status.st_size != 0 : status.st_size <= 0 || status.st_size > PROFILE_MAX)) return EINVAL;
+        (empty ? status.st_size != 0 : status.st_size <= 0 || status.st_size > (off_t)maximum)) return EINVAL;
     return 0;
 }
-int adfl_worker_spawn(const char *exe, const char *const *argv, const char *const *envp,
-                      int config, int mechanisms, int *channel, int *child_pid) {
+static int spawn_core(const char *exe, const char *const *argv, const char *const *envp,
+                      int config, int mechanisms, int credential, int *channel, int *child_pid) {
     if (!channel || !child_pid) return EINVAL;
     *channel = *child_pid = -1;
     if (!exe || exe[0] != '/' || !argv || !argv[0] || !envp ||
         (config < 0 && config != -1) || (mechanisms < 0 && mechanisms != -1) ||
-        (config == -1) != (mechanisms == -1)) return EINVAL;
+        (config == -1) != (mechanisms == -1) || credential < -1 || (credential >= 0 && config < 0)) return EINVAL;
 #if !defined(__GLIBC__) || !__GLIBC_PREREQ(2, 34)
     return ENOTSUP;
 #else
-    int sources[2] = {-1, -1}, sockets[2] = {-1, -1}, rc = 0, initialized = 0;
+    int sources[3] = {-1, -1, -1}, sockets[2] = {-1, -1}, rc = 0, initialized = 0;
     posix_spawn_file_actions_t actions;
     if (config >= 0) {
         /* Validate owned duplicates, never a caller fd which can be replaced.
-         * All sources live above targets 0..5 before any child dup/open action. */
-        sources[0] = fcntl(config, F_DUPFD_CLOEXEC, 6);
+         * All sources live above targets 0..6 before any child dup/open action. */
+        sources[0] = fcntl(config, F_DUPFD_CLOEXEC, 7);
         if (sources[0] < 0) { rc = errno; goto done; }
-        sources[1] = fcntl(mechanisms, F_DUPFD_CLOEXEC, 6);
+        sources[1] = fcntl(mechanisms, F_DUPFD_CLOEXEC, 7);
         if (sources[1] < 0) { rc = errno; goto done; }
-        if ((rc = profile_valid(sources[0], 0)) || (rc = profile_valid(sources[1], 1))) goto done;
+        if ((rc = profile_valid(sources[0], 0, PROFILE_MAX)) || (rc = profile_valid(sources[1], 1, PROFILE_MAX))) goto done;
+    }
+    if (credential >= 0) {
+        sources[2] = fcntl(credential, F_DUPFD_CLOEXEC, 7);
+        if (sources[2] < 0) { rc = errno; goto done; }
+        if ((rc = profile_valid(sources[2], 0, 1048576))) goto done;
     }
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sockets)) { rc = errno; goto done; }
     sockets[0] = high_fd(sockets[0]);
@@ -98,17 +110,27 @@ int adfl_worker_spawn(const char *exe, const char *const *argv, const char *cons
     if (!rc) rc = posix_spawn_file_actions_adddup2(&actions, sockets[1], 3);
     if (!rc && config >= 0) rc = posix_spawn_file_actions_adddup2(&actions, sources[0], 4);
     if (!rc && config >= 0) rc = posix_spawn_file_actions_adddup2(&actions, sources[1], 5);
-    if (!rc) rc = posix_spawn_file_actions_addclosefrom_np(&actions, config >= 0 ? 6 : 4);
+    if (!rc && credential >= 0) rc = posix_spawn_file_actions_adddup2(&actions, sources[2], 6);
+    if (!rc) rc = posix_spawn_file_actions_addclosefrom_np(&actions, credential >= 0 ? 7 : config >= 0 ? 6 : 4);
     pid_t pid = -1;
     if (!rc) rc = posix_spawn(&pid, exe, &actions, NULL, (char *const *)argv, (char *const *)envp);
     if (!rc) { *channel = sockets[0]; *child_pid = (int)pid; }
 done:
     if (initialized) posix_spawn_file_actions_destroy(&actions);
     if (sockets[1] >= 0) close(sockets[1]);
-    for (int i = 0; i < 2; i++) if (sources[i] >= 0) close(sources[i]);
+    for (int i = 0; i < 3; i++) if (sources[i] >= 0) close(sources[i]);
     if (rc && sockets[0] >= 0) close(sockets[0]);
     return rc;
 #endif
+}
+int adfl_worker_spawn(const char *exe, const char *const *argv, const char *const *envp,
+                      int config, int mechanisms, int *channel, int *child_pid) {
+    return spawn_core(exe, argv, envp, config, mechanisms, -1, channel, child_pid);
+}
+int adfl_worker_spawn_owned(const char *exe, const char *const *argv, const char *const *envp,
+                      int config, int mechanisms, int credential, int *channel, int *child_pid) {
+    if (credential < 0) return EINVAL;
+    return spawn_core(exe, argv, envp, config, mechanisms, credential, channel, child_pid);
 }
 int adfl_worker_child_send_identity(int channel) {
     int pidfd = (int)syscall(SYS_pidfd_open, getpid(), 0);

@@ -38,6 +38,8 @@ public class PublicTypeModifierComparisonTests
             // of exempting a namespace or ignoring arbitrary extra types.
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
             Assert.Equal("visibility=public, sealed=True, abstract=False, base=System.Object", Shape(helper!));
+            Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.KerberosCredentialContext), out var credentials));
+            Assert.True(credentials.IsSealed);
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), out var profile));
             Assert.Equal("visibility=public, sealed=True, abstract=False, base=System.Object", Shape(profile!));
         }

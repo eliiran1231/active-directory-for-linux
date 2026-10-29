@@ -714,8 +714,13 @@ static void explicit_source_resolution(void) {
         adfl_credential_source bad = {ADFL_SOURCE_FILE, invalid[i]};
         assert(adfl_source_validate(&bad) == ADFL_INVALID);
     }
-    adfl_credential_source memory = {3, "/recording/cache"};
+    adfl_credential_source memory = {99, "/recording/cache"};
     assert(adfl_source_validate(&memory) == ADFL_UNSUPPORTED);
+    adfl_credential_source owned = {ADFL_SOURCE_OWNED, "/proc/self/fd/6"};
+    assert(adfl_source_validate(&owned) == ADFL_OK);
+    assert(!adfl_source_matches(&owned, "FILE:/proc/self/fd/6"));
+    owned.absolute_path = "/recording/cache";
+    assert(adfl_source_validate(&owned) == ADFL_INVALID);
     for (int kind = 0; kind < 2; kind++) for (int scenario = 0; scenario < 5; scenario++) {
         struct fixture f = {0}; adfl_authority *a = NULL;
         const adfl_credential_source *source = kind ? &dir : &file;

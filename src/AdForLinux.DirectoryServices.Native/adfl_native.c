@@ -54,6 +54,8 @@ void adfl_session_close(adfl_bound_session **owner) {
 }
 int adfl_source_validate(const adfl_credential_source *source) {
     if (!source) return ADFL_INVALID;
+    if (source->kind == ADFL_SOURCE_OWNED)
+        return source->absolute_path && !strcmp(source->absolute_path, "/proc/self/fd/6") ? ADFL_OK : ADFL_INVALID;
     if (source->kind != ADFL_SOURCE_FILE && source->kind != ADFL_SOURCE_DIR) return ADFL_UNSUPPORTED;
     const char *path = source->absolute_path;
     if (!path || path[0] != '/' || !path[1] || strlen(path) > 4096) return ADFL_INVALID;
@@ -69,7 +71,7 @@ int adfl_source_validate(const adfl_credential_source *source) {
     return ADFL_OK;
 }
 int adfl_source_matches(const adfl_credential_source *source, const char *name) {
-    if (adfl_source_validate(source) != ADFL_OK || !name) return 0;
+    if (adfl_source_validate(source) != ADFL_OK || !name || source->kind == ADFL_SOURCE_OWNED) return 0;
     const char *prefix = source->kind == ADFL_SOURCE_FILE ? "FILE:" : "DIR::";
     size_t prefix_length = strlen(prefix), path_length = strlen(source->absolute_path);
     if (strncmp(name, prefix, prefix_length)) return 0;
@@ -178,9 +180,16 @@ int adfl_authority_bind(adfl_authority *a, const adfl_native_profile *p,
     if (!rc && (a->ops->bind(a->state, s->ldap, interact, &i) != LDAP_SUCCESS || !i.installed || i.failed))
         rc = ADFL_BIND_FAILED;
     if (!rc && (atomic_load(&s->connection_count) != 1 || atomic_load(&s->retired))) rc = ADFL_BIND_FAILED;
+    if (!rc && a->ops->material_new == adfl_system_ops.material_new)
+        s->context_lifetime = adfl_system_bound_lifetime(s->ldap);
     if (cancelled(check, cancel_state)) rc = ADFL_CANCELLED;
     if (rc) { adfl_session_close(&s); return rc; }
     *out = s; return ADFL_OK;
+}
+ADFL_API int adfl_owned_session_lifetime(adfl_bound_session *session, unsigned *seconds) {
+    if (!session || !seconds || !session->context_lifetime) return ADFL_UNSUPPORTED;
+    *seconds = session->context_lifetime;
+    return ADFL_OK;
 }
 int adfl_open_with(const adfl_native_ops *ops, void *state, const adfl_native_profile *p,
                    adfl_cancelled_fn check, void *cancel_state, adfl_bound_session **out) {

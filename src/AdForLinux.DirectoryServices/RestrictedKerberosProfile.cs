@@ -11,6 +11,7 @@ namespace AdForLinux.DirectoryServices;
 /// </summary>
 public sealed class RestrictedKerberosProfile
 {
+    internal KerberosCredentialContext? OwnedCredentials { get; }
     public string DeploymentDirectory { get; }
     public string CredentialCacheFile { get; }
     public string Realm { get; }
@@ -42,8 +43,21 @@ public sealed class RestrictedKerberosProfile
     }
 
     /// <summary>
+    /// Selects manager-owned credentials and exclusive reusable worker groups.
+    /// The context owns publication; external cache changes have no effect here.
+    /// Disposing or replacing the context prevents future use of old groups.
+    /// </summary>
+    public RestrictedKerberosProfile(string deploymentDirectory, KerberosCredentialContext credentials,
+        string realm, string serviceHost, int servicePort, string kdcHost, int kdcPort = 88)
+        : this(deploymentDirectory, "/proc/self/fd/6", realm, serviceHost, servicePort, kdcHost, kdcPort)
+    {
+        ArgumentNullException.ThrowIfNull(credentials);
+        OwnedCredentials = credentials;
+    }
+
+    /// <summary>
     /// Creates an inert entry carrying this explicit selection. Descendants retain
-    /// the selection. Operations use fresh isolated worker groups only after
+    /// the selection. Operations acquire exclusive isolated worker groups only after
     /// deployment and policy admission; ambient credentials are never substituted.
     /// </summary>
     public DirectoryEntry CreateDirectoryEntry(string distinguishedName)
@@ -63,7 +77,7 @@ public sealed class RestrictedKerberosProfile
         // Module loading is unavailable in the reviewed private MIT build. This
         // fixed reserved path is configuration syntax, not a host plugin import.
         var start = new LdapWorkerStart(ServiceHost, ServicePort, false, true, true, count, timeout,
-            new(LdapCredentialSourceKind.File, CredentialCacheFile),
+            new(OwnedCredentials is null ? LdapCredentialSourceKind.File : LdapCredentialSourceKind.Owned, CredentialCacheFile),
             new(Realm, ServiceHost, "/adfl-disabled-plugins", new(KdcHost, KdcPort)));
         LdapWorkerKerberosProfile.RequireProductionPolicy(start);
         return start;

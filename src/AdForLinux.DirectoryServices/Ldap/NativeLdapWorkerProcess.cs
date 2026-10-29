@@ -7,7 +7,7 @@ using Microsoft.Win32.SafeHandles;
 namespace AdForLinux.DirectoryServices.Ldap;
 
 // Worker lifetime is separate from its exclusive operation lease. Current policy
-// retires on lease disposal; future reuse requires an independent authority proof.
+// retires on resource disposal; the shared group pool owns reusable resources.
 internal sealed class NativeLdapWorkerPool : IDisposable
 {
     private readonly SemaphoreSlim capacity;
@@ -29,14 +29,14 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         => AcquireCore(launch, profile, timeout, cancellationToken, null);
 
     internal Task<WorkerLease> AcquireAsync(VerifiedDeployment deployment, LdapWorkerStart profile,
-        TimeSpan timeout, CancellationToken cancellationToken = default)
+        TimeSpan timeout, CancellationToken cancellationToken = default, Action? capacityPressure = null)
     {
         LdapWorkerKerberosProfile.RequireProductionPolicy(profile);
-        return AcquireCore(deployment.CreateLaunch(), profile, timeout, cancellationToken, deployment);
+        return AcquireCore(deployment.CreateLaunch(), profile, timeout, cancellationToken, deployment, capacityPressure);
     }
 
     private async Task<WorkerLease> AcquireCore(WorkerLaunch launch, LdapWorkerStart profile,
-        TimeSpan timeout, CancellationToken cancellationToken, VerifiedDeployment? deployment)
+        TimeSpan timeout, CancellationToken cancellationToken, VerifiedDeployment? deployment, Action? capacityPressure = null)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("Worker authority transfer is implemented only for Linux; Windows impersonation is not transferred.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromHours(1)) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -46,7 +46,13 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         launch = launch with { Arguments = launch.Arguments.ToArray() };
         var started = Stopwatch.GetTimestamp();
         TimeSpan Remaining() => timeout - Stopwatch.GetElapsedTime(started);
-        if (!await capacity.WaitAsync(timeout, cancellationToken).ConfigureAwait(false)) throw new TimeoutException("Worker capacity is occupied, including retiring workers.");
+        if (!capacity.Wait(0, cancellationToken))
+        {
+            capacityPressure?.Invoke();
+            var left = Remaining();
+            if (left <= TimeSpan.Zero || !await capacity.WaitAsync(left, cancellationToken).ConfigureAwait(false))
+                throw new TimeoutException("Worker capacity is occupied, including retiring workers.");
+        }
         WorkerOwner? owner = null;
         try
         {
@@ -94,13 +100,16 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         // Do not dispose the semaphore while completion callbacks can release it.
     }
 
-    internal sealed class WorkerLease : IDisposable
+    internal sealed class WorkerLease : LdapRestrictedOperation.IManagedWorker
     {
         private readonly WorkerOwner owner;
         private int disposed;
         internal WorkerLease(WorkerOwner owner, LdapWorkerClient client) { this.owner = owner; Client = client; }
         internal LdapWorkerClient Client { get; }
         internal Task Cleanup => owner.Cleanup;
+        public bool Healthy => !owner.Retired && !Client.IsRetired;
+        public IReadOnlyList<ILdapRequestTransport> Sessions => Client.Sessions;
+        public uint CredentialLifetimeSeconds => Client.CredentialLifetimeSeconds;
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
@@ -112,6 +121,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
     {
         private readonly TaskCompletionSource cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly object stateGate = new();
+        private IDisposable? credentialRetention = profile.RetainOwnedCache?.Invoke();
         private WorkerNative? api;
         private NetworkStream? stream;
         private int channel = -1, pidfd = -1, retired, cleanupStarted, finished;
@@ -130,8 +140,12 @@ internal sealed class NativeLdapWorkerPool : IDisposable
                 // contexts independently of the resolver. No parent environment is changed.
                 using var configuration = new WorkerProfileFiles(api, profile);
                 using var env = new WorkerStrings(["LDAPNOINIT=1", "DOTNET_EnableDiagnostics=0", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_GENERATE_ASPNET_CERTIFICATE=false", .. (OfflineTestGuard.Enabled ? new[] { "ADFL_OFFLINE_TESTS=1" } : Array.Empty<string>()), .. configuration.Environment]);
-                var error = api.Spawn(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, out channel, out var child);
-                configuration.Dispose(); // child owns independent fd4/5 after successful exec
+                int child;
+                var error = configuration.Credential >= 0
+                    ? api.SpawnOwned!(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, configuration.Credential, out channel, out child)
+                    : api.Spawn(launch.Executable, argv.Pointer, env.Pointer, configuration.Config, configuration.Mechanisms, out channel, out child);
+                configuration.Dispose(); // child owns independent fd4/5/6 after successful exec
+                Interlocked.Exchange(ref credentialRetention, null)?.Dispose();
                 if (error != 0) throw new InvalidOperationException($"Worker exec failed ({error}).");
                 spawned = true;
                 while (true)
@@ -173,6 +187,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
                 }
                 throw;
             }
+            finally { Interlocked.Exchange(ref credentialRetention, null)?.Dispose(); }
         });
         internal void Retire()
         {
@@ -227,6 +242,8 @@ internal sealed class WorkerNative : IDisposable
 {
     private readonly IntPtr library;
     internal readonly SpawnCall Spawn;
+    internal readonly SpawnOwnedCall? SpawnOwned;
+    internal readonly ProfileCall? CreateCredential;
     internal readonly ReceiveCall Receive;
     internal readonly ProfileCall CreateProfile;
     internal readonly FdCall Kill, Reap, Close, SendIdentity;
@@ -239,6 +256,10 @@ internal sealed class WorkerNative : IDisposable
         {
             T Get<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(library, name));
             if (Get<VersionCall>("adfl_worker_abi_version")() != 2) throw new PlatformNotSupportedException("Unsupported worker supervisor ABI.");
+            if (NativeLibrary.TryGetExport(library, "adfl_worker_spawn_owned", out var ownedSpawn))
+                SpawnOwned = Marshal.GetDelegateForFunctionPointer<SpawnOwnedCall>(ownedSpawn);
+            if (NativeLibrary.TryGetExport(library, "adfl_worker_credential_create", out var ownedCreate))
+                CreateCredential = Marshal.GetDelegateForFunctionPointer<ProfileCall>(ownedCreate);
             CreateProfile = Get<ProfileCall>("adfl_worker_profile_create");
             Spawn = Get<SpawnCall>("adfl_worker_spawn"); Receive = Get<ReceiveCall>("adfl_worker_parent_receive_identity");
             Kill = Get<FdCall>("adfl_worker_signal_kill"); Reap = Get<FdCall>("adfl_worker_reap_nonblocking");
@@ -256,6 +277,7 @@ internal sealed class WorkerNative : IDisposable
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate uint VersionCall();
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int SpawnCall([MarshalAs(UnmanagedType.LPUTF8Str)] string executable, IntPtr argv, IntPtr environment, int configuration, int mechanisms, out int channel, out int childPid);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int SpawnOwnedCall([MarshalAs(UnmanagedType.LPUTF8Str)] string executable, IntPtr argv, IntPtr environment, int configuration, int mechanisms, int credential, out int channel, out int childPid);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ProfileCall(byte[] bytes, UIntPtr length, out int descriptor);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int ReceiveCall(int channel, int expectedChildPid, out int pidfd);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate int FdCall(int fd);
@@ -268,6 +290,7 @@ internal sealed class WorkerProfileFiles : IDisposable
     private readonly WorkerNative api;
     internal int Config { get; private set; } = -1;
     internal int Mechanisms { get; private set; } = -1;
+    internal int Credential { get; private set; } = -1;
     internal string[] Environment => Config < 0 ? [] : ["KRB5_CONFIG=/proc/self/fd/4", "GSS_MECH_CONFIG=/proc/self/fd/5"];
     internal WorkerProfileFiles(WorkerNative api, LdapWorkerStart profile)
     {
@@ -282,6 +305,14 @@ internal sealed class WorkerProfileFiles : IDisposable
             status = api.CreateProfile([], UIntPtr.Zero, out descriptor);
             if (status != 0) throw new IOException($"Creating sealed mechanism profile failed ({status}).");
             Mechanisms = descriptor;
+            if (profile.CredentialSource?.Kind == LdapCredentialSourceKind.Owned)
+            {
+                if (api.CreateCredential is null || api.SpawnOwned is null || profile.OwnedCache is not { Length: > 0 and <= 1048576 } bytesOwned)
+                    throw new PlatformNotSupportedException("Owned credential transfer is unavailable.");
+                status = api.CreateCredential(bytesOwned, (UIntPtr)bytesOwned.Length, out descriptor);
+                if (status != 0) throw new IOException($"Creating sealed credential transfer failed ({status}).");
+                Credential = descriptor;
+            }
         }
         catch { Dispose(); throw; }
     }
@@ -289,6 +320,7 @@ internal sealed class WorkerProfileFiles : IDisposable
     {
         if (Config >= 0) { api.Close(Config); Config = -1; }
         if (Mechanisms >= 0) { api.Close(Mechanisms); Mechanisms = -1; }
+        if (Credential >= 0) { api.Close(Credential); Credential = -1; }
     }
 }
 internal sealed class WorkerStrings : IDisposable

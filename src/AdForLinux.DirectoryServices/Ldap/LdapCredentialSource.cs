@@ -2,7 +2,7 @@ using System.Text;
 
 namespace AdForLinux.DirectoryServices.Ldap;
 
-internal enum LdapCredentialSourceKind { File = 1, DirectoryCollection = 2 }
+internal enum LdapCredentialSourceKind { File = 1, DirectoryCollection = 2, Owned = 3 }
 // A source recipe, never an identity/credential snapshot or reuse proof. Selection
 // must return a cache named within this source before GSS acquisition. This is not
 // filesystem confinement and does not sandbox configured cache-selection plugins.
@@ -10,6 +10,11 @@ internal sealed record LdapCredentialSource(LdapCredentialSourceKind Kind, strin
 {
     internal void Validate()
     {
+        if (Kind == LdapCredentialSourceKind.Owned)
+        {
+            if (AbsolutePath != "/proc/self/fd/6") throw new ArgumentException("Owned credentials require the inherited sealed descriptor.");
+            return;
+        }
         if (Kind is not LdapCredentialSourceKind.File and not LdapCredentialSourceKind.DirectoryCollection)
             throw new PlatformNotSupportedException("Only explicit FILE and DIR collection sources are represented.");
         if (string.IsNullOrEmpty(AbsolutePath) || !AbsolutePath.StartsWith('/') || AbsolutePath.Contains('\0') ||

@@ -5,7 +5,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 // A worker is the only capacity unit here: never hold a worker while waiting
 // for a second connection pool. Eight groups admit at most sixteen sessions;
 // retiring/unverified processes continue consuming their worker slots.
-internal static class LdapRestrictedOperation
+internal static partial class LdapRestrictedOperation
 {
     private static readonly NativeLdapWorkerPool Workers = new(8);
     internal static (int Tracked, int Retiring, int Unverified) Snapshot => Workers.Snapshot;
@@ -13,12 +13,12 @@ internal static class LdapRestrictedOperation
 
     static LdapRestrictedOperation()
     {
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => Workers.Dispose();
-        System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(LdapRestrictedOperation).Assembly)!.Unloading += _ => Workers.Dispose();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => { Groups.Dispose(); Workers.Dispose(); };
+        System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(typeof(LdapRestrictedOperation).Assembly)!.Unloading += _ => { Groups.Dispose(); Workers.Dispose(); };
     }
 
     internal static LdapConnectionProvider.Session[] Acquire(LdapConnectionOptions options, int count,
-        ReferralChasingOption referrals, CancellationToken cancellationToken, TimeSpan? timeout = null)
+        ReferralChasingOption referrals, CancellationToken cancellationToken, TimeSpan? timeout = null, bool preferFresh = false, long minimumGeneration = 0)
     {
         var started = Stopwatch.GetTimestamp();
         var snapshot = options.Clone();
@@ -40,20 +40,7 @@ internal static class LdapRestrictedOperation
         // an unresponsive filesystem. Its elapsed time still consumes the budget.
         using var deployment = LdapWorkerDeployment.Validate(selected.DeploymentDirectory);
         deployment.RequireRestrictedComposition();
-        // Native bind profiles use whole seconds. Round up only that internal
-        // limit; the parent's exact remaining budget still bounds startup and
-        // publication, including slow or blocked native calls in the worker.
-        var nativeTimeout = TimeSpan.FromSeconds(Math.Ceiling(Remaining().TotalSeconds));
-        var worker = Workers.AcquireAsync(deployment, selected.WorkerProfile(count, nativeTimeout), Remaining(), cancellationToken)
-            .GetAwaiter().GetResult();
-        try
-        {
-            _ = Remaining();
-            var sessions = Wrap(worker.Client.Sessions, worker, snapshot);
-            try { _ = Remaining(); return sessions; }
-            catch { foreach (var session in sessions) session.Dispose(); throw; }
-        }
-        catch { worker.Dispose(); throw; }
+        return AcquireWorkerGroup(snapshot, count, referrals, deployment, Remaining, cancellationToken, preferFresh, minimumGeneration);
     }
 
     // The same ownership constructor is exercised by deterministic tests. The
@@ -92,8 +79,16 @@ internal static class LdapRestrictedOperation
         private int references = 1;
         internal void Validate() => ObjectDisposedException.ThrowIf(Volatile.Read(ref worker) is null, this);
         internal IDisposable AddMember() { Interlocked.Increment(ref references); return new Member(this); }
-        internal void Retire() => Interlocked.Exchange(ref worker, null)?.Dispose();
-        internal void Release() { if (Interlocked.Decrement(ref references) == 0) Retire(); }
+        internal void Retire()
+        {
+            var owner = Interlocked.Exchange(ref worker, null);
+            if (owner is IManagedOperationOwner managed) managed.Invalidate();
+            owner?.Dispose();
+        }
+        internal void Release()
+        {
+            if (Interlocked.Decrement(ref references) == 0) Interlocked.Exchange(ref worker, null)?.Dispose();
+        }
         private sealed class Member(Group group) : IDisposable
         {
             private Group? retained = group;

@@ -3,7 +3,8 @@
 This implementation keeps the existing public APIs and Protocols behavior. It supplies a
 native OpenLDAP/MIT transport and executable recording demonstrations. **Default native
 authentication and ambient Kerberos reuse remain disabled.** An explicit restricted profile
-can use an admitted private deployment with fresh worker groups. Real authentication was
+can use an admitted private deployment with fresh worker groups, or explicit manager-owned
+cache snapshots with reusable exclusive groups. Real authentication was
 validated only in an authorized disposable loopback realm with synthetic identities; no
 user credentials or live AD were used. The branch starts at PR235 head
 `3efcdf45e2d6d2f676e73abbe86c8155007f29a8` and does not change that completed PR.
@@ -537,13 +538,59 @@ artifact reruns supersede earlier tests affected by that buffer-width defect.
 The preliminary facade authority check remains a separate group; atomic query/schema
 admission does not claim one capture across that earlier check.
 
-Each admitted group resolves the FILE source afresh, owns one or two sessions, and
-retires its worker when its last lease ends. Invalidation retires the whole group.
+For an external FILE source, each admitted group resolves the source afresh, owns one
+or two sessions, and retires its worker when its last lease ends. Invalidation retires the whole group.
 Referrals/reconnect remain fail-closed; no operation replay occurs. Parent wait deadlines
 include admission elapsed time; synchronous filesystem validation remains cooperative.
 Pidfd exit diagnostics are pool-wide hints, not per-operation execution proofs.
 Concurrent cache mutation, general AD interoperability and ambient pooling remain
 unproven. Matching usernames, cache paths or caller tokens do not enable reuse.
+
+### Explicit owned credentials and reusable groups
+
+`KerberosCredentialContext` copies caller-supplied FILE-cache bytes (at most one MiB).
+It never reads a cache path, environment variable or user credential store. Select it
+with the `RestrictedKerberosProfile` constructor overload accepting that context.
+The context must outlive operations using it; disposing it retires idle resources and
+prevents new admissions. Already-admitted operations may finish. This is local lease
+revocation, not remote revocation of established authorization.
+
+Each publication creates a new incompatible generation. Checkout admission is serialized
+with publication; creation that raced a replacement is discarded before application
+dispatch. The existing process-secret HMAC serializer includes manager ID, generation,
+complete recipe, deployment/profile settings and group size. The existing bounded pool
+owns whole exclusive worker groups, including query/schema pairing. External FILE groups
+share its capacity but remain nonreusable. Physical process capacity remains charged until
+verified exit, even after logical eviction; pressure can retire an idle group, never an
+active operation. Unreapable workers can still exhaust capacity conservatively.
+
+Snapshot bytes travel through sealed inherited fd6, outside JSON. The child validates
+seals and imports into its own MIT MEMORY cache; target selection and binding consume
+that private source. Bytes are zeroed after the final manager/startup/resource reference.
+The private static bridge observes successful GSS context lifetime with a hidden linker
+wrapper that forwards authentication arguments unchanged. Reuse requires finite lifetimes
+for every bound session and the credential, taking their minimum and subtracting startup
+elapsed time plus a five-second margin. Unknown lifetime refuses reusable admission.
+The observer uses initial-exec TLS in the dedicated worker; inability to load the bridge
+fails closed. Generic native and ambient reuse capabilities remain disabled.
+
+Same-name replacement and native TGT renewal do not prove equal authorization: MIT can
+rebuild PAC/authdata during renewal. This implementation therefore retires on publication.
+Compatible renewal remains unsupported until the provider can prove preservation and
+consumption of the target-specific authorization context; ticket bytes changing alone
+are not asserted to require retirement by the protocol. Fresh-bind success/failure
+equivalence after every operation is not promised.
+
+The approved isolated .NET 8 lab exercises this path through ordinary paged
+`DirectorySearcher.FindAll` calls. Its second operation creates no additional worker
+groups and increases reuse counters; publication of the second synthetic client's cache
+creates replacement groups and changes the ACL-protected results to that identity.
+These are production group counters plus real server identity/SSF assertions, not a
+packet capture or universal AD compatibility proof. Native context observation is exercised
+by the actual private static stack. The recording tests separately cover publication during
+creation, active-old-lease completion, expiry, canceled admission, group-wide faults,
+forced-fresh Close, sealed transfer and retained startup ownership. Compatible renewal
+and unmanaged ambient reuse are not implemented.
 
 Paged total-size limits count entry messages across pages (including duplicate DNs);
 references do not consume the limit. The native cursor keeps wire sizeLimit unchanged,

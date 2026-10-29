@@ -44,6 +44,39 @@ internal static class RealPublicLab
                 using var principals = principalSearch.FindAll();
                 if (principals.Any()) throw new InvalidDataException("Test directory unexpectedly contained AD user objects.");
             }
+            stage = 6;
+            var cache = File.ReadAllBytes("/run/adfl/client-a.ccache");
+            using (var owned = new KerberosCredentialContext(cache))
+            {
+                System.Security.Cryptography.CryptographicOperations.ZeroMemory(cache);
+                var profile = new RestrictedKerberosProfile("/bundle/production-v1", owned,
+                    "ADFL.TEST", "127.0.0.1", 10389, "127.0.0.1", 10088);
+                using var root = profile.CreateDirectoryEntry("dc=adfl,dc=test");
+                using var search = new DirectorySearcher(root, "(objectClass=organizationalRole)", ["description"], SearchScope.Subtree)
+                { ReferralChasing = ReferralChasingOption.None, PageSize = 1, CacheResults = true };
+                var before = LdapRestrictedOperation.GroupCounters;
+                var firstCreated = before.Created;
+                for (var operation = 0; operation < 2; operation++)
+                {
+                    using var results = search.FindAll();
+                    var rows = results.Cast<SearchResult>().ToArray();
+                    if (rows.Length != 2 || rows.Any(row => (string?)row.Properties["description"][0] != "client-a"))
+                        throw new InvalidDataException("Owned group identity or paging mismatch.");
+                    if (operation == 0) firstCreated = LdapRestrictedOperation.GroupCounters.Created;
+                }
+                var after = LdapRestrictedOperation.GroupCounters;
+                if (firstCreated <= before.Created || after.Created != firstCreated || after.Reused <= before.Reused)
+                    throw new InvalidDataException("Separate public searches did not reuse a bound worker group.");
+                cache = File.ReadAllBytes("/run/adfl/client-b.ccache");
+                try { owned.Publish(cache); }
+                finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(cache); }
+                using var replacement = search.FindAll();
+                var changed = replacement.Cast<SearchResult>().ToArray();
+                if (changed.Length != 2 || changed.Any(row => (string?)row.Properties["description"][0] != "client-b"))
+                    throw new InvalidDataException("Published identity did not replace the pooled group.");
+                if (LdapRestrictedOperation.GroupCounters.Created <= after.Created)
+                    throw new InvalidDataException("Publication did not replace the bound groups.");
+            }
             stage = 5;
             var deadline = System.Diagnostics.Stopwatch.StartNew();
             while (LdapRestrictedOperation.Snapshot.Tracked != 0 && deadline.Elapsed < TimeSpan.FromSeconds(15))

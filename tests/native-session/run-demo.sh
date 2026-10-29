@@ -26,3 +26,9 @@ cc "${common[@]}" -shared -DADFL_TEST_BRIDGE tests/native-session/session_demo.c
 cc "${common[@]}" tests/native-session/version_probe.c -L"$native_out" -ladfl_native -Wl,-rpath,"$native_out" -o "$native_out/version-probe"
 "$native_out/session-demo"
 "$native_out/version-probe"
+observer_sources=()
+for source in "${sources[@]}"; do
+  [[ "$source" == */adfl_system.c ]] || observer_sources+=("$source")
+done
+cc "${common[@]}" tests/native-session/context-lifetime-demo.c "${observer_sources[@]}" "${native_flags[@]}" -l:libsasl2.so.2 -pthread -o "$native_out/context-lifetime-demo"
+"$native_out/context-lifetime-demo"

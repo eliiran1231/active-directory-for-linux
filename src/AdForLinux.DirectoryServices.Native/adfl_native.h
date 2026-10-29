@@ -29,7 +29,7 @@ typedef struct {
 /* Transfer a source reference, never credential bytes or a captured identity.
  * Only absolute FILE paths and DIR collections can cross this worker seam. */
 typedef struct { unsigned kind; const char *absolute_path; } adfl_credential_source;
-enum adfl_source_kind { ADFL_SOURCE_FILE = 1, ADFL_SOURCE_DIR = 2 };
+enum adfl_source_kind { ADFL_SOURCE_FILE = 1, ADFL_SOURCE_DIR = 2, ADFL_SOURCE_OWNED = 3 };
 
 enum adfl_status {
     ADFL_OK = 0, ADFL_UNSUPPORTED = 1, ADFL_INVALID = 2,

@@ -9,6 +9,8 @@ internal sealed class LdapWorkerClient(Stream channel, Action retireWorker) : ID
     private readonly SemaphoreSlim gate = new(1, 1);
     private long nextId;
     private int retired;
+    internal bool IsRetired => Volatile.Read(ref retired) != 0;
+    internal uint CredentialLifetimeSeconds { get; private set; }
     internal IReadOnlyList<ILdapRequestTransport> Sessions { get; private set; } = [];
     internal static async Task<LdapWorkerClient> StartAsync(Stream channel, Action retireWorker,
         LdapWorkerStart profile, TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -24,6 +26,9 @@ internal sealed class LdapWorkerClient(Stream channel, Action retireWorker) : ID
             if (ready.Capabilities.Length != profile.SessionCount || ready.Capabilities.Any(value =>
                 (value & ~known) != 0 || (value & LdapTransportCapabilities.ProtocolsConnection) != 0))
                 throw new InvalidDataException("Invalid worker capabilities or session count.");
+            if (profile.CredentialSource?.Kind == LdapCredentialSourceKind.Owned && ready.CredentialLifetimeSeconds == 0)
+                throw new InvalidDataException("Owned credentials require a finite validity interval.");
+            client.CredentialLifetimeSeconds = ready.CredentialLifetimeSeconds;
             client.Sessions = ready.Capabilities.Select((capabilities, index) =>
                 (ILdapRequestTransport)new Proxy(client, index, capabilities, profile.Timeout)).ToArray();
             return client;

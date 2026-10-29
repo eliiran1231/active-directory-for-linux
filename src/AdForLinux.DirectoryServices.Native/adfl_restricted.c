@@ -50,7 +50,7 @@ ADFL_API int adfl_restricted_authority_resolve_from(const adfl_native_profile *p
     const adfl_credential_source *source, adfl_cancelled_fn cancelled, void *state, adfl_authority **out) {
     if (!out) return ADFL_INVALID;
     *out = NULL;
-    if (!profile_supported(p) || !source || source->kind != ADFL_SOURCE_FILE || adfl_source_validate(source))
+    if (!profile_supported(p) || !source || (source->kind != ADFL_SOURCE_FILE && source->kind != ADFL_SOURCE_OWNED) || adfl_source_validate(source))
         return ADFL_UNSUPPORTED;
     if (!inherited_policy() || pthread_once(&once,initialize)) return ADFL_UNSUPPORTED;
     return adfl_resolve_from_with(&restricted_ops,NULL,p,source,cancelled,state,out);

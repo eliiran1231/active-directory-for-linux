@@ -70,7 +70,7 @@ public partial class ConnectionPoolOperationTests
         channel.Position = 0;
         var copied = LdapWorkerProtocol.Payload<LdapWorkerStart>(await LdapWorkerProtocol.ReadAsync(channel, default));
         Assert.Equal(source, copied.CredentialSource); LdapWorkerProtocol.ValidateStart(copied);
-        Assert.Throws<PlatformNotSupportedException>(() => new LdapCredentialSource((LdapCredentialSourceKind)3, "/recording/cache").Validate());
+        Assert.Throws<PlatformNotSupportedException>(() => new LdapCredentialSource((LdapCredentialSourceKind)99, "/recording/cache").Validate());
         Assert.Throws<ArgumentException>(() => new LdapCredentialSource(LdapCredentialSourceKind.File, "/recording/ca\0che").Validate());
         Assert.False(NativeLdapBindingBackend.SupportsFacadeRequests);
     }
