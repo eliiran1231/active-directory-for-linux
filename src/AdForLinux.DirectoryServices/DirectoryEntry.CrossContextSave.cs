@@ -110,6 +110,9 @@ public partial class DirectoryEntry
     internal void PublishCrossContext(CrossContextLease lease, LdapConnectionOptions destination, string dn,
         Action validatePublication, Action publishPrincipal)
     {
+        if (!ReferenceEquals(RestrictedKerberos, destination.RestrictedKerberos) &&
+            (RestrictedKerberos is not null || destination.RestrictedKerberos is not null))
+            throw new InvalidOperationException("Cross-context publication cannot replace a restricted profile.");
         var path = new LdapPath(destination.Host, destination.Port, dn);
         var options = destination.Clone();
         var authentication = options.AuthenticationType switch

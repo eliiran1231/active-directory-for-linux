@@ -24,6 +24,7 @@ public partial class DirectoryEntry : Component
     private string? _password;
     private AuthenticationTypes _authenticationType;
     private LdapConnectionOptions? _connectionOptionsOverride;
+    internal RestrictedKerberosProfile? RestrictedKerberos { get; private set; }
 
     private LdapPath _path;
     private string _pathText;
@@ -117,6 +118,7 @@ public partial class DirectoryEntry : Component
             _authenticationType |= AuthenticationTypes.Sealing;
         }
         _connectionOptionsOverride = connectionOptions;
+        RestrictedKerberos = connectionOptions.RestrictedKerberos;
     }
 
     /// <summary>The <c>LDAP://…</c> path this entry was opened with.</summary>
@@ -139,9 +141,14 @@ public partial class DirectoryEntry : Component
                 return;
             }
 
+            var parsed = ParsePath(value);
+            if (RestrictedKerberos is { } selected &&
+                (!string.Equals(parsed.Host, selected.ServiceHost, StringComparison.OrdinalIgnoreCase) ||
+                 (parsed.Port ?? 389) != selected.ServicePort))
+                throw new InvalidOperationException("A restricted profile cannot change its service endpoint.");
             using var identityChange = IdentityLifetime.Change();
             _connectionOptionsOverride = null;
-            ResetBinding(ParsePath(value), value);
+            ResetBinding(parsed, value);
         }
     }
 
@@ -155,6 +162,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (_authenticationType != value)
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _authenticationType = value;
                 _connectionOptionsOverride = null;
@@ -173,6 +181,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _username = value;
                 _connectionOptionsOverride = null;
@@ -190,6 +199,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
+                if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _password = value;
                 _connectionOptionsOverride = null;
@@ -300,6 +310,8 @@ public partial class DirectoryEntry : Component
     {
         get
         {
+            var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+            void Validate() => IdentityLifetime.Checked(generation, ThrowIfDisposed, () => true);
             var schemaClassName = SchemaClassName;
             if (string.IsNullOrEmpty(schemaClassName))
             {
@@ -307,11 +319,12 @@ public partial class DirectoryEntry : Component
                     "The directory entry did not expose an objectClass to resolve in the schema.");
             }
 
-            using var lease = AcquireConnection(schema: true);
-            var connection = lease.Connection;
-            var rootDse = RootDse.Read(connection, "schemaNamingContext");
-            if (!rootDse.TryGetValue("schemaNamingContext", out var schemaNamingContext)
-                || string.IsNullOrEmpty(schemaNamingContext))
+            using var lease = AcquireConnection(Validate, schema: true);
+            var rootDse = lease.Search(new SearchRequest("", "(objectClass=*)", ProtocolScope.Base, "schemaNamingContext"));
+            Validate();
+            var schemaNamingContext = rootDse.Entries.FirstOrDefault()?.Attributes.TryGetValue("schemaNamingContext", out var names) == true
+                && names.Length > 0 ? System.Text.Encoding.UTF8.GetString(names[0]) : null;
+            if (string.IsNullOrEmpty(schemaNamingContext))
             {
                 throw new InvalidOperationException(
                     "The directory server did not expose a schemaNamingContext in rootDSE.");
@@ -322,8 +335,9 @@ public partial class DirectoryEntry : Component
                 $"(&(objectClass=classSchema)(lDAPDisplayName={EscapeFilterValue(schemaClassName)}))",
                 ProtocolScope.OneLevel,
                 "lDAPDisplayName");
-            var response = (SearchResponse)connection.SendRequestCompatible(request);
-            if (response.Entries.Count != 1)
+            var response = lease.Search(request);
+            Validate();
+            if (response.Entries.Length != 1)
             {
                 throw new InvalidOperationException(
                     $"The schema class '{schemaClassName}' could not be resolved under '{schemaNamingContext}'.");
@@ -331,7 +345,7 @@ public partial class DirectoryEntry : Component
 
             var schemaEntry = CreateEntryForDn(response.Entries[0].DistinguishedName);
             schemaEntry._usePropertyCache = _usePropertyCache;
-            return schemaEntry;
+            return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => schemaEntry);
         }
     }
 
@@ -370,7 +384,6 @@ public partial class DirectoryEntry : Component
         }
 
         using var lease = AcquireConnection();
-        var connection = lease.Connection;
         var modification = new DirectoryAttributeModification
         {
             Name = attributeName,
@@ -380,7 +393,7 @@ public partial class DirectoryEntry : Component
 
         var request = new ModifyRequest(_path.DistinguishedName);
         request.Modifications.Add(modification);
-        connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     /// <summary>
@@ -409,12 +422,13 @@ public partial class DirectoryEntry : Component
         request.Modifications.Add(deletion);
         request.Modifications.Add(addition);
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     internal byte[] ReadSecurityDescriptorImmediate(SecurityMasks masks)
     {
-        ThrowIfDisposed();
+        var generation = IdentityLifetime.Capture(ThrowIfDisposed);
+        void Validate() => IdentityLifetime.Checked(generation, ThrowIfDisposed, () => true);
         if (SecurityReadOverride is { } read) return read(masks).ToArray();
         var request = new SearchRequest(
             _path.DistinguishedName,
@@ -424,16 +438,15 @@ public partial class DirectoryEntry : Component
         request.Controls.Add(new SecurityDescriptorFlagControl(
             (System.DirectoryServices.Protocols.SecurityMasks)(int)masks));
 
-        using var lease = AcquireConnection();
-        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
-        if (response.Entries.Count == 0
-            || response.Entries[0].Attributes["nTSecurityDescriptor"] is not { Count: > 0 } attribute
-            || attribute[0] is not byte[] binaryForm)
+        using var lease = AcquireConnection(Validate);
+        var response = lease.Search(request);
+        Validate();
+        if (response.FirstBinary("nTSecurityDescriptor") is not { } binaryForm)
         {
             throw new InvalidOperationException("The directory entry did not return a binary security descriptor.");
         }
 
-        return binaryForm;
+        return IdentityLifetime.Checked(generation, ThrowIfDisposed, () => binaryForm);
     }
 
     /// <summary>
@@ -484,18 +497,17 @@ public partial class DirectoryEntry : Component
         }
 
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
     }
 
     /// <summary>Deletes this object and everything under it.</summary>
     public void DeleteTree()
     {
         using var lease = AcquireConnection();
-        var connection = lease.Connection;
         var delete = new DeleteRequest(_path.DistinguishedName);
         // Ask the server to delete the whole subtree (OID 1.2.840.113556.1.4.805).
         delete.Controls.Add(new TreeDeleteControl());
-        connection.SendRequestCompatible(delete);
+        lease.SendWriteCompatible(delete);
     }
 
     /// <summary>Deletes one direct child without requesting recursive tree deletion.</summary>
@@ -506,9 +518,8 @@ public partial class DirectoryEntry : Component
             ? relativeName
             : $"{relativeName},{_path.DistinguishedName}");
         using var lease = AcquireConnection(authority.Validate);
-        var connection = lease.Connection;
         authority.Validate();
-        connection.SendRequestCompatible(new DeleteRequest(distinguishedName));
+        lease.SendWriteCompatible(new DeleteRequest(distinguishedName));
     }
 
     /// <summary>Builds an unsaved child entry. CommitChanges creates it.</summary>
@@ -521,6 +532,7 @@ public partial class DirectoryEntry : Component
         var child = parent._connectionOptionsOverride is null
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
+        child.RestrictedKerberos = parent.RestrictedKerberos;
         child._isNew = true;
         child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.CapturePropertyOwnerValidation());
 
@@ -765,15 +777,27 @@ public partial class DirectoryEntry : Component
             ProtocolScope.Base,
             "1.1");
         using var lease = AcquireConnection(ValidateRead);
-        var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
-        if (response.Entries.Count == 0)
+        var boundDn = lease.ExecuteTransport(transport =>
+        {
+            if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) != 0)
+            {
+                var response = (SearchResponse)lease.Connection.SendRequestCompatible(request);
+                return response.Entries.Count == 0 ? null : response.Entries[0].DistinguishedName;
+            }
+            var result = LdapRequestDispatcher.Search(transport,
+                LdapRequestDispatcher.FromRequest(transport, request, transport.Timeout));
+            if (result.Code != ResultCode.Success)
+                throw LdapExceptionTranslator.Translate(result.Code, result.Diagnostic ?? "LDAP bind-object lookup failed.");
+            return result.Entries.Length == 0 ? null : result.Entries[0].DistinguishedName;
+        });
+        if (boundDn is null)
         {
             throw LdapExceptionTranslator.Translate(
                 ResultCode.NoSuchObject,
                 $"The directory object '{snapshot.Dn}' does not exist.");
         }
 
-        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = response.Entries[0].DistinguishedName);
+        return IdentityLifetime.Checked(generation, Validate, () => _boundDistinguishedName = boundDn);
     }
 
     private PropertyCollection ReadProperties(
@@ -790,7 +814,6 @@ public partial class DirectoryEntry : Component
             return IdentityLifetime.Checked(generation, ValidateBinding, () => controlled);
         }
         using var lease = AcquireConnection(ValidateRead);
-        var connection = lease.Connection;
         var request = new SearchRequest(
             IdentityLifetime.Checked(generation, ValidateBinding, () => _path.DistinguishedName),
             "(objectClass=*)",
@@ -804,6 +827,37 @@ public partial class DirectoryEntry : Component
                 (System.DirectoryServices.Protocols.SecurityMasks)(int)(readSecurityMasks ?? EffectiveSecurityMasks())));
         }
 
+        var admitted = lease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+        {
+            var clock = System.Diagnostics.Stopwatch.GetTimestamp();
+            TimeSpan Remaining()
+            {
+                ValidateRead();
+                var remaining = admitted.Timeout - System.Diagnostics.Stopwatch.GetElapsedTime(clock);
+                return remaining > TimeSpan.Zero ? remaining : throw new TimeoutException("Property read deadline expired.");
+            }
+            var result = LdapRequestDispatcher.Search(admitted,
+                LdapRequestDispatcher.FromRequest(admitted, request, Remaining()));
+            if (result.Code != ResultCode.Success)
+                throw LdapExceptionTranslator.Translate(result.Code, result.Diagnostic ?? "LDAP property read failed.");
+            if (requireObject && (result.Entries.Length != 1 || result.References.Length != 0 || result.Referrals.Length != 0))
+                throw new InvalidOperationException("Write reconciliation requires a successful read of the target object.");
+            if (requireCompleteServiceNames)
+                ValidateCompleteServiceNameReadback(result.Entries[0].Attributes.Select(pair => (pair.Key, pair.Value.Length)));
+            var loaded = IdentityLifetime.Checked(generation, ValidateBinding,
+                () => new PropertyCollection(OnPropertyChanged, validateOwner: CapturePropertyOwnerValidation()));
+            if (result.Entries.Length > 0)
+                LoadEntryValues(SearchEntryReader.Read(result.Entries[0], admitted, Remaining), loaded,
+                    requestedProperties, loadDefaultProperties, ValidateRead);
+            return IdentityLifetime.Checked(generation, ValidateBinding, () =>
+            {
+                Remaining();
+                if (result.Entries.Length > 0) _boundDistinguishedName = result.Entries[0].DistinguishedName;
+                return loaded;
+            });
+        }
+        var connection = lease.Connection;
         var response = (SearchResponse)connection.SendRequestCompatible(request);
         if (requireObject && (response.ResultCode != ResultCode.Success || response.Entries.Count != 1
             || response.References.Count != 0 || response.Referral.Length != 0))
@@ -824,24 +878,28 @@ public partial class DirectoryEntry : Component
     }
 
     private static void ValidateCompleteServiceNameReadback(SearchResultEntry entry)
+        => ValidateCompleteServiceNameReadback(entry.Attributes.AttributeNames.Cast<string>()
+            .Select(name => (name, entry.Attributes[name].Count)));
+
+    private static void ValidateCompleteServiceNameReadback(IEnumerable<(string Name, int Count)> attributes)
     {
         // Validate the wire names before LoadEntry normalizes range options.
         // A range ending at N cannot prove absence; even N-* lacks the prefix
         // unless N is zero. Do not assemble ranges across mutable snapshots.
-        DirectoryAttribute? bare = null;
-        DirectoryAttribute? terminal = null;
-        foreach (string name in entry.Attributes.AttributeNames)
+        int? bare = null;
+        int? terminal = null;
+        foreach (var (name, count) in attributes)
         {
             var parts = name.Split(';');
             if (!parts[0].Equals(PrincipalServiceNameWrite.Attribute, StringComparison.OrdinalIgnoreCase)) continue;
-            if (parts.Length == 1) bare = entry.Attributes[name];
+            if (parts.Length == 1) bare = count;
             else if (parts.Length == 2 && parts[1].Equals("range=0-*", StringComparison.OrdinalIgnoreCase) && terminal is null)
-                terminal = entry.Attributes[name];
+                terminal = count;
             else throw new InvalidOperationException("Service-name reconciliation requires complete, unambiguous attribute values; ranged or malformed readback was refused.");
         }
         // AD can return an empty bare companion with its ranged value attribute.
         // Nonempty bare plus ranged data is ambiguous and cannot be merged here.
-        if (terminal is not null && bare is { Count: > 0 })
+        if (terminal is not null && bare is > 0)
             throw new InvalidOperationException("Service-name readback contains conflicting bare and ranged values.");
     }
 
@@ -885,8 +943,15 @@ public partial class DirectoryEntry : Component
     string[] requestedProperties,
     bool normalizeRangedNames, Action validateBinding, LdapConnection connection)
     {
+        LoadEntryValues(SearchEntryReader.Read(entry, SchemaConnectionForOperation(connection)),
+            properties, requestedProperties, normalizeRangedNames, validateBinding);
+    }
+
+    private static void LoadEntryValues(IEnumerable<(string Name, object Value)> values,
+        PropertyCollection properties, string[] requestedProperties, bool normalizeRangedNames, Action validateBinding)
+    {
         validateBinding();
-        foreach (var (name, value) in SearchEntryReader.Read(entry, SchemaConnectionForOperation(connection)))
+        foreach (var (name, value) in values)
         {
             var baseName = WithoutRangeSpecifier(name);
             var requestedByBaseName = requestedProperties.Any(requestedName =>
@@ -916,6 +981,10 @@ public partial class DirectoryEntry : Component
         var generation = IdentityLifetime.Capture(ValidateBinding);
         var snapshot = IdentityLifetime.Checked(generation, ValidateBinding,
             () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
+        // Raw callers cannot express an operation lifetime. Never let this legacy
+        // seam retain platform authentication and bypass operation-time binding.
+        if (new LdapAuthenticationSource(snapshot.Options).RequiresOperationLease)
+            throw new NotSupportedException("Platform authentication requires an operation-owned connection lease.");
         if (snapshot.Existing is not null) return snapshot.Existing;
         var created = LdapExceptionTranslator.Execute(() => LdapConnectionFactory.CreateBound(snapshot.Options));
         LdapConnection? selected = null;
@@ -990,6 +1059,7 @@ public partial class DirectoryEntry : Component
         ThrowIfDisposed();
         if (_connectionOptionsOverride is not null)
         {
+            RestrictedKerberos?.ValidateRecipe(_connectionOptionsOverride);
             return _connectionOptionsOverride;
         }
 
@@ -1036,7 +1106,7 @@ public partial class DirectoryEntry : Component
                      || _path.Port == 636;
         var port = _path.Port ?? (useSsl ? 636 : 389);
 
-        return new LdapConnectionOptions
+        var options = new LdapConnectionOptions
         {
             Host = _path.Host!,
             Port = port,
@@ -1048,7 +1118,10 @@ public partial class DirectoryEntry : Component
             Sealing = sealing,
             BindDn = _username,
             BindPassword = _password,
+            RestrictedKerberos = RestrictedKerberos,
         };
+        RestrictedKerberos?.ValidateRecipe(options);
+        return options;
     }
 
     private void OnPropertyChanged(PropertyValueCollection property)
@@ -1085,7 +1158,8 @@ public partial class DirectoryEntry : Component
     {
         var source = BuildOptions();
         var destination = other.BuildOptions();
-        return SameHost(source.Host, destination.Host)
+        return ReferenceEquals(source.RestrictedKerberos, destination.RestrictedKerberos)
+            && SameHost(source.Host, destination.Host)
             && source.Port == destination.Port
             && source.UseSsl == destination.UseSsl
             && source.UseStartTls == destination.UseStartTls
@@ -1124,7 +1198,7 @@ public partial class DirectoryEntry : Component
             DeleteOldRdn = true,
         };
         using var lease = AcquireConnection();
-        lease.Connection.SendRequestCompatible(request);
+        lease.SendWriteCompatible(request);
         var retainedProperties = _usePropertyCache ? null : _properties;
         ResetBinding(new LdapPath(_path.Host, _path.Port, $"{newName},{parentDn}"));
         if (!_usePropertyCache) _properties = retainedProperties;

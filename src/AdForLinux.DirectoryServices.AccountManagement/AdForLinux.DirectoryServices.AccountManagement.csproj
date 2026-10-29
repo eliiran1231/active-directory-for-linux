@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
+    <InternalsVisibleTo Include="AdForLinux.NativeTransportDemo" />
     <InternalsVisibleTo Include="AdForLinux.DifferentialTests" />
   </ItemGroup>
 

@@ -6,7 +6,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 /// <summary>Pool only audited operation-owned sessions; raw factory ownership remains explicit.</summary>
 internal static partial class LdapConnectionProvider
 {
-    private static readonly BoundedConnectionPool<ConnectionKey, LdapConnection> Pool = new();
+    private static readonly BoundedConnectionPool<ConnectionKey, BoundLdapSession> Pool = new();
     internal static (int Total, int Keys, int Waiting, long Created, long Reused, long Destroyed, long Failures, long Waits, long Timeouts) Snapshot => Pool.Snapshot;
 
     static LdapConnectionProvider()
@@ -17,16 +17,14 @@ internal static partial class LdapConnectionProvider
 
     internal static bool CanReuse(LdapConnectionOptions options,
         ReferralChasingOption referrals = ReferralChasingOption.None) =>
-        options.AuthenticationType == AuthType.Basic && !options.IsAnonymous &&
-        !string.IsNullOrEmpty(options.BindDn) && !string.IsNullOrEmpty(options.BindPassword) &&
-        // OpenLDAP keeps referral children on the owning handle and, without a
-        // rebind callback, binds them anonymously. Preserve that existing policy.
-        // Windows LDAPS/External passed the restricted authenticated fixture,
-        // but primary options do not bound server-supplied referrals or ambient
-        // context changes across/within a lease. This general API stays fresh;
-        // the separately audited scoped FindOne path owns context checks. See
-        // docs/connection-pooling.md. Other backends remain unaudited.
-        (referrals == ReferralChasingOption.None || OperatingSystem.IsLinux());
+        new LdapAuthenticationSource(options).Freshness(referrals) == LdapSessionFreshness.CompatibleEstablishedSession;
+
+    // Plan the whole operation before admission. The restricted backend retires
+    // an unfinished cursor's worker group, so buffered page materialization needs
+    // a sibling schema session while that group is still alive. Stock Protocols
+    // keeps its existing one-connection behavior.
+    internal static int RequiredSessionCount(LdapConnectionOptions options, int requested, bool independentNativeSchema)
+        => independentNativeSchema && options.RestrictedKerberos is not null ? Math.Max(2, requested) : requested;
 
     internal static long NewGeneration() => Pool.NewGeneration();
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<LdapConnection, Session> Active = new();
@@ -38,52 +36,50 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
     {
+        if (options.RestrictedKerberos is not null)
+            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only
         // under its exact immutable credentials and referral/transport settings.
-        var reusable = CanReuse(snapshot, referrals);
+        var authentication = new LdapAuthenticationSource(snapshot);
+        var reusable = authentication.Freshness(referrals) == LdapSessionFreshness.CompatibleEstablishedSession;
         var key = ConnectionKey.Create(snapshot, referrals);
-        var leases = Pool.AcquireBatch(key, count, () =>
-        {
-            var connection = LdapConnectionFactory.Create(snapshot);
-            return LdapConnectionFactory.ConfigureOwned(connection, value =>
-            {
-                LdapConnectionFactory.ConfigureReferralChasing(value, referrals);
-                value.Bind();
-            });
-        }, cancellationToken, reusable, preferFresh, minimumGeneration);
+        var leases = Pool.AcquireBatch(key, count, () => authentication.Bind(referrals),
+            cancellationToken, reusable, preferFresh, minimumGeneration);
         return leases.Select(lease => new Session(lease)).ToArray();
     }
 
     internal static Session AcquireValidation(LdapConnectionOptions options)
     {
+        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Validation must perform the original fresh bind, even when a healthy
         // session for exactly these credentials is idle. It still consumes capacity.
         return new Session(Pool.Acquire(ConnectionKey.Create(snapshot, ReferralChasingOption.All),
-            () => LdapConnectionFactory.CreateBound(snapshot), reusable: false));
+            () => new LdapAuthenticationSource(snapshot).Bind(null), reusable: false));
     }
 
     internal static Session[] AcquirePair(LdapConnectionOptions first, LdapConnectionOptions second,
         Func<TimeSpan> remaining, CancellationToken cancellationToken)
     {
+        if (first.RestrictedKerberos is not null || second.RestrictedKerberos is not null)
+        {
+            if (first.RestrictedKerberos is null || !ReferenceEquals(first.RestrictedKerberos, second.RestrictedKerberos) ||
+                !ConnectionKey.Create(first, ReferralChasingOption.None).Equals(ConnectionKey.Create(second, ReferralChasingOption.None)))
+                throw new PlatformNotSupportedException("Restricted paired admission requires the same profile and complete connection recipe.");
+            return LdapRestrictedOperation.Acquire(first, 2, ReferralChasingOption.None, cancellationToken, remaining());
+        }
         OfflineTestGuard.RequireLiveAccess();
         var requests = new[] { first.Clone(), second.Clone() }.Select(snapshot =>
-            new BoundedConnectionPool<ConnectionKey, LdapConnection>.Request(
-                ConnectionKey.Create(snapshot, ReferralChasingOption.None), () =>
-                {
-                    // The key uses stable configuration; the current deadline limits
-                    // this bind only and never fragments the pool into timeout keys.
-                    var connection = LdapConnectionFactory.Create(snapshot.Clone(remaining()));
-                    return LdapConnectionFactory.ConfigureOwned(connection, value =>
-                    {
-                        LdapConnectionFactory.ConfigureReferralChasing(value, ReferralChasingOption.None);
-                        value.Bind();
-                        value.Timeout = snapshot.Timeout;
-                    });
-                }, CanReuse(snapshot))).ToArray();
+        {
+            var authentication = new LdapAuthenticationSource(snapshot);
+            return new BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Request(
+                ConnectionKey.Create(snapshot, ReferralChasingOption.None),
+                () => authentication.Bind(ReferralChasingOption.None, remaining()),
+                authentication.Freshness(ReferralChasingOption.None) == LdapSessionFreshness.CompatibleEstablishedSession);
+        }).ToArray();
         return Pool.AcquireMany(requests, cancellationToken).Select(lease => new Session(lease)).ToArray();
     }
 
@@ -106,25 +102,60 @@ internal static partial class LdapConnectionProvider
         return session.Execute(operation);
     }
 
+    internal static TResult ExecuteTransport<TResult>(LdapConnectionOptions options, Func<ILdapRequestTransport, TResult> operation)
+    {
+        using var session = Acquire(options);
+        return session.ExecuteTransport(operation);
+    }
+
     internal sealed class Session : IDisposable
     {
-        private readonly BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease;
-        private readonly LdapConnection connection;
+        private readonly BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease? lease;
+        private readonly BoundLdapSession? owned;
+        private readonly Action? invalidateOwned, validateOwned;
+        private readonly LdapConnection? connection;
         private int disposed;
-        internal Session(BoundedConnectionPool<ConnectionKey, LdapConnection>.Lease lease)
-        { this.lease = lease; connection = lease.Value; Active.Add(connection, this); }
-        internal LdapConnection Connection => lease.Value;
-        internal void Invalidate() => lease.Invalidate();
+        private Action? afterDispose;
+        internal Session(BoundedConnectionPool<ConnectionKey, BoundLdapSession>.Lease lease, Action? afterDispose = null)
+        { this.lease = lease; this.afterDispose = afterDispose; connection = lease.Value.ProtocolsConnection; if (connection is not null) Active.Add(connection, this); }
+        internal Session(BoundLdapSession owned, Action invalidate, Action validate)
+        { this.owned = owned; invalidateOwned = invalidate; validateOwned = validate; }
+        private BoundLdapSession Value
+        {
+            get
+            {
+                ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+                validateOwned?.Invoke();
+                return owned ?? lease!.Value;
+            }
+        }
+        internal LdapConnection Connection => Value.Connection;
+        internal void Invalidate()
+        { if (lease is not null) lease.Invalidate(); else invalidateOwned!.Invoke(); }
         internal TResult Execute<TResult>(Func<LdapConnection, TResult> operation)
         {
-            try { return operation(lease.Value); }
-            catch (Exception error) { ReportFailure(connection, error); throw; }
+            var value = Value;
+            try { return operation(value.Connection); }
+            catch (Exception error) { if (IsConnectionFailure(error)) Invalidate(); throw; }
+        }
+        internal TResult ExecuteTransport<TResult>(Func<ILdapRequestTransport, TResult> operation)
+        {
+            var value = Value;
+            try { return operation(value.Transport); }
+            catch (Exception error) { if (IsConnectionFailure(error)) Invalidate(); throw; }
         }
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            Active.Remove(connection);
-            lease.Dispose();
+            try
+            {
+                if (connection is not null) Active.Remove(connection);
+            }
+            finally
+            {
+                try { if (lease is not null) lease.Dispose(); else owned!.Dispose(); }
+                finally { Interlocked.Exchange(ref afterDispose, null)?.Invoke(); }
+            }
         }
     }
 
@@ -154,7 +185,11 @@ internal static partial class LdapConnectionProvider
             => CreateCore(options, referrals, false, null);
         internal static ConnectionKey CreateContextScoped(LdapConnectionOptions options, ReferralChasingOption referrals, WindowsLdapContext? context)
             => CreateCore(options, referrals, true, context);
-        private static ConnectionKey CreateCore(LdapConnectionOptions options, ReferralChasingOption referrals, bool scoped, WindowsLdapContext? context)
+        internal static ConnectionKey CreateManagedKerberos(LdapConnectionOptions options, ReferralChasingOption referrals,
+            Guid contextId, long compatibilityVersion, int sessions)
+            => CreateCore(options, referrals, false, null, (contextId, compatibilityVersion, sessions));
+        private static ConnectionKey CreateCore(LdapConnectionOptions options, ReferralChasingOption referrals, bool scoped, WindowsLdapContext? context,
+            (Guid Id, long Version, int Sessions)? managed = null)
         {
             using var data = new MemoryStream(checked((scoped ? 256 : 100) + 2 * (options.Host.Length +
                 (options.BindDn?.Length ?? 0) + (options.BindPassword?.Length ?? 0))));
@@ -165,6 +200,16 @@ internal static partial class LdapConnectionProvider
                 writer.Write((int)options.AuthenticationType); writer.Write(options.Signing); writer.Write(options.Sealing);
                 WriteNullable(writer, options.BindDn); WriteNullable(writer, options.BindPassword);
                 writer.Write(options.Timeout.Ticks); writer.Write((int)referrals);
+                if (managed is { } owned)
+                {
+                    var profile = options.RestrictedKerberos ?? throw new ArgumentException("Managed credentials require a restricted profile.");
+                    writer.Write("RestrictedWorkerGroup/v1"); writer.Write(owned.Id.ToByteArray());
+                    writer.Write(owned.Version); writer.Write(owned.Sessions);
+                    WriteNullable(writer, profile.DeploymentDirectory); WriteNullable(writer, profile.Realm);
+                    WriteNullable(writer, profile.ServiceHost); writer.Write(profile.ServicePort);
+                    WriteNullable(writer, profile.KdcHost); writer.Write(profile.KdcPort);
+                    WriteNullable(writer, profile.CredentialCacheFile);
+                }
                 if (scoped)
                 {
                     writer.Write("WindowsContextScopedRead/v1");
