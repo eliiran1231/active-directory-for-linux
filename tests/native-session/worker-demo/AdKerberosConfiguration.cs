@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using AdForLinux.DirectoryServices;
+using AdForLinux.DirectoryServices.Ldap;
 
 namespace AdForLinux.IntegrationTests;
 
@@ -12,9 +13,12 @@ internal sealed record AdKerberosConfiguration(
 {
     internal void Validate()
     {
-        foreach (var path in new[] { DeploymentDirectory, CacheA, CacheB })
-            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) || path.Contains('\0'))
-                throw new ArgumentException("configuration-path");
+        if (string.IsNullOrWhiteSpace(DeploymentDirectory) || !Path.IsPathFullyQualified(DeploymentDirectory) || DeploymentDirectory.Contains('\0'))
+            throw new ArgumentException("configuration-path");
+        // Cache descriptors use the Linux backend's POSIX syntax even when
+        // metadata-only validation is tested on Windows. Never translate them.
+        new LdapCredentialSource(LdapCredentialSourceKind.File, CacheA).Validate();
+        new LdapCredentialSource(LdapCredentialSourceKind.File, CacheB).Validate();
         if (CacheA == CacheB) throw new ArgumentException("distinct-snapshots-required");
         if (string.IsNullOrWhiteSpace(SearchBaseDn) || SearchBaseDn.Length > 8192 ||
             string.IsNullOrWhiteSpace(SearchFilter) || SearchFilter.Length > 8192 ||

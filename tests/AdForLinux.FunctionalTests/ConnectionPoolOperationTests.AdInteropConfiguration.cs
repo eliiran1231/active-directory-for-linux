@@ -9,7 +9,7 @@ public partial class ConnectionPoolOperationTests
 {
     private static AdKerberosConfiguration AdReadConfiguration() => new(
         Path.GetFullPath("recording-bundle"), "EXAMPLE.INVALID", "dc.invalid", 389,
-        "kdc.invalid", 88, Path.GetFullPath("a.ccache"), Path.GetFullPath("b.ccache"),
+        "kdc.invalid", 88, "/recording/a.ccache", "/recording/b.ccache",
         "dc=example,dc=invalid", "(description=pool-*)", "description", "pool-a", "pool-b",
         ["cn=a1,dc=example,dc=invalid", "cn=a2,dc=example,dc=invalid"],
         ["cn=b1,dc=example,dc=invalid", "cn=b2,dc=example,dc=invalid"]);
@@ -34,6 +34,7 @@ public partial class ConnectionPoolOperationTests
     {
         var valid = AdReadConfiguration();
         Assert.Throws<ArgumentException>(() => (valid with { CacheB = valid.CacheA }).Validate());
+        Assert.Throws<ArgumentException>(() => (valid with { CacheB = "C:\\recording\\b.ccache" }).Validate());
         Assert.Throws<ArgumentException>(() => (valid with { ExpectedDnsB = valid.ExpectedDnsA }).Validate());
         Assert.Throws<ArgumentException>(() => (valid with { ExpectedDnsB = ["cn=b"] }).Validate());
         Assert.Throws<ArgumentException>(() => (valid with { MarkerValueB = valid.MarkerValueA }).Validate());

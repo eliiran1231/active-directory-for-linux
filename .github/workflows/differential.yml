@@ -1,5 +1,5 @@
 name: Differential (real AD)
-run-name: Differential - ${{ inputs.reason || github.event_name }}
+run-name: Differential (${{ inputs.backend || 'windows-differential' }}) - ${{ inputs.reason || github.event_name }}
 
 permissions:
   contents: read
@@ -32,6 +32,7 @@ on:
 
 jobs:
   differential-tests:
+    name: Windows LDAPS Basic differential
     if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.backend == 'windows-differential' || inputs.backend == '')) }}
     # Must match the label(s) you gave the runner when you registered it.
     runs-on: [self-hosted, windows, ad-runner]
@@ -142,6 +143,7 @@ jobs:
             -Confirm:$false
 
   restricted-linux-kerberos:
+    name: Restricted Linux owned Kerberos (read only)
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.backend == 'restricted-linux-kerberos' }}
     # A separately provisioned unprivileged Linux runner is required. No runner,
     # credential source, native bundle or security configuration is created here.
