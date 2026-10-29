@@ -563,6 +563,10 @@ owns whole exclusive worker groups, including query/schema pairing. External FIL
 share its capacity but remain nonreusable. Physical process capacity remains charged until
 verified exit, even after logical eviction; pressure can retire an idle group, never an
 active operation. Unreapable workers can still exhaust capacity conservatively.
+Physical admission rechecks idle pressure in bounded wait slices, including groups that
+return idle after waiting begins. Retirement registrations are reference-counted across
+acquisition and worker lifetime; evicted, failed and expired recipe keys do not accumulate
+in a long-lived credential manager.
 
 Snapshot bytes travel through sealed inherited fd6, outside JSON. The child validates
 seals and imports into its own MIT MEMORY cache; target selection and binding consume

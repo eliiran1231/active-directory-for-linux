@@ -195,6 +195,96 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Fact]
+    public void Retirement_registry_tracks_live_groups_not_historical_recipe_keys()
+    {
+        using var context = new KerberosCredentialContext([1]);
+        using var generation = context.Capture();
+        using var fixture = new ManagedFixture(1); using var entry = fixture.Entry(context);
+        for (var i = 1; i <= 256; i++)
+        {
+            var sessions = fixture.Open(entry.BuildOptions().Clone(TimeSpan.FromSeconds(i)), 1, ReferralChasingOption.None);
+            sessions[0].Dispose();
+            Assert.Equal(1, fixture.Pool.Snapshot.Keys);
+            Assert.Equal(1, generation.RegistrationCount);
+        }
+        fixture.Pool.Dispose();
+        Assert.Equal(0, generation.RegistrationCount);
+    }
+
+    [Fact]
+    public void Failed_and_cancelled_creation_release_retirement_registration()
+    {
+        using var context = new KerberosCredentialContext([1]);
+        using var generation = context.Capture();
+        using var fixture = new ManagedFixture(1); using var entry = fixture.Entry(context);
+        fixture.Creating = _ => throw new IOException("recorded creation failure");
+        Assert.Throws<IOException>(() => fixture.Open(entry.BuildOptions(), 1, ReferralChasingOption.None));
+        Assert.Equal(0, generation.RegistrationCount);
+        fixture.Creating = null;
+        using var held = entry.AcquireConnection();
+        Assert.Throws<OperationCanceledException>(() => fixture.Open(entry.BuildOptions().Clone(TimeSpan.FromSeconds(17)),
+            1, ReferralChasingOption.None, token: new CancellationToken(true)));
+        Assert.Equal(1, generation.RegistrationCount);
+        context.Publish([2]);
+        held.Dispose();
+        Assert.Equal(0, generation.RegistrationCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Physical_capacity_timeout_or_cancellation_never_releases_unacquired_slot(bool cancel)
+    {
+        using var physical = new SemaphoreSlim(0, 1);
+        using var cancellation = new CancellationTokenSource();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var pending = NativeLdapWorkerPool.WaitForCapacityAsync(physical,
+            () => TimeSpan.FromMilliseconds(150) - timer.Elapsed,
+            () => { if (cancel) cancellation.Cancel(); }, cancellation.Token);
+        if (cancel) await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        else await Assert.ThrowsAsync<TimeoutException>(() => pending);
+        Assert.Equal(0, physical.CurrentCount);
+        physical.Release();
+        Assert.Equal(1, physical.CurrentCount);
+    }
+
+    [Fact]
+    public async Task Physical_capacity_wait_rechecks_groups_returned_idle_after_initial_pressure()
+    {
+        using var first = new KerberosCredentialContext([1]);
+        using var second = new KerberosCredentialContext([2]);
+        using var fixture = new ManagedFixture(3);
+        using var a = fixture.Entry(first); using var b = fixture.Entry(second);
+        using var held = a.AcquireConnection(); using var returning = b.AcquireConnection();
+        // Two active workers plus an unreaped worker occupy all physical slots.
+        using var physical = new SemaphoreSlim(0, 3);
+        using var cancellation = new CancellationTokenSource();
+        var initial = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var evicted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var pending = NativeLdapWorkerPool.WaitForCapacityAsync(physical,
+            () => TimeSpan.FromSeconds(2) - timer.Elapsed,
+            () => { if (fixture.Pool.EvictOneIdle()) evicted.TrySetResult(); else initial.TrySetResult(); }, cancellation.Token);
+        try
+        {
+            await initial.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            returning.Dispose();
+            await evicted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            Assert.False(pending.IsCompleted); // Retirement alone does not release capacity.
+            Assert.Equal(0, fixture.Workers[0].Disposals);
+            Assert.Equal(1, fixture.Workers[1].Disposals);
+            physical.Release(); // Models the verified process-exit callback only.
+            await pending;
+            Assert.Equal(0, physical.CurrentCount);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            try { await pending; } catch (OperationCanceledException) { }
+        }
+    }
+
+    [Fact]
     public void Different_managers_never_share_a_group_and_cancelled_wait_does_not_create()
     {
         using var first = new KerberosCredentialContext([1]); using var second = new KerberosCredentialContext([1]);

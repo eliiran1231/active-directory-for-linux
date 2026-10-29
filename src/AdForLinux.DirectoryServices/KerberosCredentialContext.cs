@@ -60,12 +60,12 @@ public sealed class KerberosCredentialContext : IDisposable
         }
     }
 
-    internal bool Register(Generation generation, LdapConnectionProvider.ConnectionKey key, object pool, Action retire)
+    internal Generation.Registration? Register(Generation generation, LdapConnectionProvider.ConnectionKey key, object pool, Action retire)
     {
         lock (gate)
         {
-            if (!ReferenceEquals(current, generation)) return false;
-            generation.RequireValid(); generation.Retirements.TryAdd((pool, key), retire); return true;
+            if (!ReferenceEquals(current, generation)) return null;
+            generation.RequireValid(); return generation.Register((pool, key), retire);
         }
     }
 
@@ -93,7 +93,49 @@ public sealed class KerberosCredentialContext : IDisposable
         private long validUntil = long.MaxValue;
         internal byte[] Bytes { get; } = bytes;
         internal long Version { get; } = version;
-        internal Dictionary<(object Pool, LdapConnectionProvider.ConnectionKey Key), Action> Retirements { get; } = [];
+        private readonly object registrationGate = new();
+        private readonly Dictionary<(object Pool, LdapConnectionProvider.ConnectionKey Key), Retirement> retirements = [];
+        internal int RegistrationCount { get { lock (registrationGate) return retirements.Count; } }
+        internal sealed class Retirement(Action retire)
+        {
+            internal readonly Action Retire = retire;
+            internal int References;
+        }
+        internal Registration? Register((object Pool, LdapConnectionProvider.ConnectionKey Key) key, Action retire)
+        {
+            lock (registrationGate)
+            {
+                if (Revoked) return null;
+                if (!retirements.TryGetValue(key, out var entry)) retirements.Add(key, entry = new Retirement(retire));
+                entry.References++;
+                return new Registration(this, key, entry);
+            }
+        }
+        internal sealed class Registration(Generation owner,
+            (object Pool, LdapConnectionProvider.ConnectionKey Key) key, Retirement entry) : IDisposable
+        {
+            private bool disposed;
+            internal Registration Retain()
+            {
+                lock (owner.registrationGate)
+                {
+                    ObjectDisposedException.ThrowIf(disposed, this);
+                    // Only retain this already-observed entry. Never add a key
+                    // after revocation; final admission still rejects stale binds.
+                    entry.References++;
+                    return new Registration(owner, key, entry);
+                }
+            }
+            public void Dispose()
+            {
+                lock (owner.registrationGate)
+                {
+                    if (disposed) return;
+                    disposed = true;
+                    if (--entry.References == 0) owner.retirements.Remove(key);
+                }
+            }
+        }
         internal bool Revoked => Volatile.Read(ref revoked) != 0;
         internal long Timestamp => clock.GetTimestamp();
         internal void Retain() => Interlocked.Increment(ref references);
@@ -119,7 +161,9 @@ public sealed class KerberosCredentialContext : IDisposable
         internal void Revoke()
         {
             if (Interlocked.Exchange(ref revoked, 1) != 0) return;
-            try { foreach (var retire in Retirements.Values) retire(); }
+            Action[] callbacks;
+            lock (registrationGate) callbacks = retirements.Values.Select(entry => entry.Retire).ToArray();
+            try { foreach (var retire in callbacks) retire(); }
             finally { Dispose(); }
         }
         public void Dispose()

@@ -34,23 +34,36 @@ internal static partial class LdapRestrictedOperation
             _ = remaining();
             using var generation = context?.Capture();
             var key = LdapConnectionProvider.ConnectionKey.CreateManagedKerberos(options, referrals, context?.Id ?? Guid.Empty, generation?.Version ?? 0, count);
-            if (context is not null && !context.Register(generation!, key, pool, () => pool.Retire(key))) continue;
+            using var registration = context?.Register(generation!, key, pool, () => pool.Retire(key));
+            if (context is not null && registration is null) continue;
             var lease = pool.Acquire(key, () =>
             {
                 var started = generation?.Timestamp ?? 0;
                 var start = profile.WorkerProfile(count, TimeSpan.FromSeconds(Math.Ceiling(remaining().TotalSeconds)))
                     with { OwnedCache = generation?.Bytes, RetainOwnedCache = generation is null ? null : generation.RetainStartup };
-                var worker = create(start, remaining(), deadline.Token);
+                var workerRegistration = registration?.Retain();
+                IManagedWorker? worker = null;
+                var retainedGeneration = false;
                 try
                 {
+                    worker = create(start, remaining(), deadline.Token);
                     if (generation is not null)
                     {
                         generation.SetValidity(started, worker.CredentialLifetimeSeconds);
-                        generation.RequireValid(); generation.Retain();
+                        generation.RequireValid(); generation.Retain(); retainedGeneration = true;
                     }
-                    return new ManagedWorker(worker, generation);
+                    return new ManagedWorker(worker, generation, workerRegistration);
                 }
-                catch { worker.Dispose(); throw; }
+                catch
+                {
+                    try { worker?.Dispose(); }
+                    finally
+                    {
+                        workerRegistration?.Dispose();
+                        if (retainedGeneration) generation!.Dispose();
+                    }
+                    throw;
+                }
             }, deadline.Token, reusable: context is not null, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
             var transferred = false;
             try
@@ -86,7 +99,8 @@ internal static partial class LdapRestrictedOperation
     }
 
     internal sealed class ManagedWorker(IManagedWorker worker,
-        KerberosCredentialContext.Generation? generation) : IDisposable
+        KerberosCredentialContext.Generation? generation,
+        KerberosCredentialContext.Generation.Registration? registration = null) : IDisposable
     {
         private int disposed;
         internal IManagedWorker Worker => worker;
@@ -94,7 +108,8 @@ internal static partial class LdapRestrictedOperation
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            try { worker.Dispose(); } finally { generation?.Dispose(); }
+            try { worker.Dispose(); }
+            finally { registration?.Dispose(); generation?.Dispose(); }
         }
     }
 

@@ -46,13 +46,7 @@ internal sealed class NativeLdapWorkerPool : IDisposable
         launch = launch with { Arguments = launch.Arguments.ToArray() };
         var started = Stopwatch.GetTimestamp();
         TimeSpan Remaining() => timeout - Stopwatch.GetElapsedTime(started);
-        if (!capacity.Wait(0, cancellationToken))
-        {
-            capacityPressure?.Invoke();
-            var left = Remaining();
-            if (left <= TimeSpan.Zero || !await capacity.WaitAsync(left, cancellationToken).ConfigureAwait(false))
-                throw new TimeoutException("Worker capacity is occupied, including retiring workers.");
-        }
+        await WaitForCapacityAsync(capacity, Remaining, capacityPressure, cancellationToken).ConfigureAwait(false);
         WorkerOwner? owner = null;
         try
         {
@@ -82,6 +76,27 @@ internal sealed class NativeLdapWorkerPool : IDisposable
             throw;
         }
     }
+    internal static async Task WaitForCapacityAsync(SemaphoreSlim capacity, Func<TimeSpan> remaining,
+        Action? capacityPressure, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var left = remaining();
+            if (left <= TimeSpan.Zero)
+                throw new TimeoutException("Worker capacity is occupied, including retiring workers.");
+            if (capacity.Wait(0, cancellationToken)) return;
+            capacityPressure?.Invoke();
+            left = remaining();
+            if (left <= TimeSpan.Zero) continue;
+            // Logical leases can return idle without releasing physical capacity.
+            // Recheck boundedly; only verified exit releases this semaphore.
+            var slice = capacityPressure is null || left < TimeSpan.FromMilliseconds(50)
+                ? left : TimeSpan.FromMilliseconds(50);
+            if (await capacity.WaitAsync(slice, cancellationToken).ConfigureAwait(false)) return;
+        }
+    }
+
     private void Released(WorkerOwner owner)
     {
         if (owner.ExitOutcome is { } outcome) Volatile.Write(ref lastExitOutcome, outcome);
