@@ -151,7 +151,7 @@ internal static class AdKerberosIntegration
         using var search = new DirectorySearcher(root, configuration.SearchFilter,
             ["distinguishedName", configuration.MarkerAttribute], SearchScope.Subtree)
         { ReferralChasing = ReferralChasingOption.None, PageSize = 1, CacheResults = true,
-            ClientTimeout = TimeSpan.FromSeconds(30) };
+            SizeLimit = 3, ClientTimeout = TimeSpan.FromSeconds(30) };
         using var results = search.FindAll();
         var rows = results.Cast<SearchResult>().ToArray();
         var expected = second ? configuration.ExpectedDnsB : configuration.ExpectedDnsA;

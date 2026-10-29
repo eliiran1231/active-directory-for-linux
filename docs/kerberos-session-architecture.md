@@ -693,7 +693,8 @@ revision. Exit 2 / `MISSING_PREREQUISITES` is non-success; preflight success say
 cleanup failure. Only exit 0 with final `PASSED` means the selected interop checks finished.
 
 Checks cover two nonempty pages, zero additional group creations on a repeated public
-operation plus positive reuse delta, independent identity contexts, publication switching,
+operation (queries are capped at three rows to detect an overbroad fixture),
+positive reuse delta, independent identity contexts, publication switching,
 Close freshness, disposed-manager rejection, pre-cancelled central admission and verified
 worker cleanup. The counter deltas are printed; they are not wire Bind counts. Identity
 evidence comes from the configured server ACL fixture's exact result sets, not independent
