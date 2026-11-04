@@ -52,11 +52,10 @@ internal static class AdKerberosIntegration
             using var owner = ReadOwner(configuration.CacheA);
             var profile = configuration.Profile(owner);
             using var root = profile.CreateDirectoryEntry(configuration.SearchBaseDn);
-                        stage = "first-public-base-read";
+            stage = "first-public-base-read";
             root.RefreshCache(["distinguishedName"]);
             if (root.Properties["distinguishedName"].Count != 1) throw new InvalidDataException();
             Report("CASE_PASSED", stage, commit);
-            
             stage = "first-public-paged-search";
             Read(configuration, root, false);
             var first = LdapRestrictedOperation.GroupCounters;
