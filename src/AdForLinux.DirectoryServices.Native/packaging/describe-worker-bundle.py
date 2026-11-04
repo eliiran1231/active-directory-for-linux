@@ -7,8 +7,62 @@ identifies bytes, not their publisher or their authentication capability.
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
+
+
+def require_managed_runtime_assets(root, host_role):
+    """Reject inventories that cannot satisfy their managed host's deps graph."""
+    host = root / host_role
+    deps = host.with_suffix('.deps.json')
+    if not deps.is_file():
+        raise ValueError('Managed host dependency graph is missing.')
+    try:
+        document = json.loads(deps.read_text(encoding='utf-8'))
+        target_name = document['runtimeTarget']['name']
+        libraries = document['targets'][target_name]
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise ValueError('Managed host dependency graph is invalid.') from error
+    if not isinstance(libraries, dict):
+        raise ValueError('Managed host dependency graph is invalid.')
+    required = set()
+    def relative_asset(value):
+        if not isinstance(value, str):
+            raise ValueError('Managed host dependency graph is invalid.')
+        relative = PurePosixPath(value)
+        if relative.is_absolute() or not relative.parts or any(part in {'', '.', '..'} or
+                not re.fullmatch(r'[A-Za-z0-9._-]+', part) for part in relative.parts):
+            raise ValueError('Managed host dependency graph contains an unsafe asset path.')
+        return relative
+    for library in libraries.values():
+        if not isinstance(library, dict):
+            raise ValueError('Managed host dependency graph is invalid.')
+        runtime = library.get('runtime', {})
+        native = library.get('native', {})
+        resources = library.get('resources', {})
+        targets = library.get('runtimeTargets', {})
+        if any(not isinstance(section, dict) for section in (runtime, native, resources, targets)):
+            raise ValueError('Managed host dependency graph is invalid.')
+        # Framework-dependent publish output flattens ordinary managed runtime
+        # and native assets beside the host. Satellite resources retain their
+        # locale directory, while RID assets retain their complete package path.
+        required.update(host.parent / relative_asset(value).name for value in (*runtime, *native))
+        for value, metadata in resources.items():
+            if not isinstance(metadata, dict):
+                raise ValueError('Managed host dependency graph is invalid.')
+            locale = metadata.get('locale')
+            if (not isinstance(locale, str) or locale in {'.', '..'} or
+                    not re.fullmatch(r'[A-Za-z0-9._-]+', locale)):
+                raise ValueError('Managed host dependency graph is invalid.')
+            required.add(host.parent / locale / relative_asset(value).name)
+        for value, metadata in targets.items():
+            if not isinstance(metadata, dict):
+                raise ValueError('Managed host dependency graph is invalid.')
+            if metadata.get('assetType') in {'runtime', 'native', 'resources'}:
+                relative = relative_asset(value)
+                required.add(host.parent / Path(*relative.parts))
+    if any(not path.is_file() for path in required):
+        raise ValueError('Managed host dependency asset is missing from the bundle.')
 
 
 def describe(root, version, roles):
@@ -35,6 +89,7 @@ def describe(root, version, roles):
     names = {item['Path'] for item in artifacts}
     if any(value not in names for value in roles.values()):
         raise ValueError('Every role must name an inventoried artifact.')
+    require_managed_runtime_assets(root, roles['HostAssembly'])
     manifest = {'FormatVersion': 1, 'Version': version, 'Roles': roles, 'Artifacts': artifacts}
     with target.open('x') as output:
         json.dump(manifest, output, indent=2)
