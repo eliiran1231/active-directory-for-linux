@@ -118,6 +118,68 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Fact]
+    public void Failed_creation_container_discovery_invalidates_retired_neutral_session_before_pool_return()
+    {
+        var profile = RestrictedRecipe();
+        using var context = RestrictedKerberosContext.Create(profile);
+        using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(
+            1, 1, startTimer: false);
+        var transports = new List<RecordingTransport>();
+        context.TransportSessionFactory = options =>
+        {
+            var key = LdapConnectionProvider.ConnectionKey.Create(options, ReferralChasingOption.None);
+            var lease = pool.Acquire(key, () =>
+            {
+                var ordinal = transports.Count;
+                var transport = new RecordingTransport
+                {
+                    Reply = command =>
+                    {
+                        if (command.Attributes.SequenceEqual(["defaultNamingContext"]))
+                        {
+                            var attributes = new Dictionary<string, byte[][]>(StringComparer.OrdinalIgnoreCase)
+                            {
+                                ["defaultNamingContext"] = [Encoding.UTF8.GetBytes("DC=example,DC=invalid")],
+                            };
+                            return new(ResultCode.Success, command.BaseDn, null,
+                                [new(command.BaseDn, attributes, [])], [], [], []);
+                        }
+
+                        if (ordinal == 0)
+                            return new(ResultCode.ProtocolError, command.BaseDn, "retired native session", [], [], [], []);
+                        var recovered = new Dictionary<string, byte[][]>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["wellKnownObjects"] =
+                            [
+                                Encoding.UTF8.GetBytes("B:32:A9D1CA15768811D1ADED00C04FD8D5CD:OU=People,DC=example,DC=invalid"),
+                                Encoding.UTF8.GetBytes("B:32:AA312825768811D1ADED00C04FD8D5CD:OU=Machines,DC=example,DC=invalid"),
+                            ],
+                        };
+                        return new(ResultCode.Success, command.BaseDn, null,
+                            [new(command.BaseDn, recovered, [])], [], [], []);
+                    },
+                };
+                transports.Add(transport);
+                return new BoundLdapSession(
+                    transport, transport, options, new LdapAuthenticationSource(options), ReferralChasingOption.None);
+            }, reusable: true);
+            return new LdapConnectionProvider.Session(lease);
+        };
+
+        Assert.Throws<DirectoryServicesCOMException>(() => context.GetCreationContainer(typeof(UserPrincipal)));
+        Assert.Single(transports);
+        Assert.Equal(2, transports[0].Sends);
+        Assert.Equal(1, transports[0].Disposals);
+        Assert.Equal(0, pool.Snapshot.Total);
+
+        Assert.Equal("OU=People,DC=example,DC=invalid", context.GetCreationContainer(typeof(UserPrincipal)));
+        Assert.Equal(2, transports.Count);
+        Assert.Equal(1, transports[1].Sends);
+        Assert.Equal(0, transports[1].Disposals);
+        Assert.Equal(1, pool.Snapshot.Total);
+    }
+
+    [Fact]
     public void Request_capabilities_cancellation_and_nul_are_checked_before_dispatch()
     {
         using var transport = new RecordingTransport();

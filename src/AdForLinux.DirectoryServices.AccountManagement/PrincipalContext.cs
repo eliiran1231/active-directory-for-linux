@@ -646,20 +646,23 @@ public partial class PrincipalContext : IDisposable
 
             // Resolve nested discovery before reserving a connection, including at capacity one.
             var namingContext = DefaultNamingContext;
-            var response = ExecuteDiscoveryTransport(transport => LdapRequestDispatcher.Search(
-                transport,
-                new LdapSearchCommand(
+            var response = ExecuteDiscoveryTransport(transport =>
+            {
+                var result = LdapRequestDispatcher.Search(transport, new LdapSearchCommand(
                     namingContext,
                     "(objectClass=*)",
                     System.DirectoryServices.Protocols.SearchScope.Base,
                     ["wellKnownObjects"],
-                    transport.Timeout)));
-            if (response.Code != ResultCode.Success)
-            {
-                throw LdapExceptionTranslator.Translate(
-                    response.Code,
-                    response.Diagnostic ?? "Well-known container discovery failed.");
-            }
+                    transport.Timeout));
+                if (result.Code != ResultCode.Success)
+                {
+                    throw LdapExceptionTranslator.Translate(
+                        result.Code,
+                        result.Diagnostic ?? "Well-known container discovery failed.");
+                }
+
+                return result;
+            });
 
             string? users = null;
             string? computers = null;
