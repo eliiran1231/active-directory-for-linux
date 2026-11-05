@@ -16,6 +16,9 @@
     <!-- The high layer and the functional tests reach internal infrastructure. -->
     <InternalsVisibleTo Include="AdForLinux.DirectoryServices.AccountManagement" />
     <InternalsVisibleTo Include="AdForLinux.FunctionalTests" />
+    <InternalsVisibleTo Include="AdForLinux.NativeTransportDemo" />
+    <InternalsVisibleTo Include="AdForLinux.NativeHost" />
+    <InternalsVisibleTo Include="AdForLinux.NativeWorkerDemo" />
     <InternalsVisibleTo Include="AdForLinux.DifferentialTests" />
     <InternalsVisibleTo Include="AdForLinux.DirectoryServices.MicrosoftInterop" />
   </ItemGroup>

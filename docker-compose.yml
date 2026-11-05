@@ -24,10 +24,12 @@ services:
       AD_BASE_DN: DC=samdom,DC=example,DC=com
       # OpenLDAP client: do not verify the self-signed smblds certificate.
       LDAPTLS_REQCERT: never
-    # Run the Linux functional tests on BOTH runtimes.
+    # Offline injection tests require a guarded process; run the complementary
+    # live tests separately without weakening the production guard.
     command: >
-      sh -c "dotnet test tests/AdForLinux.FunctionalTests -f net10.0 &&
-             dotnet test tests/AdForLinux.FunctionalTests -f net8.0"
+      sh -c "python3 tests/test_samba_runner.py &&
+             python3 tests/run-samba-tests.py --authorize-disposable-samba --framework net10.0 &&
+             python3 tests/run-samba-tests.py --authorize-disposable-samba --framework net8.0"
 
 volumes:
   nuget-cache:

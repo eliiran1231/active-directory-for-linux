@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../native-session/worker-demo/AdKerberosConfiguration.cs" Link="AdKerberosConfiguration.cs" />
     <Compile Include="../acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
     <Compile Include="../Shared/OfflineFactAttribute.cs" Link="OfflineFactAttribute.cs" />
     <Compile Include="../acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />

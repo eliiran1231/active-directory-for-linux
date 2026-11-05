@@ -9,7 +9,7 @@ using Searcher = AdForLinux.DirectoryServices.DirectorySearcher;
 
 namespace AdForLinux.FunctionalTests;
 
-public class ConnectionPoolOperationTests
+public partial class ConnectionPoolOperationTests
 {
     private sealed class Connection : LdapConnection
     {
@@ -27,17 +27,17 @@ public class ConnectionPoolOperationTests
 
     private sealed class Fixture : IDisposable
     {
-        internal readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, LdapConnection> Pool;
+        internal readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession> Pool;
         internal readonly List<Connection> Connections = [];
         internal readonly List<DirectoryRequest> Requests = [];
         internal Exception? Failure;
         internal Action<DirectoryRequest>? OnRequest;
         internal Fixture(int capacity = 1) => Pool = new(capacity, capacity, startTimer: false,
             acquisitionTimeout: TimeSpan.FromMilliseconds(100));
-        internal Entry Entry(string name = "first", bool defaultReferrals = false)
+        internal Entry Entry(string name = "first", bool defaultReferrals = false, AuthType authentication = AuthType.Basic, bool ambient = false)
         {
             var entry = new Entry("LDAP://directory.invalid/CN=" + name,
-                new LdapConnectionOptions { Host = "directory.invalid", BindDn = "reader", BindPassword = "test password" });
+                new LdapConnectionOptions { Host = "directory.invalid", BindDn = ambient ? null : "reader", BindPassword = ambient ? null : "test password", AuthenticationType = authentication });
             entry.OperationSessionFactory = Open;
             if (!defaultReferrals) entry.Options.Referral = ReferralChasingOption.None;
             return entry;
@@ -48,6 +48,7 @@ public class ConnectionPoolOperationTests
             // Entry generation stamps come from the process provider. Advance this
             // isolated fake pool's sequence to the same admission threshold.
             while (Pool.NewGeneration() < minimum) { }
+            var authentication = new LdapAuthenticationSource(options);
             return Pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), count, () =>
             {
                 var connection = Connection.Create(request =>
@@ -59,10 +60,96 @@ public class ConnectionPoolOperationTests
                     return Response(search.DistinguishedName ?? string.Empty,
                         search.DistinguishedName is "" or null ? [] : new() { ["description"] = ["readable value"] });
                 });
-                Connections.Add(connection); return connection;
+                Connections.Add(connection); return new BoundLdapSession(connection, options, authentication, referrals);
             }, reusable: LdapConnectionProvider.CanReuse(options, referrals), preferFresh: fresh, minimumGeneration: minimum).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
         }
         public void Dispose() => Pool.Dispose();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Platform_authentication_uses_new_bound_resource_for_each_operation(bool ambient)
+    {
+        using var fixture = new Fixture();
+        using var entry = fixture.Entry(authentication: AuthType.Negotiate, ambient: ambient);
+        using (var first = entry.AcquireConnection())
+        {
+            Assert.True(LdapConnectionProvider.IsManagedSession(first.Connection));
+            Assert.Equal(0, fixture.Connections[0].Disposals);
+        }
+        Assert.Equal(1, fixture.Connections[0].Disposals);
+        using (var second = entry.AcquireConnection())
+            Assert.NotSame(fixture.Connections[0], second.Connection);
+        Assert.Equal(2, fixture.Connections.Count);
+        Assert.All(fixture.Connections, connection => Assert.Equal(1, connection.Disposals));
+        Assert.Equal(0, fixture.Pool.Snapshot.Reused);
+    }
+
+    [Fact]
+    public void Bound_resource_outlives_lease_and_retires_exactly_once_without_replay()
+    {
+        using var fixture = new Fixture();
+        using var entry = fixture.Entry();
+        using (var first = entry.AcquireConnection()) { }
+        Assert.Equal(0, fixture.Connections[0].Disposals);
+        using (var second = entry.AcquireConnection())
+        {
+            Assert.Same(fixture.Connections[0], second.Connection);
+            fixture.Failure = new InvalidOperationException("Interrupted send");
+            Assert.Throws<InvalidOperationException>(() => second.Connection.SendRequestTracked(new SearchRequest()));
+            Assert.Single(fixture.Requests);
+        }
+        Assert.Equal(1, fixture.Connections[0].Disposals);
+        using (var replacement = entry.AcquireConnection())
+            Assert.NotSame(fixture.Connections[0], replacement.Connection);
+        Assert.Equal(2, fixture.Connections.Count);
+        Assert.Single(fixture.Requests);
+    }
+
+    [Fact]
+    public void Platform_operations_ignore_retained_primary_and_schema_handles()
+    {
+        using var fixture = new Fixture();
+        using var entry = fixture.Entry(authentication: AuthType.Negotiate);
+        var retained = Connection.Create(_ => throw new Exception("Retained identity used"));
+        typeof(Entry).GetField("_connection", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(entry, retained);
+        typeof(Entry).GetField("_schemaConnection", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(entry, retained);
+        using var operation = entry.AcquireConnection();
+        Assert.NotSame(retained, operation.Connection);
+        Assert.Same(operation.Connection, entry.SchemaConnectionForOperation(operation.Connection));
+        Assert.Throws<NotSupportedException>(() => entry.GetConnection());
+    }
+
+    [Fact]
+    public void Controlled_offline_transport_permission_is_bound_to_exact_handles()
+    {
+        using var fixture = new Fixture();
+        using var entry = fixture.Entry(authentication: AuthType.Negotiate);
+        var controlled = Connection.Create(_ => throw new Exception("No request expected"));
+        entry.SetControlledRetainedConnections(controlled);
+        using (var operation = entry.AcquireConnection()) Assert.Same(controlled, operation.Connection);
+        entry.Close();
+        Assert.Equal(1, controlled.Disposals);
+        var unrelated = Connection.Create(_ => throw new Exception("Unmarked transport used"));
+        typeof(Entry).GetField("_connection", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(entry, unrelated);
+        using var next = entry.AcquireConnection();
+        Assert.NotSame(unrelated, next.Connection);
+    }
+
+    [Fact]
+    public void Bound_resource_owns_snapshot_and_disposes_idempotently()
+    {
+        var options = new LdapConnectionOptions { Host = "offline.invalid", BindDn = "example", BindPassword = "synthetic" };
+        var authentication = new LdapAuthenticationSource(options);
+        var connection = Connection.Create(_ => throw new Exception("No requests expected"));
+        var resource = new BoundLdapSession(connection, options, authentication, ReferralChasingOption.None);
+        Assert.NotSame(options, resource.Profile);
+        Assert.Same(authentication, resource.Authentication);
+        Assert.Equal(ReferralChasingOption.None, resource.Referrals);
+        resource.Dispose(); resource.Dispose();
+        Assert.Equal(1, connection.Disposals);
+        Assert.Throws<ObjectDisposedException>(() => resource.Connection);
     }
 
     private static SearchResponse Response(string dn, Dictionary<string, object[]> values, ResultCode code = ResultCode.Success)
@@ -326,7 +413,8 @@ public class ConnectionPoolOperationTests
     [InlineData(-1, 2, false, false)]
     public void Retained_batch_requires_distinct_handles_without_transferring_ownership(int count, int schemaKind, bool schema, bool succeeds)
     {
-        using var entry = new Entry("LDAP://directory.invalid/CN=retained");
+        using var entry = new Entry("LDAP://directory.invalid/CN=retained",
+            new LdapConnectionOptions { Host = "directory.invalid", BindDn = "reader", BindPassword = "synthetic-unused" });
         var first = Connection.Create(_ => throw new InvalidOperationException());
         var second = schemaKind == 2 ? Connection.Create(_ => throw new InvalidOperationException()) : null;
         typeof(Entry).GetField("_connection", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(entry, first);

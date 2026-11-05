@@ -1028,6 +1028,7 @@ public abstract partial class Principal : IDisposable
                 "The destination context must have the same ContextType as the principal context.");
         }
 
+        ContextRef.RequireCompatibleKerberosSelection(context);
         if (Entry is null)
         {
             ContextRef = context;

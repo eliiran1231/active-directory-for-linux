@@ -14,19 +14,20 @@ public partial class V1PrincipalAuditTests
     private static void InstallSearchTransport(DirectoryEntry entry, Action<DirectoryRequest>? requestSent = null, Action? schemaRead = null)
     {
         var dn = entry.DistinguishedName;
-        SetEntryField(entry, "_connection", SaveReadConnection.Create(request =>
+        var primary = SaveReadConnection.Create(request =>
         {
             requestSent?.Invoke(request);
             if (request is DeleteRequest) return SaveResponse("", [], 0, ResultCode.Success, false, false);
             var search = Assert.IsType<SearchRequest>(request);
             var resultDn = search.Attributes.Contains("1.1") ? dn : "CN=returned," + CrossContextFixture.DomainDn;
             return SaveResponse(resultDn, new() { ["description"] = ["copied result"] }, 1, ResultCode.Success, false, false);
-        }, () => { }));
-        SetEntryField(entry, "_schemaConnection", SaveReadConnection.Create(_ =>
+        }, () => { });
+        var schema = SaveReadConnection.Create(_ =>
         {
             schemaRead?.Invoke();
             return SaveResponse("", [], 0, ResultCode.Success, false, false);
-        }, () => { }));
+        }, () => { });
+        entry.SetControlledRetainedConnections(primary, schema);
     }
 
     private static DirectorySearcher ControlledSearcher(DirectoryEntry entry)

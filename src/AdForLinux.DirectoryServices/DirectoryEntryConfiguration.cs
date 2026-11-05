@@ -40,7 +40,7 @@ public class DirectoryEntryConfiguration
         _securityMasks = DefaultSecurityMasks;
         _passwordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;
         _passwordPort = 636;
-        _referral = ReferralChasingOption.External;
+        _referral = _entry.RestrictedKerberos is null ? ReferralChasingOption.External : ReferralChasingOption.None;
     }
 
     /// <summary>Gets or sets the page size used when enumerating child entries. Zero disables paging.</summary>
@@ -152,7 +152,7 @@ public class DirectoryEntryConfiguration
     {
         ValidateOwner();
         using var lease = _entry.AcquireConfigurationConnection(this);
-        return Ldap.RootDse.GetConnectedServerName(lease.Connection);
+        return lease.ExecuteTransport(transport => Ldap.RootDse.GetConnectedServerName(transport));
     }
 
     /// <summary>

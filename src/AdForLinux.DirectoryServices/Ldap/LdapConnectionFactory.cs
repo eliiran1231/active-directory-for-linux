@@ -31,6 +31,7 @@ internal static class LdapConnectionFactory
     /// <summary>Creates and configures a connection without binding it.</summary>
     internal static LdapConnection Create(LdapConnectionOptions options)
     {
+        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
         var identifier = new LdapDirectoryIdentifier(options.Host, options.Port);
         return ConfigureOwned(new LdapConnection(identifier), connection =>

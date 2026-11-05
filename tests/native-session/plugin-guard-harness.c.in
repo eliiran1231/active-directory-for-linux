@@ -1,0 +1,87 @@
+/* Recording harness surrounding an extracted, unmodified patched-source fragment.
+ * This is NOT a full Cyrus plugin build. There are no linked SASL/GSS libraries. */
+#include <assert.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+
+#define SASL_OK 0
+#define SASL_INTERACT 2
+#define SASL_NOMECH (-4)
+#define GSS_C_NO_CREDENTIAL NULL
+
+typedef int sasl_interact_t;
+typedef struct { void (*free)(void *); } utilities;
+typedef struct { utilities *utils; char *user; } context_t;
+typedef struct { utilities *utils; void *gss_creds; } parameters;
+static int request_user, mutate_params, errors, cleanups, prompts_created, gss_boundaries;
+static int owned_credential;
+static void *consumed;
+static parameters *active_params;
+static sasl_interact_t prompt_storage;
+static void free_prompt(void *value) { assert(value == &prompt_storage); }
+static void report_error(utilities *utils, const char *message) { (void)utils; (void)message; errors++; }
+#define SETERROR(utils, message) report_error(utils, message)
+static void sasl_gss_free_context_contents(context_t *text) { (void)text; cleanups++; }
+static int _plug_get_userid(utilities *utils, char **user, sasl_interact_t **prompts) {
+    (void)utils; (void)prompts;
+    if (mutate_params) active_params->gss_creds = &owned_credential;
+    if (request_user) return SASL_INTERACT;
+    *user = ""; return SASL_OK;
+}
+static int _plug_make_prompts(utilities *utils, sasl_interact_t **prompts, ...) {
+    (void)utils; *prompts = &prompt_storage; prompts_created++; return SASL_OK;
+}
+static int record_gss_boundary(void *credential) {
+    assert(credential != GSS_C_NO_CREDENTIAL);
+    consumed = credential; gss_boundaries++; return SASL_OK;
+}
+static int step(context_t *text, parameters *params, sasl_interact_t **prompt_need) {
+    void *client_creds = params->gss_creds; /* actual upstream entry snapshot */
+    active_params = params;
+    /* ADFL_EXTRACTED_FRAGMENT */
+    return record_gss_boundary(client_creds);
+}
+static void reset(void) {
+    request_user = mutate_params = errors = cleanups = prompts_created = gss_boundaries = 0;
+    consumed = NULL;
+}
+int main(void) {
+    utilities utils = {free_prompt};
+    parameters params = {&utils, NULL};
+    context_t text = {&utils, NULL};
+    sasl_interact_t *prompts = NULL;
+
+    /* The first prompt remains possible; resumed absence cannot reach GSS. */
+    reset(); request_user = 1;
+    assert(step(&text, &params, &prompts) == SASL_INTERACT);
+    assert(prompts_created == 1 && !errors && !gss_boundaries);
+    request_user = 0;
+    assert(step(&text, &params, &prompts) == SASL_NOMECH);
+    assert(errors == 1 && cleanups == 1 && !gss_boundaries);
+
+    /* A prefilled username cannot bypass the absent-credential guard. */
+    reset(); text.user = ""; params.gss_creds = NULL; prompts = NULL;
+    assert(step(&text, &params, &prompts) == SASL_NOMECH);
+    assert(errors == 1 && cleanups == 1 && !gss_boundaries);
+
+    /* Prompt, caller installation, then unchanged owned handle at GSS boundary. */
+    reset(); text.user = NULL; params.gss_creds = NULL; request_user = 1;
+    assert(step(&text, &params, &prompts) == SASL_INTERACT);
+    params.gss_creds = &owned_credential; request_user = 0;
+    assert(step(&text, &params, &prompts) == SASL_OK);
+    assert(consumed == &owned_credential && gss_boundaries == 1 && !errors);
+
+    /* Even supplied credentials do not suppress a required initial interaction. */
+    reset(); text.user = NULL; request_user = 1;
+    assert(step(&text, &params, &prompts) == SASL_INTERACT);
+    assert(!gss_boundaries && !errors);
+
+    /* Changing params after the entry snapshot cannot certify a different value. */
+    reset(); text.user = NULL; params.gss_creds = NULL; mutate_params = 1;
+    assert(step(&text, &params, &prompts) == SASL_NOMECH);
+    assert(params.gss_creds == &owned_credential && !gss_boundaries);
+    assert(errors == 1 && cleanups == 1);
+    puts("PASS: initial interaction, missing/resumed/prefilled credentials, consumed-handle identity.");
+    return 0;
+}
