@@ -9,6 +9,10 @@ using ProtocolScope = System.DirectoryServices.Protocols.SearchScope;
 using Context = AdForLinux.DirectoryServices.AccountManagement.PrincipalContext;
 using ContextType = AdForLinux.DirectoryServices.AccountManagement.ContextType;
 using ContextOptions = AdForLinux.DirectoryServices.AccountManagement.ContextOptions;
+using ComputerPrincipal = AdForLinux.DirectoryServices.AccountManagement.ComputerPrincipal;
+using GroupPrincipal = AdForLinux.DirectoryServices.AccountManagement.GroupPrincipal;
+using RestrictedKerberosContext = AdForLinux.DirectoryServices.AccountManagement.RestrictedKerberosContext;
+using UserPrincipal = AdForLinux.DirectoryServices.AccountManagement.UserPrincipal;
 
 namespace AdForLinux.FunctionalTests;
 
@@ -60,6 +64,57 @@ public partial class ConnectionPoolOperationTests
         });
         using var session = Open(entry.BuildOptions(), 1, ReferralChasingOption.None, false, 0)[0];
         Assert.Throws<PlatformNotSupportedException>(() => session.Connection);
+    }
+
+    [Fact]
+    public void Restricted_context_without_container_discovers_creation_containers_through_neutral_transport()
+    {
+        var profile = RestrictedRecipe();
+        using var context = RestrictedKerberosContext.Create(profile);
+        var transports = new List<RecordingTransport>();
+        context.TransportSessionFactory = options =>
+        {
+            Assert.Same(profile, options.RestrictedKerberos);
+            var transport = new RecordingTransport
+            {
+                Reply = command =>
+                {
+                    Dictionary<string, byte[][]> attributes = new(StringComparer.OrdinalIgnoreCase);
+                    if (command.Attributes.SequenceEqual(["defaultNamingContext"]))
+                    {
+                        Assert.Equal(string.Empty, command.BaseDn);
+                        attributes["defaultNamingContext"] = [Encoding.UTF8.GetBytes("DC=example,DC=invalid")];
+                    }
+                    else
+                    {
+                        Assert.Equal(["wellKnownObjects"], command.Attributes);
+                        Assert.Equal("DC=example,DC=invalid", command.BaseDn);
+                        attributes["wellKnownObjects"] =
+                        [
+                            Encoding.UTF8.GetBytes("B:32:A9D1CA15768811D1ADED00C04FD8D5CD:OU=People,DC=example,DC=invalid"),
+                            Encoding.UTF8.GetBytes("B:32:AA312825768811D1ADED00C04FD8D5CD:OU=Machines,DC=example,DC=invalid"),
+                        ];
+                    }
+
+                    return new(ResultCode.Success, command.BaseDn, null,
+                        [new(command.BaseDn, attributes, [])], [], [], []);
+                },
+            };
+            transports.Add(transport);
+            var session = new BoundLdapSession(
+                transport, transport, options, new LdapAuthenticationSource(options), ReferralChasingOption.None);
+            return new LdapConnectionProvider.Session(session, () => { }, () => { });
+        };
+
+        Assert.Equal("OU=People,DC=example,DC=invalid", context.GetCreationContainer(typeof(UserPrincipal)));
+        Assert.Equal("OU=People,DC=example,DC=invalid", context.GetCreationContainer(typeof(GroupPrincipal)));
+        Assert.Equal("OU=Machines,DC=example,DC=invalid", context.GetCreationContainer(typeof(ComputerPrincipal)));
+        Assert.Equal(2, transports.Count);
+        Assert.All(transports, transport =>
+        {
+            Assert.Equal(1, transport.Sends);
+            Assert.Equal(1, transport.Disposals);
+        });
     }
 
     [Fact]

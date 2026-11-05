@@ -646,18 +646,25 @@ public partial class PrincipalContext : IDisposable
 
             // Resolve nested discovery before reserving a connection, including at capacity one.
             var namingContext = DefaultNamingContext;
-            var request = new SearchRequest(
-                namingContext,
-                "(objectClass=*)",
-                System.DirectoryServices.Protocols.SearchScope.Base,
-                "wellKnownObjects");
-            var response = LdapConnectionProvider.Execute(BuildOptions(),
-                connection => (SearchResponse)connection.SendRequest(request));
+            var response = ExecuteDiscoveryTransport(transport => LdapRequestDispatcher.Search(
+                transport,
+                new LdapSearchCommand(
+                    namingContext,
+                    "(objectClass=*)",
+                    System.DirectoryServices.Protocols.SearchScope.Base,
+                    ["wellKnownObjects"],
+                    transport.Timeout)));
+            if (response.Code != ResultCode.Success)
+            {
+                throw LdapExceptionTranslator.Translate(
+                    response.Code,
+                    response.Diagnostic ?? "Well-known container discovery failed.");
+            }
 
             string? users = null;
             string? computers = null;
-            if (response.Entries.Count > 0 &&
-                response.Entries[0].Attributes["wellKnownObjects"] is { } values)
+            if (response.Entries.Length > 0 &&
+                response.Entries[0].Attributes.TryGetValue("wellKnownObjects", out var values))
             {
                 TryResolveWellKnownContainers(values.Cast<object?>(), out users, out computers);
             }
