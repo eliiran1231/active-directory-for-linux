@@ -515,6 +515,23 @@ public partial class PrincipalContext : IDisposable
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
+    // Internal AccountManagement searches inherit the explicitly selected exact
+    // endpoint policy. Ordinary contexts retain DirectorySearcher's Microsoft
+    // compatible default; caller edits on an exposed searcher are not reset.
+    internal DirectorySearcher CreateSearcher(DirectoryEntry root, string filter = "(objectClass=*)",
+        string[]? propertiesToLoad = null, SearchScope? scope = null)
+    {
+        CheckDisposed();
+        // Supplying an explicit scope changes AttributeScopeQuery validation.
+        // Preserve whether the original internal constructor supplied a scope.
+        var searcher = scope is { } explicitScope
+            ? new DirectorySearcher(root, filter, propertiesToLoad, explicitScope)
+            : new DirectorySearcher(root, filter, propertiesToLoad);
+        searcher.ReferralChasing = _restrictedKerberos is null
+            ? ReferralChasingOption.External : ReferralChasingOption.None;
+        return searcher;
+    }
+
     internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
         = CrossContextSaveSession.DefaultFactory;
 

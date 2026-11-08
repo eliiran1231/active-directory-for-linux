@@ -137,11 +137,9 @@ public class PrincipalSearcher : IDisposable
         if (_underlyingSearcher is null)
         {
             _searchRoot = context.SearchRoot;
-            _underlyingSearcher = new DirectorySearcher(_searchRoot)
-            {
-                PageSize = _defaultPageSize,
-                ServerTimeLimit = TimeSpan.FromSeconds(30),
-            };
+            _underlyingSearcher = context.CreateSearcher(_searchRoot);
+            _underlyingSearcher.PageSize = _defaultPageSize;
+            _underlyingSearcher.ServerTimeLimit = TimeSpan.FromSeconds(30);
         }
 
         // Match Microsoft's PushFilterToNativeSearcher behavior: refresh the QBE

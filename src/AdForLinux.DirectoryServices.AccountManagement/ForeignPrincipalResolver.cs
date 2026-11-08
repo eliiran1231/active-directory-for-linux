@@ -64,14 +64,12 @@ internal static class ForeignPrincipalResolver
             {
                 using var system = context.CreateDirectoryEntry(
                     $"CN=System,{context.DefaultNamingContext}");
-                using var searcher = new DirectorySearcher(
+                using var searcher = context.CreateSearcher(
                     system,
                     $"(&(objectClass=trustedDomain)(securityIdentifier={LdapFilter.EscapeBytes(domainSid)}))",
                     new[] { "trustPartner" },
-                    SearchScope.Subtree)
-                {
-                    SizeLimit = 1,
-                };
+                    SearchScope.Subtree);
+                searcher.SizeLimit = 1;
                 using var result = searcher.FindOne()?.GetDirectoryEntry();
                 if (result?.Properties["trustPartner"].Value is string trustPartner
                     && !string.IsNullOrWhiteSpace(trustPartner))
@@ -99,14 +97,12 @@ internal static class ForeignPrincipalResolver
         try
         {
             using var root = context.CreateGlobalCatalogEntry(context.RootDomainNamingContext);
-            using var gcSearcher = new DirectorySearcher(
+            using var gcSearcher = context.CreateSearcher(
                 root,
                 $"(&(objectSid={LdapFilter.EscapeBytes(sid)})(!(objectClass=foreignSecurityPrincipal)))",
                 new[] { "distinguishedName" },
-                SearchScope.Subtree)
-            {
-                SizeLimit = 1,
-            };
+                SearchScope.Subtree);
+            gcSearcher.SizeLimit = 1;
             using var actual = gcSearcher.FindOne()?.GetDirectoryEntry();
             return actual?.Properties["distinguishedName"].Value is string distinguishedName
                 ? TryGetDnsDomainName(distinguishedName)

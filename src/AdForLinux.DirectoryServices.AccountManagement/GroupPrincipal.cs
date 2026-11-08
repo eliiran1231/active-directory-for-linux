@@ -298,12 +298,10 @@ public class GroupPrincipal : Principal
         var rid = SidCodec.GetRid(sid).ToString(
             System.Globalization.CultureInfo.InvariantCulture);
         using var root = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
-        using var searcher = new DirectorySearcher(
+        using var searcher = ContextRef.CreateSearcher(
             root,
-            $"(&(|(objectCategory=person)(objectCategory=computer))(primaryGroupID={rid}))")
-        {
-            PageSize = 500,
-        };
+            $"(&(|(objectCategory=person)(objectCategory=computer))(primaryGroupID={rid}))");
+        searcher.PageSize = 500;
         using var results = searcher.FindAll();
         foreach (var result in results.Cast<SearchResult>())
         {

@@ -351,7 +351,7 @@ public abstract partial class Principal : IDisposable
         var root = ContextRef.CreateDirectoryEntry(distinguishedName);
         try
         {
-            using var tokenSearcher = new DirectorySearcher(
+            using var tokenSearcher = ContextRef.CreateSearcher(
                 root,
                 "(objectClass=*)",
                 new[] { "tokenGroups" },
@@ -407,7 +407,8 @@ public abstract partial class Principal : IDisposable
         var root = contextToQuery.CreateDirectoryEntry(contextToQuery.QueryContainer);
         try
         {
-            using var searcher = new DirectorySearcher(root, filter) { PageSize = 500 };
+            using var searcher = contextToQuery.CreateSearcher(root, filter);
+            searcher.PageSize = 500;
             var groups = new List<Principal>();
             using var results = searcher.FindAll();
             foreach (var result in results.Cast<SearchResult>())
@@ -450,14 +451,12 @@ public abstract partial class Principal : IDisposable
     private static DirectoryEntry? FindBySid(PrincipalContext context, byte[] sid)
     {
         using var root = context.CreateDirectoryEntry(context.DefaultNamingContext);
-        using var searcher = new DirectorySearcher(
+        using var searcher = context.CreateSearcher(
             root,
             $"(objectSid={LdapFilter.EscapeBytes(sid)})",
             new[] { "distinguishedName", "primaryGroupID", "objectSid", "objectClass" },
-            SearchScope.Subtree)
-        {
-            SizeLimit = 1,
-        };
+            SearchScope.Subtree);
+        searcher.SizeLimit = 1;
         return searcher.FindOne()?.GetDirectoryEntry();
     }
 
@@ -542,14 +541,12 @@ public abstract partial class Principal : IDisposable
         byte[] principalSid)
     {
         using var root = context.CreateGlobalCatalogEntry(forestRoot);
-        using var searcher = new DirectorySearcher(
+        using var searcher = context.CreateSearcher(
             root,
             $"(objectSid={LdapFilter.EscapeBytes(principalSid)})",
             new[] { "distinguishedName" },
-            SearchScope.Subtree)
-        {
-            PageSize = 500,
-        };
+            SearchScope.Subtree);
+        searcher.PageSize = 500;
         using var results = context.SearchAuthorizationEntries(searcher);
         return results.Cast<SearchResult>()
             .Select(result => result.Properties["distinguishedName"].Count > 0
@@ -568,9 +565,10 @@ public abstract partial class Principal : IDisposable
         ISet<string> returnedSids)
     {
         using (root)
-        using (var searcher = new DirectorySearcher(root, filter) { PageSize = 500 })
-        using (var results = context.SearchAuthorizationEntries(searcher))
+        using (var searcher = context.CreateSearcher(root, filter))
         {
+            searcher.PageSize = 500;
+            using var results = context.SearchAuthorizationEntries(searcher);
             foreach (var result in results.Cast<SearchResult>())
             {
                 var entry = result.GetDirectoryEntry();
@@ -722,7 +720,8 @@ public abstract partial class Principal : IDisposable
     {
         var filter = $"(&{PrincipalTypeFilter(principalType)}{identityFilter})";
         using var root = context.CreateDirectoryEntry(context.QueryContainer);
-        using var searcher = new DirectorySearcher(root, filter) { SizeLimit = 2 };
+        using var searcher = context.CreateSearcher(root, filter);
+        searcher.SizeLimit = 2;
         using var results = searcher.FindAll();
 
         Principal? match = null;
