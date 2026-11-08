@@ -78,8 +78,11 @@ public partial class ConnectionPoolOperationTests
         root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
         {
             admissionBudgets.Add(options.Timeout);
-            // Model the admitted boundary's recipe timeout. A propagated shorter
-            // client budget would cancel this real pool wait on clock.Advance.
+            // This existing seam exposes only the immutable resource recipe.
+            // It models that recipe's wait, not a separate operation deadline.
+            // A fix may add deadline/cancellation propagation independently;
+            // it must not change options.Timeout (part of the pool identity).
+            // This fixture would then need to consume that separate channel.
             using var recipeDeadline = new CancellationTokenSource(options.Timeout, clock);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cleanup.Token, recipeDeadline.Token);
             try
