@@ -12,6 +12,7 @@ public partial class V1PrincipalAuditTests
     private sealed class AuthorizationGraphFixture : IDisposable
     {
         internal const string DomainGroup = "CN=domain-group,DC=example,DC=test";
+        internal const string RenamedDomainGroup = "CN=domain-group-renamed,OU=renamed,DC=example,DC=test";
         internal const string ForestGroup = "CN=forest-group,DC=other,DC=test";
         internal const string ResourceGroup = "CN=resource-group,DC=other,DC=test";
         internal const string NoSidGroup = "CN=no-sid-group,DC=example,DC=test";
@@ -20,9 +21,11 @@ public partial class V1PrincipalAuditTests
         internal readonly Fixture Source = new();
         internal readonly List<(DirectoryEntry Root, string Filter)> Searches = [];
         internal readonly List<SearchRequest> Reads = [];
+        internal readonly List<(string Dn, Guid Identity)> ReturnedObjectIdentities = [];
         internal int Opens, Disposals;
         internal bool ReturnTokens = true;
         internal bool DuplicateDomainRow;
+        internal bool DistinctDnDuplicate;
         private readonly bool globalCatalog;
         private readonly bool missingSid;
         private readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession> pool = new(1, 1, startTimer: false);
@@ -64,7 +67,9 @@ public partial class V1PrincipalAuditTests
                         Reads.Add(read);
                         if (read.DistinguishedName == "")
                             return SaveResponse("", [], 0, ResultCode.Success, false, false);
-                        return SaveResponse(read.DistinguishedName, GroupValues(read.DistinguishedName), 1,
+                        var values = GroupValues(read.DistinguishedName);
+                        ReturnedObjectIdentities.Add((read.DistinguishedName, new Guid((byte[])values["objectGUID"][0])));
+                        return SaveResponse(read.DistinguishedName, values, 1,
                             ResultCode.Success, false, false);
                     }, () => Disposals++);
                     return new BoundLdapSession(connection, options, new(options), referrals);
@@ -77,7 +82,8 @@ public partial class V1PrincipalAuditTests
             }
             Assert.True(globalCatalog);
             Assert.EndsWith("/DC=test", root.Path);
-            if (Searches.Count == 3) return Rows(root, DomainGroup.ToUpperInvariant(), ForestGroup);
+            if (Searches.Count == 3) return Rows(root,
+                DistinctDnDuplicate ? RenamedDomainGroup : DomainGroup.ToUpperInvariant(), ForestGroup);
             if (Searches.Count == 4)
             {
                 Assert.Equal("(objectSid=\\01\\05\\00\\00\\00\\00\\00\\05\\15\\00\\00\\00\\01\\00\\00\\00\\02\\00\\00\\00\\03\\00\\00\\00\\e9\\03\\00\\00)", searcher.Filter);
@@ -89,7 +95,9 @@ public partial class V1PrincipalAuditTests
 
         private Dictionary<string, object[]> GroupValues(string dn)
         {
-            var (guid, sid, name) = dn.Equals(DomainGroup, StringComparison.OrdinalIgnoreCase)
+            var (guid, sid, name) = dn.Equals(RenamedDomainGroup, StringComparison.OrdinalIgnoreCase)
+                ? ("40000000-0000-0000-0000-000000000005", firstSid, "duplicate-sid-observation")
+                : dn.Equals(DomainGroup, StringComparison.OrdinalIgnoreCase)
                 ? ("40000000-0000-0000-0000-000000000001", firstSid, "domain-group")
                 : dn.Equals(ForestGroup, StringComparison.OrdinalIgnoreCase)
                     ? ("40000000-0000-0000-0000-000000000002", secondSid, "forest-group")
@@ -188,5 +196,42 @@ public partial class V1PrincipalAuditTests
             Assert.Contains("(objectSid=\\01\\05\\00\\00\\00\\00\\00\\05\\15\\00\\00\\00\\01\\00\\00\\00\\02\\00\\00\\00\\03\\00\\00\\00\\01\\02\\00\\00)", filter);
         else Assert.DoesNotContain("objectSid=", filter);
         fixture.AssertReleased(2);
+    }
+
+    [Fact]
+    public void Authorization_groups_deduplicate_same_SID_returned_at_distinct_domain_and_GC_DNs()
+    {
+        using var fixture = new AuthorizationGraphFixture(true, false) { DistinctDnDuplicate = true };
+        using var user = fixture.Source.Attach(new UserPrincipal(fixture.Source.Context));
+        using var results = user.GetAuthorizationGroups();
+        var groups = results.ToArray();
+        try
+        {
+            // Canned domain/GC rows deliberately have different DNs and GUIDs
+            // but the same SID. Neither a DN set nor a GUID set satisfies this
+            // SID-based result invariant. This does not validate AD uniqueness
+            // rules or the behavior of a real rename/replication event.
+            Assert.Equal(new[] { AuthorizationGraphFixture.DomainGroup, AuthorizationGraphFixture.ForestGroup,
+                AuthorizationGraphFixture.ResourceGroup }, groups.Select(group => group.DistinguishedName));
+            Assert.Equal(new[] { "domain-group", "forest-group", "resource-group" },
+                groups.Select(group => group.SamAccountName));
+            Assert.Equal(new[] { "S-1-5-21-1-2-3-2001", "S-1-5-21-4-5-6-2002", "S-1-5-21-4-5-6-2003" },
+                groups.Select(group => group.SidValue));
+            Assert.Equal(new Guid("40000000-0000-0000-0000-000000000001"), groups[0].Guid);
+            var objectReads = fixture.Reads.Where(read => read.DistinguishedName != "").ToArray();
+            Assert.Equal(new[] { AuthorizationGraphFixture.DomainGroup, AuthorizationGraphFixture.RenamedDomainGroup,
+                AuthorizationGraphFixture.ForestGroup, AuthorizationGraphFixture.ForestGroup,
+                AuthorizationGraphFixture.ResourceGroup }, objectReads.Select(read => read.DistinguishedName));
+            Assert.Single(objectReads, read => read.DistinguishedName == AuthorizationGraphFixture.DomainGroup);
+            Assert.Single(objectReads, read => read.DistinguishedName == AuthorizationGraphFixture.RenamedDomainGroup);
+            Assert.Equal(new[] { new Guid("40000000-0000-0000-0000-000000000001"),
+                new Guid("40000000-0000-0000-0000-000000000005") },
+                fixture.ReturnedObjectIdentities.Take(2).Select(row => row.Identity));
+            Assert.Equal(5, fixture.Searches.Count);
+            fixture.AssertReleased(5);
+        }
+        finally { foreach (var group in groups) group.Dispose(); }
+        // Transport/root cleanup is observable here; disposal of the discarded
+        // duplicate entry wrapper has no existing direct observation seam.
     }
 }
