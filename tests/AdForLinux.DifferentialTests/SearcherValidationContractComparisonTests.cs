@@ -5,7 +5,7 @@ using Ours = AdForLinux.DirectoryServices;
 namespace AdForLinux.DifferentialTests;
 
 // These setter-only comparisons never access SearchRoot or contact a server.
-public sealed class SearcherValidationContractComparisonTests
+public sealed partial class SearcherValidationContractComparisonTests
 {
     [Theory]
     [InlineData("SizeLimit")]

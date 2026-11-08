@@ -45,6 +45,26 @@ class OfflineRunnerTests(unittest.TestCase):
                 self.assertEqual(0, runner.run(group, "net8.0"))
                 self.assertEqual("1", process.call_args.kwargs["env"]["ADFL_OFFLINE_TESTS"])
 
+    def test_detached_controls_use_existing_reviewed_class_on_both_frameworks(self):
+        for framework in ("net8.0", "net10.0"):
+            with self.subTest(framework=framework):
+                command, environment = runner.prepare(
+                    "surface", framework, ["SearcherValidationContractComparisonTests"])
+                self.assertEqual(framework + "-windows", command[command.index("--framework") + 1])
+                self.assertEqual(
+                    "FullyQualifiedName~AdForLinux.DifferentialTests.SearcherValidationContractComparisonTests.",
+                    command[command.index("--filter") + 1])
+                self.assertEqual("1", environment["ADFL_OFFLINE_TESTS"])
+
+    def test_reviewed_class_suffix_and_namespace_injection_are_rejected(self):
+        for name in ("SearcherValidationContractComparisonTestsSuffix",
+                     "SearcherValidationContractComparisonTests.DetachedControls",
+                     "AdForLinux.DifferentialTests.SearcherValidationContractComparisonTests"):
+            with self.subTest(name=name), patch.object(runner.subprocess, "run") as process:
+                with self.assertRaises(ValueError):
+                    runner.run("surface", "net8.0", [name])
+                process.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
