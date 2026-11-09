@@ -64,7 +64,7 @@ public partial class V1PrincipalAuditTests
         internal readonly DirectoryEntry Entry = new("LDAP://offline.invalid/CN=item,DC=example,DC=test");
         internal readonly UserPrincipal User;
         private readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession> pool = new(1, 1, startTimer: false);
-        internal NeutralPrincipalSaveFixture()
+        internal NeutralPrincipalSaveFixture(bool custom = false)
         {
             Entry.PropertyReadOverride = (names, _) =>
             {
@@ -80,7 +80,8 @@ public partial class V1PrincipalAuditTests
                     var transport = new PrincipalMutationTransport(State);
                     return new BoundLdapSession(transport, transport, options, new LdapAuthenticationSource(options), referrals);
                 }, reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
-            User = Assert.IsType<UserPrincipal>(Principal.Materialize(Context, typeof(UserPrincipal), Entry));
+            User = Assert.IsAssignableFrom<UserPrincipal>(Principal.Materialize(Context,
+                custom ? typeof(MaterializedCustomUser) : typeof(UserPrincipal), Entry));
         }
         internal void AssertReleased(int resources)
         {
@@ -136,7 +137,7 @@ public partial class V1PrincipalAuditTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Scalar_readback_must_prevent_replay_on_later_unrelated_save_regression(bool applied)
+    public void Raw_entry_readback_preserves_explicit_principal_scalar_intent_for_the_next_save(bool applied)
     {
         using var fixture = new NeutralPrincipalSaveFixture();
         fixture.User.Description = "requested";
@@ -151,9 +152,18 @@ public partial class V1PrincipalAuditTests
         fixture.User.DisplayName = "later edit";
         fixture.User.Save();
         Assert.Equal(2, fixture.State.Submissions);
-        Assert.Equal(applied ? "requested" : "before", Assert.Single(fixture.State.Server["description"]));
+        // Refreshing the raw entry reconciles its uncertain write, but does not
+        // cancel the principal's explicitly staged value. Accepting readback at
+        // the principal layer is covered by ExplicitScalarReconciliation.
+        Assert.Equal("requested", Assert.Single(fixture.State.Server["description"]));
         Assert.Equal("later edit", Assert.Single(fixture.State.Server["displayName"]));
-        Assert.Equal("displayName", Assert.Single(fixture.State.Commands[1].Changes).Name);
+        Assert.Equal(2, fixture.State.Commands[1].Changes.Length);
+        var description = Assert.Single(fixture.State.Commands[1].Changes, change => change.Name == "description");
+        Assert.Equal(DirectoryAttributeOperation.Replace, description.Operation);
+        Assert.Equal(Encoding.UTF8.GetBytes("requested"), Assert.Single(description.Values));
+        var displayName = Assert.Single(fixture.State.Commands[1].Changes, change => change.Name == "displayName");
+        Assert.Equal(DirectoryAttributeOperation.Replace, displayName.Operation);
+        Assert.Equal(Encoding.UTF8.GetBytes("later edit"), Assert.Single(displayName.Values));
         Assert.Equal(2, fixture.State.Disposals);
     }
 
@@ -168,7 +178,13 @@ public partial class V1PrincipalAuditTests
         fixture.State.ApplyBeforeResponseLoss = applied;
         Assert.Throws<TimeoutException>(fixture.User.Save);
         fixture.State.Outcome = "success";
-        Assert.Throws<InvalidOperationException>(fixture.User.Save);
+        var property = fixture.Entry.Properties["description"];
+        var version = property.ChangeVersion;
+        for (var retry = 0; retry < 3; retry++)
+        {
+            Assert.Throws<InvalidOperationException>(fixture.User.Save);
+            Assert.Equal(version, property.ChangeVersion);
+        }
         Assert.Equal(1, fixture.State.Invocations);
         Assert.Equal(1, fixture.State.Submissions);
         // No caller edits followed the first request. A refused retry must leave
@@ -176,5 +192,69 @@ public partial class V1PrincipalAuditTests
         fixture.Entry.RefreshCache(["description"]);
         Assert.Equal(applied ? "requested" : "before", fixture.Entry.Properties["description"].Value);
         Assert.Equal(1, fixture.State.Submissions);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Blocked_save_preserves_extension_readback_and_later_principal_intent(bool applied, bool laterEdit)
+    {
+        using var fixture = new NeutralPrincipalSaveFixture(custom: true);
+        var user = Assert.IsType<MaterializedCustomUser>(fixture.User);
+        fixture.State.Server["department"] = ["before"];
+        user.WriteAttribute("department", "requested");
+        fixture.State.Outcome = "lost";
+        fixture.State.ApplyBeforeResponseLoss = applied;
+        Assert.Throws<TimeoutException>(user.Save);
+        var property = fixture.Entry.Properties["department"];
+        var version = property.ChangeVersion;
+        if (laterEdit) user.WriteAttribute("department", "later edit");
+        fixture.State.Outcome = "success";
+
+        for (var retry = 0; retry < 3; retry++)
+        {
+            Assert.Throws<InvalidOperationException>(user.Save);
+            Assert.Equal(version, property.ChangeVersion);
+        }
+        Assert.Equal(1, fixture.State.Invocations);
+        Assert.Equal(1, fixture.State.Submissions);
+        fixture.Entry.RefreshCache(["department"]);
+        Assert.Equal(applied ? "requested" : "before", fixture.Entry.Properties["department"].Value);
+        Assert.Equal(laterEdit ? "later edit" : "requested", Assert.Single(user.ReadAttribute("department")));
+
+        user.Save();
+        Assert.Equal(2, fixture.State.Invocations);
+        Assert.Equal(2, fixture.State.Submissions);
+        var change = Assert.Single(fixture.State.Commands[1].Changes);
+        Assert.Equal("department", change.Name);
+        Assert.Equal(DirectoryAttributeOperation.Replace, change.Operation);
+        Assert.Equal(Encoding.UTF8.GetBytes(laterEdit ? "later edit" : "requested"), Assert.Single(change.Values));
+        Assert.Equal(laterEdit ? "later edit" : "requested", Assert.Single(fixture.State.Server["department"]));
+        fixture.AssertReleased(2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Blocked_save_does_not_weaken_readback_protection_for_genuine_later_entry_edits(bool applied)
+    {
+        using var fixture = new NeutralPrincipalSaveFixture();
+        fixture.User.Description = "requested";
+        fixture.State.Outcome = "lost";
+        fixture.State.ApplyBeforeResponseLoss = applied;
+        Assert.Throws<TimeoutException>(fixture.User.Save);
+        var property = fixture.Entry.Properties["description"];
+        property.Value = "unsent raw edit";
+        var version = property.ChangeVersion;
+
+        Assert.Throws<InvalidOperationException>(fixture.User.Save);
+        Assert.Equal(version, property.ChangeVersion);
+        Assert.Throws<InvalidOperationException>(() => fixture.Entry.RefreshCache(["description"]));
+        Assert.Equal("unsent raw edit", property.Value);
+        Assert.Equal(1, fixture.State.Invocations);
+        Assert.Equal(1, fixture.State.Submissions);
+        fixture.AssertReleased(1);
     }
 }

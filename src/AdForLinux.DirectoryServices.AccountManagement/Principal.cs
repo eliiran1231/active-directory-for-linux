@@ -858,6 +858,7 @@ public abstract partial class Principal : IDisposable
         }
         if (Entry is not null)
         {
+            Entry.ThrowIfWriteUncertain();
             OnBeforeSave();
             ApplyPendingScalars(Entry);
             ApplyExtensionChanges(Entry);
@@ -1037,6 +1038,7 @@ public abstract partial class Principal : IDisposable
 
         var originalContext = ContextRef;
         var originalEntry = Entry;
+        originalEntry.ThrowIfWriteUncertain();
         var currentDn = Entry.DistinguishedName;
         var currentParent = LdapDistinguishedName.Parent(currentDn);
         var destinationContainer = context.GetCreationContainer(GetType());
@@ -1466,6 +1468,7 @@ public abstract partial class Principal : IDisposable
 
     private protected void CommitPendingScalars(DirectoryEntry entry)
     {
+        entry.ThrowIfWriteUncertain();
         ApplyPendingScalars(entry);
         entry.CommitChanges();
         _pending.Clear();

@@ -226,6 +226,16 @@ public partial class DirectoryEntry
 
     internal void CommitPrincipalServiceNames(PrincipalServiceNameWrite write) => CommitPortableChanges(write);
 
+    // Principal saves stage cached intent into this entry before committing.
+    // Reject an unresolved outcome before staging can change the recovery ledger.
+    // CommitPortableChanges also checks this at the authoritative write boundary.
+    internal void ThrowIfWriteUncertain()
+    {
+        lock (_entryWriteGate)
+            if (_uncertainWrite is not null)
+                throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
+    }
+
     private void CommitPortableChanges(PrincipalServiceNameWrite? serviceNames = null)
     {
         if (_disposed) return; // retained clean/disposed SetInfo compatibility
@@ -234,7 +244,7 @@ public partial class DirectoryEntry
         try
         {
             ThrowIfDisposed();
-            if (_uncertainWrite is not null) throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
+            ThrowIfWriteUncertain();
             var generation = IdentityLifetime.Capture(ThrowIfDisposed);
             long serviceNameReadVersion;
             lock (_entryWriteGate) serviceNameReadVersion = _entryChangeVersion;
