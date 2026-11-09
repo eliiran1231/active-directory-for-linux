@@ -27,7 +27,11 @@ public partial class V1PrincipalAuditTests
         internal readonly InvalidOperationException BeforeSend = new("controlled membership failure before submission");
         internal readonly TimeoutException Lost = new("controlled membership response loss");
         internal readonly IOException ReadbackFailure = new("controlled membership refresh failure after acknowledgement");
-        internal string Outcome = "success";
+        internal readonly Dictionary<string, object[]> ServerScalars = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["description"] = ["before"],
+        };
+        internal string Outcome = "success", ScalarOutcome = "success";
         internal bool Capable = true, ApplyLost, FailReadback;
         internal int Admissions, Acknowledgements, PostAckReads;
 
@@ -50,7 +54,11 @@ public partial class V1PrincipalAuditTests
                     values.ReplaceLoaded("objectClass", index == 0 ? ["top", "group"] : ["top", "person", "user"]);
                     values.ReplaceLoaded("objectSid", [CrossContextFixture.SidBytes($"S-1-5-21-10-20-30-{(index == 0 ? 500 : 1000 + index)}")]);
                     values.ReplaceLoaded("primaryGroupID", ["513"]); // actual primary RID differs from group RID500
-                    if (index == 0) values.ReplaceLoaded("member", ServerMembers.Cast<object>());
+                    if (index == 0)
+                    {
+                        values.ReplaceLoaded("member", ServerMembers.Cast<object>());
+                        foreach (var pair in ServerScalars) values.ReplaceLoaded(pair.Key, pair.Value);
+                    }
                     return values;
                 };
                 entries[i].OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
@@ -121,16 +129,34 @@ public partial class V1PrincipalAuditTests
             token.ThrowIfCancellationRequested();
             var modify = Assert.IsType<LdapModifyCommand>(command);
             fixture.Invocations.Add(modify);
-            if (fixture.Outcome == "not-sent") throw fixture.BeforeSend;
+            var membership = modify.Changes.All(change => change.Name == "member");
+            Assert.NotEmpty(modify.Changes);
+            Assert.True(membership || modify.Changes.All(change => change.Name != "member"), "Scalar and membership phases use separate commands.");
+            var outcome = membership ? fixture.Outcome : fixture.ScalarOutcome;
+            if (outcome == "not-sent") throw fixture.BeforeSend;
             submission.BeforeSend(); fixture.Submissions.Add(modify);
-            if (fixture.Outcome == "rejected") return ValueTask.FromResult(new LdapResultEnvelope(ResultCode.InsufficientAccessRights, null, "controlled membership rejection", [], []));
-            if (fixture.Outcome != "lost" || fixture.ApplyLost)
+            if (outcome == "rejected") return ValueTask.FromResult(new LdapResultEnvelope(ResultCode.InsufficientAccessRights, null, "controlled mutation rejection", [], []));
+            if (outcome != "lost" || fixture.ApplyLost)
             {
-                Assert.True(fixture.ServerMembers.Remove(MembershipFixture.RemovedDn));
-                Assert.True(fixture.ServerMembers.Add(MembershipFixture.AddedDn));
+                foreach (var change in modify.Changes)
+                {
+                    var values = change.Values.Select(Encoding.UTF8.GetString).ToArray();
+                    if (membership)
+                    {
+                        Assert.True(change.Operation is DirectoryAttributeOperation.Delete or DirectoryAttributeOperation.Add);
+                        foreach (var value in values)
+                            Assert.True(change.Operation == DirectoryAttributeOperation.Delete
+                                ? fixture.ServerMembers.Remove(value) : fixture.ServerMembers.Add(value));
+                    }
+                    else
+                    {
+                        Assert.Equal(DirectoryAttributeOperation.Replace, change.Operation);
+                        fixture.ServerScalars[change.Name] = values.Cast<object>().ToArray();
+                    }
+                }
             }
-            if (fixture.Outcome == "lost") throw fixture.Lost;
-            fixture.Acknowledgements++;
+            if (outcome == "lost") throw fixture.Lost;
+            if (membership) fixture.Acknowledgements++;
             return ValueTask.FromResult(new LdapResultEnvelope(ResultCode.Success, null, null, [], []));
         }
         public void Dispose() => Disposals++;
