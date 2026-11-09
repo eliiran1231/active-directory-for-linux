@@ -32,6 +32,34 @@ public partial class ConnectionPoolOperationTests
             ? "30090201030201FF0A0100" : "30090201FF02010A0A0100"), false),
             true, error => Assert.IsType<ArgumentException>(error), replaceVlv: true);
 
+    [Theory]
+    [InlineData("300D02010B02010A0A01000402AABB")]
+    [InlineData("301002047FFFFFFF0201010A010004020102")]
+    public void Invalid_VLV_percentage_preserves_state_and_next_request_before_healthy_recovery(string response)
+        => AssertLateControlStatePreserved(new("2.16.840.1.113730.3.4.10", Convert.FromHexString(response), false),
+            true, error => Assert.IsType<ArgumentException>(error), replaceVlv: true);
+
+    [Theory]
+    [InlineData(2, 3, 1, 66)]
+    [InlineData(9, 10, 9, 90)]
+    [InlineData(40, 0, 0, 0)]
+    [InlineData(1001, 1000, 1000, 100)]
+    public void Successful_VLV_update_preserves_percentage_rounding_and_copies_context(
+        int position, int count, int expectedPosition, int expectedPercentage)
+    {
+        var view = new DirectoryVirtualListView(2, 3, "target") { ApproximateTotal = 10, Offset = 2 };
+        byte[] context = [1, 2];
+        view.Update(position, count, context);
+        context[0] = 9;
+        Assert.Equal(expectedPosition, view.Offset);
+        Assert.Equal(expectedPercentage, view.TargetPercentage);
+        Assert.Equal(count, view.ApproximateTotal);
+        Assert.Equal(new byte[] { 1, 2 }, view.DirectoryVirtualListViewContext!.ContextId);
+        Assert.Equal(2, view.BeforeCount);
+        Assert.Equal(3, view.AfterCount);
+        Assert.Equal("target", view.Target);
+    }
+
     private static void AssertLateControlStatePreserved(LdapTransportControl malformed, bool virtualList,
         Action<Exception?> assertFailure, bool replaceVlv = false)
     {

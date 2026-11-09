@@ -339,9 +339,18 @@ public class DirectoryVirtualListView
     {
         // Match the DirectorySearcher response getter, including the second
         // offset calculation performed by the percentage setter.
-        Offset = offset;
-        ApproximateTotal = approximateTotal;
-        DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(contextId);
-        TargetPercentage = approximateTotal == 0 ? 0 : (int)((double)offset / approximateTotal * 100);
+        // Complete validation, rounding and context allocation before publishing
+        // any response state. A rejected response must preserve the prior view.
+        var updated = new DirectoryVirtualListView
+        {
+            Offset = offset,
+            ApproximateTotal = approximateTotal,
+            DirectoryVirtualListViewContext = new DirectoryVirtualListViewContext(contextId),
+            TargetPercentage = approximateTotal == 0 ? 0 : (int)((double)offset / approximateTotal * 100),
+        };
+        _offset = updated._offset;
+        _approximateTotal = updated._approximateTotal;
+        _targetPercentage = updated._targetPercentage;
+        DirectoryVirtualListViewContext = updated.DirectoryVirtualListViewContext;
     }
 }
