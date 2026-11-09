@@ -106,4 +106,34 @@ public partial class V1PrincipalAuditTests
         fixture.AssertReleased();
     }
 
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(37, false)]
+    [InlineData(0, true)]
+    [InlineData(37, true)]
+    public void Failed_FindOne_preserves_limit_and_exception_through_retry_and_FindAll(int originalLimit, bool timeout)
+    {
+        using var fixture = new ProtocolFailureScopeFixture();
+        using var query = new UserPrincipal(fixture.Context);
+        using var principalSearcher = new PrincipalSearcher(query);
+        var searcher = Assert.IsType<DirectorySearcher>(principalSearcher.GetUnderlyingSearcher());
+        searcher.PageSize = 0;
+        searcher.ReferralChasing = ReferralChasingOption.None;
+        searcher.ConfigureConnectionOverride = _ => { };
+        searcher.SizeLimit = originalLimit;
+        Exception failure = timeout ? new TimeoutException("controlled search timeout")
+            : new InvalidOperationException("controlled search failure");
+        fixture.Reply = number => number <= 2 ? throw failure : EmptyProtocolScopeResponse();
+
+        Assert.Same(failure, Record.Exception(() => principalSearcher.FindOne()));
+        Assert.Equal(originalLimit, searcher.SizeLimit);
+        Assert.Equal(0, fixture.Pool.Snapshot.Total);
+        Assert.Same(failure, Record.Exception(() => principalSearcher.FindOne()));
+        Assert.Equal(originalLimit, searcher.SizeLimit);
+        using (var results = principalSearcher.FindAll()) Assert.Empty(results);
+        Assert.Equal(originalLimit, searcher.SizeLimit);
+        Assert.Equal(new[] { 1, 1, originalLimit }, fixture.Queries.Select(request => request.SizeLimit));
+        fixture.AssertReleased();
+    }
+
 }

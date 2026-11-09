@@ -87,8 +87,15 @@ public class PrincipalSearcher : IDisposable
         var searcher = PrepareUnderlyingSearcher();
         var originalSizeLimit = searcher.SizeLimit;
         searcher.SizeLimit = 1;
-        var result = searcher.FindOne();
-        searcher.SizeLimit = originalSizeLimit;
+        SearchResult? result;
+        try
+        {
+            result = searcher.FindOne();
+        }
+        finally
+        {
+            searcher.SizeLimit = originalSizeLimit;
+        }
         return result is null
             ? null
             : Principal.Materialize(Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());
