@@ -6,7 +6,7 @@ using Xunit;
 
 namespace AdForLinux.FunctionalTests;
 
-public class LdapWorkerDeploymentTests
+public partial class LdapWorkerDeploymentTests
 {
     [Fact]
     public void Caller_policy_accepts_only_consistent_unprivileged_execution()
