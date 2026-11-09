@@ -35,7 +35,7 @@ public partial class V1PrincipalAuditTests
         internal bool Capable = true, ApplyLost, FailReadback;
         internal int Admissions, Acknowledgements, PostAckReads;
 
-        internal MembershipFixture()
+        internal MembershipFixture(Type? groupType = null)
         {
             var entries = new[] { GroupEntry, RemovedEntry, AddedEntry };
             for (var i = 0; i < entries.Length; i++)
@@ -73,7 +73,10 @@ public partial class V1PrincipalAuditTests
                     }, reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
                 };
             }
-            Group = Assert.IsType<GroupPrincipal>(Principal.Materialize(Context, typeof(GroupPrincipal), GroupEntry));
+            var requestedGroupType = groupType ?? typeof(GroupPrincipal);
+            var materializedGroup = Principal.Materialize(Context, requestedGroupType, GroupEntry);
+            Assert.IsType(requestedGroupType, materializedGroup);
+            Group = Assert.IsAssignableFrom<GroupPrincipal>(materializedGroup);
             Removed = Assert.IsType<UserPrincipal>(Principal.Materialize(Context, typeof(UserPrincipal), RemovedEntry));
             Added = Assert.IsType<UserPrincipal>(Principal.Materialize(Context, typeof(UserPrincipal), AddedEntry));
         }
@@ -150,8 +153,17 @@ public partial class V1PrincipalAuditTests
                     }
                     else
                     {
-                        Assert.Equal(DirectoryAttributeOperation.Replace, change.Operation);
-                        fixture.ServerScalars[change.Name] = values.Cast<object>().ToArray();
+                        if (change.Operation == DirectoryAttributeOperation.Replace)
+                        {
+                            if (values.Length == 0) fixture.ServerScalars.Remove(change.Name);
+                            else fixture.ServerScalars[change.Name] = values.Cast<object>().ToArray();
+                        }
+                        else
+                        {
+                            Assert.Equal(DirectoryAttributeOperation.Delete, change.Operation);
+                            Assert.Empty(values);
+                            fixture.ServerScalars.Remove(change.Name);
+                        }
                     }
                 }
             }
