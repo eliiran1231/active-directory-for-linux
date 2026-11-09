@@ -27,10 +27,10 @@ public partial class DirectoryEntry
             if (old is not null && !ReferenceEquals(old, primary) && !ReferenceEquals(old, schema)) old.Dispose();
     }
 
-    private bool CanUseRetainedConnection(LdapConnectionOptions options) =>
+    private bool CanUseRetainedConnection(LdapConnectionOptions options) => options.ReadOnlyProbe is null && (
         (OfflineTestGuard.Enabled && _controlledPrimary is not null &&
          ReferenceEquals(_connection, _controlledPrimary) && ReferenceEquals(_schemaConnection, _controlledSchema)) ||
-        !new LdapAuthenticationSource(options).RequiresOperationLease;
+        !new LdapAuthenticationSource(options).RequiresOperationLease);
 
     // Raw retained fields remain a compatibility seam for existing controlled
     // transports. Production operations own these short-lived leases instead.
@@ -51,6 +51,7 @@ public partial class DirectoryEntry
 
     private DirectoryEntry CopyConnectionFreshnessTo(DirectoryEntry copy)
     {
+        copy.ReadOnlyProbe = ReadOnlyProbe;
         copy.RestrictedKerberos = RestrictedKerberos;
         copy._minimumConnectionGeneration = _minimumConnectionGeneration;
         copy._freshConnectionRequired = _freshConnectionRequired;
@@ -84,6 +85,7 @@ public partial class DirectoryEntry
             (Options: BuildOptions(), Referral: referrals ?? Options.Referral,
              Minimum: _minimumConnectionGeneration, Fresh: _freshConnectionRequired || forceFresh,
              Existing: forceFresh ? null : schema ? _schemaConnection : _connection, Schema: forceFresh ? null : _schemaConnection));
+        snapshot.Options.ReadOnlyProbe?.ValidateAdmission(snapshot.Options, snapshot.Referral);
         count = LdapConnectionProvider.RequiredSessionCount(snapshot.Options, count, independentNativeSchema);
         if (snapshot.Existing is not null && CanUseRetainedConnection(snapshot.Options))
         {

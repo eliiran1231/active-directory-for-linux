@@ -58,6 +58,7 @@ internal static partial class LdapConnectionProvider
         DirectoryEntry.BindingAuthority? authority, bool preferFresh, long minimumGeneration,
         CancellationToken cancellationToken = default)
     {
+        options.ReadOnlyProbe?.Refuse();
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         return ContextScopedRequest.Execute(WindowsLdapContextQuery.Capture, (context, reusable) =>

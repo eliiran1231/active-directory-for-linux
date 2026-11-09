@@ -192,6 +192,11 @@ internal static partial class LdapAttributeSchema
                 }
             }
 
+            if (LdapReadOnlyProbePolicy.For(_connection) is { } policy)
+            {
+                policy.Check();
+                if (names.Any(name => !_kinds.ContainsKey(name))) policy.Refuse();
+            }
             foreach (var name in names)
             {
                 _kinds.TryAdd(name, BinaryFallbackFor(name));

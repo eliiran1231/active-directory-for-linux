@@ -38,6 +38,7 @@ public partial class DirectoryEntry : Component
     private bool _isNew;
     private bool _usePropertyCache = true;
     private DirectoryEntryConfiguration? _options;
+    internal LdapReadOnlyProbePolicy? ReadOnlyProbe { get; private set; }
     private ActiveDirectorySecurity? _objectSecurity;
     private bool _disposed;
 
@@ -117,6 +118,8 @@ public partial class DirectoryEntry : Component
         {
             _authenticationType |= AuthenticationTypes.Sealing;
         }
+        ReadOnlyProbe = connectionOptions.ReadOnlyProbe;
+        ReadOnlyProbe?.ValidatePath(_path);
         _connectionOptionsOverride = connectionOptions;
         RestrictedKerberos = connectionOptions.RestrictedKerberos;
     }
@@ -141,6 +144,7 @@ public partial class DirectoryEntry : Component
                 return;
             }
 
+            if (ReadOnlyProbe is { } probe) probe.Refuse();
             var parsed = ParsePath(value);
             if (RestrictedKerberos is { } selected &&
                 (!string.Equals(parsed.Host, selected.ServiceHost, StringComparison.OrdinalIgnoreCase) ||
@@ -162,6 +166,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (_authenticationType != value)
             {
+                if (ReadOnlyProbe is { } probe) probe.Refuse();
                 if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _authenticationType = value;
@@ -181,6 +186,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_username, value, StringComparison.Ordinal))
             {
+                if (ReadOnlyProbe is { } probe) probe.Refuse();
                 if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _username = value;
@@ -199,6 +205,7 @@ public partial class DirectoryEntry : Component
             CheckCrossContextReservation();
             if (!string.Equals(_password, value, StringComparison.Ordinal))
             {
+                if (ReadOnlyProbe is { } probe) probe.Refuse();
                 if (RestrictedKerberos is not null) throw new InvalidOperationException("A restricted profile cannot change its authentication recipe.");
                 using var identityChange = IdentityLifetime.Change();
                 _password = value;
@@ -981,6 +988,7 @@ public partial class DirectoryEntry : Component
         var generation = IdentityLifetime.Capture(ValidateBinding);
         var snapshot = IdentityLifetime.Checked(generation, ValidateBinding,
             () => (Existing: schema ? _schemaConnection : _connection, Options: BuildOptions(), Referral: Options.Referral));
+        snapshot.Options.ReadOnlyProbe?.Refuse();
         // Raw callers cannot express an operation lifetime. Never let this legacy
         // seam retain platform authentication and bypass operation-time binding.
         if (new LdapAuthenticationSource(snapshot.Options).RequiresOperationLease)
@@ -1057,8 +1065,11 @@ public partial class DirectoryEntry : Component
     internal LdapConnectionOptions BuildOptions()
     {
         ThrowIfDisposed();
+        ReadOnlyProbe?.Check();
+        if (ReadOnlyProbe is not null && _connectionOptionsOverride is null) ReadOnlyProbe.Refuse();
         if (_connectionOptionsOverride is not null)
         {
+            ReadOnlyProbe?.ValidateAdmission(_connectionOptionsOverride, ReferralChasingOption.None);
             RestrictedKerberos?.ValidateRecipe(_connectionOptionsOverride);
             return _connectionOptionsOverride;
         }

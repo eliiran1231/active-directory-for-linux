@@ -848,6 +848,7 @@ public abstract partial class Principal : IDisposable
 
     private void SaveCore()
     {
+        Entry?.ReadOnlyProbe?.Refuse();
         CheckDisposedOrDeleted();
         if (_insertRolledBack)
         {
@@ -1010,6 +1011,7 @@ public abstract partial class Principal : IDisposable
 
     private void SaveCore(PrincipalContext context)
     {
+        Entry?.ReadOnlyProbe?.Refuse();
         CheckDisposedOrDeleted();
         if (context is null)
         {

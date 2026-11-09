@@ -101,10 +101,7 @@ internal sealed class ProtocolsLdapTransport(LdapConnection connection) : ILdapR
         var response = command.Timeout == connection.Timeout
             ? (SearchResponse)connection.SendRequestCompatible(request)
             : LdapExceptionTranslator.Execute(() =>
-            {
-                try { return (SearchResponse)connection.SendRequest(request, command.Timeout); }
-                catch (Exception error) { LdapConnectionProvider.ReportFailure(connection, error); throw; }
-            });
+                (SearchResponse)connection.SendRequestTracked(request, command.Timeout));
         cancellationToken.ThrowIfCancellationRequested();
         return Map(response);
     }

@@ -18,6 +18,7 @@ public partial class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
     private readonly RestrictedKerberosProfile? _restrictedKerberos;
+    private readonly LdapReadOnlyProbePolicy? _readOnlyProbe;
     private readonly bool _hasExplicitPort;
     private readonly ContextType _contextType;
     private readonly string _name;
@@ -151,6 +152,14 @@ public partial class PrincipalContext : IDisposable
             container, DefaultOptions, null, null)
     {
         _restrictedKerberos = profile;
+    }
+
+    internal PrincipalContext(LdapReadOnlyProbePolicy policy, string user, string password)
+        : this(ContextType.Domain, policy.Host + ":636", policy.FixtureDn,
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer, user, password)
+    {
+        _readOnlyProbe = policy;
+        policy.ValidateAdmission(BuildOptions(), ReferralChasingOption.None);
     }
 
     private readonly string? _password;
@@ -493,7 +502,10 @@ public partial class PrincipalContext : IDisposable
             BindDn = bindUser,
             BindPassword = bindPassword,
             RestrictedKerberos = _restrictedKerberos,
+            ReadOnlyProbe = _readOnlyProbe,
+            Timeout = _readOnlyProbe is null ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(10),
         };
+        _readOnlyProbe?.ValidateAdmission(recipe, ReferralChasingOption.None);
         _restrictedKerberos?.ValidateRecipe(recipe);
         return recipe;
     }
@@ -512,6 +524,7 @@ public partial class PrincipalContext : IDisposable
     internal DirectoryEntry CreateDirectoryEntry(string distinguishedName)
     {
         CheckDisposed();
+        _readOnlyProbe?.Check();
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
     }
 
@@ -527,7 +540,7 @@ public partial class PrincipalContext : IDisposable
         var searcher = scope is { } explicitScope
             ? new DirectorySearcher(root, filter, propertiesToLoad, explicitScope)
             : new DirectorySearcher(root, filter, propertiesToLoad);
-        searcher.ReferralChasing = _restrictedKerberos is null
+        searcher.ReferralChasing = _restrictedKerberos is null && _readOnlyProbe is null
             ? ReferralChasingOption.External : ReferralChasingOption.None;
         return searcher;
     }
@@ -548,6 +561,7 @@ public partial class PrincipalContext : IDisposable
     internal DirectoryEntry CreateGlobalCatalogEntry(string distinguishedName)
     {
         CheckDisposed();
+        if (_readOnlyProbe is { } probe) probe.Refuse();
         var options = BuildOptions();
         return new DirectoryEntry(
             $"LDAP://{_name}:{(_useSsl ? 3269 : 3268)}/{distinguishedName}",
@@ -573,6 +587,7 @@ public partial class PrincipalContext : IDisposable
     internal PrincipalContext GetForeignDomainContext(string domainName)
     {
         CheckDisposed();
+        if (_readOnlyProbe is { } probe) probe.Refuse();
         if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Foreign-domain discovery cannot replace the restricted exact target.");
         ArgumentException.ThrowIfNullOrWhiteSpace(domainName);
         if (ForeignPrincipalResolver.TryGetDnsDomainName(DefaultNamingContext)
@@ -850,6 +865,7 @@ public partial class PrincipalContext : IDisposable
         string? password,
         ContextOptions options)
     {
+        _readOnlyProbe?.Refuse();
         using var session = LdapConnectionProvider.AcquireValidation(
             BuildOptions(userName, password, options, useContextPort: false));
     }

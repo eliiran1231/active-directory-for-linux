@@ -35,7 +35,7 @@ internal sealed class LdapAuthenticationSource
 {
     private readonly LdapConnectionOptions recipe;
     internal LdapAuthenticationProvenance Provenance { get; }
-    internal bool RequiresOperationLease => Provenance is
+    internal bool RequiresOperationLease => recipe.ReadOnlyProbe is not null || Provenance is
         LdapAuthenticationProvenance.AmbientPlatform or LdapAuthenticationProvenance.ExplicitPlatform;
 
     internal LdapAuthenticationSource(LdapConnectionOptions options)
@@ -52,7 +52,7 @@ internal sealed class LdapAuthenticationSource
     // principal/cache-path label that independently grants pool eligibility.
     internal LdapAuthenticationCapabilities Capabilities(ReferralChasingOption referrals)
     {
-        if (recipe.RestrictedKerberos is not null || Provenance != LdapAuthenticationProvenance.ExplicitBasic || string.IsNullOrEmpty(recipe.BindPassword))
+        if (recipe.ReadOnlyProbe is not null || recipe.RestrictedKerberos is not null || Provenance != LdapAuthenticationProvenance.ExplicitBasic || string.IsNullOrEmpty(recipe.BindPassword))
             return LdapAuthenticationCapabilities.None;
         // Preserve PR235's Linux Basic policy (including anonymous referral
         // children). Windows native children require the separate scoped check.
@@ -68,6 +68,7 @@ internal sealed class LdapAuthenticationSource
 
     internal BoundLdapSession Bind(ReferralChasingOption? referrals, TimeSpan? bindTimeout = null)
     {
+        recipe.ReadOnlyProbe?.ValidateAdmission(recipe, referrals ?? ReferralChasingOption.All);
         var profile = recipe.Clone();
         var connection = LdapConnectionFactory.Create(profile.Clone(bindTimeout));
         LdapConnectionFactory.ConfigureOwned(connection, value =>

@@ -37,6 +37,7 @@ internal static partial class LdapConnectionProvider
         ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0,
         Func<TimeSpan>? remainingBudget = null)
     {
+        options.ReadOnlyProbe?.ValidateAdmission(options, referrals);
         if (options.RestrictedKerberos is not null)
             return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken,
                 timeout: remainingBudget?.Invoke(), preferFresh: preferFresh, minimumGeneration: minimumGeneration,
@@ -48,6 +49,18 @@ internal static partial class LdapConnectionProvider
         var authentication = new LdapAuthenticationSource(snapshot);
         var reusable = authentication.Freshness(referrals) == LdapSessionFreshness.CompatibleEstablishedSession;
         var key = ConnectionKey.Create(snapshot, referrals);
+        if (snapshot.ReadOnlyProbe is { } probe)
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(probe.Remaining());
+            try
+            {
+                return Pool.AcquireBatch(key, count, () => authentication.Bind(referrals, probe.Remaining()),
+                    deadline.Token, reusable: false, preferFresh: true, minimumGeneration)
+                    .Select(lease => new Session(lease)).ToArray();
+            }
+            catch { probe.Refuse(); throw; }
+        }
         var leases = Pool.AcquireBatch(key, count, () => authentication.Bind(referrals),
             cancellationToken, reusable, preferFresh, minimumGeneration);
         return leases.Select(lease => new Session(lease)).ToArray();
@@ -55,6 +68,7 @@ internal static partial class LdapConnectionProvider
 
     internal static Session AcquireValidation(LdapConnectionOptions options)
     {
+        options.ReadOnlyProbe?.Refuse();
         options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
@@ -67,6 +81,7 @@ internal static partial class LdapConnectionProvider
     internal static Session[] AcquirePair(LdapConnectionOptions first, LdapConnectionOptions second,
         Func<TimeSpan> remaining, CancellationToken cancellationToken)
     {
+        first.ReadOnlyProbe?.Refuse(); second.ReadOnlyProbe?.Refuse();
         if (first.RestrictedKerberos is not null || second.RestrictedKerberos is not null)
         {
             if (first.RestrictedKerberos is null || !ReferenceEquals(first.RestrictedKerberos, second.RestrictedKerberos) ||
@@ -107,7 +122,17 @@ internal static partial class LdapConnectionProvider
 
     internal static DirectoryResponse SendRequestTracked(this LdapConnection connection, DirectoryRequest request)
     {
-        try { return connection.SendRequest(request); }
+        try { return LdapReadOnlyProbePolicy.For(connection) is { } policy
+            ? policy.Execute(request, timeout => { connection.Timeout = connection.Timeout > TimeSpan.Zero && connection.Timeout < timeout ? connection.Timeout : timeout; return connection.SendRequest(request); })
+            : connection.SendRequest(request); }
+        catch (Exception error) { ReportFailure(connection, error); throw; }
+    }
+
+    internal static DirectoryResponse SendRequestTracked(this LdapConnection connection, DirectoryRequest request, TimeSpan timeout)
+    {
+        try { return LdapReadOnlyProbePolicy.For(connection) is { } policy
+            ? policy.Execute(request, remaining => { if (timeout <= TimeSpan.Zero) policy.Refuse(); connection.Timeout = remaining < timeout ? remaining : timeout; return connection.SendRequest(request); })
+            : connection.SendRequest(request, timeout); }
         catch (Exception error) { ReportFailure(connection, error); throw; }
     }
 
@@ -215,6 +240,7 @@ internal static partial class LdapConnectionProvider
                 writer.Write((int)options.AuthenticationType); writer.Write(options.Signing); writer.Write(options.Sealing);
                 WriteNullable(writer, options.BindDn); WriteNullable(writer, options.BindPassword);
                 writer.Write(options.Timeout.Ticks); writer.Write((int)referrals);
+                if (options.ReadOnlyProbe is { } policy) { writer.Write("ReadOnlyProbe/v1"); writer.Write(policy.Id.ToByteArray()); }
                 if (managed is { } owned)
                 {
                     var profile = options.RestrictedKerberos ?? throw new ArgumentException("Managed credentials require a restricted profile.");

@@ -106,7 +106,11 @@ public partial class DirectorySearcher : Component
     public DirectoryEntry? SearchRoot
     {
         get => _rootReference?.Root;
-        set => _rootReference = value is null ? null : new RootReference(value, value.CaptureBindingAuthority());
+        set
+        {
+            if (_rootReference?.Root.ReadOnlyProbe is { } probe && !ReferenceEquals(value?.ReadOnlyProbe, probe)) probe.Refuse();
+            _rootReference = value is null ? null : new RootReference(value, value.CaptureBindingAuthority());
+        }
     }
     private sealed record RootReference(DirectoryEntry Root, DirectoryEntry.BindingAuthority Authority);
     private RootReference? _rootReference;
@@ -126,8 +130,19 @@ public partial class DirectorySearcher : Component
         }
         public void Dispose() => rebound?.Dispose();
     }
-    private SearchOperation CaptureSearch() => new(_rootReference ?? throw new InvalidOperationException(
-        "SearchRoot must be set before searching. Serverless search is not supported on Linux."));
+    private SearchOperation CaptureSearch()
+    {
+        var reference = _rootReference ?? throw new InvalidOperationException(
+            "SearchRoot must be set before searching. Serverless search is not supported on Linux.");
+        if (reference.Root.ReadOnlyProbe is { } probe)
+        {
+            probe.Check();
+            if (Asynchronous || !CacheResults || PageSize != 0 || HasAttributeScopeQuery
+                || DirectorySynchronization is not null || _virtualListView is not null
+                || ReferralChasing != ReferralChasingOption.None || SearchScope != SearchScope.Base) probe.Refuse();
+        }
+        return new(reference);
+    }
 
     /// <summary>The LDAP filter, e.g. <c>(&amp;(objectClass=user)(cn=jeff))</c>.</summary>
     [AllowNull]
@@ -717,6 +732,7 @@ public partial class DirectorySearcher : Component
         Action<SearchResult> add,
         CancellationToken cancellationToken)
     {
+        if (LdapReadOnlyProbePolicy.For(connection) is { } probe) probe.Refuse();
         var partialMode = returnPartialResults
             ? PartialResultProcessing.ReturnPartialResults
             : PartialResultProcessing.NoPartialResultSupport;

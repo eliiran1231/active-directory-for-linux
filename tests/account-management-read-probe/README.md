@@ -1,147 +1,201 @@
-# Read-only AccountManagement fixture specification
+# Contained read-only AccountManagement probe candidate
 
-**No live path is shipped.** This directory contains an admission-only scaffold
-and a future integration specification. Even with every opt-in and valid fixture
-argument, the executable exits `2` with
-`BLOCKED referral-containment-unavailable`. It contains no LDAP types, connections,
-contexts, entries, native calls, credential reads or PASS path. There is no
-fixture creation, mutation, password operation, membership edit or cleanup.
+## Current status
 
-The executable is outside the solution, offline allowlist, CI workflows and
-Samba runner. Building it is not authorization for a later AD bind. Tonight's
-only executions are the six offline-guarded refusal checks below.
+The read comparison, opt-in containment policy and supervisor are implemented,
+but **live execution remains unconditionally blocked** in `ProbeReadiness`.
+No CLI option or environment setting can remove that gate. With valid nonsecret
+configuration the executable exits `2` with `BLOCKED containment-review-pending`,
+before READY, credential input, context creation or LDAP activity.
 
-## Why tomorrow also stays blocked
+This candidate has not contacted AD, performed a native bind or consumed real
+credentials. The unconditional gate stays until the separate security review,
+cross-runtime checks, trusted runtime/TLS prerequisites and precise operator
+scope have been accepted. Building or checking this project does not authorize
+any AD connection. Do not edit the gate merely to bypass a failed prerequisite.
 
-The specification requires referral chasing **None on every operation**, including
-base-object validation, schema reads and deferred principal attachment. Setting
-the public PrincipalSearcher's underlying DirectorySearcher to None controls its
-query. Basic/SSL principal materialization can then reopen a DirectoryEntry whose
-configuration defaults to External before the caller can configure that entry.
-The public API provides no containment hook at that point.
+The project is outside the solution and live/Samba runners. Pure configuration
+and comparison source is linked into the guarded functional tests; those tests
+use isolated recording Protocols connections, not a neutral substitute backend.
+The controlled callbacks on `ProbeReads.Run` are internal test seams only. The
+executable supplies none of them and uses the stock Protocols/facade paths.
 
-Therefore dual opt-ins, known fixture arguments and trusted TLS cannot currently
-make this scaffold live. A separately reviewed way to enforce the complete
-endpoint/referral boundary is required before implementing any read phases.
-There is no force option or environment override for this final block. This is a
-limitation of the proposed probe contract, not a claim that External is a defect
-in the general public API.
+## Design and scope
 
-## Build and blocked checks
+An internal immutable endpoint/scope policy accompanies the selected context's
+options, entry/result copies and deferred attachments. Ordinary public contexts
+and Basic/SSL referral defaults remain unchanged. The diagnostic uses Basic over
+LDAPS with an explicit fully qualified DNS host, port636, no StartTLS, no anonymous
+or ambient identity, no certificate bypass, and referrals None **before bind**.
+Windows auto-reconnect is disabled for selected connections. Policy-selected
+sessions are fresh and have isolated pool keys/caches; raw retained handles,
+credential validation, GC, foreign contexts and cross-context paths refuse.
 
-From the repository root, with the existing cloud SDK configuration:
+Searches can read only the following locations:
 
-```sh
-export XDG_RUNTIME_DIR=/workspace/directory-runtime
-export DOTNET_CLI_HOME=/workspace/dotnet-cli
-export NUGET_PACKAGES=/workspace/nuget
-export DOTNET_NOLOGO=1
-/workspace/dotnet/dotnet restore tests/account-management-read-probe/AccountManagement.ReadProbe.csproj
-/workspace/dotnet/dotnet build tests/account-management-read-probe/AccountManagement.ReadProbe.csproj --no-restore -c Release
-python tests/account-management-read-probe/check-blocked.py --dotnet /workspace/dotnet/dotnet
-```
+| Location | Scope and permitted operations |
+| --- | --- |
+| Independently supplied user DN | Base search only; size cap2, exactly one returned fixture row |
+| RootDSE empty DN | Base search for `schemaNamingContext` only; exactly one empty-DN row, value must equal the preapproved schema DN |
+| Independently supplied schema DN | One-level attributeSchema lookup only, exact generated name filter and three syntax fields; at most256 rows, complete unique requested names and direct-child DNs |
 
-Expected: both `net8.0` and `net10.0` build with exit `0`. The Python command
-prints `PASS 6 guarded invocations blocked before credential access` and exits
-`0`; this is PASS for refusal checks, **not AD integration success**. Each child
-exits `2`, prints `BLOCKED offline-guard` on stderr and prints nothing on stdout.
-The checker tries guard strings `1`, `0` and `false` on each runtime, including
-apparently opted-in CLI arguments. It copies only a small runtime-environment
-allowlist and never looks up credential variables. Missing built DLLs make the
-checker exit nonzero, never silently pass.
+LDAP alias dereferencing is disabled. Async/streaming searches, paging, ASQ,
+DirSync, VLV, unsupported controls and all writes refuse. Response references,
+referrals, non-success results, unexpected controls/rows/identities and missing/duplicate/noncanonical
+schema evidence latch a failure. Later admission/send and final PASS check that
+latch. Schema fallback cannot convert rejected evidence into a successful probe.
+Policy sends use the original Protocols request and a shrinking total deadline;
+requested bind/send limits are at most10seconds. The policy is not a public configuration
+feature and does not grant authority to new endpoints or credentials.
 
-## Ordered admission gates
+The DNS name and TLS identity are constrained, **not a pinned socket IP**. DNS
+resolution remains an OS service. Later approval must verify that this is a
+specific controller name, not a domain discovery alias, and restrict egress to
+its approved addresses. A trusted host/runtime/network is part of the boundary;
+this is not a sandbox against a malicious operator or compromised native library.
 
-The scaffold only validates non-secret admission data:
+## Actual read phases and expanded authorization scope
 
-1. Any nonempty `ADFL_OFFLINE_TESTS` refuses, including `0` and `false`. The
-   program never removes the guard or accepts a CLI override.
-2. CLI `--allow-live-read` must be present.
-3. `ADFL_ACCOUNT_READ_PROBE` must equal `1` exactly.
-4. On Unix, `LDAPTLS_REQCERT=demand` and `LDAPTLS_REQSAN=demand` are required.
-5. All explicit configuration pairs must be valid: `--host`, `--port 636`,
-   `--fixture-dn`, `--sam`, `--guid`. Unknown/duplicate options are refused.
-6. The unconditional referral-containment block refuses. **No credentials are
-   read**, even if every preceding gate passes.
+1. Direct stock Protocols baseline: base read of objectGUID, objectSid,
+   sAMAccountName, description and displayName. Require the independently known
+   nonzero GUID and exact SAM before another phase. Validate exact SID length.
+2. Public DirectoryEntry: refresh the same five attributes and compare.
+3. Public PrincipalSearcher/UserPrincipal: base, buffered FindAll with no paging
+   or async; enumerate and access deferred Current; compare type, GUID, SID, DN,
+   SAM and nullable description/displayName. Fully dispose before final checks.
 
-All scaffold invocations exit `2`; stderr identifies the first block. No live
-invocation or unguarded gate experiment was performed overnight. An illustrative
-future CLI shape is below; **today it still blocks** and no credentials should
-be supplied to it:
+**The entire procedure is not limited to five attributes.** Stock principal
+attachment reads GUID and enumerates the target entry via `*` plus
+`nTSecurityDescriptor`, requesting Owner, Group and DACL. The normal user query
+projection also includes these ordinary/account attributes (duplicates omitted):
 
 ```text
-AccountManagement.ReadProbe.dll --allow-live-read
-  --host <controller-dns-host> --port 636
-  --fixture-dn <known-user-distinguished-name>
-  --sam <known-sAMAccountName> --guid <known-object-GUID>
+displayname description samaccountname userprincipalname objectguid objectsid
+objectclass name distinguishedname useraccountcontrol usercertificate
+badpasswordtime accountexpires lastlogon lastlogontimestamp lockouttime badpwdcount
+pwdlastset givenname middlename sn mail telephonenumber employeeid
+userworkstations logonhours homedirectory homedrive scriptpath
 ```
 
-Do not unset an offline guard to try this template. Future integration must use
-a separate, explicitly authorized environment with a reviewed implementation.
+`ADsPath` is a facade projection value. Syntax resolution reads rootDSE/schema
+metadata for returned target attributes. No schema-wide/subtree traversal is
+permitted. No group/foreign membership traversal, Save/Add/Modify/Delete/Move,
+password operation, fixture provisioning, or cleanup write exists in the probe.
+Read-only binds/reads can still create server audit records and affect password
+failure counters. No zero-server-effects claim is made.
 
-## Future existing-fixture prerequisites
+## Offline validation
 
-An authorized operator must identify one stable, already-existing AD user and
-obtain the following values independently of the probe:
+Restore/build with an installed .NET10SDK and both .NET8/10 runtimes:
 
-- One exact DNS controller host on port **636**. No alternate host, automatic
-  controller discovery, plaintext LDAP, StartTLS or fallback endpoint.
-- Exact distinguished name, `sAMAccountName` and nonzero object GUID. The first
-  search may verify these values but must never select a replacement fixture.
-- A readable binary `objectSid`. Description and display name may be absent;
-  otherwise each must be a single string. The user must match the public
-  AccountManagement user filter and remain unchanged during the observation.
-- Verified credentials for a dedicated least-privilege read account authorized
-  for the fixture's ordinary attributes, required security sections and
-  rootDSE/schema metadata. No ambient identity or credential-file discovery.
-- A trusted server certificate whose SAN covers the explicit host, using the
-  platform trust store and host-name checks. No verification callback or bypass.
-  Unix libldap must support strict certificate/SAN policy. Install required trust
-  and native dependencies separately, outside the probe.
+```sh
+dotnet restore tests/account-management-read-probe/AccountManagement.ReadProbe.csproj
+dotnet build tests/account-management-read-probe/AccountManagement.ReadProbe.csproj --no-restore -c Release
+python tests/account-management-read-probe/check-blocked.py --dotnet dotnet
+python tests/account-management-read-probe/check-admission.py --dotnet dotnet
+python tests/account-management-read-probe/test_launcher.py
+dotnet restore tests/account-management-read-probe/termination-check/TerminationCheck.csproj
+dotnet build tests/account-management-read-probe/termination-check/TerminationCheck.csproj --no-restore -c Release
+python tests/account-management-read-probe/check-termination.py --dotnet dotnet
+python tests/test_offline_runner.py
+python tests/test_samba_runner.py
+python tests/run-offline-tests.py functional --framework net8.0 --results-directory TestResults/read-probe-net8
+python tests/run-offline-tests.py functional --framework net10.0 --results-directory TestResults/read-probe-net10
+```
 
-Only a future reviewed implementation could read explicit bind DN/password from
-an operator-approved mechanism after all admission gates pass. No secret values
-belong in CLI arguments, shell history, test settings, output or this directory.
-LDAP binds/reads can produce server audit entries and affect bad-password
-counters; valid credentials and separately scoped live authorization are required.
+The six `check-blocked.py` invocations verify only the earliest immutable offline
+guard, with values1/0/false on each runtime. They do not verify deeper admission.
+`check-admission.py` separately checks nonsecret refusals using sealed empty stdin
+and synthetic .invalid scope. It carries no credentials. An inherited offline
+guard makes it refuse rather than remove that guard; use a separately scoped
+nonsecret admission-check process, not an unguarded live test. Missing builds or
+unexpected outcomes fail. None of these PASS records is AD integration success.
 
-## Future read phases and bounded contract
+Launcher tests cover sanitized child environment, no secret input before READY,
+framing/encoded-size bounds, CRLF, duplicate keys, timeouts, cleanup and a real
+local Python child killed/reaped by the deadline. That child uses no LDAP/native
+library and only synthetic input. Functional tests exercise the actual policy
+send helpers, stock facade materialization and full comparison with recording
+Protocols connections. Four separately guarded self-termination drills invoke only the emergency
+method, under blocked-stderr and blocked-exit-handler conditions on both runtimes;
+they do not enter admission or LDAP code. Native TLS/bind behavior, Windows supervisor execution and
+actual AD permissions are not established by these offline observations.
 
-No phase below is implemented in the scaffold.
+## Supervision and secret handling
 
-1. **Direct Protocols baseline:** TLS Basic, protocol version 3, exact host636,
-   referral chasing None, base scope at the known fixture DN, size limit `2`,
-   10-second client and server limits. Read only objectGUID, objectSid,
-   sAMAccountName, description and displayName. Require exactly one row, no
-   referrals/references, and independently known GUID/SAM before proceeding.
-2. **Public DirectoryEntry:** same endpoint, credentials, strict TLS and referral
-   policy; refresh those exact attributes at the same DN. Compare GUID/SID binary
-   identity and nullable scalar values against the direct baseline.
-3. **Public AccountManagement:** SimpleBind over SSL and the fixture DN as context
-   container; UserPrincipal SAM filter, base scope, no paging, referral chasing
-   None, size limit `2`, 10-second client/server query limits. Exercise FindAll
-   and deferred attachment and compare type, GUID, DN, SID and nullable scalars.
-   The future containment seam must also cover **all** internal rootDSE/schema
-   and attachment reads. No subtree/group traversal or implicit referral target.
+The proposed live entrypoint is `run-probe.py`. It sanitizes child environment,
+disables managed diagnostic attach/minidumps, and on Unix disables ordinary core
+dumps. No password/identity is accepted in CLI arguments, environment or a file.
+After all nonsecret gates pass, the child emits READY with a fresh nonce; the
+launcher then reads one redirected JSON line containing exactly `bindDn` and
+`password`, adds the nonce, writes a bounded frame, and retains the pipe.
+Credential values remain in process memory; no memory-zeroization guarantee is
+made. They are never printed, logged or written by this implementation. A later
+operator must also disable privileged OS dump/telemetry capture that could retain
+process memory. The launcher is not an identity proof against an operator who
+controls its code, pipes and credentials.
 
-Use a 60-second total wall bound, including provider-internal reads. Do not retry
-automatically or switch endpoints/backends. Dispose all resources on ordinary
-success/failure; define hard-deadline termination explicitly. No Save, Add,
-Modify, Delete, ModifyDN, password, membership, provisioning or cleanup calls.
+A launcher timer covers the whole operation, including pipe writes. At55seconds
+it kills the scoped child/process group and reserves at most5seconds for reaping.
+The child also has a55-second timer, an elapsed-time success gate and a pipe-EOF
+monitor. Emergency abort hard-kills only its own process without pipe I/O or
+managed exit-handler dependence; ordinary outcomes retain disposal. Deadline, launcher death or malformed framing cannot be accepted as PASS.
+As with any process supervisor, this assumes a responsive OS; uninterruptible
+kernel stalls are outside an absolute user-space timing guarantee. Killing the
+process does not prove server-side cancellation of a previously submitted read.
 
-Future outcome rules:
+Output contains only fixed status/stage records. No exception messages, server
+diagnostics, returned attributes, environment dumps or credential values appear.
+Missing prerequisites are BLOCKED/exit2; input/supervision/read failures exit1;
+exit0/PASS requires all comparisons, disposal and final healthy deadline checks.
+The launcher never automatically retries or changes endpoint/backend.
 
-| Exit | Meaning |
-| --- | --- |
-| `2` | Missing admission/prerequisite: BLOCKED, no bind attempted. |
-| `1` | Admitted read failed or exceeded its time bound; server effects may exist. |
-| `0` | Only after all three phases verify the known fixture; one explicit PASS record. |
+## Exact later live-run prerequisites — not authorization now
 
-Missing fixtures/credentials, TLS failure, read denial, malformed identity,
-referrals, unexpected row counts and mismatches must fail/block, never skip or
-silently PASS. Capture runtime, phase, status and non-secret error type; do not
-dump credentials, environment, exception messages or returned attribute values.
+Before activating the source gate or supplying credentials, obtain approval for:
 
-This future check would compare **direct LDAP with this project's facades on one
-real AD fixture**. It would not be a Microsoft AccountManagement oracle, mutation
-test, performance benchmark, or proof of complete AD/schema compatibility.
+- One trusted cloud/owned test machine with Python3, .NET8/10, and this reviewed
+  build. No laptop dependency. On Linux install a trusted compatible OpenLDAP
+  runtime that supports strict certificate and SAN enforcement. Confirm platform
+  TLS behavior and trust configuration separately; the environment strings alone
+  are not proof that an arbitrary native library honors them. Windows uses its
+  normal trusted certificate store. Install trust/dependencies outside the probe.
+- Exact ASCII controller FQDN and approved DNS-resolved egress addresses, TCP636
+  only, with no alternate DC, domain discovery, plaintext or StartTLS fallback.
+- Trusted server certificate chain with SAN matching that FQDN. On Unix require
+  `LDAPTLS_REQCERT=demand` and `LDAPTLS_REQSAN=demand` at process startup. Audit
+  native/system LDAP configuration for unwanted client keys or alternate trust.
+- Independently obtained fixture DN, sAMAccountName and nonzero object GUID, plus
+  the exact schemaNamingContext DN. Identify a stable, already-existing user;
+  the probe will never search for a replacement fixture.
+- A verified dedicated read account and a one-time private redirected input
+  channel. Grant Read Property for the fixture's readable ordinary attributes
+  and READ_CONTROL for Owner/Group/DACL, rootDSE schemaNamingContext read, and
+  list/read lDAPDisplayName/attributeSyntax/oMSyntax under the schema container.
+  No administrative, password-reset, write or SACL privilege is required.
+- Explicit permission for the one chosen controller, account, expanded read
+  scope, both desired runtimes, bounded duration and bind/audit side effects.
+  Confirm valid credentials independently to avoid bad-password experiments.
+
+After separate review/activation and live authorization, the nonsecret command
+shape would be:
+
+```text
+python run-probe.py --dotnet <approved-dotnet> --framework net8.0
+  --allow-live-read --host <approved-controller-fqdn> --port 636
+  --fixture-dn <approved-user-dn> --schema-dn <approved-schema-dn>
+  --sam <known-sam> --guid <known-guid>
+```
+
+Set `ADFL_ACCOUNT_READ_PROBE=1` and the Unix
+TLS requirements in the explicitly approved live process. A private input helper
+must send the credential JSON through stdin without echo or persistence; no
+credential-bearing command/file example is provided. Do not unset an offline
+guard to repurpose an existing guarded process. Current builds remain blocked,
+so do not supply credentials now.
+
+The comparison is direct LDAP versus this project's facades on one known AD
+fixture. It is not a Microsoft AccountManagement runtime oracle, Kerberos worker
+validation, mutation test, throughput measurement, or proof of complete AD
+compatibility. No publication, AD connection or credential use is authorized by
+this document.

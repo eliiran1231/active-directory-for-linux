@@ -238,6 +238,7 @@ public partial class DirectoryEntry
 
     private void CommitPortableChanges(PrincipalServiceNameWrite? serviceNames = null)
     {
+        ReadOnlyProbe?.Refuse();
         if (_disposed) return; // retained clean/disposed SetInfo compatibility
         if (Interlocked.CompareExchange(ref _commitRunning, 1, 0) != 0)
             throw new InvalidOperationException("A commit is already in progress for this entry.");

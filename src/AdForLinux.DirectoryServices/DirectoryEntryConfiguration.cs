@@ -40,7 +40,7 @@ public class DirectoryEntryConfiguration
         _securityMasks = DefaultSecurityMasks;
         _passwordEncoding = PasswordEncodingMethod.PasswordEncodingSsl;
         _passwordPort = 636;
-        _referral = _entry.RestrictedKerberos is null ? ReferralChasingOption.External : ReferralChasingOption.None;
+        _referral = _entry.RestrictedKerberos is null && _entry.ReadOnlyProbe is null ? ReferralChasingOption.External : ReferralChasingOption.None;
     }
 
     /// <summary>Gets or sets the page size used when enumerating child entries. Zero disables paging.</summary>
@@ -119,6 +119,7 @@ public class DirectoryEntryConfiguration
             }
 
             ValidateOwner();
+            if (_entry.ReadOnlyProbe is { } probe && value != ReferralChasingOption.None) probe.Refuse();
             if (_referral != value)
             {
                 _entry.OnReferralChanged(this, () => _referral = value);
