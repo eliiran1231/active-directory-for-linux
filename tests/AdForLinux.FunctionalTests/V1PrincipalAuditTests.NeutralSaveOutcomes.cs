@@ -14,6 +14,9 @@ public partial class V1PrincipalAuditTests
         internal string Outcome = "success";
         internal bool Capable = true;
         internal bool ApplyBeforeResponseLoss;
+        internal LdapException? ProtocolFailure;
+        internal bool FailAfterSubmission;
+        internal LdapResultEnvelope Rejection = new(ResultCode.InsufficientAccessRights, null, "controlled rejection", [], []);
         internal int Invocations, Submissions, Disposals;
         internal readonly List<LdapModifyCommand> Commands = [];
         internal readonly Dictionary<string, object[]> Server = new(StringComparer.OrdinalIgnoreCase)
@@ -33,13 +36,15 @@ public partial class V1PrincipalAuditTests
         public ValueTask<LdapResultEnvelope> MutateAsync(LdapMutationCommand command, LdapSubmission submission, CancellationToken cancellationToken)
         {
             state.Invocations++;
+            if (state.ProtocolFailure is { } before && !state.FailAfterSubmission) throw before;
             if (state.Outcome == "not-sent") throw new InvalidOperationException("controlled failure before submission");
             submission.BeforeSend();
             state.Submissions++;
             var modify = Assert.IsType<LdapModifyCommand>(command);
             state.Commands.Add(modify);
             if (state.Outcome == "rejected")
-                return ValueTask.FromResult(new LdapResultEnvelope(ResultCode.InsufficientAccessRights, null, "controlled rejection", [], []));
+                return ValueTask.FromResult(state.Rejection);
+            if (state.ProtocolFailure is { } after) throw after;
             if (state.Outcome != "lost" || state.ApplyBeforeResponseLoss)
                 foreach (var change in modify.Changes)
                 {
@@ -76,6 +81,12 @@ public partial class V1PrincipalAuditTests
                     return new BoundLdapSession(transport, transport, options, new LdapAuthenticationSource(options), referrals);
                 }, reusable: false).Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
             User = Assert.IsType<UserPrincipal>(Principal.Materialize(Context, typeof(UserPrincipal), Entry));
+        }
+        internal void AssertReleased(int resources)
+        {
+            Assert.Equal(resources, State.Disposals);
+            Assert.Equal(0, pool.Snapshot.Total);
+            Assert.Equal(0, pool.Snapshot.Waiting);
         }
         public void Dispose() { User.Dispose(); Entry.Dispose(); Context.Dispose(); pool.Dispose(); }
     }
