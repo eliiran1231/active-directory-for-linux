@@ -39,13 +39,14 @@ public partial class ConnectionPoolOperationTests
         internal readonly List<TimeSpan> ReadBudgets = [], PageBudgets = [], ServerLimits = [];
         internal bool CleanupFails;
         internal Action? OnRead, OnCleanup;
+        internal Action<LdapSearchCommand>? OnOpen;
         internal Func<CancellationToken, ValueTask<LdapSearchEvent>>? PendingRead;
         internal Action<LdapSubmission, CancellationToken>? WriteAction;
         internal LdapResultEnvelope WriteResult = Envelope(ResultCode.Success);
         public LdapSearchResult Search(LdapSearchCommand command, CancellationToken token)
         { trace.Add("buffered-search"); return new(ResultCode.Success, "", null, command.BaseDn == "" ? [] : [new(command.BaseDn, new(), [])], [], [], []); }
         public ValueTask<ILdapSearchCursor> OpenSearchAsync(LdapSearchCommand command, int pageSize, CancellationToken token)
-        { token.ThrowIfCancellationRequested(); OpenBudget = command.Timeout; ServerLimit = command.ServerTimeLimit; ServerLimits.Add(ServerLimit); trace.Add("open"); return ValueTask.FromResult<ILdapSearchCursor>(this); }
+        { token.ThrowIfCancellationRequested(); OnOpen?.Invoke(command); OpenBudget = command.Timeout; ServerLimit = command.ServerTimeLimit; ServerLimits.Add(ServerLimit); trace.Add("open"); return ValueTask.FromResult<ILdapSearchCursor>(this); }
         public ValueTask<LdapSearchEvent> ReadAsync(TimeSpan remaining, CancellationToken token)
         { token.ThrowIfCancellationRequested(); ReadBudgets.Add(remaining); Reads++; trace.Add("read"); OnRead?.Invoke(); return PendingRead is null ? ValueTask.FromResult(Events.Dequeue()) : PendingRead(token); }
         public ValueTask NextPageAsync(TimeSpan remaining, CancellationToken token, TimeSpan? serverTimeLimit = null)

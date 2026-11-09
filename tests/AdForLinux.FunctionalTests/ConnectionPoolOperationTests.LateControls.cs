@@ -1,4 +1,5 @@
 using System.DirectoryServices.Protocols;
+using System.Formats.Asn1;
 using AdForLinux.DirectoryServices;
 using AdForLinux.DirectoryServices.Ldap;
 using Xunit;
@@ -38,12 +39,13 @@ public partial class ConnectionPoolOperationTests
         using var root = new DirectoryEntry("LDAP://offline.invalid/DC=example,DC=test");
         root.Options.Referral = ReferralChasingOption.None;
         var trace = new List<string>();
+        var commands = new List<LdapSearchCommand>();
         var transports = new List<ConversationTransport>();
         var secondResponse = false;
         root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
             pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), count, () =>
             {
-                var transport = new ConversationTransport(trace);
+                var transport = new ConversationTransport(trace) { OnOpen = commands.Add };
                 transport.Capabilities |= LdapTransportCapabilities.SearchControls;
                 var controls = new List<LdapTransportControl>
                 {
@@ -85,6 +87,11 @@ public partial class ConnectionPoolOperationTests
             Assert.Empty(results.Cast<SearchResult>());
         }));
 
+        var rejectedContext = view.DirectoryVirtualListViewContext;
+        var rejectedPosition = view.Offset;
+        var rejectedTotal = view.ApproximateTotal;
+        var rejectedPercentage = view.TargetPercentage;
+
         Assert.Equal(2, trace.Count(item => item == "open"));
         Assert.Equal(2, transports.Sum(transport => transport.Reads));
         Assert.Equal(0, transports.Sum(transport => transport.Pages));
@@ -94,9 +101,37 @@ public partial class ConnectionPoolOperationTests
         Assert.Equal(virtualList ? 5 : 3, trace.Count(item => item == "session-close"));
         Assert.Equal(0, pool.Snapshot.Total);
         Assert.Equal(virtualList ? new byte[] { 42 } : new byte[] { 0, 255 }, sync.GetDirectorySynchronizationCookie());
-        Assert.Same(previousContext, view.DirectoryVirtualListViewContext);
-        Assert.Equal(previousPosition, view.Offset);
-        Assert.Equal(previousTotal, view.ApproximateTotal);
-        Assert.Equal(previousPercentage, view.TargetPercentage);
+        var nextOffset = previousPosition;
+        if (replaceVlv)
+        {
+            // Observe the next actual public request, then a complete healthy
+            // response on the same searcher/view before asserting rollback.
+            secondResponse = false;
+            using (var recovered = searcher.FindAll()) Assert.Empty(recovered.Cast<SearchResult>());
+            var control = Assert.Single(commands[2].Controls.Where(item => item.Oid == "2.16.840.1.113730.3.4.9"));
+            var reader = new AsnReader(control.Value, AsnEncodingRules.BER);
+            var sequence = reader.ReadSequence();
+            Assert.Equal(0, (int)sequence.ReadInteger()); // before count
+            Assert.Equal(0, (int)sequence.ReadInteger()); // after count
+            var target = sequence.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, true));
+            nextOffset = (int)target.ReadInteger();
+            Assert.Equal(previousTotal, (int)target.ReadInteger());
+            target.ThrowIfNotEmpty();
+            Assert.Equal(new byte[] { 0, 255 }, sequence.ReadOctetString());
+            sequence.ThrowIfNotEmpty();
+            reader.ThrowIfNotEmpty();
+            Assert.Equal(previousPosition, view.Offset);
+            Assert.Equal(previousTotal, view.ApproximateTotal);
+            Assert.Equal(previousPercentage, view.TargetPercentage);
+            Assert.Equal(3, commands.Count);
+            Assert.Equal(3, trace.Count(item => item == "cursor-close"));
+            Assert.Equal(7, trace.Count(item => item == "session-close"));
+            Assert.Equal(0, pool.Snapshot.Total);
+        }
+        Assert.Same(previousContext, rejectedContext);
+        Assert.Equal(previousPosition, nextOffset);
+        Assert.Equal(previousPosition, rejectedPosition);
+        Assert.Equal(previousTotal, rejectedTotal);
+        Assert.Equal(previousPercentage, rejectedPercentage);
     }
 }

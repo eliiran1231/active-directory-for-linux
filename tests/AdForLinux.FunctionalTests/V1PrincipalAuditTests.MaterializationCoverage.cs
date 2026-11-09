@@ -137,17 +137,6 @@ public partial class V1PrincipalAuditTests
     [Fact]
     public void FindOne_restores_caller_size_limit_when_underlying_search_throws_regression()
     {
-        using var context = new PrincipalContext(ContextType.Domain, "offline.invalid", "DC=example,DC=test");
-        using var query = new UserPrincipal(context);
-        using var principalSearcher = new PrincipalSearcher(query);
-        var searcher = Assert.IsType<DirectorySearcher>(principalSearcher.GetUnderlyingSearcher());
-        InstallSearchTransport(searcher.SearchRoot!);
-        searcher.SizeLimit = 37;
-        var failure = new InvalidOperationException("controlled search configuration failure");
-        searcher.ConfigureConnectionOverride = _ => throw failure;
-
-        Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => principalSearcher.FindOne()));
-        // FindOne's temporary limit must not alter subsequent FindAll behavior.
-        Assert.Equal(37, searcher.SizeLimit);
+        AssertFindOneFailureDoesNotChangeFollowingSearches();
     }
 }
