@@ -14,6 +14,29 @@ python tests/run-offline-tests.py functional --framework net8.0 --class Streamin
 `StreamingSearchResultTests` is an opt-in group of detached collection and local
 producer cases. Select its exact class name explicitly to run it with the guard.
 
+The principal scalar and extension edits injected during a write by an internal
+test callback are retained as an opt-in diagnostic. Same-instance reentrant or
+concurrent editing has no established public contract. The default run visibly
+skips this diagnostic theory; xUnit reports one skip for its four parameter rows.
+It is not a passing regression test or evidence of supported concurrent use.
+To reproduce its current four failures without directory access:
+
+```sh
+ADFL_RUN_PRINCIPAL_REENTRANCY_DIAGNOSTICS=1 python tests/run-offline-tests.py functional --framework net8.0 --class V1PrincipalAuditTests --results-directory TestResults/principal-diagnostics-net8
+ADFL_RUN_PRINCIPAL_REENTRANCY_DIAGNOSTICS=1 python tests/run-offline-tests.py functional --framework net10.0 --class V1PrincipalAuditTests --results-directory TestResults/principal-diagnostics-net10
+```
+
+Run each command independently because these diagnostic runs return nonzero.
+The opt-in requires offline mode as well as the diagnostic environment variable;
+the environment variable alone cannot enable it in the unguarded Samba process.
+On PowerShell, set `$env:ADFL_RUN_PRINCIPAL_REENTRANCY_DIAGNOSTICS='1'` before the
+runner commands and remove that variable afterwards. Unset it for normal CI.
+
+Raw `DirectoryEntry.RefreshCache` reconciles the entry's uncertain outcome but
+retains principal-level pending intent. To accept the observed server scalar,
+assign that value to the principal before its next save. The functional suite
+tests both retaining the original intent and explicitly accepting readback.
+
 `surface` and `companion` select the existing Windows offline groups. The
 `--dotnet` option selects an installed SDK executable. `--results-directory`
 records TRX output; `--check-only` prints the bounded command without executing it.
@@ -22,8 +45,9 @@ so a stale unguarded assembly cannot be selected with `--no-build`.
 
 The disposable Samba compose entry point uses `run-samba-tests.py` to run these
 offline classes (including the optional functional classes) in a guarded child,
-then their exact complement in a separate live-test process. No tests are omitted
-and the parent guard is never removed. This entry point requires explicit live
+then their exact complement in a separate live-test process. Every class is
+assigned to one process; explicit test skips, including the diagnostic above,
+still apply. The parent guard is never removed. This entry point requires explicit live
 Samba authorization; it is not an offline command or an authorization to use AD.
 
 The allowlist is in `run-offline-tests.py`. Only exact reviewed class names are
