@@ -99,6 +99,9 @@ immutable connection recipe and pool key retain their original timeout. Acquired
 checked again before publication, so expiry racing capacity release cannot expose a late lease.
 The measured search deadline starts after initial root binding. Filesystem validation and backend
 startup cancellation are cooperative; cleanup retains ownership until an in-flight backend returns.
+Each admission coordinator identifies expiry of its own timer as a timeout while preserving caller
+cancellation. When deadline validation rejects returned sessions, cleanup releases every member
+and their pool ownership even when worker disposal throws, preserving the primary deadline failure.
 
 Add, Modify, Delete and ModifyDN share a native write coordinator using public asynchronous
 libldap APIs. Ordered values, empty Add/Modify lists, a missing value list, zero-length binary

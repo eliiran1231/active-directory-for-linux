@@ -88,6 +88,18 @@ internal static partial class LdapConnectionProvider
 
     internal static bool IsManagedSession(LdapConnection connection) => Active.TryGetValue(connection, out _);
 
+    // An operation has already failed before publishing these leases. Cleanup
+    // must visit every member and preserve that primary failure even when a
+    // worker cannot retire cleanly. Pool owners still account for destruction.
+    internal static void ReleaseFailedSessions(IEnumerable<Session> sessions)
+    {
+        foreach (var session in sessions)
+        {
+            try { session.Invalidate(); } catch { }
+            try { session.Dispose(); } catch { }
+        }
+    }
+
     internal static void ReportFailure(LdapConnection connection, Exception error)
     {
         if (IsConnectionFailure(error) && Active.TryGetValue(connection, out var session)) session.Invalidate();

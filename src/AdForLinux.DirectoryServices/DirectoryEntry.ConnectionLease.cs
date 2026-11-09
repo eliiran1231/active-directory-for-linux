@@ -108,7 +108,7 @@ public partial class DirectoryEntry
         }
         catch
         {
-            foreach (var session in sessions) { session.Invalidate(); session.Dispose(); }
+            LdapConnectionProvider.ReleaseFailedSessions(sessions);
             throw;
         }
     }

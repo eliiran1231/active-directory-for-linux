@@ -12,10 +12,12 @@ public partial class ConnectionPoolOperationTests
         private readonly object gate = new();
         private long ticks;
         private readonly List<DeadlineTimer> timers = [];
+        internal Action? BeforeTimerCreation;
         public override long TimestampFrequency => TimeSpan.TicksPerSecond;
         public override long GetTimestamp() { lock (gate) return ticks; }
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
+            BeforeTimerCreation?.Invoke();
             var timer = new DeadlineTimer(this, callback, state);
             lock (gate) timers.Add(timer);
             timer.Change(dueTime, period);

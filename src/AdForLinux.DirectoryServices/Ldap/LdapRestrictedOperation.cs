@@ -88,8 +88,8 @@ internal static partial class LdapRestrictedOperation
         internal void Retire()
         {
             var owner = Interlocked.Exchange(ref worker, null);
-            if (owner is IManagedOperationOwner managed) managed.Invalidate();
-            owner?.Dispose();
+            try { if (owner is IManagedOperationOwner managed) managed.Invalidate(); }
+            finally { owner?.Dispose(); }
         }
         internal void Release()
         {

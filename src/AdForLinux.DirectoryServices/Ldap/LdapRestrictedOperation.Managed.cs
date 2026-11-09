@@ -29,63 +29,73 @@ internal static partial class LdapRestrictedOperation
         var context = profile.OwnedCredentials;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(remaining());
-        while (true)
+        try
         {
-            _ = remaining();
-            using var generation = context?.Capture();
-            var key = LdapConnectionProvider.ConnectionKey.CreateManagedKerberos(options, referrals, context?.Id ?? Guid.Empty, generation?.Version ?? 0, count);
-            using var registration = context?.Register(generation!, key, pool, () => pool.Retire(key));
-            if (context is not null && registration is null) continue;
-            var lease = pool.Acquire(key, () =>
-            {
-                var started = generation?.Timestamp ?? 0;
-                var start = profile.WorkerProfile(count, TimeSpan.FromSeconds(Math.Ceiling(remaining().TotalSeconds)))
-                    with { OwnedCache = generation?.Bytes, RetainOwnedCache = generation is null ? null : generation.RetainStartup };
-                var workerRegistration = registration?.Retain();
-                IManagedWorker? worker = null;
-                var retainedGeneration = false;
-                try
-                {
-                    worker = create(start, remaining(), deadline.Token);
-                    if (generation is not null)
-                    {
-                        generation.SetValidity(started, worker.CredentialLifetimeSeconds);
-                        generation.RequireValid(); generation.Retain(); retainedGeneration = true;
-                    }
-                    return new ManagedWorker(worker, generation, workerRegistration);
-                }
-                catch
-                {
-                    try { worker?.Dispose(); }
-                    finally
-                    {
-                        workerRegistration?.Dispose();
-                        if (retainedGeneration) generation!.Dispose();
-                    }
-                    throw;
-                }
-            }, deadline.Token, reusable: context is not null, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
-            var transferred = false;
-            try
+            while (true)
             {
                 _ = remaining();
-                if (!lease.Value.Healthy || (context is not null && !context.Admit(generation!)))
+                using var generation = context?.Capture();
+                var key = LdapConnectionProvider.ConnectionKey.CreateManagedKerberos(options, referrals, context?.Id ?? Guid.Empty, generation?.Version ?? 0, count);
+                using var registration = context?.Register(generation!, key, pool, () => pool.Retire(key));
+                if (context is not null && registration is null) continue;
+                var lease = pool.Acquire(key, () =>
                 {
-                    lease.Invalidate();
-                    continue; // No application request has been exposed or sent.
-                }
-                var owner = new ManagedOperationOwner(lease, context, generation);
-                var sessions = Wrap(lease.Value.Worker.Sessions, owner, options);
-                try { _ = remaining(); transferred = true; return sessions; }
-                catch
+                    var started = generation?.Timestamp ?? 0;
+                    var start = profile.WorkerProfile(count, TimeSpan.FromSeconds(Math.Ceiling(remaining().TotalSeconds)))
+                        with { OwnedCache = generation?.Bytes, RetainOwnedCache = generation is null ? null : generation.RetainStartup };
+                    var workerRegistration = registration?.Retain();
+                    IManagedWorker? worker = null;
+                    var retainedGeneration = false;
+                    try
+                    {
+                        worker = create(start, remaining(), deadline.Token);
+                        if (generation is not null)
+                        {
+                            generation.SetValidity(started, worker.CredentialLifetimeSeconds);
+                            generation.RequireValid(); generation.Retain(); retainedGeneration = true;
+                        }
+                        return new ManagedWorker(worker, generation, workerRegistration);
+                    }
+                    catch
+                    {
+                        try { worker?.Dispose(); }
+                        finally
+                        {
+                            workerRegistration?.Dispose();
+                            if (retainedGeneration) generation!.Dispose();
+                        }
+                        throw;
+                    }
+                }, deadline.Token, reusable: context is not null, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
+                var transferred = false;
+                try
                 {
-                    transferred = true;
-                    foreach (var session in sessions) { session.Invalidate(); session.Dispose(); }
-                    throw;
+                    _ = remaining();
+                    if (!lease.Value.Healthy || (context is not null && !context.Admit(generation!)))
+                    {
+                        lease.Invalidate();
+                        continue; // No application request has been exposed or sent.
+                    }
+                    var owner = new ManagedOperationOwner(lease, context, generation);
+                    var sessions = Wrap(lease.Value.Worker.Sessions, owner, options);
+                    try { _ = remaining(); transferred = true; return sessions; }
+                    catch
+                    {
+                        transferred = true;
+                        LdapConnectionProvider.ReleaseFailedSessions(sessions);
+                        throw;
+                    }
                 }
+                catch { lease.Invalidate(); throw; }
+                finally { if (!transferred) lease.Dispose(); }
             }
-            catch { lease.Invalidate(); throw; }
-            finally { if (!transferred) lease.Dispose(); }
+        }
+        catch (OperationCanceledException error) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // This coordinator owns the admission timer. Its expiry is a timeout
+            // even if an enclosing search timer has not fired yet. Caller
+            // cancellation remains cancellation and takes precedence when both fire.
+            throw new TimeoutException("Restricted worker admission deadline expired.", error);
         }
     }
 

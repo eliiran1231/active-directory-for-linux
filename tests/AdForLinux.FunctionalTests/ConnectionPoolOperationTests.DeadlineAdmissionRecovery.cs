@@ -10,6 +10,8 @@ public partial class ConnectionPoolOperationTests
     {
         internal readonly ConversationTransport[] Transports;
         internal int Disposals;
+        internal bool ThrowOnDispose;
+        internal Action? SessionsRead;
         internal DeadlineWorker(int count, List<string> trace)
         {
             Transports = Enumerable.Range(0, count).Select(_ =>
@@ -20,10 +22,14 @@ public partial class ConnectionPoolOperationTests
                 return transport;
             }).ToArray();
         }
-        public IReadOnlyList<ILdapRequestTransport> Sessions => Transports;
+        public IReadOnlyList<ILdapRequestTransport> Sessions { get { SessionsRead?.Invoke(); return Transports; } }
         public uint CredentialLifetimeSeconds => 120;
         public bool Healthy => Disposals == 0;
-        public void Dispose() { Disposals++; foreach (var transport in Transports) transport.Dispose(); }
+        public void Dispose()
+        {
+            Disposals++; foreach (var transport in Transports) transport.Dispose();
+            if (ThrowOnDispose) throw new IOException("Controlled worker disposal failure.");
+        }
     }
 
     private sealed class DeadlineAdmissionFixture : IDisposable
@@ -35,6 +41,7 @@ public partial class ConnectionPoolOperationTests
         internal readonly List<string> Trace = [];
         internal readonly List<LdapConnectionProvider.ConnectionKey> Keys = [];
         internal readonly List<TimeSpan> StartupBudgets = [];
+        internal readonly List<LdapConnectionProvider.Session[]> ReturnedBatches = [];
         internal readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, LdapRestrictedOperation.ManagedWorker> Pool =
             new(1, 1, acquisitionTimeout: TimeSpan.FromSeconds(5), startTimer: false,
                 generationSource: LdapConnectionProvider.NewGeneration);
@@ -43,6 +50,7 @@ public partial class ConnectionPoolOperationTests
         internal Action? Returned;
         internal Exception? AdmissionError;
         internal int MeasuredAdmissions;
+        internal CancellationToken AdmissionToken;
 
         internal DeadlineAdmissionFixture(bool reusable = false)
         {
@@ -57,9 +65,11 @@ public partial class ConnectionPoolOperationTests
                 if (remaining is not null)
                 {
                     MeasuredAdmissions++;
+                    AdmissionToken = token;
                     if (AdmissionError is not null) throw AdmissionError;
                 }
                 var sessions = Open(options, count, referrals, remaining, token, fresh, minimum);
+                ReturnedBatches.Add(sessions);
                 if (remaining is not null) Returned?.Invoke();
                 return sessions;
             };
@@ -291,5 +301,97 @@ public partial class ConnectionPoolOperationTests
         Assert.Equal(1, trace.Count(value => value == "open"));
         Assert.All(clones, clone => Assert.True(clone.IsDisposed));
         Assert.Equal(0, pool.Snapshot.Total); Assert.Equal(0, pool.Snapshot.Waiting);
+    }
+
+    [Fact]
+    public async Task Inner_admission_deadline_remains_timeout_when_outer_timer_has_not_fired()
+    {
+        using var fixture = new DeadlineAdmissionFixture();
+        var held = fixture.Open(fixture.Root.BuildOptions(), 2, ReferralChasingOption.None);
+        // Model scheduling/preparation between sampling Remaining() and arming
+        // its relative timer. Core receives a fresher50ms budget and owns a real
+        // timer; the deliberately later outer timer must not determine its type.
+        fixture.Clock.BeforeTimerCreation = () => fixture.Clock.Advance(TimeSpan.FromMilliseconds(10075));
+        using var searcher = fixture.Searcher("FindOne");
+        var pending = Task.Factory.StartNew(() => Record.Exception(() => searcher.FindOne()),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Exception? failure;
+        try
+        {
+            failure = await pending.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(fixture.AdmissionToken.IsCancellationRequested);
+            Assert.Equal(1, fixture.Pool.Snapshot.Total); // independent held group
+            Assert.Equal(0, fixture.Pool.Snapshot.Waiting);
+            Assert.DoesNotContain("open", fixture.Trace);
+        }
+        finally { foreach (var session in held) session.Dispose(); await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+        fixture.AssertReleased();
+        Assert.IsType<TimeoutException>(failure);
+    }
+
+    [Theory]
+    [InlineData("FindOne")]
+    [InlineData("streaming FindAll")]
+    public void Expired_unpublished_group_returns_capacity_even_when_worker_disposal_throws(string mode)
+    {
+        using var fixture = new DeadlineAdmissionFixture();
+        fixture.Returned = () =>
+        {
+            fixture.Workers.Last().ThrowOnDispose = true;
+            fixture.Clock.Advance(TimeSpan.FromSeconds(11));
+        };
+        using var searcher = fixture.Searcher(mode);
+        var error = Record.Exception(() => DeadlineAdmissionFixture.Execute(searcher, mode));
+        fixture.AssertReleased(); // assert reservation return independently of exception identity
+        Assert.All(fixture.ReturnedBatches.Last(), session => Assert.Equal(typeof(LdapConnectionProvider.Session).FullName,
+            Assert.Throws<ObjectDisposedException>(() => session.ExecuteTransport(_ => true)).ObjectName));
+        Assert.DoesNotContain("open", fixture.Trace);
+        Assert.IsType<TimeoutException>(error);
+        fixture.Returned = null;
+        DeadlineAdmissionFixture.Execute(searcher, mode);
+        fixture.AssertReleased();
+    }
+
+    [Fact]
+    public void Core_expiry_after_wrapping_sessions_preserves_timeout_and_returns_throwing_owner()
+    {
+        using var fixture = new DeadlineAdmissionFixture();
+        fixture.Creating = (_, _, _) =>
+        {
+            var worker = fixture.Workers.Last(); worker.ThrowOnDispose = true;
+            worker.SessionsRead = () => fixture.Clock.Advance(TimeSpan.FromSeconds(11));
+        };
+        var started = fixture.Clock.GetTimestamp();
+        TimeSpan Remaining()
+        {
+            var left = DeadlineAdmissionFixture.ClientBudget - fixture.Clock.GetElapsedTime(started);
+            return left > TimeSpan.Zero ? left : throw new TimeoutException("Controlled deadline after wrapping.");
+        }
+        var error = Record.Exception(() => fixture.Open(fixture.Root.BuildOptions(), 2,
+            ReferralChasingOption.None, Remaining));
+        fixture.AssertReleased();
+        Assert.Equal("Controlled deadline after wrapping.", Assert.IsType<TimeoutException>(error).Message);
+        Assert.DoesNotContain("open", fixture.Trace);
+    }
+
+    [Fact]
+    public async Task Caller_cancellation_of_held_managed_admission_remains_cancellation()
+    {
+        using var fixture = new DeadlineAdmissionFixture();
+        var held = fixture.Open(fixture.Root.BuildOptions(), 2, ReferralChasingOption.None);
+        using var caller = new CancellationTokenSource();
+        var pending = Task.Factory.StartNew(() => Record.Exception(() => fixture.Open(fixture.Root.BuildOptions(), 1,
+            ReferralChasingOption.None, token: caller.Token)), CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        try
+        {
+            Assert.True(SpinWait.SpinUntil(() => fixture.Pool.Snapshot.Waiting == 1, TimeSpan.FromSeconds(5)));
+            caller.Cancel();
+            Assert.IsType<OperationCanceledException>(await pending.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.Equal(0, fixture.Pool.Snapshot.Waiting);
+            Assert.Equal(1, fixture.Pool.Snapshot.Total);
+        }
+        finally { caller.Cancel(); foreach (var session in held) session.Dispose(); await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
+        fixture.AssertReleased();
     }
 }
