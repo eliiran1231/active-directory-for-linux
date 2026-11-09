@@ -14,6 +14,8 @@ public partial class ConnectionPoolOperationTests
         internal readonly IOException SchemaFailure = new("controlled later-row schema failure");
         internal readonly TaskCompletionSource Waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal readonly TaskCompletionSource Released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal readonly TaskCompletionSource PageReleased = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal CancellationToken PageCancellation;
         internal readonly BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession> Pool = new(2, 2, startTimer: false);
         internal string Failure = "";
         internal int RootReads, SchemaRoots, SchemaAttributes, Opens, Reads, Pages, CursorCloses, ResourceCloses;
@@ -41,7 +43,7 @@ public partial class ConnectionPoolOperationTests
             Assert.Equal(1, RootReads);
         }
 
-        public void Dispose() { Root.Dispose(); Pool.Dispose(); }
+        public void Dispose() { PageReleased.TrySetResult(); Root.Dispose(); Pool.Dispose(); }
     }
 
     private sealed class InterruptedReadTransport(InterruptedReadFixture fixture)
@@ -110,6 +112,14 @@ public partial class ConnectionPoolOperationTests
         {
             token.ThrowIfCancellationRequested();
             Interlocked.Increment(ref fixture.Pages);
+            if (fixture.Failure == "delayed-page")
+            {
+                fixture.PageCancellation = token;
+                fixture.Waiting.TrySetResult();
+                // A continuation may still own its cursor while cancellation is
+                // signaled. Explicit return, not cancellation alone, ends it.
+                return new ValueTask(fixture.PageReleased.Task);
+            }
             return ValueTask.CompletedTask;
         }
         public ValueTask DisposeAsync() { Interlocked.Increment(ref fixture.CursorCloses); return ValueTask.CompletedTask; }
