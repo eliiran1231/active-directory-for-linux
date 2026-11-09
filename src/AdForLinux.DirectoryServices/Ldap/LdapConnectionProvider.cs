@@ -34,10 +34,13 @@ internal static partial class LdapConnectionProvider
         => AcquireBatch(options, 1, cancellationToken, referrals, preferFresh, minimumGeneration)[0];
 
     internal static Session[] AcquireBatch(LdapConnectionOptions options, int count, CancellationToken cancellationToken = default,
-        ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0)
+        ReferralChasingOption referrals = ReferralChasingOption.None, bool preferFresh = false, long minimumGeneration = 0,
+        Func<TimeSpan>? remainingBudget = null)
     {
         if (options.RestrictedKerberos is not null)
-            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken, preferFresh: preferFresh, minimumGeneration: minimumGeneration);
+            return LdapRestrictedOperation.Acquire(options, count, referrals, cancellationToken,
+                timeout: remainingBudget?.Invoke(), preferFresh: preferFresh, minimumGeneration: minimumGeneration,
+                remainingBudget: remainingBudget);
         OfflineTestGuard.RequireLiveAccess();
         var snapshot = options.Clone();
         // Retain the entire native session, including referral children, only

@@ -466,7 +466,7 @@ public partial class DirectorySearcher : Component
 
         var neutralClock = TimeProvider;
         var neutralStarted = neutralClock.GetTimestamp();
-        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        using var connectionLease = AcquireSearchConnections(root, operation.Origin, 1, neutralClock, neutralStarted)[0];
         var admitted = connectionLease.ExecuteTransport(value => value);
         if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
             return ReadNeutralBuffered(connectionLease, admitted, operation.Origin, request, 0, neutralClock, neutralStarted, maximumResults: 1).FirstOrDefault();
@@ -521,7 +521,7 @@ public partial class DirectorySearcher : Component
 
         var neutralClock = TimeProvider;
         var neutralStarted = neutralClock.GetTimestamp();
-        var searchLeases = root.AcquireConnections(1, operation.Origin.Authority.Validate, ReferralChasing,
+        var searchLeases = AcquireSearchConnections(root, operation.Origin, 1, neutralClock, neutralStarted,
             independentNativeSchema: PageSize > 0 && (ServerTimeLimit.TotalSeconds >= 1 || SizeLimit > 0));
         using var connectionLease = searchLeases[0];
         using var schemaLease = searchLeases.Length > 1 ? searchLeases[1] : null;
@@ -609,7 +609,7 @@ public partial class DirectorySearcher : Component
         try
         {
             StreamingRootCreated?.Invoke(resultRoot);
-            leases = resultRoot.AcquireConnections(2, origin.Authority.Validate, ReferralChasing);
+            leases = AcquireSearchConnections(resultRoot, origin, 2, clock, started);
             var transport = leases[0].ExecuteTransport(value => value);
             if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
                 neutral = transport;

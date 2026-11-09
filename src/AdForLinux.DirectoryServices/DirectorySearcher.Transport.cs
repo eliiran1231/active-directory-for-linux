@@ -5,6 +5,41 @@ namespace AdForLinux.DirectoryServices;
 
 public partial class DirectorySearcher
 {
+    private DirectoryEntry.ConnectionLease[] AcquireSearchConnections(DirectoryEntry root,
+        SearchResultOrigin origin, int count, TimeProvider clock, long started,
+        bool independentNativeSchema = false)
+    {
+        // Restricted recipes select the neutral backend before binding. Protocols
+        // retains its response-only timeout, including its existing admission timing.
+        if (root.RestrictedKerberos is null || ClientTimeout < TimeSpan.Zero)
+            return root.AcquireConnections(count, origin.Authority.Validate, ReferralChasing,
+                independentNativeSchema: independentNativeSchema);
+
+        var timeout = ClientTimeout;
+        TimeSpan Remaining()
+        {
+            origin.Authority.Validate();
+            var left = timeout - clock.GetElapsedTime(started);
+            return left > TimeSpan.Zero ? left : throw new TimeoutException("The neutral search operation deadline expired during admission.");
+        }
+        var admissionTimeout = Remaining();
+        // Binding also retains its existing recipe limit. Keep that separate from
+        // the immutable recipe/key and avoid arming a timer for a longer client limit.
+        var recipeTimeout = root.BuildOptions().Timeout;
+        if (recipeTimeout > TimeSpan.Zero && recipeTimeout < admissionTimeout) admissionTimeout = recipeTimeout;
+        using var deadline = new CancellationTokenSource(admissionTimeout, clock);
+        try
+        {
+            return root.AcquireConnections(count, origin.Authority.Validate, ReferralChasing,
+                independentNativeSchema: independentNativeSchema, remainingBudget: Remaining,
+                cancellationToken: deadline.Token);
+        }
+        catch (OperationCanceledException error) when (deadline.IsCancellationRequested)
+        {
+            throw new TimeoutException("The neutral search admission deadline expired.", error);
+        }
+    }
+
     private void ValidateNeutralControls(int pageSize)
     {
         if (_virtualListView is not null && (pageSize > 0 || DirectorySynchronization is not null))

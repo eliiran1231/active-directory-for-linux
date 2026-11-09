@@ -115,11 +115,18 @@ public partial class ConnectionPoolOperationTests
             Streaming = Partial || mode == "streaming FindAll";
             Root = RestrictedRecipe().CreateDirectoryEntry("DC=example"); // inert recipe; no cache/bundle access
             key = LdapConnectionProvider.ConnectionKey.Create(Root.BuildOptions(), ReferralChasingOption.None);
-            Root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
+            Root.OperationSessionFactoryWithBudget = (options, count, referrals, fresh, minimum, remaining, cancellation) =>
             {
                 Assert.Equal(TimeSpan.FromSeconds(30), options.Timeout); // immutable resource recipe, not per-operation deadline
                 Assert.Equal(key, LdapConnectionProvider.ConnectionKey.Create(options, referrals));
                 Admissions.Add((count, options.Timeout));
+                if (measured)
+                {
+                    Assert.NotNull(remaining);
+                    Assert.Equal(TimeSpan.FromSeconds(10), remaining());
+                    Assert.True(cancellation.CanBeCanceled);
+                }
+                else Assert.Null(remaining);
                 var leases = Pool.AcquireBatch(key, count, () =>
                 {
                     var transport = new BudgetTransport(this, measured);

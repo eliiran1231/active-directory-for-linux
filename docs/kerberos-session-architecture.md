@@ -93,6 +93,13 @@ unchanged. Schema caches belong to the resource; scalar/binary/ranged/types-only
 and binding-authority checks are shared. Returned results retain no borrowed schema transport.
 Unfinished or uncertain cursors retire their session; cleanup never starts an implicit search.
 
+For restricted searches with an explicit `ClientTimeout`, the search clock supplies a separate
+remaining-budget callback and cancellation token to worker-group admission and startup. The
+immutable connection recipe and pool key retain their original timeout. Acquired groups are
+checked again before publication, so expiry racing capacity release cannot expose a late lease.
+The measured search deadline starts after initial root binding. Filesystem validation and backend
+startup cancellation are cooperative; cleanup retains ownership until an in-flight backend returns.
+
 Add, Modify, Delete and ModifyDN share a native write coordinator using public asynchronous
 libldap APIs. Ordered values, empty Add/Modify lists, a missing value list, zero-length binary
 values, and nullable rename parents retain their meanings. A callback marks possible submission

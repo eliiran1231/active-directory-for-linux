@@ -55,20 +55,30 @@ public partial class DirectoryEntry
         copy._minimumConnectionGeneration = _minimumConnectionGeneration;
         copy._freshConnectionRequired = _freshConnectionRequired;
         copy.OperationSessionFactory = OperationSessionFactory;
+        copy.OperationSessionFactoryWithBudget = OperationSessionFactoryWithBudget;
         return copy;
     }
 
     internal Func<LdapConnectionOptions, int, ReferralChasingOption, bool, long, LdapConnectionProvider.Session[]>? OperationSessionFactory { get; set; }
+    // Budget-aware controlled admission uses the same immutable recipe as production.
+    internal Func<LdapConnectionOptions, int, ReferralChasingOption, bool, long,
+        Func<TimeSpan>?, CancellationToken, LdapConnectionProvider.Session[]>? OperationSessionFactoryWithBudget { get; set; }
 
     internal ConnectionLease AcquireConnection(Action? validate = null, ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false)
         => AcquireConnections(1, validate, referrals, schema, forceFresh)[0];
 
     internal ConnectionLease[] AcquireConnections(int count, Action? validate = null,
         ReferralChasingOption? referrals = null, bool schema = false, bool forceFresh = false,
-        bool independentNativeSchema = false)
+        bool independentNativeSchema = false, Func<TimeSpan>? remainingBudget = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
-        void Validate() { ThrowIfDisposed(); validate?.Invoke(); }
+        void Validate()
+        {
+            ThrowIfDisposed(); validate?.Invoke();
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = remainingBudget?.Invoke();
+        }
         var generation = IdentityLifetime.Capture(Validate);
         var snapshot = IdentityLifetime.Checked(generation, Validate, () =>
             (Options: BuildOptions(), Referral: referrals ?? Options.Referral,
@@ -84,10 +94,13 @@ public partial class DirectoryEntry
                 throw new InvalidOperationException("The retained connections cannot supply distinct operation leases.");
             return [new ConnectionLease(snapshot.Existing), new ConnectionLease(snapshot.Schema)];
         }
-        var sessions = LdapExceptionTranslator.Execute(() => OperationSessionFactory is { } open
+        var sessions = LdapExceptionTranslator.Execute(() => OperationSessionFactoryWithBudget is { } budgeted
+            ? budgeted(snapshot.Options, count, snapshot.Referral, snapshot.Fresh, snapshot.Minimum, remainingBudget, cancellationToken)
+            : OperationSessionFactory is { } open
             ? open(snapshot.Options, count, snapshot.Referral, snapshot.Fresh, snapshot.Minimum)
             : LdapConnectionProvider.AcquireBatch(snapshot.Options, count, referrals: snapshot.Referral,
-                preferFresh: snapshot.Fresh, minimumGeneration: snapshot.Minimum));
+                preferFresh: snapshot.Fresh, minimumGeneration: snapshot.Minimum,
+                cancellationToken: cancellationToken, remainingBudget: remainingBudget));
         try
         {
             IdentityLifetime.Checked(generation, Validate, () => { _freshConnectionRequired = false; _hasOperationConnection = true; return true; });

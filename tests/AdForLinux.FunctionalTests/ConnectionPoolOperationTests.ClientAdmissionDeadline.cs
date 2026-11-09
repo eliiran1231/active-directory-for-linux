@@ -54,20 +54,20 @@ public partial class ConnectionPoolOperationTests
     }
 
     [Theory]
-    [InlineData("FindOne")]
-    [InlineData("cached FindAll")]
-    [InlineData("streaming FindAll")]
+    [MemberData(nameof(SharedBudgetModes))]
     public async Task Neutral_client_deadline_must_bound_waiting_for_a_held_session_group_regression(string operation)
     {
         var clock = new AdmissionDeadlineClock();
         using var cleanup = new CancellationTokenSource();
         using var pool = new BoundedConnectionPool<LdapConnectionProvider.ConnectionKey, BoundLdapSession>(2, 2,
             acquisitionTimeout: TimeSpan.FromSeconds(10), startTimer: false);
-        using var root = new DirectoryEntry("LDAP://offline.invalid/DC=example,DC=test");
+        using var root = RestrictedRecipe().CreateDirectoryEntry("DC=example,DC=test");
         root.Options.Referral = ReferralChasingOption.None;
         var trace = new List<string>();
         var transports = new List<ConversationTransport>();
         var admissionBudgets = new List<TimeSpan>();
+        var operationBudgets = new List<TimeSpan?>();
+        var key = LdapConnectionProvider.ConnectionKey.Create(root.BuildOptions(), ReferralChasingOption.None);
         BoundLdapSession Create(LdapConnectionOptions options, ReferralChasingOption referrals)
         {
             var transport = new ConversationTransport(trace);
@@ -75,24 +75,15 @@ public partial class ConnectionPoolOperationTests
             transports.Add(transport);
             return new BoundLdapSession(transport, transport, options, new(options), referrals);
         }
-        root.OperationSessionFactory = (options, count, referrals, fresh, minimum) =>
+        root.OperationSessionFactoryWithBudget = (options, count, referrals, fresh, minimum, remaining, token) =>
         {
             admissionBudgets.Add(options.Timeout);
-            // This existing seam exposes only the immutable resource recipe.
-            // It models that recipe's wait, not a separate operation deadline.
-            // A fix may add deadline/cancellation propagation independently;
-            // it must not change options.Timeout (part of the pool identity).
-            // This fixture would then need to consume that separate channel.
-            using var recipeDeadline = new CancellationTokenSource(options.Timeout, clock);
-            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cleanup.Token, recipeDeadline.Token);
-            try
-            {
-                return pool.AcquireBatch(LdapConnectionProvider.ConnectionKey.Create(options, referrals), count,
-                    () => Create(options, referrals), cancellation.Token, reusable: false)
-                    .Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
-            }
-            catch (OperationCanceledException) when (!cleanup.IsCancellationRequested)
-            { throw new TimeoutException("Admission budget expired before a session was available."); }
+            Assert.Equal(key, LdapConnectionProvider.ConnectionKey.Create(options, referrals));
+            operationBudgets.Add(remaining?.Invoke());
+            Assert.Equal(remaining is not null, token.CanBeCanceled);
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cleanup.Token, token);
+            return pool.AcquireBatch(key, count, () => Create(options, referrals), cancellation.Token, reusable: false)
+                .Select(lease => new LdapConnectionProvider.Session(lease)).ToArray();
         };
 
         // Resolve the root before the measured query so this case isolates the
@@ -104,6 +95,9 @@ public partial class ConnectionPoolOperationTests
         using var searcher = new DirectorySearcher(root)
         {
             CacheResults = operation != "streaming FindAll",
+            Asynchronous = operation.StartsWith("async", StringComparison.Ordinal),
+            PageSize = operation.Contains("paged", StringComparison.Ordinal) ? 1 : 0,
+            SizeLimit = operation.Contains("paged", StringComparison.Ordinal) ? 2 : 0,
             ClientTimeout = TimeSpan.FromMilliseconds(100),
             TimeProvider = clock,
             ReferralChasing = ReferralChasingOption.None,
@@ -143,7 +137,9 @@ public partial class ConnectionPoolOperationTests
         Assert.Equal(0, trace.Count(item => item == "open")); // no application send after late admission
         Assert.Equal(transports.Count, trace.Count(item => item == "session-close"));
         Assert.Equal(2, admissionBudgets.Count);
+        Assert.All(admissionBudgets, budget => Assert.Equal(TimeSpan.FromSeconds(30), budget));
+        Assert.Equal(new TimeSpan?[] { null, TimeSpan.FromMilliseconds(100) }, operationBudgets);
         Assert.True(completedBeforeRelease,
-            $"{operation} remained blocked after ClientTimeout elapsed; admission received recipe timeout {admissionBudgets[1]} instead of the 100ms client budget. No late query was sent after capacity release.");
+            $"{operation} remained blocked after ClientTimeout elapsed despite receiving a separate operation budget. No late query was sent after capacity release.");
     }
 }

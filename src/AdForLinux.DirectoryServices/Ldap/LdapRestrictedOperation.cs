@@ -18,7 +18,8 @@ internal static partial class LdapRestrictedOperation
     }
 
     internal static LdapConnectionProvider.Session[] Acquire(LdapConnectionOptions options, int count,
-        ReferralChasingOption referrals, CancellationToken cancellationToken, TimeSpan? timeout = null, bool preferFresh = false, long minimumGeneration = 0)
+        ReferralChasingOption referrals, CancellationToken cancellationToken, TimeSpan? timeout = null, bool preferFresh = false, long minimumGeneration = 0,
+        Func<TimeSpan>? remainingBudget = null)
     {
         var started = Stopwatch.GetTimestamp();
         var snapshot = options.Clone();
@@ -31,6 +32,11 @@ internal static partial class LdapRestrictedOperation
         {
             cancellationToken.ThrowIfCancellationRequested();
             var left = budget - Stopwatch.GetElapsedTime(started);
+            if (remainingBudget is not null)
+            {
+                var operationLeft = remainingBudget();
+                if (operationLeft < left) left = operationLeft;
+            }
             if (left <= TimeSpan.Zero) throw new TimeoutException("Restricted worker admission deadline expired.");
             return left;
         }
