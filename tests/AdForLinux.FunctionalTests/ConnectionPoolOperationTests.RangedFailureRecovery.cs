@@ -56,6 +56,8 @@ public partial class ConnectionPoolOperationTests
                         var attribute = Assert.Single(command.Attributes);
                         if (attribute == (Binary ? "sIDHistory;range=0-*" : "member;range=0-*"))
                         {
+                            if (!Repaired && Failure == "range-end-overflow")
+                                return Success(TransportRow(GroupDn, new() { ["member;range=0-2147483647"] = [FirstDn, SecondDn] }));
                             var first = TransportRow(GroupDn, Binary
                                 ? new() { ["sIDHistory;range=0-0"] = [FirstSid] }
                                 : new() { ["member;range=0-1"] = [FirstDn, SecondDn] });
