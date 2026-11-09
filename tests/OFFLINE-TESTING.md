@@ -8,7 +8,11 @@ python tests/test_samba_runner.py
 python tests/run-offline-tests.py functional --framework net8.0
 python tests/run-offline-tests.py functional --framework net10.0
 python tests/run-offline-tests.py functional --framework net8.0 --class OfflineExecutionGuardTests
+python tests/run-offline-tests.py functional --framework net8.0 --class StreamingSearchResultTests
 ```
+
+`StreamingSearchResultTests` is an opt-in group of detached collection and local
+producer cases. Select its exact class name explicitly to run it with the guard.
 
 `surface` and `companion` select the existing Windows offline groups. The
 `--dotnet` option selects an installed SDK executable. `--results-directory`

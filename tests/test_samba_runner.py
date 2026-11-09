@@ -22,6 +22,7 @@ class SambaRunnerTests(unittest.TestCase):
             self.assertFalse(any("ConnectionPoolSambaTests" in item for item in negative))
             self.assertTrue(any("ConnectionPoolOperationTests." in item for item in positive))
             self.assertTrue(any("CollectionCompatibilityTests." in item for item in positive))
+            self.assertTrue(any("StreamingSearchResultTests." in item for item in positive))
             self.assertEqual("1", steps[1][1]["ADFL_OFFLINE_TESTS"])
             self.assertNotIn("ADFL_OFFLINE_TESTS", steps[2][1])
 

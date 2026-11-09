@@ -65,6 +65,32 @@ class OfflineRunnerTests(unittest.TestCase):
                     runner.run("surface", "net8.0", [name])
                 process.assert_not_called()
 
+    def test_detached_streaming_collections_are_opt_in_guarded_and_build_current_sources(self):
+        for framework in ("net8.0", "net10.0"):
+            with self.subTest(framework=framework):
+                command, environment = runner.prepare(
+                    "functional", framework, ["StreamingSearchResultTests"])
+                self.assertEqual(framework, command[command.index("--framework") + 1])
+                self.assertEqual(
+                    "FullyQualifiedName~AdForLinux.FunctionalTests.StreamingSearchResultTests.",
+                    command[command.index("--filter") + 1])
+                self.assertEqual("1", environment["ADFL_OFFLINE_TESTS"])
+                self.assertNotIn("--no-build", command)
+                default_command, _ = runner.prepare("functional", framework)
+                self.assertNotIn("StreamingSearchResultTests",
+                                 default_command[default_command.index("--filter") + 1])
+
+    def test_detached_streaming_selection_cannot_broaden_to_live_or_similar_classes(self):
+        for classes in (["StreamingSearchResultTestsSuffix"],
+                        ["StreamingSearchResultTests.Method"],
+                        ["AdForLinux.FunctionalTests.StreamingSearchResultTests"],
+                        ["StreamingSearchResultTests|FullyQualifiedName~DirectoryEntryReadTests"],
+                        ["StreamingSearchResultTests", "DirectoryEntryReadTests"]):
+            with self.subTest(classes=classes), patch.object(runner.subprocess, "run") as process:
+                with self.assertRaises(ValueError):
+                    runner.run("functional", "net8.0", classes)
+                process.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
