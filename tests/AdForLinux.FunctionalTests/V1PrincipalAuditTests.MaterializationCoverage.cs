@@ -135,8 +135,8 @@ public partial class V1PrincipalAuditTests
     }
 
     [Fact]
-    public void FindOne_restores_caller_size_limit_when_underlying_search_throws_regression()
+    public void FindOne_retains_native_one_result_limit_when_query_fails_like_microsoft()
     {
-        AssertFindOneFailureDoesNotChangeFollowingSearches();
+        AssertFindOneFailureRetainsMicrosoftLimit();
     }
 }

@@ -87,15 +87,17 @@ public class PrincipalSearcher : IDisposable
         var searcher = PrepareUnderlyingSearcher();
         var originalSizeLimit = searcher.SizeLimit;
         searcher.SizeLimit = 1;
-        SearchResult? result;
-        try
+        var restored = false;
+        // Microsoft's ADStoreCtx.Query restores only after native query setup
+        // succeeds (#203), before row enumeration/materialization. Our producer
+        // eagerly converts rows, so use its acceptance boundary rather than a
+        // finally or waiting for all conversion to complete.
+        var result = searcher.FindOne(() =>
         {
-            result = searcher.FindOne();
-        }
-        finally
-        {
+            if (restored) return;
             searcher.SizeLimit = originalSizeLimit;
-        }
+            restored = true;
+        });
         return result is null
             ? null
             : Principal.Materialize(Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());

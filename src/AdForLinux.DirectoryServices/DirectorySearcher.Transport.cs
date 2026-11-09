@@ -57,7 +57,7 @@ public partial class DirectorySearcher
     private SearchResult[] ReadNeutralBuffered(DirectoryEntry.ConnectionLease lease,
         ILdapRequestTransport transport, SearchResultOrigin origin, SearchRequest request,
         int pageSize, TimeProvider clock, long started, int maximumResults = int.MaxValue,
-        ILdapRequestTransport? schema = null)
+        ILdapRequestTransport? schema = null, Action? onSearchAccepted = null)
     {
         // A bounded group must provide the sibling before the first search is
         // sent; never acquire it while holding the search lease.
@@ -89,6 +89,11 @@ public partial class DirectorySearcher
                 {
                     if (end.Result.Code is not (ResultCode.Success or ResultCode.SizeLimitExceeded))
                         throw LdapExceptionTranslator.Translate(end.Result.Code, end.Result.Diagnostic ?? "LDAP search failed.");
+                    if (onSearchAccepted is not null)
+                    {
+                        _ = Remaining();
+                        onSearchAccepted();
+                    }
                     UpdateNeutralControlState(end.Result.Controls, origin);
                     if (schema is not null)
                     {

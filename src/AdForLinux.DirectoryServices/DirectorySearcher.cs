@@ -436,14 +436,19 @@ public partial class DirectorySearcher : Component
         ConfigureConnectionOverride is null && request.Controls.Count == 0 && PageSize == 0 && !Asynchronous;
 
     /// <summary>Returns the first match, or null if there is none.</summary>
-    public SearchResult? FindOne()
+    public SearchResult? FindOne() => FindOne(onSearchAccepted: null);
+
+    // AccountManagement exposes temporary native SizeLimit state. Notify only
+    // after the query is accepted, before our eager control/schema conversion.
+    // Ordinary DirectorySearcher callers have no additional callback/state.
+    internal SearchResult? FindOne(Action? onSearchAccepted)
     {
         using var operation = CaptureSearch();
         var root = operation.Root;
         root.BindAuthority(operation.Origin.Authority);
         if (HasAttributeScopeQuery)
         {
-            return FindAttributeScoped(operation, maximumResults: 1).FirstOrDefault();
+            return FindAttributeScoped(operation, maximumResults: 1, onSearchAccepted).FirstOrDefault();
         }
 
         var request = BuildRequestForDn(operation.Origin.DistinguishedName);
@@ -470,6 +475,7 @@ public partial class DirectorySearcher : Component
             catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex)) { throw LdapExceptionTranslator.Translate(ex); }
             if (sent)
             {
+                onSearchAccepted?.Invoke();
                 UpdateControlState(scoped!);
                 // Materialization can issue schema requests: use an ordinary
                 // fresh Windows referral lease, never the scoped read handle.
@@ -484,11 +490,13 @@ public partial class DirectorySearcher : Component
         using var connectionLease = AcquireSearchConnections(root, operation.Origin, 1, neutralClock, neutralStarted)[0];
         var admitted = connectionLease.ExecuteTransport(value => value);
         if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
-            return ReadNeutralBuffered(connectionLease, admitted, operation.Origin, request, 0, neutralClock, neutralStarted, maximumResults: 1).FirstOrDefault();
+            return ReadNeutralBuffered(connectionLease, admitted, operation.Origin, request, 0, neutralClock, neutralStarted,
+                maximumResults: 1, onSearchAccepted: onSearchAccepted).FirstOrDefault();
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
         var response = SendSearch(connection, request, operation.Origin.Authority);
+        onSearchAccepted?.Invoke();
         UpdateControlState(response);
         return response.Entries.Count > 0
             ? new SearchResult(response.Entries[0], operation.Origin, root, root.SchemaConnectionForOperation(connection))
@@ -914,7 +922,7 @@ public partial class DirectorySearcher : Component
 
     private bool HasAttributeScopeQuery => _attributeScopeQuery.Length > 0;
 
-    private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults)
+    private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults, Action? onSearchAccepted = null)
     {
         var root = operation.Root;
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
@@ -928,7 +936,7 @@ public partial class DirectorySearcher : Component
         AdForLinux.DirectoryServices.Ldap.LdapAttributeSchema
             .EnsureDistinguishedNameAttribute(connection, _attributeScopeQuery);
 
-        var nativeResults = TryNativeAttributeScopeQuery(connection, operation, maximumResults);
+        var nativeResults = TryNativeAttributeScopeQuery(connection, operation, maximumResults, onSearchAccepted);
         if (nativeResults is not null)
         {
             return nativeResults;
@@ -939,6 +947,9 @@ public partial class DirectorySearcher : Component
         // validation above prevents ordinary strings from being treated as DNs.
 
         var referencedDns = ReadAttributeScopeDns(connection, operation.Origin);
+        // The emulated-ASQ list is now accepted; per-DN work is enumeration.
+        // A native unsupported-control rejection alone never admits results.
+        onSearchAccepted?.Invoke();
         if (referencedDns.Count == 0 || maximumResults == 0)
         {
             return new List<SearchResult>();
@@ -983,7 +994,8 @@ public partial class DirectorySearcher : Component
     private List<SearchResult>? TryNativeAttributeScopeQuery(
         LdapConnection connection,
         SearchOperation operation,
-        int maximumResults)
+        int maximumResults,
+        Action? onSearchAccepted)
     {
         var root = operation.Root;
         var request = BuildRequestForDn(operation.Origin.DistinguishedName);
@@ -1027,6 +1039,7 @@ public partial class DirectorySearcher : Component
                 $"AttributeScopeQuery failed with LDAP {asq.Result} ({(int)asq.Result}).");
         }
 
+        onSearchAccepted?.Invoke();
         UpdateControlState(response);
         return response.Entries
             .Cast<SearchResultEntry>()

@@ -57,7 +57,7 @@ public partial class V1PrincipalAuditTests
         => (SearchResponse)Activator.CreateInstance(typeof(SearchResponse), BindingFlags.Instance | BindingFlags.NonPublic,
             null, new object?[] { null, controls, ResultCode.Success, null, Array.Empty<Uri>() }, null)!;
 
-    private static void AssertFindOneFailureDoesNotChangeFollowingSearches()
+    private static void AssertFindOneFailureRetainsMicrosoftLimit()
     {
         using var fixture = new ProtocolFailureScopeFixture();
         using var query = new UserPrincipal(fixture.Context);
@@ -81,8 +81,8 @@ public partial class V1PrincipalAuditTests
         using (var results = principalSearcher.FindAll()) Assert.Empty(results);
         fixture.AssertReleased();
         Assert.Equal(37, searcher.SizeLimit);
-        Assert.Equal(new[] { 1, 37, 37 }, fixture.Queries.Select(request => request.SizeLimit));
-        Assert.Equal(37, limitAfterFailure);
+        Assert.Equal(new[] { 1, 1, 37 }, fixture.Queries.Select(request => request.SizeLimit));
+        Assert.Equal(1, limitAfterFailure);
     }
 
     [Theory]
@@ -111,7 +111,7 @@ public partial class V1PrincipalAuditTests
     [InlineData(37, false)]
     [InlineData(0, true)]
     [InlineData(37, true)]
-    public void Failed_FindOne_preserves_limit_and_exception_through_retry_and_FindAll(int originalLimit, bool timeout)
+    public void Failed_FindOne_retains_one_result_limit_until_caller_restores_configuration(int originalLimit, bool timeout)
     {
         using var fixture = new ProtocolFailureScopeFixture();
         using var query = new UserPrincipal(fixture.Context);
@@ -126,13 +126,18 @@ public partial class V1PrincipalAuditTests
         fixture.Reply = number => number <= 2 ? throw failure : EmptyProtocolScopeResponse();
 
         Assert.Same(failure, Record.Exception(() => principalSearcher.FindOne()));
-        Assert.Equal(originalLimit, searcher.SizeLimit);
+        Assert.Equal(1, searcher.SizeLimit);
         Assert.Equal(0, fixture.Pool.Snapshot.Total);
         Assert.Same(failure, Record.Exception(() => principalSearcher.FindOne()));
-        Assert.Equal(originalLimit, searcher.SizeLimit);
+        Assert.Equal(1, searcher.SizeLimit);
+        Assert.Null(principalSearcher.FindOne()); // Success restores the now-retained value1.
+        Assert.Equal(1, searcher.SizeLimit);
+        using (var results = principalSearcher.FindAll()) Assert.Empty(results);
+        Assert.Equal(1, searcher.SizeLimit);
+        searcher.SizeLimit = originalLimit;
         using (var results = principalSearcher.FindAll()) Assert.Empty(results);
         Assert.Equal(originalLimit, searcher.SizeLimit);
-        Assert.Equal(new[] { 1, 1, originalLimit }, fixture.Queries.Select(request => request.SizeLimit));
+        Assert.Equal(new[] { 1, 1, 1, 1, originalLimit }, fixture.Queries.Select(request => request.SizeLimit));
         fixture.AssertReleased();
     }
 
