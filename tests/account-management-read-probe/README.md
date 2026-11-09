@@ -86,6 +86,11 @@ failure counters. No zero-server-effects claim is made.
 
 ## Offline validation
 
+See [RUNBOOK.md](RUNBOOK.md) for ordered preparation commands, the separate
+loopback-native experiment and the explicit stopping points before Linux/AD use.
+The SDK-only experiment uses fresh synthetic loopback fixtures and explicit
+native TLS options; it does not establish the production launcher's TLS setup.
+
 Restore/build with an installed .NET10SDK and both .NET8/10 runtimes:
 
 ```sh
@@ -99,6 +104,7 @@ dotnet build tests/account-management-read-probe/termination-check/TerminationCh
 python tests/account-management-read-probe/check-termination.py --dotnet dotnet
 python tests/test_offline_runner.py
 python tests/test_samba_runner.py
+dotnet restore tests/AdForLinux.FunctionalTests/AdForLinux.FunctionalTests.csproj
 python tests/run-offline-tests.py functional --framework net8.0 --results-directory TestResults/read-probe-net8
 python tests/run-offline-tests.py functional --framework net10.0 --results-directory TestResults/read-probe-net10
 ```
