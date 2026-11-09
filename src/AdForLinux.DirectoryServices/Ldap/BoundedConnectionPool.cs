@@ -6,6 +6,7 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
     internal sealed class Bucket
     {
         internal int Count;
+        internal bool Retired;
         internal readonly List<(T Value, long Returned, long Created)> Idle = [];
     }
 
@@ -18,14 +19,16 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
     private int total, waiting;
     private bool disposed;
     private long generation;
-    internal long NewGeneration() { lock (gate) return ++generation; }
+    private readonly Func<long>? generationSource;
+    internal long NewGeneration() { lock (gate) return generationSource?.Invoke() ?? ++generation; }
     private long created, reused, destroyed, failures, waits, timeouts;
 
     internal BoundedConnectionPool(int perKeyLimit = 8, int totalLimit = 64,
         TimeSpan? idleTimeout = null, TimeSpan? acquisitionTimeout = null,
-        TimeProvider? clock = null, bool startTimer = true, int waiterLimit = 256)
+        TimeProvider? clock = null, bool startTimer = true, int waiterLimit = 256, Func<long>? generationSource = null)
     {
         if (perKeyLimit < 1 || totalLimit < 1 || waiterLimit < 1) throw new ArgumentOutOfRangeException(nameof(perKeyLimit));
+        this.generationSource = generationSource;
         this.perKeyLimit = perKeyLimit;
         this.totalLimit = totalLimit;
         this.waiterLimit = waiterLimit;
@@ -147,7 +150,7 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
                     if (item.Value is not null) continue;
                     cancellationToken.ThrowIfCancellationRequested();
                     long born;
-                    lock (gate) born = ++generation;
+                    lock (gate) born = generationSource?.Invoke() ?? ++generation;
                     var value = item.Request.Create();
                     reserved[i] = (item.Request, item.Bucket, value, born);
                     lock (gate) created++;
@@ -173,6 +176,44 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
         }
     }
 
+    // Revoke idle resources and future returns without interrupting active leases.
+    // Destruction remains outside the pool gate; worker disposal may schedule reaping.
+    internal void Retire(TKey key)
+    {
+        List<T> idle;
+        Bucket bucket;
+        lock (gate)
+        {
+            if (!buckets.TryGetValue(key, out bucket!)) return;
+            bucket.Retired = true;
+            idle = bucket.Idle.Select(item => item.Value).ToList();
+            bucket.Idle.Clear();
+            Monitor.PulseAll(gate);
+        }
+        foreach (var value in idle) Destroy(key, bucket, value);
+    }
+
+    // Physical backends can retain capacity after logical destruction. Release
+    // an idle resource under that pressure; never interrupt an active lease.
+    internal bool EvictOneIdle()
+    {
+        TKey key = default!;
+        Bucket? bucket = null;
+        T? value = null;
+        lock (gate)
+        {
+            foreach (var pair in buckets)
+            {
+                if (pair.Value.Idle.Count == 0) continue;
+                key = pair.Key; bucket = pair.Value; value = bucket.Idle[0].Value;
+                bucket.Idle.RemoveAt(0); break;
+            }
+        }
+        if (bucket is null) return false;
+        Destroy(key, bucket, value!);
+        return true;
+    }
+
     internal void Sweep()
     {
         List<(TKey Key, Bucket Bucket, T Value)> expired = [];
@@ -196,7 +237,7 @@ internal sealed class BoundedConnectionPool<TKey, T> : IDisposable where TKey : 
     {
         lock (gate)
         {
-            if (!disposed && reusable)
+            if (!disposed && !bucket.Retired && reusable)
             {
                 bucket.Idle.Add((value, clock.GetTimestamp(), born));
                 Monitor.PulseAll(gate);

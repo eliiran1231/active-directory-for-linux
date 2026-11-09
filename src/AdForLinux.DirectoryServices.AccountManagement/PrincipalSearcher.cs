@@ -87,8 +87,17 @@ public class PrincipalSearcher : IDisposable
         var searcher = PrepareUnderlyingSearcher();
         var originalSizeLimit = searcher.SizeLimit;
         searcher.SizeLimit = 1;
-        var result = searcher.FindOne();
-        searcher.SizeLimit = originalSizeLimit;
+        var restored = false;
+        // Microsoft's ADStoreCtx.Query restores only after native query setup
+        // succeeds (#203), before row enumeration/materialization. Our producer
+        // eagerly converts rows, so use its acceptance boundary rather than a
+        // finally or waiting for all conversion to complete.
+        var result = searcher.FindOne(() =>
+        {
+            if (restored) return;
+            searcher.SizeLimit = originalSizeLimit;
+            restored = true;
+        });
         return result is null
             ? null
             : Principal.Materialize(Context!, QueryFilter!.GetType(), result.GetDirectoryEntry());
@@ -137,11 +146,9 @@ public class PrincipalSearcher : IDisposable
         if (_underlyingSearcher is null)
         {
             _searchRoot = context.SearchRoot;
-            _underlyingSearcher = new DirectorySearcher(_searchRoot)
-            {
-                PageSize = _defaultPageSize,
-                ServerTimeLimit = TimeSpan.FromSeconds(30),
-            };
+            _underlyingSearcher = context.CreateSearcher(_searchRoot);
+            _underlyingSearcher.PageSize = _defaultPageSize;
+            _underlyingSearcher.ServerTimeLimit = TimeSpan.FromSeconds(30);
         }
 
         // Match Microsoft's PushFilterToNativeSearcher behavior: refresh the QBE

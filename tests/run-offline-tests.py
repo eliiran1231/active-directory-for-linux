@@ -12,7 +12,7 @@ GROUPS = {
         "CoreSidTests", "SecurityDescriptorCodecTests", "MicrosoftObservableProjectorTests",
         "AclMutationEngineTests", "AclMutationReplayTests", "PortableSecurityFoundationTests",
         "V1PrincipalAuditTests", "Issue216RegressionTests", "AccountManagementPublicTypesTests",
-        "PrincipalValueCollectionTests", "OfflineExecutionGuardTests", "ConnectionPoolTests", "ConnectionPoolOperationTests",
+        "PrincipalValueCollectionTests", "OfflineExecutionGuardTests", "ConnectionPoolTests", "ConnectionPoolOperationTests", "LdapWorkerDeploymentTests",
         "WindowsContextScopedReadTests",
     ]),
     "surface": ("AdForLinux.DifferentialTests", [
@@ -26,7 +26,9 @@ GROUPS = {
     ]),
 }
 EXTRA = {
-    "functional": ["CollectionCompatibilityTests", "DirectorySearcherConstructorFilterTests"],
+    # Detached local collections and controlled producers; no directory fixtures.
+    "functional": ["CollectionCompatibilityTests", "DirectorySearcherConstructorFilterTests",
+                   "StreamingSearchResultTests"],
     # Reviewed detached/delegate-backed comparisons: no directory fixture or bind.
     "surface": ["SchemaNameCollectionComparisonTests", "SearcherConstructorFilterComparisonTests",
                 "SearcherValidationContractComparisonTests"],

@@ -54,7 +54,7 @@ jobs:
       - name: Record scoped connection-pool measurement
         run: >-
           docker compose run --rm tests dotnet test tests/AdForLinux.FunctionalTests
-          -f net10.0 --no-build
+          -f net10.0 --configuration Release --no-build
           --filter FullyQualifiedName~AdForLinux.FunctionalTests.ConnectionPoolSambaTests.
           --logger 'console;verbosity=detailed'
 

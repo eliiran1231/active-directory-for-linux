@@ -19,7 +19,7 @@ internal sealed class LdapIdentitySearchSession : IIdentitySearchSession
 {
     private readonly LdapConnectionProvider.Session session;
     internal LdapIdentitySearchSession(LdapConnectionOptions options)
-        => session = LdapConnectionProvider.Acquire(options);
+    { options.ReadOnlyProbe?.Refuse(); session = LdapConnectionProvider.Acquire(options); }
     public IReadOnlyList<IdentitySearchRow> Search(SearchRequest request, TimeSpan remaining)
     {
         var response = (SearchResponse)LdapExceptionTranslator.Execute(() => session.Execute(connection => connection.SendRequest(request, remaining)));

@@ -59,8 +59,7 @@ public partial class V1PrincipalAuditTests
     {
         fixture.Entry.PropertyReadOverride = null;
         var connection = RangedReadConnection.Create(response);
-        foreach (var field in new[] { "_connection", "_schemaConnection" })
-            typeof(DirectoryEntry).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(fixture.Entry, connection);
+        fixture.Entry.SetControlledRetainedConnections(connection, connection);
         return connection;
     }
 

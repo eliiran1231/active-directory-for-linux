@@ -17,6 +17,8 @@ namespace AdForLinux.DirectoryServices.AccountManagement;
 public partial class PrincipalContext : IDisposable
 {
     private readonly ContextOptions _options;
+    private readonly RestrictedKerberosProfile? _restrictedKerberos;
+    private readonly LdapReadOnlyProbePolicy? _readOnlyProbe;
     private readonly bool _hasExplicitPort;
     private readonly ContextType _contextType;
     private readonly string _name;
@@ -143,6 +145,21 @@ public partial class PrincipalContext : IDisposable
         _serverName = name;
         (_name, _port, _hasExplicitPort) = ParseServer(name, _useSsl);
         _container = container;
+    }
+
+    internal PrincipalContext(RestrictedKerberosProfile profile, string? container)
+        : this(ContextType.Domain, profile.ServiceHost + ":" + profile.ServicePort.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            container, DefaultOptions, null, null)
+    {
+        _restrictedKerberos = profile;
+    }
+
+    internal PrincipalContext(LdapReadOnlyProbePolicy policy, string user, string password)
+        : this(ContextType.Domain, policy.Host + ":636", policy.FixtureDn,
+            ContextOptions.SimpleBind | ContextOptions.SecureSocketLayer, user, password)
+    {
+        _readOnlyProbe = policy;
+        policy.ValidateAdmission(BuildOptions(), ReferralChasingOption.None);
     }
 
     private readonly string? _password;
@@ -302,6 +319,7 @@ public partial class PrincipalContext : IDisposable
         get
         {
             CheckDisposed();
+            if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Global catalog probing is outside the restricted exact endpoint.");
             if (_canUseGlobalCatalog is not null)
             {
                 return _canUseGlobalCatalog.Value;
@@ -332,6 +350,7 @@ public partial class PrincipalContext : IDisposable
     public bool ValidateCredentials(string userName, string password)
     {
         CheckDisposed();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Explicit credential validation cannot replace a restricted FILE source.");
         ValidateCredentialPair(userName, password);
         if (userName is { Length: 0 })
         {
@@ -409,6 +428,7 @@ public partial class PrincipalContext : IDisposable
         ContextOptions options)
     {
         CheckDisposed();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Explicit credential validation cannot replace a restricted FILE source.");
         ValidateCredentialPair(userName, password);
 
         if (userName is { Length: 0 })
@@ -439,6 +459,13 @@ public partial class PrincipalContext : IDisposable
         }
     }
 
+    internal void RequireCompatibleKerberosSelection(PrincipalContext destination)
+    {
+        CheckDisposed(); destination.CheckDisposed();
+        if (!ReferenceEquals(_restrictedKerberos, destination._restrictedKerberos))
+            throw new InvalidOperationException("A principal cannot replace its restricted Kerberos selection. Create a new principal in the intended context.");
+    }
+
     internal LdapConnectionOptions BuildOptions()
     {
         CheckDisposed();
@@ -464,7 +491,7 @@ public partial class PrincipalContext : IDisposable
         var authenticationType = options.HasFlag(ContextOptions.SimpleBind)
             ? AuthType.Basic
             : AuthType.Negotiate;
-        return new LdapConnectionOptions
+        var recipe = new LdapConnectionOptions
         {
             Host = _name,
             Port = useContextPort && _hasExplicitPort ? _port : useSsl ? 636 : 389,
@@ -474,7 +501,13 @@ public partial class PrincipalContext : IDisposable
             Sealing = options.HasFlag(ContextOptions.Sealing),
             BindDn = bindUser,
             BindPassword = bindPassword,
+            RestrictedKerberos = _restrictedKerberos,
+            ReadOnlyProbe = _readOnlyProbe,
+            Timeout = _readOnlyProbe is null ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(10),
         };
+        _readOnlyProbe?.ValidateAdmission(recipe, ReferralChasingOption.None);
+        _restrictedKerberos?.ValidateRecipe(recipe);
+        return recipe;
     }
 
     /// <summary>The LDAP path for a DN on this context's server.</summary>
@@ -491,7 +524,25 @@ public partial class PrincipalContext : IDisposable
     internal DirectoryEntry CreateDirectoryEntry(string distinguishedName)
     {
         CheckDisposed();
+        _readOnlyProbe?.Check();
         return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
+    }
+
+    // Internal AccountManagement searches inherit the explicitly selected exact
+    // endpoint policy. Ordinary contexts retain DirectorySearcher's Microsoft
+    // compatible default; caller edits on an exposed searcher are not reset.
+    internal DirectorySearcher CreateSearcher(DirectoryEntry root, string filter = "(objectClass=*)",
+        string[]? propertiesToLoad = null, SearchScope? scope = null)
+    {
+        CheckDisposed();
+        // Supplying an explicit scope changes AttributeScopeQuery validation.
+        // Preserve whether the original internal constructor supplied a scope.
+        var searcher = scope is { } explicitScope
+            ? new DirectorySearcher(root, filter, propertiesToLoad, explicitScope)
+            : new DirectorySearcher(root, filter, propertiesToLoad);
+        searcher.ReferralChasing = _restrictedKerberos is null && _readOnlyProbe is null
+            ? ReferralChasingOption.External : ReferralChasingOption.None;
+        return searcher;
     }
 
     internal Func<LdapConnectionOptions, CrossContextSaveSession> SaveContextSessionFactory { get; set; }
@@ -510,6 +561,7 @@ public partial class PrincipalContext : IDisposable
     internal DirectoryEntry CreateGlobalCatalogEntry(string distinguishedName)
     {
         CheckDisposed();
+        if (_readOnlyProbe is { } probe) probe.Refuse();
         var options = BuildOptions();
         return new DirectoryEntry(
             $"LDAP://{_name}:{(_useSsl ? 3269 : 3268)}/{distinguishedName}",
@@ -523,6 +575,7 @@ public partial class PrincipalContext : IDisposable
                 Sealing = options.Sealing,
                 BindDn = options.BindDn,
                 BindPassword = options.BindPassword,
+                RestrictedKerberos = options.RestrictedKerberos,
             });
     }
 
@@ -534,6 +587,8 @@ public partial class PrincipalContext : IDisposable
     internal PrincipalContext GetForeignDomainContext(string domainName)
     {
         CheckDisposed();
+        if (_readOnlyProbe is { } probe) probe.Refuse();
+        if (_restrictedKerberos is not null) throw new PlatformNotSupportedException("Foreign-domain discovery cannot replace the restricted exact target.");
         ArgumentException.ThrowIfNullOrWhiteSpace(domainName);
         if (ForeignPrincipalResolver.TryGetDnsDomainName(DefaultNamingContext)
             ?.Equals(domainName, StringComparison.OrdinalIgnoreCase) == true)
@@ -562,6 +617,15 @@ public partial class PrincipalContext : IDisposable
         }
     }
 
+    internal Func<LdapConnectionOptions, LdapConnectionProvider.Session>? TransportSessionFactory { get; set; }
+    private TResult ExecuteDiscoveryTransport<TResult>(Func<ILdapRequestTransport, TResult> operation)
+    {
+        var options = BuildOptions();
+        if (TransportSessionFactory is null) return LdapConnectionProvider.ExecuteTransport(options, operation);
+        using var session = TransportSessionFactory(options);
+        return session.ExecuteTransport(operation);
+    }
+
     private string DiscoverDefaultNamingContext() =>
         AccountManagementExceptionTranslator.Execute(DiscoverDefaultNamingContextCore);
 
@@ -569,7 +633,7 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            return LdapConnectionProvider.Execute(BuildOptions(), RootDse.GetConnectedServerName);
+            return ExecuteDiscoveryTransport(transport => RootDse.GetConnectedServerName(transport));
         }
         catch (Exception exception) when (LdapExceptionTranslator.IsProtocolFailure(exception))
         {
@@ -581,8 +645,8 @@ public partial class PrincipalContext : IDisposable
     {
         try
         {
-            return LdapConnectionProvider.Execute(BuildOptions(), connection =>
-                RootDse.GetDefaultNamingContext(connection)
+            return ExecuteDiscoveryTransport(transport =>
+                RootDse.GetDefaultNamingContext(transport)
                 ?? throw new InvalidOperationException("The server did not report a default naming context."));
         }
         catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex))
@@ -593,8 +657,7 @@ public partial class PrincipalContext : IDisposable
 
     private string DiscoverRootDomainNamingContext()
     {
-        var values = LdapConnectionProvider.Execute(BuildOptions(),
-            connection => RootDse.Read(connection, "rootDomainNamingContext"));
+        var values = ExecuteDiscoveryTransport(transport => RootDse.Read(transport, "rootDomainNamingContext"));
         return values.TryGetValue("rootDomainNamingContext", out var namingContext)
             ? namingContext
             : DefaultNamingContext;
@@ -615,18 +678,28 @@ public partial class PrincipalContext : IDisposable
 
             // Resolve nested discovery before reserving a connection, including at capacity one.
             var namingContext = DefaultNamingContext;
-            var request = new SearchRequest(
-                namingContext,
-                "(objectClass=*)",
-                System.DirectoryServices.Protocols.SearchScope.Base,
-                "wellKnownObjects");
-            var response = LdapConnectionProvider.Execute(BuildOptions(),
-                connection => (SearchResponse)connection.SendRequest(request));
+            var response = ExecuteDiscoveryTransport(transport =>
+            {
+                var result = LdapRequestDispatcher.Search(transport, new LdapSearchCommand(
+                    namingContext,
+                    "(objectClass=*)",
+                    System.DirectoryServices.Protocols.SearchScope.Base,
+                    ["wellKnownObjects"],
+                    transport.Timeout));
+                if (result.Code != ResultCode.Success)
+                {
+                    throw LdapExceptionTranslator.Translate(
+                        result.Code,
+                        result.Diagnostic ?? "Well-known container discovery failed.");
+                }
+
+                return result;
+            });
 
             string? users = null;
             string? computers = null;
-            if (response.Entries.Count > 0 &&
-                response.Entries[0].Attributes["wellKnownObjects"] is { } values)
+            if (response.Entries.Length > 0 &&
+                response.Entries[0].Attributes.TryGetValue("wellKnownObjects", out var values))
             {
                 TryResolveWellKnownContainers(values.Cast<object?>(), out users, out computers);
             }
@@ -792,6 +865,7 @@ public partial class PrincipalContext : IDisposable
         string? password,
         ContextOptions options)
     {
+        _readOnlyProbe?.Refuse();
         using var session = LdapConnectionProvider.AcquireValidation(
             BuildOptions(userName, password, options, useContextPort: false));
     }

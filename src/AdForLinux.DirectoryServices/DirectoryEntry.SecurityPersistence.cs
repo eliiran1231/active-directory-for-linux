@@ -226,15 +226,26 @@ public partial class DirectoryEntry
 
     internal void CommitPrincipalServiceNames(PrincipalServiceNameWrite write) => CommitPortableChanges(write);
 
+    // Principal saves stage cached intent into this entry before committing.
+    // Reject an unresolved outcome before staging can change the recovery ledger.
+    // CommitPortableChanges also checks this at the authoritative write boundary.
+    internal void ThrowIfWriteUncertain()
+    {
+        lock (_entryWriteGate)
+            if (_uncertainWrite is not null)
+                throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
+    }
+
     private void CommitPortableChanges(PrincipalServiceNameWrite? serviceNames = null)
     {
+        ReadOnlyProbe?.Refuse();
         if (_disposed) return; // retained clean/disposed SetInfo compatibility
         if (Interlocked.CompareExchange(ref _commitRunning, 1, 0) != 0)
             throw new InvalidOperationException("A commit is already in progress for this entry.");
         try
         {
             ThrowIfDisposed();
-            if (_uncertainWrite is not null) throw new InvalidOperationException("The previous write has an uncertain local or server outcome. Refresh the entry before another commit; the server operation cannot be rolled back locally.");
+            ThrowIfWriteUncertain();
             var generation = IdentityLifetime.Capture(ThrowIfDisposed);
             long serviceNameReadVersion;
             lock (_entryWriteGate) serviceNameReadVersion = _entryChangeVersion;
@@ -340,30 +351,21 @@ public partial class DirectoryEntry
             if (hasRequest)
             {
                 using var connectionLease = transport is null ? AcquireConnection(() => Checked(() => true)) : null;
-                var connection = connectionLease?.Connection;
                 Checked(() => true);
-                ResultCode result;
-                try
+                var outcome = transport is null ? connectionLease!.SendWrite(request)
+                    : LdapMutationDispatcher.ClassifySubmitted(() => new LdapResultEnvelope(
+                        transport(request), null, null, [], []));
+                if (outcome.Disposition == LdapWriteDisposition.Indeterminate)
                 {
-                    // Preserve the protocol response until its delivery outcome is
-                    // classified; the public exception translation remains unchanged.
-                    result = transport is null ? connection!.SendRequestTracked(request).ResultCode : transport(request);
-                }
-                catch (DirectoryOperationException error) when (error.Response is { ResultCode: not ResultCode.Success })
-                { throw LdapExceptionTranslator.Translate(error); }
-                catch (Exception error)
-                {
-                    // A missing response cannot prove the server rejected the write.
-                    // Retain intent but require readback before sending it a second time.
+                    // Only a submitted request without a definitive response needs
+                    // readback. Unsupported or rejected preflight leaves intent retryable.
                     lock (_entryWriteGate)
                     {
                         _uncertainWrite = uncertain;
                         if (serviceNames is not null) serviceNames.State = PrincipalServiceNameWrite.Outcome.Uncertain;
                     }
-                    if (LdapExceptionTranslator.IsProtocolFailure(error)) throw LdapExceptionTranslator.Translate(error);
-                    throw;
                 }
-                if (result != ResultCode.Success) throw LdapExceptionTranslator.Translate(result, $"The directory write failed with result {result}.");
+                LdapMutationDispatcher.ThrowIfFailed(outcome);
             }
             try
             {

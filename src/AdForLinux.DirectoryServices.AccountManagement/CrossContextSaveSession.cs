@@ -16,6 +16,7 @@ internal sealed class CrossContextSaveSession : IDisposable
     internal CrossContextSaveSession(ICrossContextExecutorTransport controlled) => this.controlled = controlled;
     internal CrossContextSaveSession(LdapConnectionOptions options)
     {
+        options.ReadOnlyProbe?.Refuse();
         lease = LdapConnectionProvider.Acquire(options);
         connection = lease.Connection;
     }
@@ -25,6 +26,7 @@ internal sealed class CrossContextSaveSession : IDisposable
     internal CrossContextSaveSession(LdapConnection connection) => this.connection = connection;
     internal SearchResponse Search(SearchRequest request, TimeSpan remaining)
     {
+        if (connection is not null && LdapReadOnlyProbePolicy.For(connection) is { } probe) probe.Refuse();
         if (controlled is not null) return (SearchResponse)controlled.Send(request, remaining);
         if (lease is null)
         {

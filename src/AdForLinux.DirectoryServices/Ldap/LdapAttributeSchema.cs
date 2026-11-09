@@ -9,7 +9,7 @@ namespace AdForLinux.DirectoryServices.Ldap;
 /// of an LDAP connection. Attribute names are not sufficient to determine
 /// their wire representation because administrators can extend the schema.
 /// </summary>
-internal static class LdapAttributeSchema
+internal static partial class LdapAttributeSchema
 {
     private static readonly ConditionalWeakTable<LdapConnection, SchemaCache> Caches = new();
 
@@ -192,6 +192,11 @@ internal static class LdapAttributeSchema
                 }
             }
 
+            if (LdapReadOnlyProbePolicy.For(_connection) is { } policy)
+            {
+                policy.Check();
+                if (names.Any(name => !_kinds.ContainsKey(name))) policy.Refuse();
+            }
             foreach (var name in names)
             {
                 _kinds.TryAdd(name, BinaryFallbackFor(name));

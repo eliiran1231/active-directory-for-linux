@@ -31,10 +31,20 @@ internal static class LdapConnectionFactory
     /// <summary>Creates and configures a connection without binding it.</summary>
     internal static LdapConnection Create(LdapConnectionOptions options)
     {
+        options.ReadOnlyProbe?.ValidateAdmission(options, ReferralChasingOption.None);
+        options.RestrictedKerberos?.RefuseUnavailableBackend(options);
         OfflineTestGuard.RequireLiveAccess();
-        var identifier = new LdapDirectoryIdentifier(options.Host, options.Port);
+        var identifier = options.ReadOnlyProbe is null
+            ? new LdapDirectoryIdentifier(options.Host, options.Port)
+            : new LdapDirectoryIdentifier(options.Host, options.Port, fullyQualifiedDnsHostName: true, connectionless: false);
         return ConfigureOwned(new LdapConnection(identifier), connection =>
         {
+            if (options.ReadOnlyProbe is { } policy)
+            {
+                policy.Register(connection);
+                ConfigureReferralChasing(connection, ReferralChasingOption.None);
+                if (OperatingSystem.IsWindows()) connection.SessionOptions.AutoReconnect = false;
+            }
             connection.AuthType = options.IsAnonymous ? AuthType.Anonymous : options.AuthenticationType;
             connection.SessionOptions.ProtocolVersion = 3;
 
@@ -69,7 +79,8 @@ internal static class LdapConnectionFactory
 
             // The connection stays open until disposed; bind eagerly so failures
             // surface here rather than on first search.
-            connection.Timeout = options.Timeout;
+            connection.Timeout = options.ReadOnlyProbe is { } deadline
+                ? TimeSpan.FromTicks(Math.Min(options.Timeout.Ticks, deadline.Remaining().Ticks)) : options.Timeout;
 
             if (options.UseStartTls && !options.UseSsl)
             {
@@ -103,6 +114,7 @@ internal static class LdapConnectionFactory
         // The native Linux LDAP implementation accepts only None and All.
         // Keep the ADSI-compatible partial modes on Windows, and degrade them
         // to All only where the underlying runtime cannot represent them.
+        if (LdapReadOnlyProbePolicy.For(connection) is { } policy && referralChasing != ReferralChasingOption.None) policy.Refuse();
         connection.SessionOptions.ReferralChasing = OperatingSystem.IsWindows()
             ? (ReferralChasingOptions)(int)referralChasing
             : referralChasing switch

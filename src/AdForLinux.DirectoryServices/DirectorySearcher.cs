@@ -13,7 +13,7 @@ namespace AdForLinux.DirectoryServices;
 /// <see cref="PropertiesToLoad"/>, then call <see cref="FindOne"/> or
 /// <see cref="FindAll"/>.
 /// </summary>
-public class DirectorySearcher : Component
+public partial class DirectorySearcher : Component
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(-1);
 
@@ -106,7 +106,11 @@ public class DirectorySearcher : Component
     public DirectoryEntry? SearchRoot
     {
         get => _rootReference?.Root;
-        set => _rootReference = value is null ? null : new RootReference(value, value.CaptureBindingAuthority());
+        set
+        {
+            if (_rootReference?.Root.ReadOnlyProbe is { } probe && !ReferenceEquals(value?.ReadOnlyProbe, probe)) probe.Refuse();
+            _rootReference = value is null ? null : new RootReference(value, value.CaptureBindingAuthority());
+        }
     }
     private sealed record RootReference(DirectoryEntry Root, DirectoryEntry.BindingAuthority Authority);
     private RootReference? _rootReference;
@@ -126,8 +130,19 @@ public class DirectorySearcher : Component
         }
         public void Dispose() => rebound?.Dispose();
     }
-    private SearchOperation CaptureSearch() => new(_rootReference ?? throw new InvalidOperationException(
-        "SearchRoot must be set before searching. Serverless search is not supported on Linux."));
+    private SearchOperation CaptureSearch()
+    {
+        var reference = _rootReference ?? throw new InvalidOperationException(
+            "SearchRoot must be set before searching. Serverless search is not supported on Linux.");
+        if (reference.Root.ReadOnlyProbe is { } probe)
+        {
+            probe.Check();
+            if (Asynchronous || !CacheResults || PageSize != 0 || HasAttributeScopeQuery
+                || DirectorySynchronization is not null || _virtualListView is not null
+                || ReferralChasing != ReferralChasingOption.None || SearchScope != SearchScope.Base) probe.Refuse();
+        }
+        return new(reference);
+    }
 
     /// <summary>The LDAP filter, e.g. <c>(&amp;(objectClass=user)(cn=jeff))</c>.</summary>
     [AllowNull]
@@ -421,14 +436,19 @@ public class DirectorySearcher : Component
         ConfigureConnectionOverride is null && request.Controls.Count == 0 && PageSize == 0 && !Asynchronous;
 
     /// <summary>Returns the first match, or null if there is none.</summary>
-    public SearchResult? FindOne()
+    public SearchResult? FindOne() => FindOne(onSearchAccepted: null);
+
+    // AccountManagement exposes temporary native SizeLimit state. Notify only
+    // after the query is accepted, before our eager control/schema conversion.
+    // Ordinary DirectorySearcher callers have no additional callback/state.
+    internal SearchResult? FindOne(Action? onSearchAccepted)
     {
         using var operation = CaptureSearch();
         var root = operation.Root;
         root.BindAuthority(operation.Origin.Authority);
         if (HasAttributeScopeQuery)
         {
-            return FindAttributeScoped(operation, maximumResults: 1).FirstOrDefault();
+            return FindAttributeScoped(operation, maximumResults: 1, onSearchAccepted).FirstOrDefault();
         }
 
         var request = BuildRequestForDn(operation.Origin.DistinguishedName);
@@ -455,6 +475,7 @@ public class DirectorySearcher : Component
             catch (Exception ex) when (LdapExceptionTranslator.IsProtocolFailure(ex)) { throw LdapExceptionTranslator.Translate(ex); }
             if (sent)
             {
+                onSearchAccepted?.Invoke();
                 UpdateControlState(scoped!);
                 // Materialization can issue schema requests: use an ordinary
                 // fresh Windows referral lease, never the scoped read handle.
@@ -464,11 +485,18 @@ public class DirectorySearcher : Component
             }
         }
 
-        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var neutralClock = TimeProvider;
+        var neutralStarted = neutralClock.GetTimestamp();
+        using var connectionLease = AcquireSearchConnections(root, operation.Origin, 1, neutralClock, neutralStarted)[0];
+        var admitted = connectionLease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+            return ReadNeutralBuffered(connectionLease, admitted, operation.Origin, request, 0, neutralClock, neutralStarted,
+                maximumResults: 1, onSearchAccepted: onSearchAccepted).FirstOrDefault();
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
         var response = SendSearch(connection, request, operation.Origin.Authority);
+        onSearchAccepted?.Invoke();
         UpdateControlState(response);
         return response.Entries.Count > 0
             ? new SearchResult(response.Entries[0], operation.Origin, root, root.SchemaConnectionForOperation(connection))
@@ -514,7 +542,17 @@ public class DirectorySearcher : Component
             return FindAllStreaming(operation);
         }
 
-        using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
+        var neutralClock = TimeProvider;
+        var neutralStarted = neutralClock.GetTimestamp();
+        var searchLeases = AcquireSearchConnections(root, operation.Origin, 1, neutralClock, neutralStarted,
+            independentNativeSchema: PageSize > 0 && (ServerTimeLimit.TotalSeconds >= 1 || SizeLimit > 0));
+        using var connectionLease = searchLeases[0];
+        using var schemaLease = searchLeases.Length > 1 ? searchLeases[1] : null;
+        var admitted = connectionLease.ExecuteTransport(value => value);
+        if ((admitted.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+            return new SearchResultCollection(ReadNeutralBuffered(connectionLease, admitted, operation.Origin,
+                BuildRequestForDn(operation.Origin.DistinguishedName), PageSize, neutralClock, neutralStarted,
+                schema: schemaLease?.ExecuteTransport(value => value)), GetPropertiesLoaded());
         var connection = connectionLease.Connection;
         if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null) connectionLease.Invalidate();
         ConfigureConnection(connection);
@@ -583,19 +621,28 @@ public class DirectorySearcher : Component
     {
         // Use a separate connection because a result collection can outlive the searcher/root,
         // and an in-flight request must not share mutable timeout/referral state with callers.
+        var clock = TimeProvider;
+        var started = clock.GetTimestamp();
         var resultRoot = operation.Origin.Copy();
         var origin = operation.Origin;
-        LdapConnection connection;
+        LdapConnection connection = null!;
+        ILdapRequestTransport? neutral = null;
         DirectoryEntry.ConnectionLease[]? leases = null;
         SearchRequest request;
         try
         {
             StreamingRootCreated?.Invoke(resultRoot);
-            leases = resultRoot.AcquireConnections(2, origin.Authority.Validate, ReferralChasing);
-            connection = leases[0].Connection;
-            if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null)
-                foreach (var lease in leases) lease.Invalidate();
-            ConfigureConnection(connection);
+            leases = AcquireSearchConnections(resultRoot, origin, 2, clock, started);
+            var transport = leases[0].ExecuteTransport(value => value);
+            if ((transport.Capabilities & LdapTransportCapabilities.ProtocolsConnection) == 0)
+                neutral = transport;
+            else
+            {
+                connection = leases[0].Connection;
+                if (DirectorySynchronization is not null || _virtualListView is not null || ConfigureConnectionOverride is not null)
+                    foreach (var lease in leases) lease.Invalidate();
+                ConfigureConnection(connection);
+            }
             request = BuildRequestForDn(origin.DistinguishedName);
         }
         catch
@@ -604,6 +651,8 @@ public class DirectorySearcher : Component
             resultRoot.Dispose();
             throw;
         }
+        if (neutral is not null)
+            return FindAllNeutralStreaming(resultRoot, origin, leases, neutral, request, clock, started);
         StreamingSearchResultSource? source = null;
         try
         {
@@ -691,6 +740,7 @@ public class DirectorySearcher : Component
         Action<SearchResult> add,
         CancellationToken cancellationToken)
     {
+        if (LdapReadOnlyProbePolicy.For(connection) is { } probe) probe.Refuse();
         var partialMode = returnPartialResults
             ? PartialResultProcessing.ReturnPartialResults
             : PartialResultProcessing.NoPartialResultSupport;
@@ -872,7 +922,7 @@ public class DirectorySearcher : Component
 
     private bool HasAttributeScopeQuery => _attributeScopeQuery.Length > 0;
 
-    private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults)
+    private List<SearchResult> FindAttributeScoped(SearchOperation operation, int maximumResults, Action? onSearchAccepted = null)
     {
         var root = operation.Root;
         using var connectionLease = root.AcquireConnection(operation.Origin.Authority.Validate, ReferralChasing);
@@ -886,7 +936,7 @@ public class DirectorySearcher : Component
         AdForLinux.DirectoryServices.Ldap.LdapAttributeSchema
             .EnsureDistinguishedNameAttribute(connection, _attributeScopeQuery);
 
-        var nativeResults = TryNativeAttributeScopeQuery(connection, operation, maximumResults);
+        var nativeResults = TryNativeAttributeScopeQuery(connection, operation, maximumResults, onSearchAccepted);
         if (nativeResults is not null)
         {
             return nativeResults;
@@ -897,6 +947,9 @@ public class DirectorySearcher : Component
         // validation above prevents ordinary strings from being treated as DNs.
 
         var referencedDns = ReadAttributeScopeDns(connection, operation.Origin);
+        // The emulated-ASQ list is now accepted; per-DN work is enumeration.
+        // A native unsupported-control rejection alone never admits results.
+        onSearchAccepted?.Invoke();
         if (referencedDns.Count == 0 || maximumResults == 0)
         {
             return new List<SearchResult>();
@@ -941,7 +994,8 @@ public class DirectorySearcher : Component
     private List<SearchResult>? TryNativeAttributeScopeQuery(
         LdapConnection connection,
         SearchOperation operation,
-        int maximumResults)
+        int maximumResults,
+        Action? onSearchAccepted)
     {
         var root = operation.Root;
         var request = BuildRequestForDn(operation.Origin.DistinguishedName);
@@ -985,6 +1039,7 @@ public class DirectorySearcher : Component
                 $"AttributeScopeQuery failed with LDAP {asq.Result} ({(int)asq.Result}).");
         }
 
+        onSearchAccepted?.Invoke();
         UpdateControlState(response);
         return response.Entries
             .Cast<SearchResultEntry>()

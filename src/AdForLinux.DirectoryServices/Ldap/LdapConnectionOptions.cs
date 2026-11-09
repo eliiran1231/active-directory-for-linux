@@ -10,6 +10,9 @@ namespace AdForLinux.DirectoryServices.Ldap;
 /// </summary>
 internal sealed class LdapConnectionOptions
 {
+    internal RestrictedKerberosProfile? RestrictedKerberos { get; init; }
+    internal LdapReadOnlyProbePolicy? ReadOnlyProbe { get; init; }
+
     /// <summary>Server host name or IP.</summary>
     public required string Host { get; init; }
 
@@ -96,5 +99,7 @@ internal sealed class LdapConnectionOptions
         BindDn = BindDn,
         BindPassword = BindPassword,
         Timeout = timeout ?? Timeout,
+        RestrictedKerberos = RestrictedKerberos,
+        ReadOnlyProbe = ReadOnlyProbe,
     };
 }
