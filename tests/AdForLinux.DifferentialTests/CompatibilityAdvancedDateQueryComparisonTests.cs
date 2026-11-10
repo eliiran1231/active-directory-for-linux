@@ -48,7 +48,7 @@ public sealed class CompatibilityAdvancedDateQueryComparisonTests
         Assert.False(string.IsNullOrEmpty(expectedInitial));
         Assert.False(string.IsNullOrEmpty(expectedReplacement));
         Assert.NotEqual(expectedInitial, expectedReplacement);
-        Assert.Equal(new[] { expectedInitial, expectedReplacement }, new[] { actualInitial, actualReplacement });
+        Assert.Equal(SuiteCapture.Expected(new[] { expectedInitial, expectedReplacement }, "assert-equal-expected", 51), SuiteCapture.Expected(new[] { actualInitial, actualReplacement }, "assert-equal-actual", 51));
     }
 
     // Compare the literal public Filter, not a hand-built expected LDAP string.

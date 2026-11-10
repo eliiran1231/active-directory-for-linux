@@ -23,8 +23,8 @@ public sealed class CompatibilitySearchResultBinaryOwnershipComparisonTests(Test
     public void Repeated_enumeration_isolates_binary_value_buffers_like_microsoft(bool mutate)
     {
         var baseline = FreshMicrosoftGuid();
-        Assert.Equal(16, baseline.Length);
-        Assert.Equal(baseline, FreshOurGuid());
+        Assert.Equal(SuiteCapture.Expected(16, "assert-equal-expected", 26), SuiteCapture.Expected(baseline.Length, "assert-equal-actual", 26));
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 27), SuiteCapture.Expected(FreshOurGuid(), "assert-equal-actual", 27));
         using var expectedRoot = MicrosoftEntry();
         using var actualRoot = OurEntry();
         using var expectedSearcher = Searcher(expectedRoot);
@@ -41,10 +41,10 @@ public sealed class CompatibilitySearchResultBinaryOwnershipComparisonTests(Test
         AssertKnown(rightFirst);
         var leftBytes = Assert.IsType<byte[]>(leftFirst.Properties["objectGUID"][0]);
         var rightBytes = Assert.IsType<byte[]>(rightFirst.Properties["objectGUID"][0]);
-        Assert.Equal(16, leftBytes.Length);
-        Assert.Equal(16, rightBytes.Length);
-        Assert.Equal(baseline, leftBytes);
-        Assert.Equal(baseline, rightBytes);
+        Assert.Equal(SuiteCapture.Expected(16, "assert-equal-expected", 44), SuiteCapture.Expected(leftBytes.Length, "assert-equal-actual", 44));
+        Assert.Equal(SuiteCapture.Expected(16, "assert-equal-expected", 45), SuiteCapture.Expected(rightBytes.Length, "assert-equal-actual", 45));
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 46), SuiteCapture.Expected(leftBytes, "assert-equal-actual", 46));
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 47), SuiteCapture.Expected(rightBytes, "assert-equal-actual", 47));
         if (mutate)
         {
             leftBytes[0] ^= 0xff;
@@ -52,7 +52,7 @@ public sealed class CompatibilitySearchResultBinaryOwnershipComparisonTests(Test
             Assert.NotEqual(baseline[0], leftBytes[0]);
             Assert.NotEqual(baseline[0], rightBytes[0]);
         }
-        Assert.Equal(leftBytes, rightBytes);
+        Assert.Equal(SuiteCapture.Expected(leftBytes, "assert-equal-expected", 55), SuiteCapture.Expected(rightBytes, "assert-equal-actual", 55));
 
         var leftSecond = Only<Ms.SearchResult>(expected);
         var rightSecond = Only<Ours.SearchResult>(actual);
@@ -60,15 +60,15 @@ public sealed class CompatibilitySearchResultBinaryOwnershipComparisonTests(Test
         AssertKnown(rightSecond);
         var leftLater = Assert.IsType<byte[]>(leftSecond.Properties["objectGUID"][0]);
         var rightLater = Assert.IsType<byte[]>(rightSecond.Properties["objectGUID"][0]);
-        Assert.Equal(16, leftLater.Length);
-        Assert.Equal(16, rightLater.Length);
-        Assert.Equal(baseline, leftLater);
-        if (!mutate) Assert.Equal(baseline, rightLater);
+        Assert.Equal(SuiteCapture.Expected(16, "assert-equal-expected", 63), SuiteCapture.Expected(leftLater.Length, "assert-equal-actual", 63));
+        Assert.Equal(SuiteCapture.Expected(16, "assert-equal-expected", 64), SuiteCapture.Expected(rightLater.Length, "assert-equal-actual", 64));
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 65), SuiteCapture.Expected(leftLater, "assert-equal-actual", 65));
+        if (!mutate) Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 66), SuiteCapture.Expected(rightLater, "assert-equal-actual", 66));
 
         // Fresh searchers and entries independently verify that local buffer
         // edits did not alter the server or seed a later independent query.
-        Assert.Equal(baseline, FreshMicrosoftGuid());
-        Assert.Equal(baseline, FreshOurGuid());
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 70), SuiteCapture.Expected(FreshMicrosoftGuid(), "assert-equal-actual", 70));
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 71), SuiteCapture.Expected(FreshOurGuid(), "assert-equal-actual", 71));
         var comparison = new Comparison($"SearchResult binary buffer ownership: mutate={mutate}")
             .Check("later binary value", Convert.ToHexString(leftLater), Convert.ToHexString(rightLater));
         if (mutate)
@@ -113,10 +113,10 @@ public sealed class CompatibilitySearchResultBinaryOwnershipComparisonTests(Test
     }
 
     private void AssertKnown(Ms.SearchResult row) =>
-        Assert.Equal(data.UserDn, Assert.IsType<string>(row.Properties["distinguishedName"][0]), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 116), SuiteCapture.Expected(Assert.IsType<string>(row.Properties["distinguishedName"][0]), "assert-equal-actual", 116), ignoreCase: true);
 
     private void AssertKnown(Ours.SearchResult row) =>
-        Assert.Equal(data.UserDn, Assert.IsType<string>(row.Properties["distinguishedName"][0]), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 119), SuiteCapture.Expected(Assert.IsType<string>(row.Properties["distinguishedName"][0]), "assert-equal-actual", 119), ignoreCase: true);
 
     private static Ms.DirectorySearcher Searcher(Ms.DirectoryEntry root) =>
         new(root, "(objectClass=*)", new[] { "objectGUID", "distinguishedName" }, Ms.SearchScope.Base) { CacheResults = true };

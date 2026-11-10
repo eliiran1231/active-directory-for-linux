@@ -37,8 +37,8 @@ public sealed class CompatibilityDisposedPendingMemberComparisonTests
 
         var expected = Observe(() => expectedMembers.Contains(expectedMember));
         var actual = Observe(() => actualMembers.Contains(actualMember));
-        Assert.Equal("returned True", expected);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected("returned True", "assert-equal-expected", 40), SuiteCapture.Expected(expected, "assert-equal-actual", 40));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 41), SuiteCapture.Expected(actual, "assert-equal-actual", 41));
     }
 
     private static string Observe(Func<bool> action)

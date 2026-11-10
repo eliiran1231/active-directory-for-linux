@@ -52,8 +52,8 @@ public sealed class CompatibilityCustomDateFinderComparisonTests(TestDataFixture
 
         var expected = Observe(() => MicrosoftUser.FirstAdvance(expectedContext, data.UserExpirationTime, customType));
         var actual = Observe(() => OurUser.FirstAdvance(actualContext, data.UserExpirationTime, customType));
-        Assert.Equal("returned True", expected);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected("returned True", "assert-equal-expected", 55), SuiteCapture.Expected(expected, "assert-equal-actual", 55));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 56), SuiteCapture.Expected(actual, "assert-equal-actual", 56));
     }
 
     // No custom Current access: Microsoft can advance to a native row even

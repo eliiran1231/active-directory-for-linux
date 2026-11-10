@@ -48,7 +48,7 @@ public sealed class SearcherProjectionStateComparisonTests : IClassFixture<TestD
         };
         microsoft.PropertiesToLoad.AddRange(attributes);
         ours.PropertiesToLoad.AddRange(attributes);
-        Assert.Equal(microsoft.PropertiesToLoad.Cast<string>(), ours.PropertiesToLoad.Cast<string>());
+        Assert.Equal(SuiteCapture.Expected(microsoft.PropertiesToLoad.Cast<string>(), "assert-equal-expected", 51), SuiteCapture.Expected(ours.PropertiesToLoad.Cast<string>(), "assert-equal-actual", 51));
 
         var expected = new List<string>();
         var actual = new List<string>();
@@ -76,6 +76,6 @@ public sealed class SearcherProjectionStateComparisonTests : IClassFixture<TestD
 
         // Preserve order and casing: Microsoft's Contains("ADsPath") check is
         // case-sensitive even though LDAP attribute names are case-insensitive.
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 79), SuiteCapture.Expected(actual, "assert-equal-actual", 79));
     }
 }

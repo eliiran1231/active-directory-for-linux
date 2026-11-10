@@ -45,8 +45,8 @@ public sealed class CompatibilityVlvResponseComparisonTests : IClassFixture<Test
         var actualNames = actualResults.Cast<Ours.SearchResult>()
             .Select(row => row.Properties["samaccountname"][0]?.ToString()).ToArray();
         Assert.Single(expectedNames);
-        Assert.Equal(expectedNames, actualNames);
-        Assert.Equal(3, expectedView.ApproximateTotal);
+        Assert.Equal(SuiteCapture.Expected(expectedNames, "assert-equal-expected", 48), SuiteCapture.Expected(actualNames, "assert-equal-actual", 48));
+        Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 49), SuiteCapture.Expected(expectedView.ApproximateTotal, "assert-equal-actual", 49));
 
         var comparison = new Comparison($"Live VLV response at {offset} of three rows");
         Compare(comparison, "retained after exhaustion", expectedView, actualView);

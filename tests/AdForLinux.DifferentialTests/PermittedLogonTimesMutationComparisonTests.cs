@@ -44,8 +44,8 @@ public sealed class PermittedLogonTimesMutationComparisonTests(ITestOutputHelper
         {
             microsoft.Save();
             ours.Save();
-            Assert.Equal(Convert.ToHexString(initial), ReadMicrosoft(microsoftContext, microsoftName));
-            Assert.Equal(Convert.ToHexString(initial), ReadOurs(ourContext, ourName));
+            Assert.Equal(SuiteCapture.Expected(Convert.ToHexString(initial), "assert-equal-expected", 47), SuiteCapture.Expected(ReadMicrosoft(microsoftContext, microsoftName), "assert-equal-actual", 47));
+            Assert.Equal(SuiteCapture.Expected(Convert.ToHexString(initial), "assert-equal-expected", 48), SuiteCapture.Expected(ReadOurs(ourContext, ourName), "assert-equal-actual", 48));
 
             using var reloadedMicrosoft = reloadBeforeEdit
                 ? Ms.UserPrincipal.FindByIdentity(microsoftContext, Ms.IdentityType.SamAccountName, microsoftName) : null;
@@ -70,7 +70,7 @@ public sealed class PermittedLogonTimesMutationComparisonTests(ITestOutputHelper
                 Assert.NotNull(expectedHours);
                 Assert.NotNull(actualHours);
                 expectedHours[pass] = actualHours[pass] = (byte)(0x30 + pass);
-                Assert.Equal(expectedHours, actualHours);
+                Assert.Equal(SuiteCapture.Expected(expectedHours, "assert-equal-expected", 73), SuiteCapture.Expected(actualHours, "assert-equal-actual", 73));
                 if (reassign)
                 {
                     expectedPrincipal.PermittedLogonTimes = expectedHours;
@@ -83,12 +83,12 @@ public sealed class PermittedLogonTimesMutationComparisonTests(ITestOutputHelper
                 // cannot prove that the changed bytes reached the directory.
                 expectedSnapshots.Add(ReadMicrosoft(microsoftContext, microsoftName));
                 actualSnapshots.Add(ReadOurs(ourContext, ourName));
-                Assert.Equal(Convert.ToHexString(expectedHours), expectedSnapshots[^1]);
+                Assert.Equal(SuiteCapture.Expected(Convert.ToHexString(expectedHours), "assert-equal-expected", 86), SuiteCapture.Expected(expectedSnapshots[^1], "assert-equal-actual", 86));
             }
 
             output.WriteLine($"Microsoft saved bitmaps: {string.Join("; ", expectedSnapshots)}");
             output.WriteLine($"AdForLinux saved bitmaps: {string.Join("; ", actualSnapshots)}");
-            Assert.Equal(expectedSnapshots, actualSnapshots);
+            Assert.Equal(SuiteCapture.Expected(expectedSnapshots, "assert-equal-expected", 91), SuiteCapture.Expected(actualSnapshots, "assert-equal-actual", 91));
         }
         finally
         {

@@ -65,9 +65,9 @@ public sealed class SchemaFilterBindingComparisonTests
         expectedFirst.Add("group");
         actualFirst.Add("group");
 
-        Assert.Equal(Snapshot(expectedFirst), Snapshot(actualFirst));
+        Assert.Equal(SuiteCapture.Expected(Snapshot(expectedFirst), "assert-equal-expected", 68), SuiteCapture.Expected(Snapshot(actualFirst), "assert-equal-actual", 68));
         Assert.Empty(Snapshot(expectedOther));
-        Assert.Equal(Snapshot(expectedOther), Snapshot(actualOther));
+        Assert.Equal(SuiteCapture.Expected(Snapshot(expectedOther), "assert-equal-expected", 70), SuiteCapture.Expected(Snapshot(actualOther), "assert-equal-actual", 70));
     }
 
     private static string Snapshot(IEnumerable filter) => string.Join("|", filter.Cast<string?>());

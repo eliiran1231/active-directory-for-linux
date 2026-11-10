@@ -39,9 +39,9 @@ public sealed class CompatibilityDirectoryResultCursorComparisonTests(TestDataFi
                     if (position == "positioned")
                     {
                         Assert.Null(expectedState.Error);
-                        Assert.Equal(data.UserDn, expectedState.Dn, StringComparer.OrdinalIgnoreCase);
+                        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 42), SuiteCapture.Expected(expectedState.Dn, "assert-equal-actual", 42), StringComparer.OrdinalIgnoreCase);
                     }
-                    else Assert.Equal(typeof(InvalidOperationException), expectedState.Error);
+                    else Assert.Equal(SuiteCapture.Expected(typeof(InvalidOperationException), "assert-equal-expected", 44), SuiteCapture.Expected(expectedState.Error, "assert-equal-actual", 44));
                     comparison.Check($"read {attempt}: error", expectedState.Error, actualState.Error)
                         .Check($"read {attempt}: DN", expectedState.Dn?.ToUpperInvariant(), actualState.Dn?.ToUpperInvariant());
                 }
@@ -68,8 +68,8 @@ public sealed class CompatibilityDirectoryResultCursorComparisonTests(TestDataFi
                 // would not exercise the materialized collection state.
                 var expectedCount = expected.Count;
                 var actualCount = actual.Count;
-                Assert.Equal(1, expectedCount);
-                Assert.Equal(1, actualCount);
+                Assert.Equal(SuiteCapture.Expected(1, "assert-equal-expected", 71), SuiteCapture.Expected(expectedCount, "assert-equal-actual", 71));
+                Assert.Equal(SuiteCapture.Expected(1, "assert-equal-expected", 72), SuiteCapture.Expected(actualCount, "assert-equal-actual", 72));
             }
             var left = expected.GetEnumerator();
             var right = actual.GetEnumerator();
@@ -85,11 +85,11 @@ public sealed class CompatibilityDirectoryResultCursorComparisonTests(TestDataFi
 
                 // Verify the oracle's complete rewind even when the clone
                 // rejected Reset. Only replay the clone if its Reset succeeded.
-                Assert.Equal(typeof(InvalidOperationException), ReadCurrent(left).Error);
+                Assert.Equal(SuiteCapture.Expected(typeof(InvalidOperationException), "assert-equal-expected", 88), SuiteCapture.Expected(ReadCurrent(left).Error, "assert-equal-actual", 88));
                 Assert.True(left.MoveNext());
                 var replay = ReadCurrent(left);
                 Assert.Null(replay.Error);
-                Assert.Equal(data.UserDn, replay.Dn, StringComparer.OrdinalIgnoreCase);
+                Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 92), SuiteCapture.Expected(replay.Dn, "assert-equal-actual", 92), StringComparer.OrdinalIgnoreCase);
                 Assert.False(left.MoveNext());
                 if (rightError is null)
                 {
@@ -127,11 +127,11 @@ public sealed class CompatibilityDirectoryResultCursorComparisonTests(TestDataFi
         // before even the empty-result probe. It does not materialize the
         // collections under test or share an outstanding native search handle.
         using (var probe = leftSearch.FindAll())
-            Assert.Equal(new[] { data.UserDn }, probe.Cast<Ms.SearchResult>().Select(row =>
-                (string)row.Properties["distinguishedName"][0]!), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(new[] { data.UserDn }, "assert-equal-expected", 130), SuiteCapture.Expected(probe.Cast<Ms.SearchResult>().Select(row =>
+                (string)row.Properties["distinguishedName"][0]!), "assert-equal-actual", 130), StringComparer.OrdinalIgnoreCase);
         using (var probe = rightSearch.FindAll())
-            Assert.Equal(new[] { data.UserDn }, probe.Cast<Ours.SearchResult>().Select(row =>
-                (string)row.Properties["distinguishedName"][0]!), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(new[] { data.UserDn }, "assert-equal-expected", 133), SuiteCapture.Expected(probe.Cast<Ours.SearchResult>().Select(row =>
+                (string)row.Properties["distinguishedName"][0]!), "assert-equal-actual", 133), StringComparer.OrdinalIgnoreCase);
         if (empty)
         {
             leftSearch.Filter = "(!(objectClass=*))";

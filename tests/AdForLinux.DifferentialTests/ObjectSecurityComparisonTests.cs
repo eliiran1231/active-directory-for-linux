@@ -178,9 +178,9 @@ public class ObjectSecurityComparisonTests : IClassFixture<ObjectSecurityTestFix
             }
 
             var after = ReadOurNonDaclSections();
-            Assert.Equal(before.Owner, after.Owner);
-            Assert.Equal(before.Group, after.Group);
-            Assert.Equal(before.Sacl, after.Sacl);
+            Assert.Equal(SuiteCapture.Expected(before.Owner, "assert-equal-expected", 181), SuiteCapture.Expected(after.Owner, "assert-equal-actual", 181));
+            Assert.Equal(SuiteCapture.Expected(before.Group, "assert-equal-expected", 182), SuiteCapture.Expected(after.Group, "assert-equal-actual", 182));
+            Assert.Equal(SuiteCapture.Expected(before.Sacl, "assert-equal-expected", 183), SuiteCapture.Expected(after.Sacl, "assert-equal-actual", 183));
         }
         finally
         {

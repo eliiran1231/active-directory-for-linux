@@ -35,8 +35,8 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
         using var actualUser = Ours.UserPrincipal.FindByIdentity(actualContext, Ours.IdentityType.DistinguishedName, data.UserDn);
         Assert.NotNull(expectedUser);
         Assert.NotNull(actualUser);
-        Assert.Equal(data.UserDn, expectedUser.DistinguishedName, ignoreCase: true);
-        Assert.Equal(data.UserDn, actualUser.DistinguishedName, ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 38), SuiteCapture.Expected(expectedUser.DistinguishedName, "assert-equal-actual", 38), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 39), SuiteCapture.Expected(actualUser.DistinguishedName, "assert-equal-actual", 39), ignoreCase: true);
         var expectedOwned = new OwnedGroup("ms");
         var actualOwned = new OwnedGroup("our");
         var attempted = new List<OwnedGroup>();
@@ -58,8 +58,8 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
             using var actual = Ours.GroupPrincipal.FindByIdentity(actualContext, Ours.IdentityType.DistinguishedName, actualOwned.Dn);
             Assert.NotNull(expected);
             Assert.NotNull(actual);
-            Assert.Equal(expectedOwned.Guid, expected.Guid);
-            Assert.Equal(actualOwned.Guid, actual.Guid);
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.Guid, "assert-equal-expected", 61), SuiteCapture.Expected(expected.Guid, "assert-equal-actual", 61));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Guid, "assert-equal-expected", 62), SuiteCapture.Expected(actual.Guid, "assert-equal-actual", 62));
             var leftMembers = expected.Members;
             var rightMembers = actual.Members;
             Assert.True(leftMembers.Contains(expectedUser));
@@ -92,8 +92,8 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
             using var freshActual = Ours.GroupPrincipal.FindByIdentity(actualContext, Ours.IdentityType.DistinguishedName, actualOwned.Dn);
             Assert.NotNull(freshExpected);
             Assert.NotNull(freshActual);
-            Assert.Equal(!externalRemove, freshExpected.Members.Contains(expectedUser));
-            Assert.Equal(!externalRemove, freshActual.Members.Contains(actualUser));
+            Assert.Equal(SuiteCapture.Expected(!externalRemove, "assert-equal-expected", 95), SuiteCapture.Expected(freshExpected.Members.Contains(expectedUser), "assert-equal-actual", 95));
+            Assert.Equal(SuiteCapture.Expected(!externalRemove, "assert-equal-expected", 96), SuiteCapture.Expected(freshActual.Members.Contains(actualUser), "assert-equal-actual", 96));
             if (!externalRemove)
             {
                 Assert.True(leftContains);
@@ -157,7 +157,7 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
     {
         using var writer = Entry(owned.Dn);
         RequireOwned(writer, owned);
-        Assert.Equal(userDn, Assert.IsType<string>(Assert.Single(writer.Properties["member"].Cast<object>())), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(userDn, "assert-equal-expected", 160), SuiteCapture.Expected(Assert.IsType<string>(Assert.Single(writer.Properties["member"].Cast<object>())), "assert-equal-actual", 160), ignoreCase: true);
         writer.Properties["member"].Remove(userDn);
         writer.CommitChanges();
     }
@@ -167,7 +167,7 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
         using var probe = Entry(owned.Dn);
         RequireOwned(probe, owned);
         var values = probe.Properties["member"].Cast<string>().ToArray();
-        if (present) Assert.Equal(userDn, Assert.Single(values), ignoreCase: true);
+        if (present) Assert.Equal(SuiteCapture.Expected(userDn, "assert-equal-expected", 170), SuiteCapture.Expected(Assert.Single(values), "assert-equal-actual", 170), ignoreCase: true);
         else Assert.Empty(values);
     }
 
@@ -183,10 +183,10 @@ public sealed class CompatibilitySmallGroupMembershipCacheComparisonTests(TestDa
 
     private static void RequireOwned(MsDirectory.DirectoryEntry entry, OwnedGroup owned)
     {
-        Assert.Equal(owned.Dn, Assert.IsType<string>(entry.Properties["distinguishedName"].Value), ignoreCase: true);
-        Assert.Equal(owned.Sam, Assert.IsType<string>(entry.Properties["sAMAccountName"].Value));
-        Assert.Equal(owned.Marker, Assert.IsType<string>(entry.Properties["description"].Value));
-        if (owned.Guid is { } expectedGuid) Assert.Equal(expectedGuid, entry.Guid);
+        Assert.Equal(SuiteCapture.Expected(owned.Dn, "assert-equal-expected", 186), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["distinguishedName"].Value), "assert-equal-actual", 186), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(owned.Sam, "assert-equal-expected", 187), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["sAMAccountName"].Value), "assert-equal-actual", 187));
+        Assert.Equal(SuiteCapture.Expected(owned.Marker, "assert-equal-expected", 188), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["description"].Value), "assert-equal-actual", 188));
+        if (owned.Guid is { } expectedGuid) Assert.Equal(SuiteCapture.Expected(expectedGuid, "assert-equal-expected", 189), SuiteCapture.Expected(entry.Guid, "assert-equal-actual", 189));
     }
 
     private static MsDirectory.DirectoryEntry Entry(string dn) => new(DifferentialSettings.PathFor(dn),

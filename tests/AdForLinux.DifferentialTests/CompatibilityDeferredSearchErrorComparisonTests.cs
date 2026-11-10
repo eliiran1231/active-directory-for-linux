@@ -39,8 +39,8 @@ public sealed class CompatibilityDeferredSearchErrorComparisonTests : IClassFixt
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword,
             DifferentialSettings.OurAuthenticationTypes);
         // Fail on setup connectivity before attributing any difference to a filter.
-        Assert.Equal(_data.UserName, expectedRoot.Properties["sAMAccountName"].Value);
-        Assert.Equal(_data.UserName, actualRoot.Properties["sAMAccountName"].Value);
+        Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 42), SuiteCapture.Expected(expectedRoot.Properties["sAMAccountName"].Value, "assert-equal-actual", 42));
+        Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 43), SuiteCapture.Expected(actualRoot.Properties["sAMAccountName"].Value, "assert-equal-actual", 43));
         using var expected = new Ms.DirectorySearcher(expectedRoot, filter)
         {
             SearchScope = Ms.SearchScope.Base, CacheResults = cache, Asynchronous = asynchronous,
@@ -62,11 +62,11 @@ public sealed class CompatibilityDeferredSearchErrorComparisonTests : IClassFixt
         // A failing connection or unsupported option must not pass just because
         // both sides failed similarly. The recovery must execute an empty search.
         Assert.True(leftRecovery.Completed, "Microsoft recovery did not complete: " + leftRecovery);
-        Assert.Equal(0, leftRecovery.Rows);
+        Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 65), SuiteCapture.Expected(leftRecovery.Rows, "assert-equal-actual", 65));
         if (filter == EmptyFilter)
         {
             Assert.True(left.Completed, "Microsoft valid empty control failed: " + left);
-            Assert.Equal(0, left.Rows);
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 69), SuiteCapture.Expected(left.Rows, "assert-equal-actual", 69));
         }
     }
 

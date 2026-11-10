@@ -48,14 +48,14 @@ public sealed class PropertyNamesOnlyComparisonTests : IClassFixture<TestDataFix
         var microsoftShape = Snapshot(microsoft.Properties);
         var ourShape = Snapshot(ours.Properties);
 
-        Assert.Equal(microsoftShape.Keys, ourShape.Keys);
+        Assert.Equal(SuiteCapture.Expected(microsoftShape.Keys, "assert-equal-expected", 51), SuiteCapture.Expected(ourShape.Keys, "assert-equal-actual", 51));
         foreach (var propertyName in microsoftShape.Keys)
         {
-            Assert.Equal(microsoftShape[propertyName], ourShape[propertyName]);
+            Assert.Equal(SuiteCapture.Expected(microsoftShape[propertyName], "assert-equal-expected", 54), SuiteCapture.Expected(ourShape[propertyName], "assert-equal-actual", 54));
         }
 
-        Assert.Equal(0, ourShape["displayname"]);
-        Assert.Equal(0, ourShape["description"]);
+        Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 57), SuiteCapture.Expected(ourShape["displayname"], "assert-equal-actual", 57));
+        Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 58), SuiteCapture.Expected(ourShape["description"], "assert-equal-actual", 58));
     }
 
     [Fact]
@@ -92,13 +92,13 @@ public sealed class PropertyNamesOnlyComparisonTests : IClassFixture<TestDataFix
         var microsoftShape = Snapshot(microsoft.Properties);
         var ourShape = Snapshot(ours.Properties);
 
-        Assert.Equal(microsoftShape.Keys, ourShape.Keys);
+        Assert.Equal(SuiteCapture.Expected(microsoftShape.Keys, "assert-equal-expected", 95), SuiteCapture.Expected(ourShape.Keys, "assert-equal-actual", 95));
         foreach (var propertyName in microsoftShape.Keys)
         {
-            Assert.Equal(microsoftShape[propertyName], ourShape[propertyName]);
+            Assert.Equal(SuiteCapture.Expected(microsoftShape[propertyName], "assert-equal-expected", 98), SuiteCapture.Expected(ourShape[propertyName], "assert-equal-actual", 98));
         }
 
-        Assert.Equal(0, ourShape["samaccountname"]);
+        Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 101), SuiteCapture.Expected(ourShape["samaccountname"], "assert-equal-actual", 101));
         Assert.False(ours.Properties.Contains("description"));
     }
 

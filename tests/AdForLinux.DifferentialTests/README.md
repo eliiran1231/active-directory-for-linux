@@ -51,3 +51,11 @@ fixing differences; intentional portable boundaries are described in the
 
 Old batch-by-batch results are available in
 [Git history](https://github.com/eliiran1231/active-directory-for-linux/tree/5056d5f/tests/AdForLinux.DifferentialTests).
+
+## Suite-wide observation capture
+
+Existing comparisons and equality assertions can also emit opt-in, private,
+redacted observations without replacing their assertions. See the
+[suite-wide capture guide](../differential-replay/suite-wide/README.md) for
+Windows capture, source coverage, privacy, provenance and Linux replay limits.
+This does not authorize live execution or broaden the offline allowlist.

@@ -207,7 +207,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
 
             var msState = ExerciseMembershipState(msGroup, msUser, msOther);
             var ourState = ExerciseMembershipState(ourGroup, ourUser, ourOther);
-            Assert.Equal(msState, ourState);
+            Assert.Equal(SuiteCapture.Expected(msState, "assert-equal-expected", 210), SuiteCapture.Expected(ourState, "assert-equal-actual", 210));
 
             using var msUnsaved = new Ms.GroupPrincipal(msContext, $"unsaved-{suffix}");
             using var ourUnsaved = new Ours.GroupPrincipal(ourContext, $"unsaved-{suffix}");
@@ -224,8 +224,8 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
             msUnsaved.Dispose();
             ourUnsaved.Dispose();
             Assert.Equal(
-                Record.Exception(() => _ = msMembers.Count)?.GetType().Name,
-                Record.Exception(() => _ = ourMembers.Count)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => _ = msMembers.Count)?.GetType().Name, "assert-equal-expected", 226),
+                SuiteCapture.Expected(Record.Exception(() => _ = ourMembers.Count)?.GetType().Name, "assert-equal-actual", 226));
         }
         finally
         {
@@ -476,7 +476,7 @@ public class GroupPrincipalComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(ourUser);
         Assert.NotNull(msDomainUsers);
         Assert.NotNull(ourDomainUsers);
-        Assert.Equal(msUser!.IsMemberOf(msDomainUsers!), ourUser!.IsMemberOf(ourDomainUsers!));
+        Assert.Equal(SuiteCapture.Expected(msUser!.IsMemberOf(msDomainUsers!), "assert-equal-expected", 479), SuiteCapture.Expected(ourUser!.IsMemberOf(ourDomainUsers!), "assert-equal-actual", 479));
         Assert.False(ourUser.IsMemberOf(ourDomainUsers));
 
         using (var rawGroup = Open(msDomainUsers.DistinguishedName))

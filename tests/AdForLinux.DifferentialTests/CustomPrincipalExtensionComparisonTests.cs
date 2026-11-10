@@ -85,21 +85,21 @@ public sealed class CustomPrincipalExtensionComparisonTests
         var ourContextRaw = typeof(Ours.Principal).GetProperty(
             "ContextRaw", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
 
-        Assert.Equal(microsoftContextRaw.CanRead, ourContextRaw.CanRead);
-        Assert.Equal(microsoftContextRaw.CanWrite, ourContextRaw.CanWrite);
-        Assert.Equal(microsoftContextRaw.GetMethod!.IsFamilyOrAssembly,
-            ourContextRaw.GetMethod!.IsFamilyOrAssembly);
-        Assert.Equal(microsoftContextRaw.SetMethod!.IsFamilyOrAssembly,
-            ourContextRaw.SetMethod!.IsFamilyOrAssembly);
+        Assert.Equal(SuiteCapture.Expected(microsoftContextRaw.CanRead, "assert-equal-expected", 88), SuiteCapture.Expected(ourContextRaw.CanRead, "assert-equal-actual", 88));
+        Assert.Equal(SuiteCapture.Expected(microsoftContextRaw.CanWrite, "assert-equal-expected", 89), SuiteCapture.Expected(ourContextRaw.CanWrite, "assert-equal-actual", 89));
+        Assert.Equal(SuiteCapture.Expected(microsoftContextRaw.GetMethod!.IsFamilyOrAssembly, "assert-equal-expected", 90),
+            SuiteCapture.Expected(ourContextRaw.GetMethod!.IsFamilyOrAssembly, "assert-equal-actual", 90));
+        Assert.Equal(SuiteCapture.Expected(microsoftContextRaw.SetMethod!.IsFamilyOrAssembly, "assert-equal-expected", 92),
+            SuiteCapture.Expected(ourContextRaw.SetMethod!.IsFamilyOrAssembly, "assert-equal-actual", 92));
 
         Assert.Equal(
-            typeof(Ms.Principal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes) is not null,
-            typeof(Ours.Principal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes) is not null);
+            SuiteCapture.Expected(typeof(Ms.Principal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes) is not null, "assert-equal-expected", 95),
+            SuiteCapture.Expected(typeof(Ours.Principal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes) is not null, "assert-equal-actual", 95));
         Assert.Equal(
-            typeof(Ms.UserPrincipal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes)!.DeclaringType,
-            typeof(Ours.UserPrincipal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes)!.DeclaringType == typeof(Ours.UserPrincipal)
+            SuiteCapture.Expected(typeof(Ms.UserPrincipal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes)!.DeclaringType, "assert-equal-expected", 98),
+            SuiteCapture.Expected(typeof(Ours.UserPrincipal).GetMethod("GetAuthorizationGroups", Type.EmptyTypes)!.DeclaringType == typeof(Ours.UserPrincipal)
                 ? typeof(Ms.UserPrincipal)
-                : null);
+                : null, "assert-equal-actual", 98));
 
         var microsoftProperty = new Ms.DirectoryPropertyAttribute("description")
         {
@@ -109,7 +109,7 @@ public sealed class CustomPrincipalExtensionComparisonTests
         {
             Context = Ours.ContextType.Domain,
         };
-        Assert.Equal(microsoftProperty.Context?.ToString(), ourProperty.Context?.ToString());
+        Assert.Equal(SuiteCapture.Expected(microsoftProperty.Context?.ToString(), "assert-equal-expected", 112), SuiteCapture.Expected(ourProperty.Context?.ToString(), "assert-equal-actual", 112));
     }
 
     [Fact]
@@ -128,14 +128,14 @@ public sealed class CustomPrincipalExtensionComparisonTests
         var microsoft = ExerciseMicrosoft(microsoftName);
         var ours = ExerciseOurs(ourName);
 
-        Assert.Equal(microsoft.RdnPrefix, ours.RdnPrefix);
-        Assert.Equal(microsoft.StructuralObjectClass, ours.StructuralObjectClass);
-        Assert.Equal(microsoft.HasDeclaredObjectClass, ours.HasDeclaredObjectClass);
-        Assert.Equal(microsoft.Badge, ours.Badge);
-        Assert.Equal(microsoft.PhoneNumbers, ours.PhoneNumbers);
-        Assert.Equal(microsoft.IdentityResultType, ours.IdentityResultType);
-        Assert.Equal(microsoft.QueryResultType, ours.QueryResultType);
-        Assert.Equal(microsoft.StringValue, ours.StringValue);
+        Assert.Equal(SuiteCapture.Expected(microsoft.RdnPrefix, "assert-equal-expected", 131), SuiteCapture.Expected(ours.RdnPrefix, "assert-equal-actual", 131));
+        Assert.Equal(SuiteCapture.Expected(microsoft.StructuralObjectClass, "assert-equal-expected", 132), SuiteCapture.Expected(ours.StructuralObjectClass, "assert-equal-actual", 132));
+        Assert.Equal(SuiteCapture.Expected(microsoft.HasDeclaredObjectClass, "assert-equal-expected", 133), SuiteCapture.Expected(ours.HasDeclaredObjectClass, "assert-equal-actual", 133));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Badge, "assert-equal-expected", 134), SuiteCapture.Expected(ours.Badge, "assert-equal-actual", 134));
+        Assert.Equal(SuiteCapture.Expected(microsoft.PhoneNumbers, "assert-equal-expected", 135), SuiteCapture.Expected(ours.PhoneNumbers, "assert-equal-actual", 135));
+        Assert.Equal(SuiteCapture.Expected(microsoft.IdentityResultType, "assert-equal-expected", 136), SuiteCapture.Expected(ours.IdentityResultType, "assert-equal-actual", 136));
+        Assert.Equal(SuiteCapture.Expected(microsoft.QueryResultType, "assert-equal-expected", 137), SuiteCapture.Expected(ours.QueryResultType, "assert-equal-actual", 137));
+        Assert.Equal(SuiteCapture.Expected(microsoft.StringValue, "assert-equal-expected", 138), SuiteCapture.Expected(ours.StringValue, "assert-equal-actual", 138));
         Assert.True(microsoft.ContextRawRoundTrip);
         Assert.True(ours.ContextRawRoundTrip);
     }
@@ -177,7 +177,7 @@ public sealed class CustomPrincipalExtensionComparisonTests
             using var entry = (DirectoryEntry)found.GetUnderlyingObject();
             Assert.IsType<MicrosoftCustomUser>(found);
             Assert.IsType<MicrosoftCustomUser>(queryResult);
-            Assert.Equal(name, found.ToString());
+            Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 180), SuiteCapture.Expected(found.ToString(), "assert-equal-actual", 180));
 
             return Observe(
                 found.DistinguishedName!, found.StructuralObjectClass!,
@@ -230,7 +230,7 @@ public sealed class CustomPrincipalExtensionComparisonTests
             using var entry = (AdForLinux.DirectoryServices.DirectoryEntry)found.GetUnderlyingObject()!;
             Assert.IsType<OurCustomUser>(found);
             Assert.IsType<OurCustomUser>(queryResult);
-            Assert.Equal(name, found.ToString());
+            Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 233), SuiteCapture.Expected(found.ToString(), "assert-equal-actual", 233));
 
             return Observe(
                 found.DistinguishedName!, found.StructuralObjectClass!,

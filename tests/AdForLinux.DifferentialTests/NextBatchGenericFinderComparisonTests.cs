@@ -23,8 +23,8 @@ public sealed class NextBatchGenericFinderComparisonTests
         Assert.NotNull(expected);
         if (subtype == "user") Assert.IsType<ArgumentNullException>(expected); // valid subtype control
         else Assert.IsType<ArgumentException>(expected);
-        Assert.Equal((expected.GetType().Name, (expected as ArgumentException)?.ParamName),
-            (actual?.GetType().Name, (actual as ArgumentException)?.ParamName));
+        Assert.Equal(SuiteCapture.Expected((expected.GetType().Name, (expected as ArgumentException)?.ParamName), "assert-equal-expected", 26),
+            SuiteCapture.Expected((actual?.GetType().Name, (actual as ArgumentException)?.ParamName), "assert-equal-actual", 26));
     }
 
     private sealed class MicrosoftFinder : Ms.AuthenticablePrincipal

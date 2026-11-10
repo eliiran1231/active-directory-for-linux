@@ -67,8 +67,8 @@ public sealed class PropertyValueCacheComparisonTests(TestDataFixture data, ITes
             if (collectionOverload) actual.AddRange((Ours.PropertyValueCollection)null!);
             else actual.AddRange((object[])null!);
         });
-        Assert.Equal("sentinel", expected.Value);
-        Assert.Equal(expected.Value, actual.Value);
+        Assert.Equal(SuiteCapture.Expected("sentinel", "assert-equal-expected", 70), SuiteCapture.Expected(expected.Value, "assert-equal-actual", 70));
+        Assert.Equal(SuiteCapture.Expected(expected.Value, "assert-equal-expected", 71), SuiteCapture.Expected(actual.Value, "assert-equal-actual", 71));
         Compare(Describe(expectedError), Describe(actualError));
     }
 
@@ -102,8 +102,8 @@ public sealed class PropertyValueCacheComparisonTests(TestDataFixture data, ITes
                 DifferentialSettings.OurAuthenticationTypes);
             var expectedValues = microsoft.Properties["description"];
             var actualValues = ours.Properties["description"];
-            Assert.Equal("persisted-before-failure", expectedValues.Value);
-            Assert.Equal(expectedValues.Value, actualValues.Value);
+            Assert.Equal(SuiteCapture.Expected("persisted-before-failure", "assert-equal-expected", 105), SuiteCapture.Expected(expectedValues.Value, "assert-equal-actual", 105));
+            Assert.Equal(SuiteCapture.Expected(expectedValues.Value, "assert-equal-expected", 106), SuiteCapture.Expected(actualValues.Value, "assert-equal-actual", 106));
 
             var expectedError = Record.Exception(() =>
             {
@@ -152,7 +152,7 @@ public sealed class PropertyValueCacheComparisonTests(TestDataFixture data, ITes
         if (operation == "reset")
         {
             Assert.True(enumerator.MoveNext());
-            Assert.Equal("first", enumerator.Current);
+            Assert.Equal(SuiteCapture.Expected("first", "assert-equal-expected", 155), SuiteCapture.Expected(enumerator.Current, "assert-equal-actual", 155));
             var reset = Observe(() => { enumerator.Reset(); return "reset"; });
             var current = Observe(() => enumerator.Current);
             return $"{reset}; current={current}; next={Observe(() => enumerator.MoveNext())}; value={Observe(() => enumerator.Current)}";
@@ -178,7 +178,7 @@ public sealed class PropertyValueCacheComparisonTests(TestDataFixture data, ITes
     {
         output.WriteLine($"Microsoft: {expected}");
         output.WriteLine($"AdForLinux: {actual}");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 181), SuiteCapture.Expected(actual, "assert-equal-actual", 181));
     }
 
     private static Ms.DirectoryEntry MicrosoftEntry(string dn) => new(

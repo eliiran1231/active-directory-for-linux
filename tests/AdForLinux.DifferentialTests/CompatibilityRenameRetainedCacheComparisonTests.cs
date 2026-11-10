@@ -43,8 +43,8 @@ public sealed class CompatibilityRenameRetainedCacheComparisonTests
             var actualProperties = actual.Properties;
             var expectedCn = expectedProperties["cn"];
             var actualCn = actualProperties["cn"];
-            Assert.Equal(expectedOwned.OldCn, Assert.Single(expectedCn.Cast<object>()));
-            Assert.Equal(actualOwned.OldCn, Assert.Single(actualCn.Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.OldCn, "assert-equal-expected", 46), SuiteCapture.Expected(Assert.Single(expectedCn.Cast<object>()), "assert-equal-actual", 46));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.OldCn, "assert-equal-expected", 47), SuiteCapture.Expected(Assert.Single(actualCn.Cast<object>()), "assert-equal-actual", 47));
             Assert.Same(expectedProperties, expected.Properties);
             Assert.Same(actualProperties, actual.Properties);
 
@@ -55,8 +55,8 @@ public sealed class CompatibilityRenameRetainedCacheComparisonTests
             // managed caches. A stale local cn is not a failed rename result.
             expectedOwned.VerifyMoved();
             actualOwned.VerifyMoved();
-            Assert.Equal("CN=" + expectedOwned.NewCn, expected.Name, ignoreCase: true);
-            Assert.Equal("CN=" + actualOwned.NewCn, actual.Name, ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected("CN=" + expectedOwned.NewCn, "assert-equal-expected", 58), SuiteCapture.Expected(expected.Name, "assert-equal-actual", 58), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected("CN=" + actualOwned.NewCn, "assert-equal-expected", 59), SuiteCapture.Expected(actual.Name, "assert-equal-actual", 59), ignoreCase: true);
             Assert.EndsWith("/" + expectedOwned.NewDn, expected.Path, StringComparison.OrdinalIgnoreCase);
             Assert.EndsWith("/" + actualOwned.NewDn, actual.Path, StringComparison.OrdinalIgnoreCase);
             using var expectedParent = expected.Parent;
@@ -75,10 +75,10 @@ public sealed class CompatibilityRenameRetainedCacheComparisonTests
             var actualValue = Assert.IsType<string>(Assert.Single(actualCnAfter.Cast<object>()));
             // Strong oracle premise: the non-caching path retains the old
             // managed value; the caching control reads the new server value.
-            Assert.Equal(!usePropertyCache, ReferenceEquals(expectedProperties, expectedAfter));
-            Assert.Equal(usePropertyCache ? expectedOwned.NewCn : expectedOwned.OldCn, expectedValue);
-            Assert.Equal(expectedOwned.OldCn, Assert.Single(expectedCn.Cast<object>()));
-            Assert.Equal(actualOwned.OldCn, Assert.Single(actualCn.Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(!usePropertyCache, "assert-equal-expected", 78), SuiteCapture.Expected(ReferenceEquals(expectedProperties, expectedAfter), "assert-equal-actual", 78));
+            Assert.Equal(SuiteCapture.Expected(usePropertyCache ? expectedOwned.NewCn : expectedOwned.OldCn, "assert-equal-expected", 79), SuiteCapture.Expected(expectedValue, "assert-equal-actual", 79));
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.OldCn, "assert-equal-expected", 80), SuiteCapture.Expected(Assert.Single(expectedCn.Cast<object>()), "assert-equal-actual", 80));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.OldCn, "assert-equal-expected", 81), SuiteCapture.Expected(Assert.Single(actualCn.Cast<object>()), "assert-equal-actual", 81));
             new Comparison($"Rename managed cache: UsePropertyCache={usePropertyCache}")
                 .Check("same property dictionary", ReferenceEquals(expectedProperties, expectedAfter),
                     ReferenceEquals(actualProperties, actualAfter))
@@ -138,9 +138,9 @@ public sealed class CompatibilityRenameRetainedCacheComparisonTests
             child.CommitChanges();
             using var persisted = Open(OldDn);
             RefreshIdentity(persisted);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, persisted.Properties["description"].Value);
-            Assert.Equal(OldCn, persisted.Properties["cn"].Value);
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 141), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 141));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 142), SuiteCapture.Expected(persisted.Properties["description"].Value, "assert-equal-actual", 142));
+            Assert.Equal(SuiteCapture.Expected(OldCn, "assert-equal-expected", 143), SuiteCapture.Expected(persisted.Properties["cn"].Value, "assert-equal-actual", 143));
             Assert.NotEqual(Guid.Empty, persisted.Guid);
             _identity = persisted.Guid;
         }
@@ -150,11 +150,11 @@ public sealed class CompatibilityRenameRetainedCacheComparisonTests
             CompatibilityOwnedDirectoryObjects.RequireAbsent(OldDn);
             using var persisted = Open(NewDn);
             RefreshIdentity(persisted);
-            Assert.Equal(NewDn, (string)persisted.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(NewCn, persisted.Properties["cn"].Value);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, persisted.Properties["description"].Value);
-            Assert.Equal(_identity, persisted.Guid);
+            Assert.Equal(SuiteCapture.Expected(NewDn, "assert-equal-expected", 153), SuiteCapture.Expected((string)persisted.Properties["distinguishedName"].Value!, "assert-equal-actual", 153), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(NewCn, "assert-equal-expected", 154), SuiteCapture.Expected(persisted.Properties["cn"].Value, "assert-equal-actual", 154));
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 155), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 155));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 156), SuiteCapture.Expected(persisted.Properties["description"].Value, "assert-equal-actual", 156));
+            Assert.Equal(SuiteCapture.Expected(_identity, "assert-equal-expected", 157), SuiteCapture.Expected(persisted.Guid, "assert-equal-actual", 157));
         }
 
         internal void Cleanup(List<Exception> errors)

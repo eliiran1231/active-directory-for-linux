@@ -31,7 +31,7 @@ public sealed class NativeGuidRepresentationComparisonTests(TestDataFixture data
         // NativeGuid is a provider string, so parsing/normalizing it would hide
         // formatting and byte-order differences that callers can observe.
         Assert.NotEqual(Guid.Empty, microsoft.Guid);
-        Assert.Equal(microsoft.Guid, ours.Guid);
-        Assert.Equal(microsoft.NativeGuid, ours.NativeGuid);
+        Assert.Equal(SuiteCapture.Expected(microsoft.Guid, "assert-equal-expected", 34), SuiteCapture.Expected(ours.Guid, "assert-equal-actual", 34));
+        Assert.Equal(SuiteCapture.Expected(microsoft.NativeGuid, "assert-equal-expected", 35), SuiteCapture.Expected(ours.NativeGuid, "assert-equal-actual", 35));
     }
 }

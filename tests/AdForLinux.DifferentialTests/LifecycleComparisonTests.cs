@@ -90,7 +90,7 @@ public class LifecycleComparisonTests
         AssertMatchingDisposedException(
             () => microsoft.GetEnumerator(),
             () => ours.GetEnumerator());
-        Assert.Equal(microsoftEnumerator.MoveNext(), ourEnumerator.MoveNext());
+        Assert.Equal(SuiteCapture.Expected(microsoftEnumerator.MoveNext(), "assert-equal-expected", 93), SuiteCapture.Expected(ourEnumerator.MoveNext(), "assert-equal-actual", 93));
 
         microsoftEnumerator.Dispose();
         ourEnumerator.Dispose();
@@ -149,10 +149,10 @@ public class LifecycleComparisonTests
         var microsoftException = Assert.IsType<ObjectDisposedException>(Record.Exception(microsoft));
         var ourException = Assert.IsType<ObjectDisposedException>(Record.Exception(ours));
         Assert.Equal(
-            microsoftException.ObjectName?.Replace(
+            SuiteCapture.Expected(microsoftException.ObjectName?.Replace(
                 "System.DirectoryServices.AccountManagement",
                 "AdForLinux.DirectoryServices.AccountManagement",
-                StringComparison.Ordinal),
-            ourException.ObjectName);
+                StringComparison.Ordinal), "assert-equal-expected", 151),
+            SuiteCapture.Expected(ourException.ObjectName, "assert-equal-actual", 151));
     }
 }

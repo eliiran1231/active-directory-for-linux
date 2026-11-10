@@ -109,9 +109,9 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         ourUnsaved.SamAccountName = "\t";
         msUnsaved.Description = null;
         ourUnsaved.Description = null;
-        Assert.Equal(msUnsaved.Name, ourUnsaved.Name);
-        Assert.Equal(msUnsaved.SamAccountName, ourUnsaved.SamAccountName);
-        Assert.Equal(msUnsaved.Description, ourUnsaved.Description);
+        Assert.Equal(SuiteCapture.Expected(msUnsaved.Name, "assert-equal-expected", 112), SuiteCapture.Expected(ourUnsaved.Name, "assert-equal-actual", 112));
+        Assert.Equal(SuiteCapture.Expected(msUnsaved.SamAccountName, "assert-equal-expected", 113), SuiteCapture.Expected(ourUnsaved.SamAccountName, "assert-equal-actual", 113));
+        Assert.Equal(SuiteCapture.Expected(msUnsaved.Description, "assert-equal-expected", 114), SuiteCapture.Expected(ourUnsaved.Description, "assert-equal-actual", 114));
 
         using var msPersisted = Ms.UserPrincipal.FindByIdentity(msContext, _data.UserName);
         using var ourPersisted = Ours.UserPrincipal.FindByIdentity(ourContext, _data.UserName);
@@ -131,11 +131,11 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             AssertRequiredNameSetterValidation(msDisposed, ourDisposed, value);
         }
         Assert.Equal(
-            Record.Exception(() => msDisposed.Name = "valid")?.GetType().Name,
-            Record.Exception(() => ourDisposed.Name = "valid")?.GetType().Name);
+            SuiteCapture.Expected(Record.Exception(() => msDisposed.Name = "valid")?.GetType().Name, "assert-equal-expected", 133),
+            SuiteCapture.Expected(Record.Exception(() => ourDisposed.Name = "valid")?.GetType().Name, "assert-equal-actual", 133));
         Assert.Equal(
-            Record.Exception(() => msDisposed.SamAccountName = "valid")?.GetType().Name,
-            Record.Exception(() => ourDisposed.SamAccountName = "valid")?.GetType().Name);
+            SuiteCapture.Expected(Record.Exception(() => msDisposed.SamAccountName = "valid")?.GetType().Name, "assert-equal-expected", 136),
+            SuiteCapture.Expected(Record.Exception(() => ourDisposed.SamAccountName = "valid")?.GetType().Name, "assert-equal-actual", 136));
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var msDeletedName = $"adfl-nm-{suffix}";
@@ -162,11 +162,11 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
                 AssertRequiredNameSetterValidation(msDeleted, ourDeleted, value);
             }
             Assert.Equal(
-                Record.Exception(() => msDeleted.Name = "valid")?.GetType().Name,
-                Record.Exception(() => ourDeleted.Name = "valid")?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => msDeleted.Name = "valid")?.GetType().Name, "assert-equal-expected", 164),
+                SuiteCapture.Expected(Record.Exception(() => ourDeleted.Name = "valid")?.GetType().Name, "assert-equal-actual", 164));
             Assert.Equal(
-                Record.Exception(() => msDeleted.SamAccountName = "valid")?.GetType().Name,
-                Record.Exception(() => ourDeleted.SamAccountName = "valid")?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => msDeleted.SamAccountName = "valid")?.GetType().Name, "assert-equal-expected", 167),
+                SuiteCapture.Expected(Record.Exception(() => ourDeleted.SamAccountName = "valid")?.GetType().Name, "assert-equal-actual", 167));
         }
         finally
         {
@@ -184,13 +184,13 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             Record.Exception(() => microsoft.Name = value));
         var ourName = Assert.IsType<ArgumentNullException>(
             Record.Exception(() => ours.Name = value));
-        Assert.Equal(msName.ParamName, ourName.ParamName);
+        Assert.Equal(SuiteCapture.Expected(msName.ParamName, "assert-equal-expected", 187), SuiteCapture.Expected(ourName.ParamName, "assert-equal-actual", 187));
 
         var msSam = Assert.IsType<ArgumentNullException>(
             Record.Exception(() => microsoft.SamAccountName = value));
         var ourSam = Assert.IsType<ArgumentNullException>(
             Record.Exception(() => ours.SamAccountName = value));
-        Assert.Equal(msSam.ParamName, ourSam.ParamName);
+        Assert.Equal(SuiteCapture.Expected(msSam.ParamName, "assert-equal-expected", 193), SuiteCapture.Expected(ourSam.ParamName, "assert-equal-actual", 193));
     }
 
     private static void DeleteIfPresent(Ms.PrincipalContext context, string name)
@@ -285,11 +285,11 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             var msException = Assert.IsType<ObjectDisposedException>(Record.Exception(microsoft));
             var ourException = Assert.IsType<ObjectDisposedException>(Record.Exception(ours));
             Assert.Equal(
-                msException.ObjectName?.Replace(
+                SuiteCapture.Expected(msException.ObjectName?.Replace(
                     "System.DirectoryServices.AccountManagement",
                     "AdForLinux.DirectoryServices.AccountManagement",
-                    StringComparison.Ordinal),
-                ourException.ObjectName);
+                    StringComparison.Ordinal), "assert-equal-expected", 287),
+                SuiteCapture.Expected(ourException.ObjectName, "assert-equal-actual", 287));
         }
     }
 
@@ -322,11 +322,11 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             // ObjectName is namespace-qualified; normalize the namespace before
             // comparing, same as Disposed_context_members_match_exception_type_and_object_name.
             Assert.Equal(
-                msException.ObjectName?.Replace(
+                SuiteCapture.Expected(msException.ObjectName?.Replace(
                     "System.DirectoryServices.AccountManagement",
                     "AdForLinux.DirectoryServices.AccountManagement",
-                    StringComparison.Ordinal),
-                ourException.ObjectName);
+                    StringComparison.Ordinal), "assert-equal-expected", 324),
+                SuiteCapture.Expected(ourException.ObjectName, "assert-equal-actual", 324));
         }
     }
 
@@ -351,10 +351,10 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             ourGroupDns = groups.Select(group => group.DistinguishedName).ToArray();
         });
 
-        Assert.Equal(msException?.GetType(), ourException?.GetType());
+        Assert.Equal(SuiteCapture.Expected(msException?.GetType(), "assert-equal-expected", 354), SuiteCapture.Expected(ourException?.GetType(), "assert-equal-actual", 354));
         if (msException is null)
         {
-            Assert.Equal(msGroupDns, ourGroupDns);
+            Assert.Equal(SuiteCapture.Expected(msGroupDns, "assert-equal-expected", 357), SuiteCapture.Expected(ourGroupDns, "assert-equal-actual", 357));
         }
     }
 
@@ -368,10 +368,10 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         using var msUser = new Ms.UserPrincipal(msContext);
         using var ourUser = new Ours.UserPrincipal(ourContext);
 
-        Assert.Equal(msComputer.UserCannotChangePassword, ourComputer.UserCannotChangePassword);
+        Assert.Equal(SuiteCapture.Expected(msComputer.UserCannotChangePassword, "assert-equal-expected", 371), SuiteCapture.Expected(ourComputer.UserCannotChangePassword, "assert-equal-actual", 371));
         msComputer.UserCannotChangePassword = true;
         ourComputer.UserCannotChangePassword = true;
-        Assert.Equal(msComputer.UserCannotChangePassword, ourComputer.UserCannotChangePassword);
+        Assert.Equal(SuiteCapture.Expected(msComputer.UserCannotChangePassword, "assert-equal-expected", 374), SuiteCapture.Expected(ourComputer.UserCannotChangePassword, "assert-equal-actual", 374));
 
         Assert.IsType<InvalidOperationException>(
             Record.Exception(() => msUser.ChangePassword("old", "new")));
@@ -389,15 +389,15 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
         Assert.NotNull(msComputer);
         Assert.NotNull(ourComputer);
 
-        Assert.Equal(msComputer!.UserCannotChangePassword, ourComputer!.UserCannotChangePassword);
+        Assert.Equal(SuiteCapture.Expected(msComputer!.UserCannotChangePassword, "assert-equal-expected", 392), SuiteCapture.Expected(ourComputer!.UserCannotChangePassword, "assert-equal-actual", 392));
 
         msComputer.UserCannotChangePassword = true;
         ourComputer.UserCannotChangePassword = true;
         var msSaveException = Record.Exception(msComputer.Save);
         var ourSaveException = Record.Exception(ourComputer.Save);
-        Assert.Equal(msSaveException?.GetType(), ourSaveException?.GetType());
+        Assert.Equal(SuiteCapture.Expected(msSaveException?.GetType(), "assert-equal-expected", 398), SuiteCapture.Expected(ourSaveException?.GetType(), "assert-equal-actual", 398));
         Assert.Null(msSaveException);
-        Assert.Equal(msComputer.UserCannotChangePassword, ourComputer.UserCannotChangePassword);
+        Assert.Equal(SuiteCapture.Expected(msComputer.UserCannotChangePassword, "assert-equal-expected", 400), SuiteCapture.Expected(ourComputer.UserCannotChangePassword, "assert-equal-actual", 400));
 
         Assert.IsType<NotSupportedException>(
             Record.Exception(() => msComputer.ChangePassword("old", "new")));
@@ -442,7 +442,7 @@ public class PrincipalBehaviorComparisonTests : IClassFixture<TestDataFixture>
             () => ourUser!.ChangePassword(_data.UserPassword, "short")));
 
         Assert.Equal(
-            Record.Exception(() => msUser!.SetPassword("short"))?.GetType().Name,
-            Record.Exception(() => ourUser!.SetPassword("short"))?.GetType().Name);
+            SuiteCapture.Expected(Record.Exception(() => msUser!.SetPassword("short"))?.GetType().Name, "assert-equal-expected", 444),
+            SuiteCapture.Expected(Record.Exception(() => ourUser!.SetPassword("short"))?.GetType().Name, "assert-equal-actual", 444));
     }
 }

@@ -42,12 +42,12 @@ public class DirectoryEntryOptionsLiveTests
             DifferentialSettings.OurAuthenticationTypes);
 
         Assert.Equal(
-            microsoftContext.ConnectedServer,
-            ourContext.ConnectedServer,
+            SuiteCapture.Expected(microsoftContext.ConnectedServer, "assert-equal-expected", 44),
+            SuiteCapture.Expected(ourContext.ConnectedServer, "assert-equal-actual", 44),
             ignoreCase: true);
         Assert.Equal(
-            microsoftEntry.Options!.GetCurrentServerName(),
-            ourEntry.Options.GetCurrentServerName(),
+            SuiteCapture.Expected(microsoftEntry.Options!.GetCurrentServerName(), "assert-equal-expected", 48),
+            SuiteCapture.Expected(ourEntry.Options.GetCurrentServerName(), "assert-equal-actual", 48),
             ignoreCase: true);
     }
 
@@ -92,7 +92,7 @@ public class DirectoryEntryOptionsLiveTests
             var children = parent.Children.Cast<Ours.DirectoryEntry>().ToArray();
             try
             {
-                Assert.Equal(ChildCount, children.Length);
+                Assert.Equal(SuiteCapture.Expected(ChildCount, "assert-equal-expected", 95), SuiteCapture.Expected(children.Length, "assert-equal-actual", 95));
             }
             finally
             {

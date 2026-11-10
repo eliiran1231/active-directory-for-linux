@@ -39,7 +39,7 @@ public class PrincipalInsertIdentityComparisonTests
             var microsoft = ObserveMicrosoft(msContext, msNames);
             var ours = ObserveOurs(ourContext, ourNames);
 
-            Assert.Equal(microsoft, ours);
+            Assert.Equal(SuiteCapture.Expected(microsoft, "assert-equal-expected", 42), SuiteCapture.Expected(ours, "assert-equal-actual", 42));
             Assert.All(ours, state =>
             {
                 Assert.True(state.GuidAvailable);
@@ -87,7 +87,7 @@ public class PrincipalInsertIdentityComparisonTests
             using var ourGroups = ourUser.GetGroups(ourContext);
             var oursFound = ourGroups.Any(candidate => candidate.Equals(ourGroup));
 
-            Assert.Equal(microsoftFound, oursFound);
+            Assert.Equal(SuiteCapture.Expected(microsoftFound, "assert-equal-expected", 90), SuiteCapture.Expected(oursFound, "assert-equal-actual", 90));
             Assert.True(oursFound);
         }
         finally

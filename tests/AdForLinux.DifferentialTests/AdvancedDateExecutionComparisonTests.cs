@@ -44,8 +44,8 @@ public sealed class AdvancedDateExecutionComparisonTests(TestDataFixture data) :
             foreach (var principal in results)
                 using (principal) actual.Add(Assert.IsType<string>(principal.DistinguishedName));
 
-        Assert.Equal(expected.OrderBy(dn => dn, StringComparer.OrdinalIgnoreCase),
-            actual.OrderBy(dn => dn, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(SuiteCapture.Expected(expected.OrderBy(dn => dn, StringComparer.OrdinalIgnoreCase), "assert-equal-expected", 47),
+            SuiteCapture.Expected(actual.OrderBy(dn => dn, StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 47), StringComparer.OrdinalIgnoreCase);
         // Prevent matching empty results from masking a broken query path.
         if (method != "LastBadPasswordAttempt" &&
             ((year == 2000 && match.StartsWith("Greater")) || (year == 2100 && match.StartsWith("Less"))))

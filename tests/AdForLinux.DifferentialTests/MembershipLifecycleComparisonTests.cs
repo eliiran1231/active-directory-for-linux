@@ -92,8 +92,8 @@ public sealed class MembershipLifecycleComparisonTests
             actualGroup.Members.Add(actual.Context, Ours.IdentityType.DistinguishedName, actual.DistinguishedName!);
             using var expectedMember = Assert.Single(expectedGroup.Members);
             using var actualMember = Assert.Single(actualGroup.Members);
-            Assert.Equal(expected.Guid, expectedMember.Guid);
-            Assert.Equal(actual.Guid, actualMember.Guid);
+            Assert.Equal(SuiteCapture.Expected(expected.Guid, "assert-equal-expected", 95), SuiteCapture.Expected(expectedMember.Guid, "assert-equal-actual", 95));
+            Assert.Equal(SuiteCapture.Expected(actual.Guid, "assert-equal-expected", 96), SuiteCapture.Expected(actualMember.Guid, "assert-equal-actual", 96));
             expectedGroup.Dispose();
             actualGroup.Dispose();
             bool? expectedMatches = null, actualMatches = null;

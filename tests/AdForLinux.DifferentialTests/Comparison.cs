@@ -1,4 +1,5 @@
 using Xunit;
+using System.Runtime.CompilerServices;
 
 namespace AdForLinux.DifferentialTests;
 
@@ -18,8 +19,10 @@ public sealed class Comparison
     }
 
     /// <summary>Compares one property from both libraries.</summary>
-    public Comparison Check(string propertyName, object? microsoft, object? adForLinux)
+    public Comparison Check(string propertyName, object? microsoft, object? adForLinux,
+        [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
     {
+        SuiteCapture.Comparison("value", microsoft, adForLinux, file, member, line);
         if (!ValuesMatch(microsoft, adForLinux))
         {
             _differences.Add(
@@ -30,11 +33,14 @@ public sealed class Comparison
     }
 
     /// <summary>Compares two sets of strings, ignoring order and case.</summary>
-    public Comparison CheckSet(string propertyName, IEnumerable<string?> microsoft, IEnumerable<string?> adForLinux)
+    public Comparison CheckSet(string propertyName, IEnumerable<string?> microsoft, IEnumerable<string?> adForLinux,
+        [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
     {
         var left = microsoft.Where(v => v is not null).Select(v => v!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var right = adForLinux.Where(v => v is not null).Select(v => v!).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // Sets are already materialized, but remain opaque to the generic capture policy.
+        SuiteCapture.Comparison("ordinal-ignore-case-set", left, right, file, member, line);
         if (!left.SetEquals(right))
         {
             var onlyMicrosoft = left.Except(right, StringComparer.OrdinalIgnoreCase).ToList();

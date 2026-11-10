@@ -49,7 +49,7 @@ public class DefaultContainerComparisonTests
             using var ourUser = Our.UserPrincipal.FindByIdentity(ours, name);
             Assert.NotNull(microsoftUser);
             Assert.NotNull(ourUser);
-            Assert.Equal(microsoftUser.DistinguishedName, ourUser.DistinguishedName, ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(microsoftUser.DistinguishedName, "assert-equal-expected", 52), SuiteCapture.Expected(ourUser.DistinguishedName, "assert-equal-actual", 52), ignoreCase: true);
         }
         finally
         {

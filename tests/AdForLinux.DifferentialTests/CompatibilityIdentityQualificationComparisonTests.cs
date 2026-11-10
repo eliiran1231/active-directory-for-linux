@@ -39,8 +39,8 @@ public sealed class CompatibilityIdentityQualificationComparisonTests(TestDataFi
         {
             Assert.NotNull(expectedControl);
             Assert.NotNull(actualControl);
-            Assert.Equal(data.UserDn.ToUpperInvariant(), expectedControl.DistinguishedName?.ToUpperInvariant());
-            Assert.Equal(data.UserDn.ToUpperInvariant(), actualControl.DistinguishedName?.ToUpperInvariant());
+            Assert.Equal(SuiteCapture.Expected(data.UserDn.ToUpperInvariant(), "assert-equal-expected", 42), SuiteCapture.Expected(expectedControl.DistinguishedName?.ToUpperInvariant(), "assert-equal-actual", 42));
+            Assert.Equal(SuiteCapture.Expected(data.UserDn.ToUpperInvariant(), "assert-equal-expected", 43), SuiteCapture.Expected(actualControl.DistinguishedName?.ToUpperInvariant(), "assert-equal-actual", 43));
         }
         var identity = form switch
         {
@@ -59,7 +59,7 @@ public sealed class CompatibilityIdentityQualificationComparisonTests(TestDataFi
         if (form is "bare" or "qualified" or "empty-qualifier")
         {
             Assert.Null(expected.Error);
-            Assert.Equal(data.UserDn.ToUpperInvariant(), expected.Dn);
+            Assert.Equal(SuiteCapture.Expected(data.UserDn.ToUpperInvariant(), "assert-equal-expected", 62), SuiteCapture.Expected(expected.Dn, "assert-equal-actual", 62));
         }
         Compare(comparison, "explicit SamAccountName", expected, actual);
 

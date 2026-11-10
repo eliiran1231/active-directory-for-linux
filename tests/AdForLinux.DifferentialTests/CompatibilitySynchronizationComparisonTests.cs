@@ -1,4 +1,5 @@
 using Xunit;
+using Xunit.Abstractions;
 using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
 
@@ -7,6 +8,10 @@ namespace AdForLinux.DifferentialTests;
 [Trait("Category", "CompatibilityCoverageOffline")]
 public class CompatibilitySynchronizationComparisonTests
 {
+    private readonly ITestOutputHelper _captureOutput;
+
+    public CompatibilitySynchronizationComparisonTests(ITestOutputHelper output) => _captureOutput = output;
+
     [Theory]
     [InlineData(0L)]
     [InlineData(0x800L)]
@@ -22,6 +27,7 @@ public class CompatibilitySynchronizationComparisonTests
     [InlineData(long.MaxValue)]
     public void Full_width_option_validation_matches_for_constructors_and_setter(long option)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var comparison = new Comparison($"DirSync option=0x{option:X16}");
         Ms.DirectorySynchronization? expected = null;
         Ours.DirectorySynchronization? actual = null;
@@ -58,6 +64,7 @@ public class CompatibilitySynchronizationComparisonTests
     [InlineData(true, true)]
     public void Copies_preserve_options_and_isolate_later_mutations(bool useCopyMethod, bool emptyCookie)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var expected = new Ms.DirectorySynchronization(Ms.DirectorySynchronizationOptions.ParentsFirst,
             emptyCookie ? Array.Empty<byte>() : new byte[] { 1, 2, 255 });
         var actual = new Ours.DirectorySynchronization(Ours.DirectorySynchronizationOptions.ParentsFirst,
@@ -96,6 +103,7 @@ public class CompatibilitySynchronizationComparisonTests
     [InlineData("nonempty")]
     public void Reset_preserves_options_and_detaches_cookie_buffers(string reset)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var expected = new Ms.DirectorySynchronization(Ms.DirectorySynchronizationOptions.IncrementalValues, new byte[] { 1, 2 });
         var actual = new Ours.DirectorySynchronization(Ours.DirectorySynchronizationOptions.IncrementalValues, new byte[] { 1, 2 });
         var oldExpected = expected.GetDirectorySynchronizationCookie();

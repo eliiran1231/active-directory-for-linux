@@ -40,14 +40,14 @@ public sealed class CompatibilityPrincipalRefreshCacheComparisonTests
             Assert.NotEqual(baseline, staged);
             expectedEntry.Properties["displayName"].Value = staged;
             actualEntry.Properties["displayName"].Value = staged;
-            Assert.Equal(staged, expectedEntry.Properties["displayName"].Value);
-            Assert.Equal(staged, actualEntry.Properties["displayName"].Value);
+            Assert.Equal(SuiteCapture.Expected(staged, "assert-equal-expected", 43), SuiteCapture.Expected(expectedEntry.Properties["displayName"].Value, "assert-equal-actual", 43));
+            Assert.Equal(SuiteCapture.Expected(staged, "assert-equal-expected", 44), SuiteCapture.Expected(actualEntry.Properties["displayName"].Value, "assert-equal-actual", 44));
 
             var expectedFirst = expected.DisplayName;
             var actualFirst = actual.DisplayName;
             // Require a positive oracle projection before observing retention;
             // matching null/default values must not count as a lifecycle pass.
-            Assert.Equal(staged, expectedFirst);
+            Assert.Equal(SuiteCapture.Expected(staged, "assert-equal-expected", 50), SuiteCapture.Expected(expectedFirst, "assert-equal-actual", 50));
             var comparison = new Comparison($"Loaded DisplayName after RefreshCache({refresh})");
             comparison.Check("first projection", expectedFirst, actualFirst);
 
@@ -66,7 +66,7 @@ public sealed class CompatibilityPrincipalRefreshCacheComparisonTests
             // before comparing the independent Principal cache. Read new wrappers.
             var expectedRaw = expectedEntry.Properties["displayName"].Value;
             var actualRaw = actualEntry.Properties["displayName"].Value;
-            Assert.Equal(refresh == "description" ? staged : baseline, expectedRaw);
+            Assert.Equal(SuiteCapture.Expected(refresh == "description" ? staged : baseline, "assert-equal-expected", 69), SuiteCapture.Expected(expectedRaw, "assert-equal-actual", 69));
             comparison.Check("raw value after refresh", expectedRaw, actualRaw);
             comparison.Check("projection after refresh", expected.DisplayName, actual.DisplayName);
             comparison.Assert();
@@ -79,6 +79,6 @@ public sealed class CompatibilityPrincipalRefreshCacheComparisonTests
         // cannot observe either provider's uncommitted in-memory cache.
         using var entry = new MsDirectory.DirectoryEntry(path, DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword, DifferentialSettings.MicrosoftAuthenticationTypes);
-        Assert.Equal(baseline, entry.Properties["displayName"].Value);
+        Assert.Equal(SuiteCapture.Expected(baseline, "assert-equal-expected", 82), SuiteCapture.Expected(entry.Properties["displayName"].Value, "assert-equal-actual", 82));
     }
 }

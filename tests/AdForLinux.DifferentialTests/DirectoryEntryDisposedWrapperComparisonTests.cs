@@ -60,7 +60,7 @@ public sealed class DirectoryEntryDisposedWrapperComparisonTests
         ours.Close();
         Assert.NotSame(expectedOld, microsoft.Properties);
         Assert.NotSame(actualOld, ours.Properties);
-        Assert.Equal(((IDictionary)microsoft.Properties).IsReadOnly, ((IDictionary)ours.Properties).IsReadOnly);
+        Assert.Equal(SuiteCapture.Expected(((IDictionary)microsoft.Properties).IsReadOnly, "assert-equal-expected", 63), SuiteCapture.Expected(((IDictionary)ours.Properties).IsReadOnly, "assert-equal-actual", 63));
     }
 
     private static object? Observe(Ms.PropertyCollection properties, string operation) => operation switch

@@ -30,7 +30,7 @@ public sealed class DirectoryEntryObjectValidationComparisonTests
 
         var expectedArgument = Assert.IsType<ArgumentException>(expected);
         Assert.Equal(
-            (expectedArgument.GetType(), expectedArgument.ParamName),
-            (actual?.GetType(), (actual as ArgumentException)?.ParamName));
+            SuiteCapture.Expected((expectedArgument.GetType(), expectedArgument.ParamName), "assert-equal-expected", 32),
+            SuiteCapture.Expected((actual?.GetType(), (actual as ArgumentException)?.ParamName), "assert-equal-actual", 32));
     }
 }

@@ -32,8 +32,8 @@ public sealed class ResultPropertyLookupComparisonTests
         ((IDictionary)ours)["description"] = actualValue;
 
         Assert.True(microsoft.Contains("DESCRIPTION"));
-        Assert.Equal(microsoft.Contains("DESCRIPTION"), ours.Contains("DESCRIPTION"));
-        Assert.Equal(microsoft.Count, ours.Count);
+        Assert.Equal(SuiteCapture.Expected(microsoft.Contains("DESCRIPTION"), "assert-equal-expected", 35), SuiteCapture.Expected(ours.Contains("DESCRIPTION"), "assert-equal-actual", 35));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Count, "assert-equal-expected", 36), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 36));
         Assert.Same(expectedValue, ((IDictionary)microsoft)["description"]);
         Assert.Same(actualValue, ((IDictionary)ours)["description"]);
 
@@ -42,13 +42,13 @@ public sealed class ResultPropertyLookupComparisonTests
         var expectedError = Record.Exception(() => { expected = microsoft["DESCRIPTION"]; });
         var actualError = Record.Exception(() => { actual = ours["DESCRIPTION"]; });
 
-        Assert.Equal(expectedError?.GetType(), actualError?.GetType());
-        Assert.Equal(expected is null, actual is null);
+        Assert.Equal(SuiteCapture.Expected(expectedError?.GetType(), "assert-equal-expected", 45), SuiteCapture.Expected(actualError?.GetType(), "assert-equal-actual", 45));
+        Assert.Equal(SuiteCapture.Expected(expected is null, "assert-equal-expected", 46), SuiteCapture.Expected(actual is null, "assert-equal-actual", 46));
         if (expected is not null)
         {
             Assert.Same(expectedValue, expected);
             Assert.Same(actualValue, actual);
-            Assert.Equal(expected.Count, actual!.Count);
+            Assert.Equal(SuiteCapture.Expected(expected.Count, "assert-equal-expected", 51), SuiteCapture.Expected(actual!.Count, "assert-equal-actual", 51));
         }
     }
 
@@ -76,12 +76,12 @@ public sealed class ResultPropertyLookupComparisonTests
         Assert.False(microsoft.Contains("missing"));
         Assert.False(ours.Contains("missing"));
         Assert.Empty(microsoft);
-        Assert.Equal(microsoft.Count, ours.Count);
+        Assert.Equal(SuiteCapture.Expected(microsoft.Count, "assert-equal-expected", 79), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 79));
 
         // Reference identity is observable, including through ICollection.SyncRoot.
         Assert.Equal(
-            ReferenceEquals(expectedFirst, expectedSecond),
-            ReferenceEquals(actualFirst, actualSecond));
+            SuiteCapture.Expected(ReferenceEquals(expectedFirst, expectedSecond), "assert-equal-expected", 82),
+            SuiteCapture.Expected(ReferenceEquals(actualFirst, actualSecond), "assert-equal-actual", 82));
     }
 
     [Fact]
@@ -95,10 +95,10 @@ public sealed class ResultPropertyLookupComparisonTests
         ((IDictionary)ours).Remove("description");
 
         Assert.False(microsoft.Contains("description"));
-        Assert.Equal(microsoft.Contains("description"), ours.Contains("description"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Contains("description"), "assert-equal-expected", 98), SuiteCapture.Expected(ours.Contains("description"), "assert-equal-actual", 98));
         Assert.Empty(microsoft["description"]);
         Assert.Empty(ours["description"]);
-        Assert.Equal(microsoft.Count, ours.Count);
+        Assert.Equal(SuiteCapture.Expected(microsoft.Count, "assert-equal-expected", 101), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 101));
     }
 
     private static Ms.ResultPropertyCollection CreateMicrosoft()

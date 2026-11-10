@@ -76,13 +76,13 @@ public sealed class PropertyValueDeltaComparisonTests
 
             Assert.True(microsoft.DownloadedCount < RangedMemberCount);
             Assert.Equal(
-                baselineMembers[..^1].Append(lateMember).Append(appendedMember)
-                    .Order(StringComparer.OrdinalIgnoreCase),
-                ours.AfterDelta.Order(StringComparer.OrdinalIgnoreCase),
+                SuiteCapture.Expected(baselineMembers[..^1].Append(lateMember).Append(appendedMember)
+                    .Order(StringComparer.OrdinalIgnoreCase), "assert-equal-expected", 78),
+                SuiteCapture.Expected(ours.AfterDelta.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 78),
                 StringComparer.OrdinalIgnoreCase);
             Assert.Equal(
-                baselineMembers[..2].Order(StringComparer.OrdinalIgnoreCase),
-                ours.AfterReplace.Order(StringComparer.OrdinalIgnoreCase),
+                SuiteCapture.Expected(baselineMembers[..2].Order(StringComparer.OrdinalIgnoreCase), "assert-equal-expected", 83),
+                SuiteCapture.Expected(ours.AfterReplace.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 83),
                 StringComparer.OrdinalIgnoreCase);
             Assert.Empty(ours.AfterClear);
         }

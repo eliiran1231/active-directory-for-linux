@@ -32,25 +32,25 @@ public sealed class CompatibilitySearchResultLifecycleComparisonTests : IClassFi
         {
             if (materializeFirst)
             {
-                Assert.Equal(2, microsoft.Count);
-                Assert.Equal(2, ours.Count);
+                Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 35), SuiteCapture.Expected(microsoft.Count, "assert-equal-actual", 35));
+                Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 36), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 36));
             }
             var expectedFirst = microsoft.Cast<Ms.SearchResult>().ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
             var actualFirst = ours.Cast<Ours.SearchResult>().ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
             var expectedSecond = microsoft.Cast<Ms.SearchResult>().ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
             var actualSecond = ours.Cast<Ours.SearchResult>().ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(2, microsoft.Count);
-            Assert.Equal(2, ours.Count);
+            Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 42), SuiteCapture.Expected(microsoft.Count, "assert-equal-actual", 42));
+            Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 43), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 43));
             var expectedIndexed = Enumerable.Range(0, microsoft.Count).Select(i => microsoft[i])
                 .ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
             var actualIndexed = Enumerable.Range(0, ours.Count).Select(i => ours[i])
                 .ToDictionary(Key, StringComparer.OrdinalIgnoreCase);
             var keys = expectedIndexed.Keys.Order(StringComparer.OrdinalIgnoreCase).ToArray();
-            Assert.Equal(keys, actualIndexed.Keys.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(keys, expectedFirst.Keys.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(keys, expectedSecond.Keys.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(keys, actualFirst.Keys.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(keys, actualSecond.Keys.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(keys, "assert-equal-expected", 49), SuiteCapture.Expected(actualIndexed.Keys.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 49), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(keys, "assert-equal-expected", 50), SuiteCapture.Expected(expectedFirst.Keys.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 50), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(keys, "assert-equal-expected", 51), SuiteCapture.Expected(expectedSecond.Keys.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 51), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(keys, "assert-equal-expected", 52), SuiteCapture.Expected(actualFirst.Keys.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 52), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(keys, "assert-equal-expected", 53), SuiteCapture.Expected(actualSecond.Keys.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 53), StringComparer.OrdinalIgnoreCase);
 
             foreach (var key in keys)
             {
@@ -76,7 +76,7 @@ public sealed class CompatibilitySearchResultLifecycleComparisonTests : IClassFi
                     _ => ours.IndexOf(actualIndexed[key]) is var i && i >= 0 &&
                         ReferenceEquals(actualIndexed[key], ours[i]),
                 };
-                Assert.Equal(expected, actual);
+                Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 79), SuiteCapture.Expected(actual, "assert-equal-actual", 79));
             }
         });
     }
@@ -100,13 +100,13 @@ public sealed class CompatibilitySearchResultLifecycleComparisonTests : IClassFi
         {
             if (materialized)
             {
-                Assert.Equal(2, microsoft.Count);
-                Assert.Equal(2, ours.Count);
+                Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 103), SuiteCapture.Expected(microsoft.Count, "assert-equal-actual", 103));
+                Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 104), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 104));
             }
             microsoft.Dispose();
             ours.Dispose();
-            Assert.Equal(Observe(() => ReadMicrosoft(microsoft, operation)),
-                Observe(() => ReadOurs(ours, operation)));
+            Assert.Equal(SuiteCapture.Expected(Observe(() => ReadMicrosoft(microsoft, operation)), "assert-equal-expected", 108),
+                SuiteCapture.Expected(Observe(() => ReadOurs(ours, operation)), "assert-equal-actual", 108));
         });
     }
 
@@ -179,8 +179,8 @@ public sealed class CompatibilitySearchResultLifecycleComparisonTests : IClassFi
         using (var actualProbe = ourSearcher.FindAll())
         {
             var expectedKeys = new[] { _data.UserDn.ToUpperInvariant(), _data.UnsetUserDn.ToUpperInvariant() }.Order().ToArray();
-            Assert.Equal(expectedKeys, expectedProbe.Cast<Ms.SearchResult>().Select(Key).Order());
-            Assert.Equal(expectedKeys, actualProbe.Cast<Ours.SearchResult>().Select(Key).Order());
+            Assert.Equal(SuiteCapture.Expected(expectedKeys, "assert-equal-expected", 182), SuiteCapture.Expected(expectedProbe.Cast<Ms.SearchResult>().Select(Key).Order(), "assert-equal-actual", 182));
+            Assert.Equal(SuiteCapture.Expected(expectedKeys, "assert-equal-expected", 183), SuiteCapture.Expected(actualProbe.Cast<Ours.SearchResult>().Select(Key).Order(), "assert-equal-actual", 183));
         }
         using var microsoft = microsoftSearcher.FindAll();
         using var ours = ourSearcher.FindAll();

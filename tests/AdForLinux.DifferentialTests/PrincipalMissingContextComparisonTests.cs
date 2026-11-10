@@ -42,11 +42,15 @@ public sealed class PrincipalMissingContextComparisonTests
         _output.WriteLine($"Runtime: {RuntimeInformation.FrameworkDescription}; OS: {RuntimeInformation.OSDescription}; architecture: {RuntimeInformation.ProcessArchitecture}");
         _output.WriteLine($"Microsoft: exception={expected?.GetType()}, returnedType={expectedType}");
         _output.WriteLine($"AdForLinux: exception={actual?.GetType()}, returnedType={actualType}");
+        DifferentialRecording.Write(_output,
+            $"{GetType().FullName}.{nameof(Underlying_object_type_without_context_matches_microsoft)}(disposed: {disposed})",
+            new { exceptionType = expected?.GetType().FullName, returnedType = expectedType?.FullName },
+            new { exceptionType = actual?.GetType().FullName, returnedType = actualType?.FullName });
         if (disposed)
         {
             Assert.IsType<ObjectDisposedException>(expected);
         }
-        Assert.Equal((expected?.GetType(), expectedType), (actual?.GetType(), actualType));
+        Assert.Equal(SuiteCapture.Expected((expected?.GetType(), expectedType), "assert-equal-expected", 53), SuiteCapture.Expected((actual?.GetType(), actualType), "assert-equal-actual", 53));
     }
 
     [Theory]
@@ -67,8 +71,12 @@ public sealed class PrincipalMissingContextComparisonTests
         var expected = Record.Exception(() => _ = microsoft.ContextType);
         var actual = Record.Exception(() => _ = ours.ContextType);
 
+        DifferentialRecording.Write(_output,
+            $"{GetType().FullName}.{nameof(ContextType_without_context_matches_microsoft)}(disposed: {disposed})",
+            new { exceptionType = expected?.GetType().FullName },
+            new { exceptionType = actual?.GetType().FullName });
         Assert.NotNull(expected);
-        Assert.Equal(expected.GetType(), actual?.GetType());
+        Assert.Equal(SuiteCapture.Expected(expected.GetType(), "assert-equal-expected", 79), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 79));
     }
 
     [Theory]
@@ -95,9 +103,15 @@ public sealed class PrincipalMissingContextComparisonTests
         var expected = Record.Exception(() => microsoftSetter("staged-value"));
         var actual = Record.Exception(() => ourSetter("staged-value"));
 
+        var expectedAfter = Observe(microsoftGetter);
+        var actualAfter = Observe(ourGetter);
+        DifferentialRecording.Write(_output,
+            $"{GetType().FullName}.{nameof(Setting_property_without_context_matches_rejection_and_retained_value)}(property: \"{property}\")",
+            new { setterErrorType = expected?.GetType().FullName, getterErrorType = expectedAfter.Error?.FullName, value = expectedAfter.Value },
+            new { setterErrorType = actual?.GetType().FullName, getterErrorType = actualAfter.Error?.FullName, value = actualAfter.Value });
         Assert.Equal(
-            (SetterError: expected?.GetType(), After: Observe(microsoftGetter)),
-            (SetterError: actual?.GetType(), After: Observe(ourGetter)));
+            SuiteCapture.Expected((SetterError: expected?.GetType(), After: expectedAfter), "assert-equal-expected", 112),
+            SuiteCapture.Expected((SetterError: actual?.GetType(), After: actualAfter), "assert-equal-actual", 112));
     }
 
     private static (Type? Error, string? Value) Observe(Func<string?> getter)

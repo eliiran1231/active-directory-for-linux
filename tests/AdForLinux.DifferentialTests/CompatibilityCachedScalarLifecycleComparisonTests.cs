@@ -55,7 +55,7 @@ public sealed class CompatibilityCachedScalarLifecycleComparisonTests
             var actualFirst = Read(actual, property);
             // A provider cache that did not reach the principal must fail setup,
             // rather than turn matching nulls/defaults into a lifecycle pass.
-            Assert.Equal(Describe(property == "LastPasswordSet" ? initialDate : initial), Describe(expectedFirst));
+            Assert.Equal(SuiteCapture.Expected(Describe(property == "LastPasswordSet" ? initialDate : initial), "assert-equal-expected", 58), SuiteCapture.Expected(Describe(expectedFirst), "assert-equal-actual", 58));
             var comparison = new Comparison($"Loaded {property}; underlying cache changed={change}");
             comparison.Check("first projection", Describe(expectedFirst), Describe(actualFirst));
             if (change)
@@ -81,14 +81,14 @@ public sealed class CompatibilityCachedScalarLifecycleComparisonTests
             {
                 if (property == "LastPasswordSet")
                 {
-                    Assert.Equal((long)value,
-                        CompatibilityCachedLogonProjectionComparisonTests.CachedFileTime(expectedEntry.Properties[attribute].Value));
-                    Assert.Equal(value, actualEntry.Properties[attribute].Value);
+                    Assert.Equal(SuiteCapture.Expected((long)value, "assert-equal-expected", 84),
+                        SuiteCapture.Expected(CompatibilityCachedLogonProjectionComparisonTests.CachedFileTime(expectedEntry.Properties[attribute].Value), "assert-equal-actual", 84));
+                    Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 86), SuiteCapture.Expected(actualEntry.Properties[attribute].Value, "assert-equal-actual", 86));
                 }
                 else
                 {
-                    Assert.Equal(value, expectedEntry.Properties[attribute].Value);
-                    Assert.Equal(value, actualEntry.Properties[attribute].Value);
+                    Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 90), SuiteCapture.Expected(expectedEntry.Properties[attribute].Value, "assert-equal-actual", 90));
+                    Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 91), SuiteCapture.Expected(actualEntry.Properties[attribute].Value, "assert-equal-actual", 91));
                 }
             }
         });

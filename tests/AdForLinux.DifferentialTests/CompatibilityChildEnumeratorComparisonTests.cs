@@ -65,7 +65,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     // The Microsoft oracle must actually replay the seeded rows;
                     // a pair of empty or failed enumerations is not parity.
                     Assert.Null(expected.Error);
-                    Assert.Equal(count, expected.Count);
+                    Assert.Equal(SuiteCapture.Expected(count, "assert-equal-expected", 68), SuiteCapture.Expected(expected.Count, "assert-equal-actual", 68));
                     comparison.Check("replayed names", expected.Names, actual.Names)
                         .Check("replayed count", expected.Count, actual.Count)
                         .Check("replay exception", expected.Error, actual.Error);
@@ -73,7 +73,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     expected = ReadRemaining(microsoft, entries);
                     actual = ReadRemaining(ours, entries);
                     Assert.Null(expected.Error);
-                    Assert.Equal(count, expected.Count);
+                    Assert.Equal(SuiteCapture.Expected(count, "assert-equal-expected", 76), SuiteCapture.Expected(expected.Count, "assert-equal-actual", 76));
                     comparison.Check("second replay names", expected.Names, actual.Names)
                         .Check("second replay count", expected.Count, actual.Count)
                         .Check("second replay exception", expected.Error, actual.Error);
@@ -86,7 +86,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
                     var expected = ReadRemaining(microsoft, entries);
                     var actual = ReadRemaining(ours, entries);
                     Assert.Null(expected.Error);
-                    Assert.Equal(position == "before" ? count : position == "partial" ? count - 1 : 0, expected.Count);
+                    Assert.Equal(SuiteCapture.Expected(position == "before" ? count : position == "partial" ? count - 1 : 0, "assert-equal-expected", 89), SuiteCapture.Expected(expected.Count, "assert-equal-actual", 89));
                     comparison.Check("remaining count", expected.Count, actual.Count)
                         .Check("remaining exception", expected.Error, actual.Error);
                     // With partial traversal, the skipped child can differ by
@@ -178,7 +178,7 @@ public sealed class CompatibilityChildEnumeratorComparisonTests(TestDataFixture 
         {
             var observed = ReadRemaining(enumerator, entries);
             Assert.Null(observed.Error);
-            Assert.Equal(count, observed.Count);
+            Assert.Equal(SuiteCapture.Expected(count, "assert-equal-expected", 181), SuiteCapture.Expected(observed.Count, "assert-equal-actual", 181));
         }
     }
 

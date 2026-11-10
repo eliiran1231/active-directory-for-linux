@@ -32,7 +32,7 @@ public sealed class CollectionBaseBehaviorComparisonTests : IClassFixture<TestDa
         var microsoftResult = ExercisePropertyValues(microsoft.Properties["description"]);
         var ourResult = ExercisePropertyValues(ours.Properties["description"]);
 
-        Assert.Equal(microsoftResult, ourResult);
+        Assert.Equal(SuiteCapture.Expected(microsoftResult, "assert-equal-expected", 35), SuiteCapture.Expected(ourResult, "assert-equal-actual", 35));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class CollectionBaseBehaviorComparisonTests : IClassFixture<TestDa
 
         Assert.IsAssignableFrom<ReadOnlyCollectionBase>(microsoftValues);
         Assert.IsAssignableFrom<ReadOnlyCollectionBase>(ourValues);
-        Assert.Equal(ExerciseCopies(microsoftValues), ExerciseCopies(ourValues));
+        Assert.Equal(SuiteCapture.Expected(ExerciseCopies(microsoftValues), "assert-equal-expected", 69), SuiteCapture.Expected(ExerciseCopies(ourValues), "assert-equal-actual", 69));
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public sealed class CollectionBaseBehaviorComparisonTests : IClassFixture<TestDa
             ourProperties.GetEnumerator(),
             "sAMAccountName");
 
-        Assert.Equal("samaccountname", microsoftCasing.PropertyName);
-        Assert.Equal(microsoftCasing, ourCasing);
+        Assert.Equal(SuiteCapture.Expected("samaccountname", "assert-equal-expected", 110), SuiteCapture.Expected(microsoftCasing.PropertyName, "assert-equal-actual", 110));
+        Assert.Equal(SuiteCapture.Expected(microsoftCasing, "assert-equal-expected", 111), SuiteCapture.Expected(ourCasing, "assert-equal-actual", 111));
     }
 
     private static PropertyValueResult ExercisePropertyValues(Ms.PropertyValueCollection values)

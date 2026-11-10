@@ -45,7 +45,7 @@ public class DirectoryEntryAuthenticationComparisonTests
 
         if (expectsInvalidArgument)
         {
-            Assert.Equal(unchecked((int)0x80070057), microsoftError.HResult); // E_INVALIDARG
+            Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80070057), "assert-equal-expected", 48), SuiteCapture.Expected(microsoftError.HResult, "assert-equal-actual", 48)); // E_INVALIDARG
         }
         else
         {

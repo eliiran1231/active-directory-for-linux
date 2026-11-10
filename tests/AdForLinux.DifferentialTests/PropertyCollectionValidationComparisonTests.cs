@@ -28,9 +28,9 @@ public sealed class PropertyCollectionValidationComparisonTests
         var actual = Record.Exception(() => Lookup(ours, operation));
 
         Assert.NotNull(expected);
-        Assert.Equal(expected.GetType(), actual?.GetType());
-        Assert.Equal((expected as ArgumentException)?.ParamName,
-            (actual as ArgumentException)?.ParamName);
+        Assert.Equal(SuiteCapture.Expected(expected.GetType(), "assert-equal-expected", 31), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 31));
+        Assert.Equal(SuiteCapture.Expected((expected as ArgumentException)?.ParamName, "assert-equal-expected", 32),
+            SuiteCapture.Expected((actual as ArgumentException)?.ParamName, "assert-equal-actual", 32));
     }
 
     [Theory]
@@ -55,9 +55,9 @@ public sealed class PropertyCollectionValidationComparisonTests
         var actual = Record.Exception(() => ours.CopyTo(destination!, index));
 
         Assert.NotNull(expected);
-        Assert.Equal(expected.GetType(), actual?.GetType());
-        Assert.Equal((expected as ArgumentException)?.ParamName,
-            (actual as ArgumentException)?.ParamName);
+        Assert.Equal(SuiteCapture.Expected(expected.GetType(), "assert-equal-expected", 58), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 58));
+        Assert.Equal(SuiteCapture.Expected((expected as ArgumentException)?.ParamName, "assert-equal-expected", 59),
+            SuiteCapture.Expected((actual as ArgumentException)?.ParamName, "assert-equal-actual", 59));
     }
 
     private static void Lookup(Ms.PropertyCollection values, string operation)

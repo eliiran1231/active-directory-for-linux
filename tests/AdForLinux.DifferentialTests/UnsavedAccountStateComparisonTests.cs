@@ -62,8 +62,8 @@ public sealed class UnsavedAccountStateComparisonTests(ITestOutputHelper output)
         var actualProperty = typeof(Ours.UserPrincipal).GetProperty(property)!;
         expectedProperty.SetValue(microsoft, value);
         actualProperty.SetValue(ours, value);
-        Assert.Equal(value, expectedProperty.GetValue(microsoft));
-        Assert.Equal(value, actualProperty.GetValue(ours));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 65), SuiteCapture.Expected(expectedProperty.GetValue(microsoft), "assert-equal-actual", 65));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 66), SuiteCapture.Expected(actualProperty.GetValue(ours), "assert-equal-actual", 66));
 
         var expected = new List<bool?> { microsoft.Enabled };
         var actual = new List<bool?> { ours.Enabled };
@@ -80,7 +80,7 @@ public sealed class UnsavedAccountStateComparisonTests(ITestOutputHelper output)
         }
 
         output.WriteLine($"Microsoft Enabled: {Format(expected)}; AdForLinux Enabled: {Format(actual)}");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 83), SuiteCapture.Expected(actual, "assert-equal-actual", 83));
     }
 
     [Theory]
@@ -125,7 +125,7 @@ public sealed class UnsavedAccountStateComparisonTests(ITestOutputHelper output)
         }
 
         output.WriteLine($"Microsoft Enabled: {Format(expected)}; AdForLinux Enabled: {Format(actual)}");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 128), SuiteCapture.Expected(actual, "assert-equal-actual", 128));
     }
 
     [Theory]
@@ -143,7 +143,7 @@ public sealed class UnsavedAccountStateComparisonTests(ITestOutputHelper output)
         using var ours = new Ours.UserPrincipal(ourContext);
         var seed = new DateTime(2030, 6, 1, 12, 0, 0, DateTimeKind.Utc);
         microsoft.AccountExpirationDate = ours.AccountExpirationDate = seed;
-        Assert.Equal(DateState(microsoft.AccountExpirationDate), DateState(ours.AccountExpirationDate));
+        Assert.Equal(SuiteCapture.Expected(DateState(microsoft.AccountExpirationDate), "assert-equal-expected", 146), SuiteCapture.Expected(DateState(ours.AccountExpirationDate), "assert-equal-actual", 146));
         DateTime? value = scenario switch
         {
             "utc" => seed.AddDays(1),
@@ -162,14 +162,14 @@ public sealed class UnsavedAccountStateComparisonTests(ITestOutputHelper output)
 
         // Both instances must remain usable even if the assignment was rejected.
         microsoft.AccountExpirationDate = ours.AccountExpirationDate = seed;
-        Assert.Equal(DateState(microsoft.AccountExpirationDate), DateState(ours.AccountExpirationDate));
+        Assert.Equal(SuiteCapture.Expected(DateState(microsoft.AccountExpirationDate), "assert-equal-expected", 165), SuiteCapture.Expected(DateState(ours.AccountExpirationDate), "assert-equal-actual", 165));
         Compare(expected, actual);
     }
 
     private void Compare<T>(T expected, T actual)
     {
         output.WriteLine($"Microsoft: {expected}; AdForLinux: {actual}");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 172), SuiteCapture.Expected(actual, "assert-equal-actual", 172));
     }
 
     // DateTime.Equals ignores Kind, which is part of this public round trip.

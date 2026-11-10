@@ -143,7 +143,7 @@ public sealed class PropertyValueTypeComparisonTests
     {
         var expectedValues = expected.ToArray();
         var actualValues = actual.ToArray();
-        Assert.Equal(expectedValues.Length, actualValues.Length);
+        Assert.Equal(SuiteCapture.Expected(expectedValues.Length, "assert-equal-expected", 146), SuiteCapture.Expected(actualValues.Length, "assert-equal-actual", 146));
 
         var unmatched = actualValues.ToList();
         foreach (var expectedValue in expectedValues)

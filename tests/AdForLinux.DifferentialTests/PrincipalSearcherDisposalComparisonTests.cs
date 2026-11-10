@@ -25,7 +25,7 @@ public class PrincipalSearcherDisposalComparisonTests
 
         var expected = Record.Exception(() => { _ = microsoft.QueryFilter; });
         var actual = Record.Exception(() => { _ = ours.QueryFilter; });
-        Assert.Equal(expected?.GetType(), actual?.GetType());
+        Assert.Equal(SuiteCapture.Expected(expected?.GetType(), "assert-equal-expected", 28), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 28));
     }
 
     [Theory]
@@ -45,9 +45,9 @@ public class PrincipalSearcherDisposalComparisonTests
         var actual = Record.Exception(() => ours.QueryFilter = null!);
         Assert.NotNull(expected);
         Assert.NotNull(actual);
-        Assert.Equal(expected.GetType(), actual.GetType());
-        Assert.Equal((expected as ArgumentException)?.ParamName,
-            (actual as ArgumentException)?.ParamName);
+        Assert.Equal(SuiteCapture.Expected(expected.GetType(), "assert-equal-expected", 48), SuiteCapture.Expected(actual.GetType(), "assert-equal-actual", 48));
+        Assert.Equal(SuiteCapture.Expected((expected as ArgumentException)?.ParamName, "assert-equal-expected", 49),
+            SuiteCapture.Expected((actual as ArgumentException)?.ParamName, "assert-equal-actual", 49));
     }
 
     [Theory]

@@ -33,7 +33,7 @@ public sealed class CompatibilityAdvancedFilterOverrideComparisonTests
         var expectedUnfiltered = ExpectedFilter();
         var actualUnfiltered = ActualFilter();
         Assert.False(string.IsNullOrEmpty(expectedUnfiltered));
-        Assert.Equal(expectedUnfiltered, actualUnfiltered);
+        Assert.Equal(SuiteCapture.Expected(expectedUnfiltered, "assert-equal-expected", 36), SuiteCapture.Expected(actualUnfiltered, "assert-equal-actual", 36));
         Assert.DoesNotContain("badPwdCount", expectedUnfiltered, StringComparison.OrdinalIgnoreCase);
         Assert.NotSame(expected.BaseFilter, expected.Alternate);
         Assert.NotSame(actual.BaseFilter, actual.Alternate);
@@ -48,19 +48,19 @@ public sealed class CompatibilityAdvancedFilterOverrideComparisonTests
         var actualBase = ActualFilter();
         Assert.Contains("(badPwdCount=3)", expectedBase, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("(badPwdCount=7)", expectedBase, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(expectedBase, actualBase);
+        Assert.Equal(SuiteCapture.Expected(expectedBase, "assert-equal-expected", 51), SuiteCapture.Expected(actualBase, "assert-equal-actual", 51));
         expected.UseAlternate = actual.UseAlternate = useAlternate;
         Assert.Same(useAlternate ? expected.Alternate : expected.BaseFilter, expected.AdvancedSearchFilter);
         Assert.Same(useAlternate ? actual.Alternate : actual.BaseFilter, actual.AdvancedSearchFilter);
         var expectedObserved = ExpectedFilter();
         var actualObserved = ActualFilter();
-        Assert.Equal(expectedBase, expectedObserved);
+        Assert.Equal(SuiteCapture.Expected(expectedBase, "assert-equal-expected", 57), SuiteCapture.Expected(expectedObserved, "assert-equal-actual", 57));
 
         // Change only virtual dispatch, not either instance's stored criteria.
         // This recovery isolates getter selection from detached-filter storage.
         expected.UseAlternate = actual.UseAlternate = false;
-        Assert.Equal(expectedBase, ExpectedFilter());
-        Assert.Equal(expectedBase, ActualFilter());
+        Assert.Equal(SuiteCapture.Expected(expectedBase, "assert-equal-expected", 62), SuiteCapture.Expected(ExpectedFilter(), "assert-equal-actual", 62));
+        Assert.Equal(SuiteCapture.Expected(expectedBase, "assert-equal-expected", 63), SuiteCapture.Expected(ActualFilter(), "assert-equal-actual", 63));
         new Comparison($"AdvancedSearchFilter override; alternate={useAlternate}")
             .Check("native query filter", expectedObserved, actualObserved)
             .Assert();

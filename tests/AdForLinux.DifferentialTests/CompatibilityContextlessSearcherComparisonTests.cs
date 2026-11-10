@@ -32,7 +32,7 @@ public sealed class CompatibilityContextlessSearcherComparisonTests
         {
             using var searcher = new Ours.PrincipalSearcher(actualFilter);
         });
-        Assert.Equal(Describe(expectedError), Describe(actualError));
+        Assert.Equal(SuiteCapture.Expected(Describe(expectedError), "assert-equal-expected", 35), SuiteCapture.Expected(Describe(actualError), "assert-equal-actual", 35));
     }
 
     [Theory]

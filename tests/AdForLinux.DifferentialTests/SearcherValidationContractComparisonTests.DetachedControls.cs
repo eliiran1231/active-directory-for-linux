@@ -27,15 +27,15 @@ public sealed partial class SearcherValidationContractComparisonTests
         var expectedProperty = typeof(Ms.DirectorySearcher).GetProperty(property)!;
         var actualProperty = typeof(Ours.DirectorySearcher).GetProperty(property)!;
         var previous = Convert.ToInt32(expectedProperty.GetValue(microsoft));
-        Assert.Equal(previous, Convert.ToInt32(actualProperty.GetValue(ours)));
+        Assert.Equal(SuiteCapture.Expected(previous, "assert-equal-expected", 30), SuiteCapture.Expected(Convert.ToInt32(actualProperty.GetValue(ours)), "assert-equal-actual", 30));
 
         var expected = Record.Exception(() => SetEnum(expectedProperty, microsoft, invalid));
         var actual = Record.Exception(() => SetEnum(actualProperty, ours, invalid));
 
         CompareDetachedFailure(expected, actual);
         Assert.NotNull(expected);
-        Assert.Equal(previous, Convert.ToInt32(expectedProperty.GetValue(microsoft)));
-        Assert.Equal(previous, Convert.ToInt32(actualProperty.GetValue(ours)));
+        Assert.Equal(SuiteCapture.Expected(previous, "assert-equal-expected", 37), SuiteCapture.Expected(Convert.ToInt32(expectedProperty.GetValue(microsoft)), "assert-equal-actual", 37));
+        Assert.Equal(SuiteCapture.Expected(previous, "assert-equal-expected", 38), SuiteCapture.Expected(Convert.ToInt32(actualProperty.GetValue(ours)), "assert-equal-actual", 38));
     }
 
     [Theory]
@@ -57,7 +57,7 @@ public sealed partial class SearcherValidationContractComparisonTests
             var expected = Record.Exception(() => expectedProperty.SetValue(microsoft, value));
             var actual = Record.Exception(() => actualProperty.SetValue(ours, value));
             CompareDetachedFailure(expected, actual);
-            Assert.Equal(expectedProperty.GetValue(microsoft), actualProperty.GetValue(ours));
+            Assert.Equal(SuiteCapture.Expected(expectedProperty.GetValue(microsoft), "assert-equal-expected", 60), SuiteCapture.Expected(actualProperty.GetValue(ours), "assert-equal-actual", 60));
         }
     }
 
@@ -79,8 +79,8 @@ public sealed partial class SearcherValidationContractComparisonTests
             CompareDetachedFailure(expected, actual);
             Assert.Null(microsoft.DirectorySynchronization);
             Assert.Null(ours.DirectorySynchronization);
-            Assert.Equal(17, microsoft.PageSize);
-            Assert.Equal(17, ours.PageSize);
+            Assert.Equal(SuiteCapture.Expected(17, "assert-equal-expected", 82), SuiteCapture.Expected(microsoft.PageSize, "assert-equal-actual", 82));
+            Assert.Equal(SuiteCapture.Expected(17, "assert-equal-expected", 83), SuiteCapture.Expected(ours.PageSize, "assert-equal-actual", 83));
             microsoft.PageSize = ours.PageSize = 0;
             microsoft.DirectorySynchronization = expectedSync;
             ours.DirectorySynchronization = actualSync;
@@ -95,14 +95,14 @@ public sealed partial class SearcherValidationContractComparisonTests
             CompareDetachedFailure(expected, actual);
             Assert.Same(expectedSync, microsoft.DirectorySynchronization);
             Assert.Same(actualSync, ours.DirectorySynchronization);
-            Assert.Equal(0, microsoft.PageSize);
-            Assert.Equal(0, ours.PageSize);
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 98), SuiteCapture.Expected(microsoft.PageSize, "assert-equal-actual", 98));
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 99), SuiteCapture.Expected(ours.PageSize, "assert-equal-actual", 99));
             microsoft.DirectorySynchronization = null;
             ours.DirectorySynchronization = null;
             microsoft.PageSize = ours.PageSize = 17;
         }
-        Assert.Equal(microsoft.PageSize, ours.PageSize);
-        Assert.Equal(microsoft.DirectorySynchronization is null, ours.DirectorySynchronization is null);
+        Assert.Equal(SuiteCapture.Expected(microsoft.PageSize, "assert-equal-expected", 104), SuiteCapture.Expected(ours.PageSize, "assert-equal-actual", 104));
+        Assert.Equal(SuiteCapture.Expected(microsoft.DirectorySynchronization is null, "assert-equal-expected", 105), SuiteCapture.Expected(ours.DirectorySynchronization is null, "assert-equal-actual", 105));
     }
 
     [Fact]
@@ -118,22 +118,22 @@ public sealed partial class SearcherValidationContractComparisonTests
         expectedInput[0] = actualInput[0] = 42;
         microsoft.GetDirectorySynchronizationCookie()[1] = 42;
         ours.GetDirectorySynchronizationCookie()[1] = 42;
-        Assert.Equal(new byte[] { 0, 128, 255 }, microsoft.GetDirectorySynchronizationCookie());
-        Assert.Equal(microsoft.GetDirectorySynchronizationCookie(), ours.GetDirectorySynchronizationCookie());
+        Assert.Equal(SuiteCapture.Expected(new byte[] { 0, 128, 255 }, "assert-equal-expected", 121), SuiteCapture.Expected(microsoft.GetDirectorySynchronizationCookie(), "assert-equal-actual", 121));
+        Assert.Equal(SuiteCapture.Expected(microsoft.GetDirectorySynchronizationCookie(), "assert-equal-expected", 122), SuiteCapture.Expected(ours.GetDirectorySynchronizationCookie(), "assert-equal-actual", 122));
 
         byte[] replacement = [4, 5];
         microsoft.ResetDirectorySynchronizationCookie(replacement);
         ours.ResetDirectorySynchronizationCookie(replacement);
         replacement[0] = 99;
-        Assert.Equal(new byte[] { 4, 5 }, microsoft.GetDirectorySynchronizationCookie());
-        Assert.Equal(microsoft.GetDirectorySynchronizationCookie(), ours.GetDirectorySynchronizationCookie());
+        Assert.Equal(SuiteCapture.Expected(new byte[] { 4, 5 }, "assert-equal-expected", 128), SuiteCapture.Expected(microsoft.GetDirectorySynchronizationCookie(), "assert-equal-actual", 128));
+        Assert.Equal(SuiteCapture.Expected(microsoft.GetDirectorySynchronizationCookie(), "assert-equal-expected", 129), SuiteCapture.Expected(ours.GetDirectorySynchronizationCookie(), "assert-equal-actual", 129));
         microsoft.ResetDirectorySynchronizationCookie();
         ours.ResetDirectorySynchronizationCookie();
         Assert.Empty(microsoft.GetDirectorySynchronizationCookie());
         Assert.Empty(ours.GetDirectorySynchronizationCookie());
-        Assert.Equal(new byte[] { 0, 128, 255 }, expectedCopy.GetDirectorySynchronizationCookie());
-        Assert.Equal(expectedCopy.GetDirectorySynchronizationCookie(), actualCopy.GetDirectorySynchronizationCookie());
-        Assert.Equal((long)expectedCopy.Option, (long)actualCopy.Option);
+        Assert.Equal(SuiteCapture.Expected(new byte[] { 0, 128, 255 }, "assert-equal-expected", 134), SuiteCapture.Expected(expectedCopy.GetDirectorySynchronizationCookie(), "assert-equal-actual", 134));
+        Assert.Equal(SuiteCapture.Expected(expectedCopy.GetDirectorySynchronizationCookie(), "assert-equal-expected", 135), SuiteCapture.Expected(actualCopy.GetDirectorySynchronizationCookie(), "assert-equal-actual", 135));
+        Assert.Equal(SuiteCapture.Expected((long)expectedCopy.Option, "assert-equal-expected", 136), SuiteCapture.Expected((long)actualCopy.Option, "assert-equal-actual", 136));
     }
 
     [Theory]
@@ -176,8 +176,8 @@ public sealed partial class SearcherValidationContractComparisonTests
             ours.VirtualListView = null;
             microsoft.CacheResults = ours.CacheResults = true;
         }
-        Assert.Equal(microsoft.CacheResults, ours.CacheResults);
-        Assert.Equal(microsoft.VirtualListView is null, ours.VirtualListView is null);
+        Assert.Equal(SuiteCapture.Expected(microsoft.CacheResults, "assert-equal-expected", 179), SuiteCapture.Expected(ours.CacheResults, "assert-equal-actual", 179));
+        Assert.Equal(SuiteCapture.Expected(microsoft.VirtualListView is null, "assert-equal-expected", 180), SuiteCapture.Expected(ours.VirtualListView is null, "assert-equal-actual", 180));
     }
 
     [Theory]
@@ -195,16 +195,16 @@ public sealed partial class SearcherValidationContractComparisonTests
         var actual = Record.Exception(() => typeof(Ours.DirectoryVirtualListView).GetProperty(property)!.SetValue(ours, invalid));
         Assert.NotNull(expected);
         CompareDetachedFailure(expected, actual);
-        Assert.Equal(2, microsoft.BeforeCount);
-        Assert.Equal(3, microsoft.AfterCount);
-        Assert.Equal(40, microsoft.Offset);
-        Assert.Equal(100, microsoft.ApproximateTotal);
-        Assert.Equal(40, microsoft.TargetPercentage);
-        Assert.Equal(microsoft.BeforeCount, ours.BeforeCount);
-        Assert.Equal(microsoft.AfterCount, ours.AfterCount);
-        Assert.Equal(microsoft.Offset, ours.Offset);
-        Assert.Equal(microsoft.ApproximateTotal, ours.ApproximateTotal);
-        Assert.Equal(microsoft.TargetPercentage, ours.TargetPercentage);
+        Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 198), SuiteCapture.Expected(microsoft.BeforeCount, "assert-equal-actual", 198));
+        Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 199), SuiteCapture.Expected(microsoft.AfterCount, "assert-equal-actual", 199));
+        Assert.Equal(SuiteCapture.Expected(40, "assert-equal-expected", 200), SuiteCapture.Expected(microsoft.Offset, "assert-equal-actual", 200));
+        Assert.Equal(SuiteCapture.Expected(100, "assert-equal-expected", 201), SuiteCapture.Expected(microsoft.ApproximateTotal, "assert-equal-actual", 201));
+        Assert.Equal(SuiteCapture.Expected(40, "assert-equal-expected", 202), SuiteCapture.Expected(microsoft.TargetPercentage, "assert-equal-actual", 202));
+        Assert.Equal(SuiteCapture.Expected(microsoft.BeforeCount, "assert-equal-expected", 203), SuiteCapture.Expected(ours.BeforeCount, "assert-equal-actual", 203));
+        Assert.Equal(SuiteCapture.Expected(microsoft.AfterCount, "assert-equal-expected", 204), SuiteCapture.Expected(ours.AfterCount, "assert-equal-actual", 204));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Offset, "assert-equal-expected", 205), SuiteCapture.Expected(ours.Offset, "assert-equal-actual", 205));
+        Assert.Equal(SuiteCapture.Expected(microsoft.ApproximateTotal, "assert-equal-expected", 206), SuiteCapture.Expected(ours.ApproximateTotal, "assert-equal-actual", 206));
+        Assert.Equal(SuiteCapture.Expected(microsoft.TargetPercentage, "assert-equal-expected", 207), SuiteCapture.Expected(ours.TargetPercentage, "assert-equal-actual", 207));
     }
 
     private static void SetEnum(PropertyInfo property, object target, int value) =>
@@ -214,8 +214,8 @@ public sealed partial class SearcherValidationContractComparisonTests
     {
         if (expected is TargetInvocationException expectedInvocation) expected = expectedInvocation.InnerException;
         if (actual is TargetInvocationException actualInvocation) actual = actualInvocation.InnerException;
-        Assert.Equal(expected?.GetType(), actual?.GetType());
+        Assert.Equal(SuiteCapture.Expected(expected?.GetType(), "assert-equal-expected", 217), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 217));
         if (expected is ArgumentException expectedArgument)
-            Assert.Equal(expectedArgument.ParamName, Assert.IsAssignableFrom<ArgumentException>(actual).ParamName);
+            Assert.Equal(SuiteCapture.Expected(expectedArgument.ParamName, "assert-equal-expected", 219), SuiteCapture.Expected(Assert.IsAssignableFrom<ArgumentException>(actual).ParamName, "assert-equal-actual", 219));
     }
 }

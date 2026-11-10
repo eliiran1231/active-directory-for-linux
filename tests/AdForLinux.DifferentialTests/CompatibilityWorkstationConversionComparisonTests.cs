@@ -53,8 +53,8 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             using var actual = Ours.UserPrincipal.FindByIdentity(ourContext, Ours.IdentityType.DistinguishedName, $"CN={names[1]},{DifferentialSettings.UsersContainer}");
             Assert.NotNull(expected);
             Assert.NotNull(actual);
-            Assert.Equal(new[] { "BASELINE" }, expected.PermittedWorkstations.ToArray());
-            Assert.Equal(new[] { "BASELINE" }, actual.PermittedWorkstations.ToArray());
+            Assert.Equal(SuiteCapture.Expected(new[] { "BASELINE" }, "assert-equal-expected", 56), SuiteCapture.Expected(expected.PermittedWorkstations.ToArray(), "assert-equal-actual", 56));
+            Assert.Equal(SuiteCapture.Expected(new[] { "BASELINE" }, "assert-equal-expected", 57), SuiteCapture.Expected(actual.PermittedWorkstations.ToArray(), "assert-equal-actual", 57));
             // Every row proves post-creation write access with a real change
             // before comparing potentially rejected values. Matching Save
             // failures must not hide a generally unwritable test account.
@@ -64,8 +64,8 @@ public sealed class CompatibilityWorkstationConversionComparisonTests
             actual.PermittedWorkstations.Add("CONTROL");
             Assert.Null(Record.Exception(expected.Save));
             Assert.Null(Record.Exception(actual.Save));
-            Assert.Equal(JsonSerializer.Serialize(new[] { "CONTROL" }), ReadRaw(names[0]));
-            Assert.Equal(JsonSerializer.Serialize(new[] { "CONTROL" }), ReadRaw(names[1]));
+            Assert.Equal(SuiteCapture.Expected(JsonSerializer.Serialize(new[] { "CONTROL" }), "assert-equal-expected", 67), SuiteCapture.Expected(ReadRaw(names[0]), "assert-equal-actual", 67));
+            Assert.Equal(SuiteCapture.Expected(JsonSerializer.Serialize(new[] { "CONTROL" }), "assert-equal-expected", 68), SuiteCapture.Expected(ReadRaw(names[1]), "assert-equal-actual", 68));
 
             expected.PermittedWorkstations.Clear();
             actual.PermittedWorkstations.Clear();

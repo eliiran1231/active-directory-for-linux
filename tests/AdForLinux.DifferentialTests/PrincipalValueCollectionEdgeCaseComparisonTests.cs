@@ -28,8 +28,8 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
         var expected = Record.Exception(() => Copy(microsoft, expectedDestination, index, generic));
         var actual = Record.Exception(() => Copy(ours, actualDestination, index, generic));
 
-        Assert.Equal(expectedDestination, actualDestination);
-        Assert.Equal(Describe(expected), Describe(actual));
+        Assert.Equal(SuiteCapture.Expected(expectedDestination, "assert-equal-expected", 31), SuiteCapture.Expected(actualDestination, "assert-equal-actual", 31));
+        Assert.Equal(SuiteCapture.Expected(Describe(expected), "assert-equal-expected", 32), SuiteCapture.Expected(Describe(actual), "assert-equal-actual", 32));
     }
 
     [Theory]
@@ -45,8 +45,8 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
         var expected = Record.Exception(() => Copy(microsoft, null!, -1, generic));
         var actual = Record.Exception(() => Copy(ours, null!, -1, generic));
 
-        Assert.Equal(Describe(expected), Describe(actual));
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
+        Assert.Equal(SuiteCapture.Expected(Describe(expected), "assert-equal-expected", 48), SuiteCapture.Expected(Describe(actual), "assert-equal-actual", 48));
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 49), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 49));
     }
 
     [Theory]
@@ -70,8 +70,8 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
 
         // Include output even if one implementation threw after a partial copy.
         Assert.Equal(
-            (Describe(expected), Values(expectedDestination)),
-            (Describe(actual), Values(actualDestination)));
+            SuiteCapture.Expected((Describe(expected), Values(expectedDestination)), "assert-equal-expected", 72),
+            SuiteCapture.Expected((Describe(actual), Values(actualDestination)), "assert-equal-actual", 72));
     }
 
     [Theory]
@@ -90,8 +90,8 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
         var expected = Record.Exception(() => SetNull(microsoft, index, nonGeneric));
         var actual = Record.Exception(() => SetNull(ours, index, nonGeneric));
 
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
-        Assert.Equal(Describe(expected), Describe(actual));
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 93), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 93));
+        Assert.Equal(SuiteCapture.Expected(Describe(expected), "assert-equal-expected", 94), SuiteCapture.Expected(Describe(actual), "assert-equal-actual", 94));
     }
 
     [Theory]
@@ -128,7 +128,7 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
         using var actualEnumerator = ours.GetEnumerator();
         Assert.True(expectedEnumerator.MoveNext());
         Assert.True(actualEnumerator.MoveNext());
-        Assert.Equal(expectedEnumerator.Current, actualEnumerator.Current);
+        Assert.Equal(SuiteCapture.Expected(expectedEnumerator.Current, "assert-equal-expected", 131), SuiteCapture.Expected(actualEnumerator.Current, "assert-equal-actual", 131));
 
         // Microsoft's change tracking compares DateTime.UtcNow timestamps.
         // Cross a clock tick explicitly so fast machines do not hide mutations.
@@ -138,10 +138,10 @@ public sealed class PrincipalValueCollectionEdgeCaseComparisonTests
 
         var expectedMutation = Record.Exception(() => Mutate(microsoft, mutation));
         var actualMutation = Record.Exception(() => Mutate(ours, mutation));
-        Assert.Equal(Describe(expectedMutation), Describe(actualMutation));
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
+        Assert.Equal(SuiteCapture.Expected(Describe(expectedMutation), "assert-equal-expected", 141), SuiteCapture.Expected(Describe(actualMutation), "assert-equal-actual", 141));
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 142), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 142));
 
-        Assert.Equal(Observe(expectedEnumerator, operation), Observe(actualEnumerator, operation));
+        Assert.Equal(SuiteCapture.Expected(Observe(expectedEnumerator, operation), "assert-equal-expected", 144), SuiteCapture.Expected(Observe(actualEnumerator, operation), "assert-equal-actual", 144));
     }
 
     private static void Copy(IList<string> values, string[] array, int index, bool generic)

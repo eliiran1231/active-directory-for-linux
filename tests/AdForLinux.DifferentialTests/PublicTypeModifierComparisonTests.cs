@@ -37,17 +37,17 @@ public class PublicTypeModifierComparisonTests
             // The approved helper has no native peer; pin its exact shape instead
             // of exempting a namespace or ignoring arbitrary extra types.
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
-            Assert.Equal("visibility=public, sealed=True, abstract=False, base=System.Object", Shape(helper!));
+            Assert.Equal(SuiteCapture.Expected("visibility=public, sealed=True, abstract=False, base=System.Object", "assert-equal-expected", 40), SuiteCapture.Expected(Shape(helper!), "assert-equal-actual", 40));
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.KerberosCredentialContext), out var credentials));
             Assert.True(credentials.IsSealed);
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), out var profile));
-            Assert.Equal("visibility=public, sealed=True, abstract=False, base=System.Object", Shape(profile!));
+            Assert.Equal(SuiteCapture.Expected("visibility=public, sealed=True, abstract=False, base=System.Object", "assert-equal-expected", 44), SuiteCapture.Expected(Shape(profile!), "assert-equal-actual", 44));
         }
 
         if (ourNamespace == "AdForLinux.DirectoryServices.AccountManagement")
         {
             Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.AccountManagement.RestrictedKerberosContext), out var factory));
-            Assert.Equal("visibility=public, sealed=True, abstract=True, base=System.Object", Shape(factory!));
+            Assert.Equal(SuiteCapture.Expected("visibility=public, sealed=True, abstract=True, base=System.Object", "assert-equal-expected", 50), SuiteCapture.Expected(Shape(factory!), "assert-equal-actual", 50));
         }
 
         var differences = microsoftTypes.Keys.Union(ourTypes.Keys, StringComparer.Ordinal)

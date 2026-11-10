@@ -42,16 +42,16 @@ public sealed class CompatibilityImplicitWriteCacheComparisonTests
             var actualProperties = actual.Properties;
             var expectedValues = expectedProperties["description"];
             var actualValues = actualProperties["description"];
-            Assert.Equal(Seed, Assert.Single(expectedValues.Cast<object>()));
-            Assert.Equal(Seed, Assert.Single(actualValues.Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(Seed, "assert-equal-expected", 45), SuiteCapture.Expected(Assert.Single(expectedValues.Cast<object>()), "assert-equal-actual", 45));
+            Assert.Equal(SuiteCapture.Expected(Seed, "assert-equal-expected", 46), SuiteCapture.Expected(Assert.Single(actualValues.Cast<object>()), "assert-equal-actual", 46));
             Assert.Same(expectedProperties, expected.Properties);
             Assert.Same(actualProperties, actual.Properties);
 
             // Index assignment on a known single value avoids whole-Value's
             // Clear-then-Add behavior and performs one scalar replacement.
             expectedValues[0] = actualValues[0] = Edited;
-            Assert.Equal(Edited, Assert.Single(expectedValues.Cast<object>()));
-            Assert.Equal(Edited, Assert.Single(actualValues.Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(Edited, "assert-equal-expected", 53), SuiteCapture.Expected(Assert.Single(expectedValues.Cast<object>()), "assert-equal-actual", 53));
+            Assert.Equal(SuiteCapture.Expected(Edited, "assert-equal-expected", 54), SuiteCapture.Expected(Assert.Single(actualValues.Cast<object>()), "assert-equal-actual", 54));
             expectedOwned.VerifyPersisted(usePropertyCache ? Seed : Edited);
             actualOwned.VerifyPersisted(usePropertyCache ? Seed : Edited);
 
@@ -59,9 +59,9 @@ public sealed class CompatibilityImplicitWriteCacheComparisonTests
             var actualAfterWrite = actual.Properties;
             var expectedReacquired = expectedAfterWrite["description"];
             var actualReacquired = actualAfterWrite["description"];
-            Assert.Equal(usePropertyCache, ReferenceEquals(expectedProperties, expectedAfterWrite));
-            Assert.Equal(usePropertyCache, ReferenceEquals(expectedValues, expectedReacquired));
-            Assert.Equal(Edited, Assert.Single(expectedReacquired.Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(usePropertyCache, "assert-equal-expected", 62), SuiteCapture.Expected(ReferenceEquals(expectedProperties, expectedAfterWrite), "assert-equal-actual", 62));
+            Assert.Equal(SuiteCapture.Expected(usePropertyCache, "assert-equal-expected", 63), SuiteCapture.Expected(ReferenceEquals(expectedValues, expectedReacquired), "assert-equal-actual", 63));
+            Assert.Equal(SuiteCapture.Expected(Edited, "assert-equal-expected", 64), SuiteCapture.Expected(Assert.Single(expectedReacquired.Cast<object>()), "assert-equal-actual", 64));
             var comparison = new Comparison($"Implicit scalar commit: UsePropertyCache={usePropertyCache}")
                 .Check("same dictionary before explicit commit", ReferenceEquals(expectedProperties, expectedAfterWrite),
                     ReferenceEquals(actualProperties, actualAfterWrite))
@@ -76,8 +76,8 @@ public sealed class CompatibilityImplicitWriteCacheComparisonTests
             actual.CommitChanges();
             expectedOwned.VerifyPersisted(Edited);
             actualOwned.VerifyPersisted(Edited);
-            Assert.Equal(Edited, expected.Properties["description"].Value);
-            Assert.Equal(Edited, actual.Properties["description"].Value);
+            Assert.Equal(SuiteCapture.Expected(Edited, "assert-equal-expected", 79), SuiteCapture.Expected(expected.Properties["description"].Value, "assert-equal-actual", 79));
+            Assert.Equal(SuiteCapture.Expected(Edited, "assert-equal-expected", 80), SuiteCapture.Expected(actual.Properties["description"].Value, "assert-equal-actual", 80));
             comparison.Check("cache mode preserved", expected.UsePropertyCache, actual.UsePropertyCache).Assert();
         }
         catch (Exception error) { primaryError = error; }
@@ -126,9 +126,9 @@ public sealed class CompatibilityImplicitWriteCacheComparisonTests
             child.CommitChanges();
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()));
-            Assert.Equal(Seed, Assert.Single(persisted.Properties["description"].Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 129), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 129));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 130), SuiteCapture.Expected(Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()), "assert-equal-actual", 130));
+            Assert.Equal(SuiteCapture.Expected(Seed, "assert-equal-expected", 131), SuiteCapture.Expected(Assert.Single(persisted.Properties["description"].Cast<object>()), "assert-equal-actual", 131));
             Assert.NotEqual(Guid.Empty, persisted.Guid);
             _identity = persisted.Guid;
         }
@@ -137,11 +137,11 @@ public sealed class CompatibilityImplicitWriteCacheComparisonTests
         {
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(Dn, (string)persisted.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()));
-            Assert.Equal(description, Assert.Single(persisted.Properties["description"].Cast<object>()));
-            Assert.Equal(_identity, persisted.Guid);
+            Assert.Equal(SuiteCapture.Expected(Dn, "assert-equal-expected", 140), SuiteCapture.Expected((string)persisted.Properties["distinguishedName"].Value!, "assert-equal-actual", 140), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 141), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 141));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 142), SuiteCapture.Expected(Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()), "assert-equal-actual", 142));
+            Assert.Equal(SuiteCapture.Expected(description, "assert-equal-expected", 143), SuiteCapture.Expected(Assert.Single(persisted.Properties["description"].Cast<object>()), "assert-equal-actual", 143));
+            Assert.Equal(SuiteCapture.Expected(_identity, "assert-equal-expected", 144), SuiteCapture.Expected(persisted.Guid, "assert-equal-actual", 144));
         }
 
         internal void Cleanup(List<Exception> errors)

@@ -64,8 +64,8 @@ public sealed class AdvancedFilterDeferralComparisonTests
         var expectedRecovery = Record.Exception(() => Configure(microsoft, method, recoveryDate, Ms.MatchType.Equals));
         var actualRecovery = Record.Exception(() => Configure(ours, method, recoveryDate, Ours.MatchType.Equals));
         Assert.Equal(
-            new[] { Describe(expected), Describe(expectedRecovery) },
-            new[] { Describe(actual), Describe(actualRecovery) });
+            SuiteCapture.Expected(new[] { Describe(expected), Describe(expectedRecovery) }, "assert-equal-expected", 66),
+            SuiteCapture.Expected(new[] { Describe(actual), Describe(actualRecovery) }, "assert-equal-actual", 66));
     }
 
     private static void Configure(Ms.AdvancedFilters filters, string method, DateTime date, Ms.MatchType match)

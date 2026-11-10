@@ -51,15 +51,15 @@ public sealed class CompatibilityRetainedMembershipComparisonTests
             // Count specifically primes the result-set bookmark/cache path.
             var expectedCount = expectedMembers.Count;
             var actualCount = actualMembers.Count;
-            Assert.Equal(0, expectedCount);
-            Assert.Equal(0, actualCount);
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 54), SuiteCapture.Expected(expectedCount, "assert-equal-actual", 54));
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 55), SuiteCapture.Expected(actualCount, "assert-equal-actual", 55));
 
             // Retain the collection before deleting the owner. Do not reacquire
             // Group.Members: that getter has its own deleted-principal guard.
             microsoft.Delete();
             ours.Delete();
-            Assert.Equal(Observe(() => Read(expectedMembers, operation)),
-                Observe(() => Read(actualMembers, operation)));
+            Assert.Equal(SuiteCapture.Expected(Observe(() => Read(expectedMembers, operation)), "assert-equal-expected", 61),
+                SuiteCapture.Expected(Observe(() => Read(actualMembers, operation)), "assert-equal-actual", 61));
         }
         catch (Exception error)
         {

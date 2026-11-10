@@ -2,7 +2,9 @@ using System.Collections;
 using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
+#if !RECORDED_MICROSOFT_ORACLE
 using Ms = System.DirectoryServices.AccountManagement;
+#endif
 using Ours = AdForLinux.DirectoryServices.AccountManagement;
 
 namespace AdForLinux.DifferentialTests;
@@ -22,10 +24,18 @@ public sealed class PrincipalValueCollectionTraversalAndCopyComparisonTests(ITes
     [InlineData("append-while-positioned", true)]
     public void Current_after_count_changes_matches_microsoft(string mutation, bool nonGeneric)
     {
-        var microsoft = CreateMicrosoft<string>();
         var ours = new Ours.PrincipalValueCollection<string>();
-        Assert.Equal(ObserveCurrent(microsoft, mutation, nonGeneric),
-            ObserveCurrent(ours, mutation, nonGeneric));
+        var caseId = $"{GetType().FullName}.{nameof(Current_after_count_changes_matches_microsoft)}(mutation: \"{mutation}\", nonGeneric: {nonGeneric})";
+#if RECORDED_MICROSOFT_ORACLE
+        var expected = RecordedMicrosoftOracle.Read(caseId);
+#else
+        var expected = ObserveCurrent(CreateMicrosoft<string>(), mutation, nonGeneric);
+#endif
+        var actual = ObserveCurrent(ours, mutation, nonGeneric);
+#if !RECORDED_MICROSOFT_ORACLE
+        DifferentialRecording.Write(output, caseId, expected, actual);
+#endif
+        Assert.Equal(expected, actual);
     }
 
     private string ObserveCurrent(IList<string> values, string mutation, bool nonGeneric)
@@ -71,9 +81,18 @@ public sealed class PrincipalValueCollectionTraversalAndCopyComparisonTests(ITes
     [InlineData(1, true)]
     public void Copy_destination_bounds_match_microsoft(int index, bool generic)
     {
-        var microsoft = CreateMicrosoft<string>();
         var ours = new Ours.PrincipalValueCollection<string>();
-        Assert.Equal(ObserveBounds(microsoft, index, generic), ObserveBounds(ours, index, generic));
+        var caseId = $"{GetType().FullName}.{nameof(Copy_destination_bounds_match_microsoft)}(index: {index}, generic: {generic})";
+#if RECORDED_MICROSOFT_ORACLE
+        var expected = RecordedMicrosoftOracle.Read(caseId);
+#else
+        var expected = ObserveBounds(CreateMicrosoft<string>(), index, generic);
+#endif
+        var actual = ObserveBounds(ours, index, generic);
+#if !RECORDED_MICROSOFT_ORACLE
+        DifferentialRecording.Write(output, caseId, expected, actual);
+#endif
+        Assert.Equal(expected, actual);
     }
 
     private string ObserveBounds(IList<string> values, int index, bool generic)
@@ -96,6 +115,7 @@ public sealed class PrincipalValueCollectionTraversalAndCopyComparisonTests(ITes
         ? "accepted"
         : $"{error.GetType().FullName}; ParamName={(error as ArgumentException)?.ParamName ?? "<null>"}";
 
+#if !RECORDED_MICROSOFT_ORACLE
     private static Ms.PrincipalValueCollection<T> CreateMicrosoft<T>()
     {
         var constructor = typeof(Ms.PrincipalValueCollection<T>).GetConstructor(
@@ -103,4 +123,5 @@ public sealed class PrincipalValueCollectionTraversalAndCopyComparisonTests(ITes
         Assert.NotNull(constructor);
         return Assert.IsType<Ms.PrincipalValueCollection<T>>(constructor.Invoke(null));
     }
+#endif
 }

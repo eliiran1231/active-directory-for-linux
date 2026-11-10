@@ -44,7 +44,7 @@ public sealed class CompatibilityExtensionPersistenceLifecycleComparisonTests
             expectedInput[0] = actualInput[0] = "local-array-edit";
             var expectedValues = pair.Expected.Read();
             var actualValues = pair.Actual.Read();
-            Assert.Equal(new object[] { "local-array-edit" }, expectedValues);
+            Assert.Equal(SuiteCapture.Expected(new object[] { "local-array-edit" }, "assert-equal-expected", 47), SuiteCapture.Expected(expectedValues, "assert-equal-actual", 47));
             comparison.Check("local value after retained-array edit", Show(expectedValues), Show(actualValues));
             if (save) pair.VerifyBothPersistedMarkers();
             comparison.Assert();
@@ -64,8 +64,8 @@ public sealed class CompatibilityExtensionPersistenceLifecycleComparisonTests
             const string staged = "staged-after-save";
             pair.Expected.Write(new object[] { staged });
             pair.Actual.Write(new object[] { staged });
-            Assert.Equal(new object[] { staged }, pair.Expected.Read());
-            Assert.Equal(new object[] { staged }, pair.Actual.Read());
+            Assert.Equal(SuiteCapture.Expected(new object[] { staged }, "assert-equal-expected", 67), SuiteCapture.Expected(pair.Expected.Read(), "assert-equal-actual", 67));
+            Assert.Equal(SuiteCapture.Expected(new object[] { staged }, "assert-equal-expected", 68), SuiteCapture.Expected(pair.Actual.Read(), "assert-equal-actual", 68));
             pair.Expected.Delete();
             pair.Actual.Delete();
             CompatibilityOwnedDirectoryObjects.RequireAbsent(pair.ExpectedDn);
@@ -82,7 +82,7 @@ public sealed class CompatibilityExtensionPersistenceLifecycleComparisonTests
             var expectedReadError = Record.Exception(() => expectedRead = pair.Expected.Read());
             var actualReadError = Record.Exception(() => actualRead = pair.Actual.Read());
             Assert.Null(expectedReadError);
-            Assert.Equal(new object[] { staged }, expectedRead);
+            Assert.Equal(SuiteCapture.Expected(new object[] { staged }, "assert-equal-expected", 85), SuiteCapture.Expected(expectedRead, "assert-equal-actual", 85));
             comparison.Check("cached read exception", Error(expectedReadError), Error(actualReadError))
                 .Check("cached read value", Show(expectedRead), Show(actualRead));
 
@@ -95,7 +95,7 @@ public sealed class CompatibilityExtensionPersistenceLifecycleComparisonTests
             expectedReadError = Record.Exception(() => expectedRead = pair.Expected.Read());
             actualReadError = Record.Exception(() => actualRead = pair.Actual.Read());
             Assert.Null(expectedReadError);
-            Assert.Equal(new object[] { replacement }, expectedRead);
+            Assert.Equal(SuiteCapture.Expected(new object[] { replacement }, "assert-equal-expected", 98), SuiteCapture.Expected(expectedRead, "assert-equal-actual", 98));
             comparison.Check("replacement write exception", Error(expectedWriteError), Error(actualWriteError))
                 .Check("replacement read exception", Error(expectedReadError), Error(actualReadError))
                 .Check("replacement read value", Show(expectedRead), Show(actualRead));
@@ -192,17 +192,17 @@ public sealed class CompatibilityExtensionPersistenceLifecycleComparisonTests
 
         internal void VerifyBothPersistedMarkers()
         {
-            Assert.Equal(_expectedGuid, VerifyPersistedMarker(ExpectedDn, _expectedSam));
-            Assert.Equal(_actualGuid, VerifyPersistedMarker(ActualDn, _actualSam));
+            Assert.Equal(SuiteCapture.Expected(_expectedGuid, "assert-equal-expected", 195), SuiteCapture.Expected(VerifyPersistedMarker(ExpectedDn, _expectedSam), "assert-equal-actual", 195));
+            Assert.Equal(SuiteCapture.Expected(_actualGuid, "assert-equal-expected", 196), SuiteCapture.Expected(VerifyPersistedMarker(ActualDn, _actualSam), "assert-equal-actual", 196));
         }
 
         private Guid VerifyPersistedMarker(string dn, string sam)
         {
             using var entry = Open(dn);
             entry.RefreshCache(new[] { "distinguishedName", "sAMAccountName", "otherTelephone", "objectGUID" });
-            Assert.Equal(dn, (string)entry.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(sam, entry.Properties["sAMAccountName"].Value);
-            Assert.Equal(Marker, Assert.Single(entry.Properties["otherTelephone"].Cast<object>()));
+            Assert.Equal(SuiteCapture.Expected(dn, "assert-equal-expected", 203), SuiteCapture.Expected((string)entry.Properties["distinguishedName"].Value!, "assert-equal-actual", 203), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(sam, "assert-equal-expected", 204), SuiteCapture.Expected(entry.Properties["sAMAccountName"].Value, "assert-equal-actual", 204));
+            Assert.Equal(SuiteCapture.Expected(Marker, "assert-equal-expected", 205), SuiteCapture.Expected(Assert.Single(entry.Properties["otherTelephone"].Cast<object>()), "assert-equal-actual", 205));
             Assert.NotEqual(Guid.Empty, entry.Guid);
             return entry.Guid;
         }

@@ -75,8 +75,8 @@ public sealed class NextBatchMembershipComparisonTests
             var actualMember = actualCursor.Current;
             try
             {
-                Assert.Equal(expectedUser.Guid, expectedMember.Guid);
-                Assert.Equal(actualUser.Guid, actualMember.Guid);
+                Assert.Equal(SuiteCapture.Expected(expectedUser.Guid, "assert-equal-expected", 78), SuiteCapture.Expected(expectedMember.Guid, "assert-equal-actual", 78));
+                Assert.Equal(SuiteCapture.Expected(actualUser.Guid, "assert-equal-expected", 79), SuiteCapture.Expected(actualMember.Guid, "assert-equal-actual", 79));
                 Assert.Same(expectedUser, expectedMember);
                 new Comparison("Pending member object retention")
                     .Check("same inserted instance", ReferenceEquals(expectedUser, expectedMember), ReferenceEquals(actualUser, actualMember))
@@ -106,8 +106,8 @@ public sealed class NextBatchMembershipComparisonTests
                 expectedGroup.Members.Add(expectedUser);
                 actualGroup.Members.Add(actualUser);
             }
-            Assert.Equal(stageMember ? 1 : 0, expectedGroup.Members.Count);
-            Assert.Equal(expectedGroup.Members.Count, actualGroup.Members.Count);
+            Assert.Equal(SuiteCapture.Expected(stageMember ? 1 : 0, "assert-equal-expected", 109), SuiteCapture.Expected(expectedGroup.Members.Count, "assert-equal-actual", 109));
+            Assert.Equal(SuiteCapture.Expected(expectedGroup.Members.Count, "assert-equal-expected", 110), SuiteCapture.Expected(actualGroup.Members.Count, "assert-equal-actual", 110));
             int? expectedCount = null, actualCount = null;
             var expectedError = Record.Exception(() =>
             {
@@ -124,7 +124,7 @@ public sealed class NextBatchMembershipComparisonTests
                 finally { foreach (var member in members) if (!ReferenceEquals(member, actualUser)) member.Dispose(); }
             });
             Assert.Null(expectedError);
-            Assert.Equal(0, expectedCount);
+            Assert.Equal(SuiteCapture.Expected(0, "assert-equal-expected", 127), SuiteCapture.Expected(expectedCount, "assert-equal-actual", 127));
             new Comparison($"GetMembers recursive={recursive}, staged={stageMember}")
                 .Check("exception", Error(expectedError), Error(actualError))
                 .Check("query count", expectedCount, actualCount)

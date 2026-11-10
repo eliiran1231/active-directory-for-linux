@@ -36,7 +36,7 @@ public sealed class CompatibilityCredentialResetPendingWriteComparisonTests
                 CompatibilityOwnedDirectoryObjects.RequireAbsent(owned.Dn);
                 attempted.Add(owned);
                 Seed(owned);
-                Assert.Equal(SeedDescription, ReadPersistedDescription(owned));
+                Assert.Equal(SuiteCapture.Expected(SeedDescription, "assert-equal-expected", 39), SuiteCapture.Expected(ReadPersistedDescription(owned), "assert-equal-actual", 39));
             }
 
             // Seed wrappers are already disposed. These are ordinary existing
@@ -47,18 +47,18 @@ public sealed class CompatibilityCredentialResetPendingWriteComparisonTests
             Assert.True(expected.UsePropertyCache);
             Assert.True(actual.UsePropertyCache);
             RequireOwned(expected, expectedOwned);
-            Assert.Equal(actualOwned.Guid, actual.Guid);
-            Assert.Equal(actualOwned.Dn, Assert.IsType<string>(actual.Properties["distinguishedName"].Value), ignoreCase: true);
-            Assert.Equal(actualOwned.Sam, Assert.IsType<string>(actual.Properties["sAMAccountName"].Value));
-            Assert.Equal(actualOwned.Marker, Assert.IsType<string>(actual.Properties["telephoneNumber"].Value));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Guid, "assert-equal-expected", 50), SuiteCapture.Expected(actual.Guid, "assert-equal-actual", 50));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Dn, "assert-equal-expected", 51), SuiteCapture.Expected(Assert.IsType<string>(actual.Properties["distinguishedName"].Value), "assert-equal-actual", 51), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Sam, "assert-equal-expected", 52), SuiteCapture.Expected(Assert.IsType<string>(actual.Properties["sAMAccountName"].Value), "assert-equal-actual", 52));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Marker, "assert-equal-expected", 53), SuiteCapture.Expected(Assert.IsType<string>(actual.Properties["telephoneNumber"].Value), "assert-equal-actual", 53));
             var leftDescription = expected.Properties["description"];
             var rightDescription = actual.Properties["description"];
-            Assert.Equal(SeedDescription, Assert.IsType<string>(Assert.Single(leftDescription.Cast<object>())));
-            Assert.Equal(SeedDescription, Assert.IsType<string>(Assert.Single(rightDescription.Cast<object>())));
+            Assert.Equal(SuiteCapture.Expected(SeedDescription, "assert-equal-expected", 56), SuiteCapture.Expected(Assert.IsType<string>(Assert.Single(leftDescription.Cast<object>())), "assert-equal-actual", 56));
+            Assert.Equal(SuiteCapture.Expected(SeedDescription, "assert-equal-expected", 57), SuiteCapture.Expected(Assert.IsType<string>(Assert.Single(rightDescription.Cast<object>())), "assert-equal-actual", 57));
             leftDescription.Value = EditedDescription;
             rightDescription.Value = EditedDescription;
-            Assert.Equal(EditedDescription, leftDescription.Value);
-            Assert.Equal(EditedDescription, rightDescription.Value);
+            Assert.Equal(SuiteCapture.Expected(EditedDescription, "assert-equal-expected", 60), SuiteCapture.Expected(leftDescription.Value, "assert-equal-actual", 60));
+            Assert.Equal(SuiteCapture.Expected(EditedDescription, "assert-equal-expected", 61), SuiteCapture.Expected(rightDescription.Value, "assert-equal-actual", 61));
 
             if (bouncePassword)
             {
@@ -81,11 +81,11 @@ public sealed class CompatibilityCredentialResetPendingWriteComparisonTests
             var leftPersisted = ReadPersistedDescription(expectedOwned);
             var rightPersisted = ReadPersistedDescription(actualOwned);
             Assert.Null(leftError);
-            Assert.Equal(bouncePassword ? SeedDescription : EditedDescription, leftPersisted);
+            Assert.Equal(SuiteCapture.Expected(bouncePassword ? SeedDescription : EditedDescription, "assert-equal-expected", 84), SuiteCapture.Expected(leftPersisted, "assert-equal-actual", 84));
             if (!bouncePassword)
             {
                 Assert.Null(rightError);
-                Assert.Equal(EditedDescription, rightPersisted);
+                Assert.Equal(SuiteCapture.Expected(EditedDescription, "assert-equal-expected", 88), SuiteCapture.Expected(rightPersisted, "assert-equal-actual", 88));
             }
             new Comparison($"Pending write after credential reset: bounce={bouncePassword}")
                 .Check("commit exception", leftError?.GetType().Name, rightError?.GetType().Name)
@@ -154,10 +154,10 @@ public sealed class CompatibilityCredentialResetPendingWriteComparisonTests
 
     private static void RequireOwned(Ms.DirectoryEntry entry, OwnedUser owned)
     {
-        Assert.Equal(owned.Dn, Assert.IsType<string>(entry.Properties["distinguishedName"].Value), ignoreCase: true);
-        Assert.Equal(owned.Sam, Assert.IsType<string>(entry.Properties["sAMAccountName"].Value));
-        Assert.Equal(owned.Marker, Assert.IsType<string>(entry.Properties["telephoneNumber"].Value));
-        if (owned.Guid is { } expectedGuid) Assert.Equal(expectedGuid, entry.Guid);
+        Assert.Equal(SuiteCapture.Expected(owned.Dn, "assert-equal-expected", 157), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["distinguishedName"].Value), "assert-equal-actual", 157), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(owned.Sam, "assert-equal-expected", 158), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["sAMAccountName"].Value), "assert-equal-actual", 158));
+        Assert.Equal(SuiteCapture.Expected(owned.Marker, "assert-equal-expected", 159), SuiteCapture.Expected(Assert.IsType<string>(entry.Properties["telephoneNumber"].Value), "assert-equal-actual", 159));
+        if (owned.Guid is { } expectedGuid) Assert.Equal(SuiteCapture.Expected(expectedGuid, "assert-equal-expected", 160), SuiteCapture.Expected(entry.Guid, "assert-equal-actual", 160));
     }
 
     private static void Cleanup(OwnedUser owned)

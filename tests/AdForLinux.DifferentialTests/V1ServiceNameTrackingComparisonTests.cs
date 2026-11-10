@@ -54,11 +54,11 @@ public sealed class V1ServiceNameTrackingComparisonTests
     private static void Compare(Ms.PrincipalValueCollection<string> expected, Ours.PrincipalValueCollection<string> actual)
     {
         var changes = actual.CaptureChanges();
-        Assert.Equal(expected.ToArray(), actual.ToArray());
-        Assert.Equal(((IEnumerable)Read(expected, "Inserted")).Cast<string>(), changes.Inserted);
-        Assert.Equal(((IEnumerable)Read(expected, "Removed")).Cast<string>(), changes.Removed);
-        Assert.Equal(((IEnumerable)Read(expected, "ChangedValues")).Cast<object>()
-            .Select(pair => ((string)Read(pair, "Left"), (string)Read(pair, "Right"))), changes.Changed);
+        Assert.Equal(SuiteCapture.Expected(expected.ToArray(), "assert-equal-expected", 57), SuiteCapture.Expected(actual.ToArray(), "assert-equal-actual", 57));
+        Assert.Equal(SuiteCapture.Expected(((IEnumerable)Read(expected, "Inserted")).Cast<string>(), "assert-equal-expected", 58), SuiteCapture.Expected(changes.Inserted, "assert-equal-actual", 58));
+        Assert.Equal(SuiteCapture.Expected(((IEnumerable)Read(expected, "Removed")).Cast<string>(), "assert-equal-expected", 59), SuiteCapture.Expected(changes.Removed, "assert-equal-actual", 59));
+        Assert.Equal(SuiteCapture.Expected(((IEnumerable)Read(expected, "ChangedValues")).Cast<object>()
+            .Select(pair => ((string)Read(pair, "Left"), (string)Read(pair, "Right"))), "assert-equal-expected", 60), SuiteCapture.Expected(changes.Changed, "assert-equal-actual", 60));
     }
 
     private const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;

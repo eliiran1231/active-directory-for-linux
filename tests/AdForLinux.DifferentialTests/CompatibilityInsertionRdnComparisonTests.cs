@@ -68,7 +68,7 @@ public sealed class CompatibilityInsertionRdnComparisonTests
             Assert.True(actualSaveError is null,
                 $"Microsoft Save succeeded; AdForLinux Save failed: {Describe(actualSaveError)}");
             var actual = Snapshot(container, ourToken, ours.Name, ours.DistinguishedName);
-            Assert.Equal(expected, actual);
+            Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 71), SuiteCapture.Expected(actual, "assert-equal-actual", 71));
         }
         catch (Exception error)
         {
@@ -106,7 +106,7 @@ public sealed class CompatibilityInsertionRdnComparisonTests
         searcher.PropertiesToLoad.AddRange(new[] { "cn", "name", "distinguishedName", "sAMAccountName" });
         using var results = searcher.FindAll();
         var resultCount = results.Count;
-        Assert.Equal(1, resultCount);
+        Assert.Equal(SuiteCapture.Expected(1, "assert-equal-expected", 109), SuiteCapture.Expected(resultCount, "assert-equal-actual", 109));
         var result = results[0];
         string Property(string name)
         {
@@ -114,7 +114,7 @@ public sealed class CompatibilityInsertionRdnComparisonTests
             Assert.Single(values.Cast<object>());
             return Assert.IsType<string>(values[0]);
         }
-        Assert.Equal(token, Property("sAMAccountName"));
+        Assert.Equal(SuiteCapture.Expected(token, "assert-equal-expected", 117), SuiteCapture.Expected(Property("sAMAccountName"), "assert-equal-actual", 117));
         // Preserve every whitespace/punctuation/case/escape difference. Only
         // the independently generated principal token is normalized; the container
         // and both APIs' server responses otherwise remain byte-for-byte text.

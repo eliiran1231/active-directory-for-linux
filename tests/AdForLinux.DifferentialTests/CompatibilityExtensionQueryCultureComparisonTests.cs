@@ -66,9 +66,9 @@ public sealed class CompatibilityExtensionQueryCultureComparisonTests
             // Require the oracle to exercise numeric culture conversion, not
             // merely return the same nonempty default filter twice.
             if (culture == "fr-FR") Assert.NotEqual(expectedInitial, expectedRefreshed);
-            else Assert.Equal(expectedInitial, expectedRefreshed);
-            Assert.Equal(new[] { expectedInitial, expectedRefreshed },
-                new[] { actualInitial, actualRefreshed });
+            else Assert.Equal(SuiteCapture.Expected(expectedInitial, "assert-equal-expected", 69), SuiteCapture.Expected(expectedRefreshed, "assert-equal-actual", 69));
+            Assert.Equal(SuiteCapture.Expected(new[] { expectedInitial, expectedRefreshed }, "assert-equal-expected", 70),
+                SuiteCapture.Expected(new[] { actualInitial, actualRefreshed }, "assert-equal-actual", 70));
         }
         finally
         {

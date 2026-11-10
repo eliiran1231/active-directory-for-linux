@@ -50,9 +50,9 @@ public class SynchronizationCookieIdentityComparisonTests
         var expectedSecond = microsoft.GetDirectorySynchronizationCookie();
         var actualFirst = ours.GetDirectorySynchronizationCookie();
         var actualSecond = ours.GetDirectorySynchronizationCookie();
-        Assert.Equal(expectedFirst, actualFirst);
-        Assert.Equal(expectedSecond, actualSecond);
-        Assert.Equal(ReferenceEquals(expectedFirst, expectedSecond),
-            ReferenceEquals(actualFirst, actualSecond));
+        Assert.Equal(SuiteCapture.Expected(expectedFirst, "assert-equal-expected", 53), SuiteCapture.Expected(actualFirst, "assert-equal-actual", 53));
+        Assert.Equal(SuiteCapture.Expected(expectedSecond, "assert-equal-expected", 54), SuiteCapture.Expected(actualSecond, "assert-equal-actual", 54));
+        Assert.Equal(SuiteCapture.Expected(ReferenceEquals(expectedFirst, expectedSecond), "assert-equal-expected", 55),
+            SuiteCapture.Expected(ReferenceEquals(actualFirst, actualSecond), "assert-equal-actual", 55));
     }
 }

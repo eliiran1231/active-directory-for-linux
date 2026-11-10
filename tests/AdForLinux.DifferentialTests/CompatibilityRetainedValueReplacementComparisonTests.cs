@@ -29,7 +29,7 @@ public sealed class CompatibilityRetainedValueReplacementComparisonTests(TestDat
         var left = expected.Properties["description"];
         var right = actual.Properties["description"];
         Assert.NotEmpty(left);
-        Assert.Equal(left.Cast<object?>().ToArray(), right.Cast<object?>().ToArray());
+        Assert.Equal(SuiteCapture.Expected(left.Cast<object?>().ToArray(), "assert-equal-expected", 32), SuiteCapture.Expected(right.Cast<object?>().ToArray(), "assert-equal-actual", 32));
 
         if (dispose)
         {

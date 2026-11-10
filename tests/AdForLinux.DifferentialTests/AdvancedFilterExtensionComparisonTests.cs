@@ -60,8 +60,8 @@ public sealed class AdvancedFilterExtensionComparisonTests
         var expectedRecovery = Record.Exception(() => microsoft.Set("description", "valid", typeof(string)));
         var actualRecovery = Record.Exception(() => ours.Set("description", "valid", typeof(string)));
 
-        Assert.Equal(new[] { Describe(expected), Describe(expectedRecovery) },
-            new[] { Describe(actual), Describe(actualRecovery) });
+        Assert.Equal(SuiteCapture.Expected(new[] { Describe(expected), Describe(expectedRecovery) }, "assert-equal-expected", 63),
+            SuiteCapture.Expected(new[] { Describe(actual), Describe(actualRecovery) }, "assert-equal-actual", 63));
     }
 
     [Theory]
@@ -82,7 +82,7 @@ public sealed class AdvancedFilterExtensionComparisonTests
 
         // Microsoft marks this cache entry as a filter, so ExtensionGet returns
         // null even when an ordinary extension value previously occupied it.
-        Assert.Equal(microsoft.Read("description"), ours.Read("description"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read("description"), "assert-equal-expected", 85), SuiteCapture.Expected(ours.Read("description"), "assert-equal-actual", 85));
     }
 
     [Theory]
@@ -129,7 +129,7 @@ public sealed class AdvancedFilterExtensionComparisonTests
         microsoftPrincipal.Dispose();
         ourPrincipal.Dispose();
 
-        Assert.Equal(Describe(Record.Exception(expectedAction)), Describe(Record.Exception(actualAction)));
+        Assert.Equal(SuiteCapture.Expected(Describe(Record.Exception(expectedAction)), "assert-equal-expected", 132), SuiteCapture.Expected(Describe(Record.Exception(actualAction)), "assert-equal-actual", 132));
     }
 
     private static object? Value(string kind) => kind switch

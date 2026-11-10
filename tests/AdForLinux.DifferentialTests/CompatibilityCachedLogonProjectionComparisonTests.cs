@@ -49,17 +49,17 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             }
             // Check cache prerequisites before projecting. Do not call Save,
             // CommitChanges, RefreshCache, or re-find either principal here.
-            Assert.Equal(lastLogon, CachedFileTime(expectedEntry.Properties["lastLogon"].Value));
-            Assert.Equal(lastLogon, Assert.IsType<long>(actualEntry.Properties["lastLogon"].Value));
+            Assert.Equal(SuiteCapture.Expected(lastLogon, "assert-equal-expected", 52), SuiteCapture.Expected(CachedFileTime(expectedEntry.Properties["lastLogon"].Value), "assert-equal-actual", 52));
+            Assert.Equal(SuiteCapture.Expected(lastLogon, "assert-equal-expected", 53), SuiteCapture.Expected(Assert.IsType<long>(actualEntry.Properties["lastLogon"].Value), "assert-equal-actual", 53));
             var expectedTimestamp = expectedEntry.Properties["lastLogonTimestamp"];
             var actualTimestamp = actualEntry.Properties["lastLogonTimestamp"];
-            Assert.Equal(timestamp == "absent" ? 0 : 1, expectedTimestamp.Count);
-            Assert.Equal(expectedTimestamp.Count, actualTimestamp.Count);
+            Assert.Equal(SuiteCapture.Expected(timestamp == "absent" ? 0 : 1, "assert-equal-expected", 56), SuiteCapture.Expected(expectedTimestamp.Count, "assert-equal-actual", 56));
+            Assert.Equal(SuiteCapture.Expected(expectedTimestamp.Count, "assert-equal-expected", 57), SuiteCapture.Expected(actualTimestamp.Count, "assert-equal-actual", 57));
             if (timestamp != "absent")
             {
                 var expectedRaw = CachedFileTime(expectedTimestamp.Value);
-                Assert.Equal(timestamp == "zero" ? 0L : replicatedLogon, expectedRaw);
-                Assert.Equal(expectedRaw, Assert.IsType<long>(actualTimestamp.Value));
+                Assert.Equal(SuiteCapture.Expected(timestamp == "zero" ? 0L : replicatedLogon, "assert-equal-expected", 61), SuiteCapture.Expected(expectedRaw, "assert-equal-actual", 61));
+                Assert.Equal(SuiteCapture.Expected(expectedRaw, "assert-equal-expected", 62), SuiteCapture.Expected(Assert.IsType<long>(actualTimestamp.Value), "assert-equal-actual", 62));
             }
             var expectedValue = expected.LastLogon;
             var actualValue = actual.LastLogon;
@@ -88,14 +88,14 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             actualEntry.Properties["lastLogon"].Value = initial.AddDays(-1).ToFileTimeUtc();
             StageMicrosoftFileTime(expectedEntry, "lastLogonTimestamp", initial.ToFileTimeUtc());
             actualEntry.Properties["lastLogonTimestamp"].Value = initial.ToFileTimeUtc();
-            Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value));
-            Assert.Equal(initial.ToFileTimeUtc(), CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value));
+            Assert.Equal(SuiteCapture.Expected(initial.ToFileTimeUtc(), "assert-equal-expected", 91), SuiteCapture.Expected(CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value), "assert-equal-actual", 91));
+            Assert.Equal(SuiteCapture.Expected(initial.ToFileTimeUtc(), "assert-equal-expected", 92), SuiteCapture.Expected(CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value), "assert-equal-actual", 92));
 
             var expectedFirst = expected.LastLogon;
             var actualFirst = actual.LastLogon;
             // Establish successful projection before testing cache invalidation.
             Assert.NotNull(expectedFirst);
-            Assert.Equal(initial.Ticks, expectedFirst.Value.Ticks);
+            Assert.Equal(SuiteCapture.Expected(initial.Ticks, "assert-equal-expected", 98), SuiteCapture.Expected(expectedFirst.Value.Ticks, "assert-equal-actual", 98));
             var comparison = new Comparison($"LastLogon reread after cached timestamp change={changeTimestamp}");
             CompareDate(comparison, "first read", expectedFirst, actualFirst);
             if (changeTimestamp)
@@ -104,8 +104,8 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
                 actualEntry.Properties["lastLogonTimestamp"].Value = replacement.ToFileTimeUtc();
             }
             var currentFileTime = (changeTimestamp ? replacement : initial).ToFileTimeUtc();
-            Assert.Equal(currentFileTime, CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value));
-            Assert.Equal(currentFileTime, CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value));
+            Assert.Equal(SuiteCapture.Expected(currentFileTime, "assert-equal-expected", 107), SuiteCapture.Expected(CachedFileTime(expectedEntry.Properties["lastLogonTimestamp"].Value), "assert-equal-actual", 107));
+            Assert.Equal(SuiteCapture.Expected(currentFileTime, "assert-equal-expected", 108), SuiteCapture.Expected(CachedFileTime(actualEntry.Properties["lastLogonTimestamp"].Value), "assert-equal-actual", 108));
             // AccountInfo.HandleGet may retain its already-loaded value even
             // though the public DirectoryEntry cache has changed. Compare the
             // oracle, without prescribing whether the second value is old/new.
@@ -195,12 +195,12 @@ public sealed class CompatibilityCachedLogonProjectionComparisonTests
             null, largeInteger, new object[] { unchecked((int)(fileTime >> 32)) }, System.Globalization.CultureInfo.InvariantCulture);
         type.InvokeMember("LowPart", System.Reflection.BindingFlags.SetProperty,
             null, largeInteger, new object[] { unchecked((int)fileTime) }, System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Equal(fileTime, CachedFileTime(largeInteger));
+        Assert.Equal(SuiteCapture.Expected(fileTime, "assert-equal-expected", 198), SuiteCapture.Expected(CachedFileTime(largeInteger), "assert-equal-actual", 198));
         // Value stages through the public provider cache; it does not call
         // SetInfo while UsePropertyCache is true. Do not manually release the
         // RCW here: the cache may retain it for subsequent principal projection.
         entry.Properties[attribute].Value = largeInteger;
-        Assert.Equal(fileTime, CachedFileTime(entry.Properties[attribute].Value));
+        Assert.Equal(SuiteCapture.Expected(fileTime, "assert-equal-expected", 203), SuiteCapture.Expected(CachedFileTime(entry.Properties[attribute].Value), "assert-equal-actual", 203));
     }
 
     internal static long CachedFileTime(object? value)

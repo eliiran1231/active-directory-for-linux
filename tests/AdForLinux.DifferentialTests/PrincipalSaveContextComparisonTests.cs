@@ -41,14 +41,14 @@ public sealed class PrincipalSaveContextComparisonTests
 
             Assert.Same(microsoftTarget, microsoft.Context);
             Assert.Same(ourTarget, ours.Context);
-            Assert.Equal(microsoftTargetDn, microsoft.DistinguishedName, ignoreCase: true);
-            Assert.Equal(ourTargetDn, ours.DistinguishedName, ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(microsoftTargetDn, "assert-equal-expected", 44), SuiteCapture.Expected(microsoft.DistinguishedName, "assert-equal-actual", 44), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(ourTargetDn, "assert-equal-expected", 45), SuiteCapture.Expected(ours.DistinguishedName, "assert-equal-actual", 45), ignoreCase: true);
             Assert.Equal(
-                MicrosoftEntryExists(microsoftSourceDn),
-                OurEntryExists(ourSourceDn));
+                SuiteCapture.Expected(MicrosoftEntryExists(microsoftSourceDn), "assert-equal-expected", 46),
+                SuiteCapture.Expected(OurEntryExists(ourSourceDn), "assert-equal-actual", 46));
             Assert.Equal(
-                MicrosoftEntryExists(microsoftTargetDn),
-                OurEntryExists(ourTargetDn));
+                SuiteCapture.Expected(MicrosoftEntryExists(microsoftTargetDn), "assert-equal-expected", 49),
+                SuiteCapture.Expected(OurEntryExists(ourTargetDn), "assert-equal-actual", 49));
 
             using var microsoftFromTarget = Ms.GroupPrincipal.FindByIdentity(
                 microsoftTarget,
@@ -58,7 +58,7 @@ public sealed class PrincipalSaveContextComparisonTests
                 ourTarget,
                 Ours.IdentityType.SamAccountName,
                 ourName);
-            Assert.Equal(microsoftFromTarget is not null, ourFromTarget is not null);
+            Assert.Equal(SuiteCapture.Expected(microsoftFromTarget is not null, "assert-equal-expected", 61), SuiteCapture.Expected(ourFromTarget is not null, "assert-equal-actual", 61));
         }
         finally
         {

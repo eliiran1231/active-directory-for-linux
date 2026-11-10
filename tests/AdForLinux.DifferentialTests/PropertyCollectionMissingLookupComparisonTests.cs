@@ -46,19 +46,19 @@ public sealed class PropertyCollectionMissingLookupComparisonTests : IClassFixtu
         {
             case "Contains":
                 Assert.False(expected.Contains(missing));
-                Assert.Equal(expected.Contains(missing), actual.Contains(missing));
+                Assert.Equal(SuiteCapture.Expected(expected.Contains(missing), "assert-equal-expected", 49), SuiteCapture.Expected(actual.Contains(missing), "assert-equal-actual", 49));
                 break;
             case "Count":
-                Assert.Equal(expectedCount, expected.Count);
+                Assert.Equal(SuiteCapture.Expected(expectedCount, "assert-equal-expected", 52), SuiteCapture.Expected(expected.Count, "assert-equal-actual", 52));
                 // Compare deltas so unrelated provider projection differences
                 // cannot produce a false positive for this lookup regression.
-                Assert.Equal(expected.Count - expectedCount, actual.Count - actualCount);
+                Assert.Equal(SuiteCapture.Expected(expected.Count - expectedCount, "assert-equal-expected", 55), SuiteCapture.Expected(actual.Count - actualCount, "assert-equal-actual", 55));
                 break;
             case "PropertyNames":
-                Assert.Equal(expectedNames, Names(expected.PropertyNames));
+                Assert.Equal(SuiteCapture.Expected(expectedNames, "assert-equal-expected", 58), SuiteCapture.Expected(Names(expected.PropertyNames), "assert-equal-actual", 58));
                 Assert.Equal(
-                    Names(expected.PropertyNames).Except(expectedNames).ToArray(),
-                    Names(actual.PropertyNames).Except(actualNames).ToArray());
+                    SuiteCapture.Expected(Names(expected.PropertyNames).Except(expectedNames).ToArray(), "assert-equal-expected", 59),
+                    SuiteCapture.Expected(Names(actual.PropertyNames).Except(actualNames).ToArray(), "assert-equal-actual", 59));
                 break;
             default: throw new ArgumentOutOfRangeException(nameof(observation));
         }

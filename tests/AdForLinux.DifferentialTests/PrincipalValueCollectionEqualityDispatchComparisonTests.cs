@@ -27,7 +27,7 @@ public sealed class PrincipalValueCollectionEqualityDispatchComparisonTests
     {
         var microsoft = CreateMicrosoft<EquatableValue>();
         var ours = new Ours.PrincipalValueCollection<EquatableValue>();
-        Assert.Equal(Observe(microsoft), Observe(ours));
+        Assert.Equal(SuiteCapture.Expected(Observe(microsoft), "assert-equal-expected", 30), SuiteCapture.Expected(Observe(ours), "assert-equal-actual", 30));
 
         string Observe(IList<EquatableValue> values)
         {

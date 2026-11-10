@@ -60,8 +60,8 @@ public sealed class CompatibilityFailedInsertRetryComparisonTests
             {
                 Assert.NotNull(savedExpectedControl);
                 Assert.NotNull(savedActualControl);
-                Assert.Equal(expectedControlOwned.Dn, savedExpectedControl.DistinguishedName, ignoreCase: true);
-                Assert.Equal(actualControlOwned.Dn, savedActualControl.DistinguishedName, ignoreCase: true);
+                Assert.Equal(SuiteCapture.Expected(expectedControlOwned.Dn, "assert-equal-expected", 63), SuiteCapture.Expected(savedExpectedControl.DistinguishedName, "assert-equal-actual", 63), ignoreCase: true);
+                Assert.Equal(SuiteCapture.Expected(actualControlOwned.Dn, "assert-equal-expected", 64), SuiteCapture.Expected(savedActualControl.DistinguishedName, "assert-equal-actual", 64), ignoreCase: true);
                 Assert.NotNull(savedExpectedControl.LastPasswordSet);
                 Assert.NotNull(savedActualControl.LastPasswordSet);
             }
@@ -84,12 +84,12 @@ public sealed class CompatibilityFailedInsertRetryComparisonTests
             Assert.Null(actual.Guid);
             Assert.Null(expected.DistinguishedName);
             Assert.Null(actual.DistinguishedName);
-            Assert.Equal(expectedOwned.Cn, expected.Name);
-            Assert.Equal(actualOwned.Cn, actual.Name);
-            Assert.Equal(expectedOwned.Sam, expected.SamAccountName);
-            Assert.Equal(actualOwned.Sam, actual.SamAccountName);
-            Assert.Equal(expectedOwned.Marker, expected.Description);
-            Assert.Equal(actualOwned.Marker, actual.Description);
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.Cn, "assert-equal-expected", 87), SuiteCapture.Expected(expected.Name, "assert-equal-actual", 87));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Cn, "assert-equal-expected", 88), SuiteCapture.Expected(actual.Name, "assert-equal-actual", 88));
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.Sam, "assert-equal-expected", 89), SuiteCapture.Expected(expected.SamAccountName, "assert-equal-actual", 89));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Sam, "assert-equal-expected", 90), SuiteCapture.Expected(actual.SamAccountName, "assert-equal-actual", 90));
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.Marker, "assert-equal-expected", 91), SuiteCapture.Expected(expected.Description, "assert-equal-actual", 91));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Marker, "assert-equal-expected", 92), SuiteCapture.Expected(actual.Description, "assert-equal-actual", 92));
             Assert.False(expected.Enabled);
             Assert.False(actual.Enabled);
 
@@ -176,11 +176,11 @@ public sealed class CompatibilityFailedInsertRetryComparisonTests
             using var entry = Open(Dn);
             try { RefreshIdentity(entry); }
             catch (COMException error) when (error.ErrorCode == unchecked((int)0x80072030)) { return false; }
-            Assert.Equal(Dn, (string)entry.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(Sam, entry.Properties["sAMAccountName"].Value);
-            Assert.Equal(Marker, entry.Properties["description"].Value);
+            Assert.Equal(SuiteCapture.Expected(Dn, "assert-equal-expected", 179), SuiteCapture.Expected((string)entry.Properties["distinguishedName"].Value!, "assert-equal-actual", 179), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(Sam, "assert-equal-expected", 180), SuiteCapture.Expected(entry.Properties["sAMAccountName"].Value, "assert-equal-actual", 180));
+            Assert.Equal(SuiteCapture.Expected(Marker, "assert-equal-expected", 181), SuiteCapture.Expected(entry.Properties["description"].Value, "assert-equal-actual", 181));
             Assert.NotEqual(Guid.Empty, entry.Guid);
-            if (_identity is { } identity) Assert.Equal(identity, entry.Guid);
+            if (_identity is { } identity) Assert.Equal(SuiteCapture.Expected(identity, "assert-equal-expected", 183), SuiteCapture.Expected(entry.Guid, "assert-equal-actual", 183));
             _identity = entry.Guid;
             return true;
         }

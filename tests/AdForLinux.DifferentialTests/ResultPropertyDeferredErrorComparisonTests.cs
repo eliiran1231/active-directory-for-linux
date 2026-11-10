@@ -22,21 +22,21 @@ public sealed class ResultPropertyDeferredErrorComparisonTests
 
         // Reflection only supplies the payload normally built by the search
         // result decoder. Reading/copying/searching values uses public APIs.
-        Assert.Equal(microsoft[0], ours[0]);
-        Assert.Equal(microsoft[2], ours[2]);
-        Assert.Equal(microsoft.Contains(deferredError), ours.Contains(deferredError));
-        Assert.Equal(microsoft.IndexOf(deferredError), ours.IndexOf(deferredError));
+        Assert.Equal(SuiteCapture.Expected(microsoft[0], "assert-equal-expected", 25), SuiteCapture.Expected(ours[0], "assert-equal-actual", 25));
+        Assert.Equal(SuiteCapture.Expected(microsoft[2], "assert-equal-expected", 26), SuiteCapture.Expected(ours[2], "assert-equal-actual", 26));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Contains(deferredError), "assert-equal-expected", 27), SuiteCapture.Expected(ours.Contains(deferredError), "assert-equal-actual", 27));
+        Assert.Equal(SuiteCapture.Expected(microsoft.IndexOf(deferredError), "assert-equal-expected", 28), SuiteCapture.Expected(ours.IndexOf(deferredError), "assert-equal-actual", 28));
         var expectedCopy = new object[3];
         var actualCopy = new object[3];
         microsoft.CopyTo(expectedCopy, 0);
         ours.CopyTo(actualCopy, 0);
-        Assert.Equal(expectedCopy, actualCopy);
+        Assert.Equal(SuiteCapture.Expected(expectedCopy, "assert-equal-expected", 33), SuiteCapture.Expected(actualCopy, "assert-equal-actual", 33));
 
         var expectedError = Record.Exception(() => { _ = microsoft[1]; });
         var actualError = Record.Exception(() => { _ = ours[1]; });
 
         Assert.Same(deferredError, expectedError);
-        Assert.Equal(expectedError?.GetType(), actualError?.GetType());
+        Assert.Equal(SuiteCapture.Expected(expectedError?.GetType(), "assert-equal-expected", 39), SuiteCapture.Expected(actualError?.GetType(), "assert-equal-actual", 39));
         Assert.Same(deferredError, actualError);
     }
 

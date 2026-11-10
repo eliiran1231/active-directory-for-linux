@@ -32,11 +32,11 @@ public sealed class PrincipalExtensionCacheComparisonTests
         object[] actualInput = stringArray ? new string[] { "one", "two" } : new object[] { "one", "two" };
         microsoft.Write("otherTelephone", expectedInput);
         ours.Write("otherTelephone", actualInput);
-        Assert.Equal(microsoft.Read("otherTelephone"), ours.Read("otherTelephone"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read("otherTelephone"), "assert-equal-expected", 35), SuiteCapture.Expected(ours.Read("otherTelephone"), "assert-equal-actual", 35));
 
         expectedInput[0] = actualInput[0] = "changed";
 
-        Assert.Equal(microsoft.Read("otherTelephone"), ours.Read("otherTelephone"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read("otherTelephone"), "assert-equal-expected", 39), SuiteCapture.Expected(ours.Read("otherTelephone"), "assert-equal-actual", 39));
     }
 
     [Theory]
@@ -51,11 +51,11 @@ public sealed class PrincipalExtensionCacheComparisonTests
         ours.Write("description", Value(kind));
         var expected = microsoft.Read("description");
         var actual = ours.Read("description");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 54), SuiteCapture.Expected(actual, "assert-equal-actual", 54));
 
         expected[0] = actual[0] = "changed";
 
-        Assert.Equal(microsoft.Read("description"), ours.Read("description"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read("description"), "assert-equal-expected", 58), SuiteCapture.Expected(ours.Read("description"), "assert-equal-actual", 58));
     }
 
     [Theory]
@@ -74,8 +74,8 @@ public sealed class PrincipalExtensionCacheComparisonTests
         // Compare both keys together so a collision cannot hide behind a
         // successful read of the most recently assigned spelling.
         Assert.Equal(
-            new[] { microsoft.Read("description"), microsoft.Read(attribute) },
-            new[] { ours.Read("description"), ours.Read(attribute) });
+            SuiteCapture.Expected(new[] { microsoft.Read("description"), microsoft.Read(attribute) }, "assert-equal-expected", 76),
+            SuiteCapture.Expected(new[] { ours.Read("description"), ours.Read(attribute) }, "assert-equal-actual", 76));
     }
 
     [Theory]
@@ -104,8 +104,8 @@ public sealed class PrincipalExtensionCacheComparisonTests
             actualValues = ours.Read(operation == "missing-read" ? "missing" : "description");
         });
 
-        Assert.Equal(Describe(expected), Describe(actual));
-        Assert.Equal(expectedValues, actualValues);
+        Assert.Equal(SuiteCapture.Expected(Describe(expected), "assert-equal-expected", 107), SuiteCapture.Expected(Describe(actual), "assert-equal-actual", 107));
+        Assert.Equal(SuiteCapture.Expected(expectedValues, "assert-equal-expected", 108), SuiteCapture.Expected(actualValues, "assert-equal-actual", 108));
     }
 
     [Theory]
@@ -132,9 +132,9 @@ public sealed class PrincipalExtensionCacheComparisonTests
             else ours.Write(kind == "null-write" ? null! : "description", Value(kind));
         });
 
-        Assert.Equal(microsoft.Read("description"), ours.Read("description"));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read("description"), "assert-equal-expected", 135), SuiteCapture.Expected(ours.Read("description"), "assert-equal-actual", 135));
         Assert.IsType<ArgumentException>(expected);
-        Assert.Equal(Describe(expected), Describe(actual));
+        Assert.Equal(SuiteCapture.Expected(Describe(expected), "assert-equal-expected", 137), SuiteCapture.Expected(Describe(actual), "assert-equal-actual", 137));
     }
 
     private static object? Value(string kind) => kind switch

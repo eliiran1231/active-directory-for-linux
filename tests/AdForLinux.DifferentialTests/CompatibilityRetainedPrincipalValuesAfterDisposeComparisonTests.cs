@@ -40,8 +40,8 @@ public sealed class CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTe
         const string added = "HOST/compat-retained-added";
         expected.Add(seed);
         actual.Add(seed);
-        Assert.Equal(new[] { seed }, expected.ToArray());
-        Assert.Equal(new[] { seed }, actual.ToArray());
+        Assert.Equal(SuiteCapture.Expected(new[] { seed }, "assert-equal-expected", 43), SuiteCapture.Expected(expected.ToArray(), "assert-equal-actual", 43));
+        Assert.Equal(SuiteCapture.Expected(new[] { seed }, "assert-equal-expected", 44), SuiteCapture.Expected(actual.ToArray(), "assert-equal-actual", 44));
         Assert.Same(expected, expectedOwner.ServicePrincipalNames);
         Assert.Same(actual, actualOwner.ServicePrincipalNames);
 
@@ -53,12 +53,12 @@ public sealed class CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTe
 
         // Retained reads establish a healthy local collection independently of
         // the later mutation. Do not reacquire it through a disposed owner.
-        Assert.Equal(new[] { seed }, expected.ToArray());
-        Assert.Equal(new[] { seed }, actual.ToArray());
+        Assert.Equal(SuiteCapture.Expected(new[] { seed }, "assert-equal-expected", 56), SuiteCapture.Expected(expected.ToArray(), "assert-equal-actual", 56));
+        Assert.Equal(SuiteCapture.Expected(new[] { seed }, "assert-equal-expected", 57), SuiteCapture.Expected(actual.ToArray(), "assert-equal-actual", 57));
         // Exercise Contains itself; Assert.Contains would enumerate instead.
         var contains = (expected.Contains(seed), actual.Contains(seed),
             expected.Contains(added), actual.Contains(added));
-        Assert.Equal((true, true, false, false), contains);
+        Assert.Equal(SuiteCapture.Expected((true, true, false, false), "assert-equal-expected", 61), SuiteCapture.Expected(contains, "assert-equal-actual", 61));
 
         var expectedError = Record.Exception(() => Mutate(expected, operation, added));
         var actualError = Record.Exception(() => Mutate(actual, operation, added));
@@ -68,8 +68,8 @@ public sealed class CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTe
         // Strong Microsoft oracle prerequisite, also checked in each live-owner
         // control. Capture clone contents even if its callback throws after mutation.
         Assert.Null(expectedError);
-        Assert.Equal(operation == "Add" ? new[] { seed, added } : Array.Empty<string>(),
-            expectedValues);
+        Assert.Equal(SuiteCapture.Expected(operation == "Add" ? new[] { seed, added } : Array.Empty<string>(), "assert-equal-expected", 71),
+            SuiteCapture.Expected(expectedValues, "assert-equal-actual", 71));
         new Comparison($"Retained ServicePrincipalNames: {operation}, disposeOwner={disposeOwner}")
             .Check("mutation exception", expectedError?.GetType().FullName, actualError?.GetType().FullName)
             .Check("mutation exception parameter", (expectedError as ArgumentException)?.ParamName,

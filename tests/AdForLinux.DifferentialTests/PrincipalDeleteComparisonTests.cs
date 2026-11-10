@@ -58,8 +58,8 @@ public sealed class PrincipalDeleteComparisonTests
             ours.Delete();
 
             Assert.Equal(
-                Record.Exception(() => _ = microsoft.DistinguishedName)?.GetType().Name,
-                Record.Exception(() => _ = ours.DistinguishedName)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => _ = microsoft.DistinguishedName)?.GetType().Name, "assert-equal-expected", 60),
+                SuiteCapture.Expected(Record.Exception(() => _ = ours.DistinguishedName)?.GetType().Name, "assert-equal-actual", 60));
             using var microsoftResult = Ms.UserPrincipal.FindByIdentity(microsoftContext, microsoftName);
             using var ourResult = Ours.UserPrincipal.FindByIdentity(ourContext, ourName);
             Assert.Null(microsoftResult);
@@ -105,9 +105,9 @@ public sealed class PrincipalDeleteComparisonTests
             var ourFailure = Record.Exception(ours.Delete);
 
             Assert.NotNull(microsoftFailure);
-            Assert.Equal(microsoftFailure.GetType().Name, ourFailure?.GetType().Name);
-            Assert.Equal(microsoftDn, microsoft.DistinguishedName);
-            Assert.Equal(ourDn, ours.DistinguishedName);
+            Assert.Equal(SuiteCapture.Expected(microsoftFailure.GetType().Name, "assert-equal-expected", 108), SuiteCapture.Expected(ourFailure?.GetType().Name, "assert-equal-actual", 108));
+            Assert.Equal(SuiteCapture.Expected(microsoftDn, "assert-equal-expected", 109), SuiteCapture.Expected(microsoft.DistinguishedName, "assert-equal-actual", 109));
+            Assert.Equal(SuiteCapture.Expected(ourDn, "assert-equal-expected", 110), SuiteCapture.Expected(ours.DistinguishedName, "assert-equal-actual", 110));
             Assert.Same(microsoftEntry, microsoft.GetUnderlyingObject());
             Assert.Same(ourEntry, ours.GetUnderlyingObject());
             Assert.True(MicrosoftEntryExists(microsoftChildDn));
@@ -119,11 +119,11 @@ public sealed class PrincipalDeleteComparisonTests
             ours.Delete();
 
             Assert.Equal(
-                Record.Exception(() => _ = microsoft.DistinguishedName)?.GetType().Name,
-                Record.Exception(() => _ = ours.DistinguishedName)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => _ = microsoft.DistinguishedName)?.GetType().Name, "assert-equal-expected", 121),
+                SuiteCapture.Expected(Record.Exception(() => _ = ours.DistinguishedName)?.GetType().Name, "assert-equal-actual", 121));
             Assert.Equal(
-                Record.Exception(microsoft.Delete)?.GetType().Name,
-                Record.Exception(ours.Delete)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(microsoft.Delete)?.GetType().Name, "assert-equal-expected", 124),
+                SuiteCapture.Expected(Record.Exception(ours.Delete)?.GetType().Name, "assert-equal-actual", 124));
         }
         finally
         {

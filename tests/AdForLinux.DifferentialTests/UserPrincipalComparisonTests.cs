@@ -415,12 +415,12 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
             DifferentialSettings.BindDn,
             DifferentialSettings.BindPassword);
 
-        Assert.Equal((int)msContext.Options, (int)ourContext.Options);
+        Assert.Equal(SuiteCapture.Expected((int)msContext.Options, "assert-equal-expected", 418), SuiteCapture.Expected((int)ourContext.Options, "assert-equal-actual", 418));
         Assert.Equal(
-            Ms.ContextOptions.Negotiate |
+            SuiteCapture.Expected(Ms.ContextOptions.Negotiate |
             Ms.ContextOptions.Signing |
-            Ms.ContextOptions.Sealing,
-            msContext.Options);
+            Ms.ContextOptions.Sealing, "assert-equal-expected", 419),
+            SuiteCapture.Expected(msContext.Options, "assert-equal-actual", 419));
     }
 
     [Theory]
@@ -433,10 +433,10 @@ public class UserPrincipalComparisonTests : IClassFixture<TestDataFixture>
         var upn = $"{_data.UserName}@{DomainSuffix()}";
 
         Assert.Equal(
-            CredentialValidationOutcome(() => msContext.ValidateCredentials(
-                upn, _data.UserPassword, (Ms.ContextOptions)rawOptions)),
-            CredentialValidationOutcome(() => ourContext.ValidateCredentials(
-                upn, _data.UserPassword, (Ours.ContextOptions)rawOptions)));
+            SuiteCapture.Expected(CredentialValidationOutcome(() => msContext.ValidateCredentials(
+                upn, _data.UserPassword, (Ms.ContextOptions)rawOptions)), "assert-equal-expected", 435),
+            SuiteCapture.Expected(CredentialValidationOutcome(() => ourContext.ValidateCredentials(
+                upn, _data.UserPassword, (Ours.ContextOptions)rawOptions)), "assert-equal-actual", 435));
     }
 
     private static string CredentialValidationOutcome(Func<bool> validation)

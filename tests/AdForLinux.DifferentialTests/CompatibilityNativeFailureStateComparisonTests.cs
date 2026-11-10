@@ -48,11 +48,11 @@ public sealed class CompatibilityNativeFailureStateComparisonTests
         using var actualMissing = new OurDirectory.DirectoryEntry(DifferentialSettings.PathFor(missingDn),
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword, DifferentialSettings.OurAuthenticationTypes);
         var absenceError = Assert.IsAssignableFrom<COMException>(Record.Exception(() => expectedMissing.RefreshCache()));
-        Assert.Equal(unchecked((int)0x80072030), absenceError.ErrorCode);
+        Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80072030), "assert-equal-expected", 51), SuiteCapture.Expected(absenceError.ErrorCode, "assert-equal-actual", 51));
 
         expectedNative.SizeLimit = actualNative.SizeLimit = 7;
-        Assert.Equal(7, expectedNative.SizeLimit);
-        Assert.Equal(7, actualNative.SizeLimit);
+        Assert.Equal(SuiteCapture.Expected(7, "assert-equal-expected", 54), SuiteCapture.Expected(expectedNative.SizeLimit, "assert-equal-actual", 54));
+        Assert.Equal(SuiteCapture.Expected(7, "assert-equal-expected", 55), SuiteCapture.Expected(actualNative.SizeLimit, "assert-equal-actual", 55));
         var comparison = new Comparison($"Failed native search state: findAll={findAll}")
             .Check("initial root Name", expectedName, actualName);
         try
@@ -82,7 +82,7 @@ public sealed class CompatibilityNativeFailureStateComparisonTests
                 }
             });
             var expectedMissingError = Assert.IsType<Ms.PrincipalOperationException>(expectedError);
-            Assert.Equal(absenceError.ErrorCode, expectedMissingError.ErrorCode);
+            Assert.Equal(SuiteCapture.Expected(absenceError.ErrorCode, "assert-equal-expected", 85), SuiteCapture.Expected(expectedMissingError.ErrorCode, "assert-equal-actual", 85));
             comparison.Check("failure type", expectedMissingError.GetType().Name, actualError?.GetType().Name)
                 .Check("failure code", (expectedError as Ms.PrincipalOperationException)?.ErrorCode,
                     (actualError as Ours.PrincipalOperationException)?.ErrorCode)

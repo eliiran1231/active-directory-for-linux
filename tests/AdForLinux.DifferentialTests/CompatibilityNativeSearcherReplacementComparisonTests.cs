@@ -41,8 +41,8 @@ public sealed class CompatibilityNativeSearcherReplacementComparisonTests
         Assert.Contains("native-first", expectedInitialFilter);
         expectedNative.PageSize = actualNative.PageSize = 17;
         expectedNative.SizeLimit = actualNative.SizeLimit = 3;
-        Assert.Equal(17, expectedNative.PageSize);
-        Assert.Equal(3, expectedNative.SizeLimit);
+        Assert.Equal(SuiteCapture.Expected(17, "assert-equal-expected", 44), SuiteCapture.Expected(expectedNative.PageSize, "assert-equal-actual", 44));
+        Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 45), SuiteCapture.Expected(expectedNative.SizeLimit, "assert-equal-actual", 45));
         var comparison = new Comparison($"Native searcher after QueryFilter replacement: distinctContext={distinctContext}");
         comparison.Check("initial filter", expectedInitialFilter, actualNative.Filter);
 

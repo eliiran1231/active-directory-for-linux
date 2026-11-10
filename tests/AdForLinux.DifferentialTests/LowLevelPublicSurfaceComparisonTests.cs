@@ -19,11 +19,11 @@ public class LowLevelPublicSurfaceComparisonTests
         // Explicit portable extensions have no Microsoft peer. Keep these exact
         // removals consistent with PublicApiSurfaceComparisonTests; extras still fail.
         Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), out var helper));
-        Assert.Equal(typeof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), helper);
+        Assert.Equal(SuiteCapture.Expected(typeof(AdForLinux.DirectoryServices.DirectoryIdentityResolver), "assert-equal-expected", 22), SuiteCapture.Expected(helper, "assert-equal-actual", 22));
         Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.KerberosCredentialContext), out var credentials));
-        Assert.Equal(typeof(AdForLinux.DirectoryServices.KerberosCredentialContext), credentials);
+        Assert.Equal(SuiteCapture.Expected(typeof(AdForLinux.DirectoryServices.KerberosCredentialContext), "assert-equal-expected", 24), SuiteCapture.Expected(credentials, "assert-equal-actual", 24));
         Assert.True(ourTypes.Remove(nameof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), out var profile));
-        Assert.Equal(typeof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), profile);
+        Assert.Equal(SuiteCapture.Expected(typeof(AdForLinux.DirectoryServices.RestrictedKerberosProfile), "assert-equal-expected", 26), SuiteCapture.Expected(profile, "assert-equal-actual", 26));
         var microsoft = microsoftTypes.Keys
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -31,7 +31,7 @@ public class LowLevelPublicSurfaceComparisonTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(microsoft, ours);
+        Assert.Equal(SuiteCapture.Expected(microsoft, "assert-equal-expected", 34), SuiteCapture.Expected(ours, "assert-equal-actual", 34));
         var baseTypeDifferences = microsoft
             .Select(typeName => new
             {
@@ -52,10 +52,10 @@ public class LowLevelPublicSurfaceComparisonTests
         var microsoft = typeof(System.DirectoryServices.DirectorySearcher);
         var ours = typeof(AdForLinux.DirectoryServices.DirectorySearcher);
 
-        Assert.Equal(Normalize(microsoft.BaseType), Normalize(ours.BaseType));
+        Assert.Equal(SuiteCapture.Expected(Normalize(microsoft.BaseType), "assert-equal-expected", 55), SuiteCapture.Expected(Normalize(ours.BaseType), "assert-equal-actual", 55));
         Assert.Equal(
-            microsoft.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal),
-            ours.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal));
+            SuiteCapture.Expected(microsoft.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal), "assert-equal-expected", 56),
+            SuiteCapture.Expected(ours.GetInterfaces().Select(Normalize).Order(StringComparer.Ordinal), "assert-equal-actual", 56));
     }
 
     [Theory]
@@ -88,7 +88,7 @@ public class LowLevelPublicSurfaceComparisonTests
         var ours = typeof(AdForLinux.DirectoryServices.DirectoryEntry).Assembly
             .GetType($"AdForLinux.DirectoryServices.{typeName}", throwOnError: true)!;
 
-        Assert.Equal(Normalize(microsoft.BaseType), Normalize(ours.BaseType));
+        Assert.Equal(SuiteCapture.Expected(Normalize(microsoft.BaseType), "assert-equal-expected", 91), SuiteCapture.Expected(Normalize(ours.BaseType), "assert-equal-actual", 91));
         var microsoftSurface = PublicSurface(microsoft);
         var ourSurface = PublicSurface(ours);
         Assert.True(

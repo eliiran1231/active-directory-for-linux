@@ -1,4 +1,5 @@
 using Xunit;
+using Xunit.Abstractions;
 using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
 
@@ -7,6 +8,10 @@ namespace AdForLinux.DifferentialTests;
 [Trait("Category", "CompatibilityCoverageOffline")]
 public class CompatibilityVlvStateComparisonTests
 {
+    private readonly ITestOutputHelper _captureOutput;
+
+    public CompatibilityVlvStateComparisonTests(ITestOutputHelper output) => _captureOutput = output;
+
     [Theory]
     [InlineData(0, 50, 0)]
     [InlineData(1, 100, 1)]
@@ -20,6 +25,7 @@ public class CompatibilityVlvStateComparisonTests
     [InlineData(1, 50, int.MaxValue)]
     public void Percentage_offset_and_total_transitions_match_microsoft(int total, int percentage, int offset)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var microsoft = new Ms.DirectoryVirtualListView(2, 3, "seed");
         var ours = new Ours.DirectoryVirtualListView(2, 3, "seed");
         var comparison = new Comparison($"VLV total={total}, percentage={percentage}, offset={offset}");
@@ -53,6 +59,7 @@ public class CompatibilityVlvStateComparisonTests
     [InlineData("TargetPercentage", int.MaxValue)]
     public void Rejected_setter_preserves_all_existing_state_like_microsoft(string property, int value)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var microsoft = new Ms.DirectoryVirtualListView(2, 3, "seed") { ApproximateTotal = 101, TargetPercentage = 67 };
         var ours = new Ours.DirectoryVirtualListView(2, 3, "seed") { ApproximateTotal = 101, TargetPercentage = 67 };
         var comparison = new Comparison($"VLV {property}={value}");
@@ -95,6 +102,7 @@ public class CompatibilityVlvStateComparisonTests
     [InlineData("  é\0target  ")]
     public void Target_changes_preserve_position_and_context_like_microsoft(string? target)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         var microsoftContext = new Ms.DirectoryVirtualListViewContext();
         var ourContext = new Ours.DirectoryVirtualListViewContext();
         var microsoft = new Ms.DirectoryVirtualListView(2, 3, 11, microsoftContext) { ApproximateTotal = 17 };

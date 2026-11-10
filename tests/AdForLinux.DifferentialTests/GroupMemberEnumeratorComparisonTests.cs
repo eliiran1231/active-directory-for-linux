@@ -143,6 +143,6 @@ public sealed class GroupMemberEnumeratorComparisonTests(ITestOutputHelper outpu
     private void Compare(string expected, string actual)
     {
         output.WriteLine($"Microsoft: {expected}; AdForLinux: {actual}");
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 146), SuiteCapture.Expected(actual, "assert-equal-actual", 146));
     }
 }

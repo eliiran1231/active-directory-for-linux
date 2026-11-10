@@ -76,7 +76,7 @@ public sealed class CompatibilityRetainedSearchRootComparisonTests
         else
         {
             Assert.Null(expectedError);
-            Assert.Equal(expectedBefore, expectedAfter);
+            Assert.Equal(SuiteCapture.Expected(expectedBefore, "assert-equal-expected", 79), SuiteCapture.Expected(expectedAfter, "assert-equal-actual", 79));
         }
         comparison.Check("Name read exception", expectedError?.GetType().Name, actualError?.GetType().Name)
             .Check("disposed object name", (expectedError as ObjectDisposedException)?.ObjectName,

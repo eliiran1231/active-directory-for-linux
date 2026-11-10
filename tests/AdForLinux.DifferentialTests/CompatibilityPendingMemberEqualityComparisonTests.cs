@@ -28,8 +28,8 @@ public sealed class CompatibilityPendingMemberEqualityComparisonTests : IClassFi
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword,
             DifferentialSettings.MicrosoftAuthenticationTypes);
         raw.RefreshCache(new[] { "distinguishedName", "sAMAccountName", "objectGUID" });
-        Assert.Equal(_data.UserDn, (string)raw.Properties["distinguishedName"].Value!, ignoreCase: true);
-        Assert.Equal(_data.UserName, raw.Properties["sAMAccountName"].Value);
+        Assert.Equal(SuiteCapture.Expected(_data.UserDn, "assert-equal-expected", 31), SuiteCapture.Expected((string)raw.Properties["distinguishedName"].Value!, "assert-equal-actual", 31), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 32), SuiteCapture.Expected(raw.Properties["sAMAccountName"].Value, "assert-equal-actual", 32));
         var identity = raw.Guid;
         Assert.NotEqual(Guid.Empty, identity);
 
@@ -53,20 +53,20 @@ public sealed class CompatibilityPendingMemberEqualityComparisonTests : IClassFi
         Assert.NotSame(actualA, actualB);
         foreach (var principal in new[] { expectedA, expectedB })
         {
-            Assert.Equal(identity, principal.Guid);
-            Assert.Equal(_data.UserDn, principal.DistinguishedName, ignoreCase: true);
-            Assert.Equal(_data.UserName, principal.SamAccountName);
+            Assert.Equal(SuiteCapture.Expected(identity, "assert-equal-expected", 56), SuiteCapture.Expected(principal.Guid, "assert-equal-actual", 56));
+            Assert.Equal(SuiteCapture.Expected(_data.UserDn, "assert-equal-expected", 57), SuiteCapture.Expected(principal.DistinguishedName, "assert-equal-actual", 57), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 58), SuiteCapture.Expected(principal.SamAccountName, "assert-equal-actual", 58));
         }
         foreach (var principal in new[] { actualA, actualB })
         {
-            Assert.Equal(identity, principal.Guid);
-            Assert.Equal(_data.UserDn, principal.DistinguishedName, ignoreCase: true);
-            Assert.Equal(_data.UserName, principal.SamAccountName);
+            Assert.Equal(SuiteCapture.Expected(identity, "assert-equal-expected", 62), SuiteCapture.Expected(principal.Guid, "assert-equal-actual", 62));
+            Assert.Equal(SuiteCapture.Expected(_data.UserDn, "assert-equal-expected", 63), SuiteCapture.Expected(principal.DistinguishedName, "assert-equal-actual", 63), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 64), SuiteCapture.Expected(principal.SamAccountName, "assert-equal-actual", 64));
         }
-        Assert.Equal(!referenceEquality, expectedA.Equals(expectedB));
-        Assert.Equal(!referenceEquality, actualA.Equals(actualB));
-        Assert.Equal(!referenceEquality, expectedB.Equals(expectedA));
-        Assert.Equal(!referenceEquality, actualB.Equals(actualA));
+        Assert.Equal(SuiteCapture.Expected(!referenceEquality, "assert-equal-expected", 66), SuiteCapture.Expected(expectedA.Equals(expectedB), "assert-equal-actual", 66));
+        Assert.Equal(SuiteCapture.Expected(!referenceEquality, "assert-equal-expected", 67), SuiteCapture.Expected(actualA.Equals(actualB), "assert-equal-actual", 67));
+        Assert.Equal(SuiteCapture.Expected(!referenceEquality, "assert-equal-expected", 68), SuiteCapture.Expected(expectedB.Equals(expectedA), "assert-equal-actual", 68));
+        Assert.Equal(SuiteCapture.Expected(!referenceEquality, "assert-equal-expected", 69), SuiteCapture.Expected(actualB.Equals(actualA), "assert-equal-actual", 69));
         Assert.True(expectedA.Equals(expectedA));
         Assert.True(actualA.Equals(actualA));
 
@@ -84,7 +84,7 @@ public sealed class CompatibilityPendingMemberEqualityComparisonTests : IClassFi
         Assert.True(actualGroup.Members.Contains(actualA));
         var expectedContains = expectedGroup.Members.Contains(expectedB);
         var actualContains = actualGroup.Members.Contains(actualB);
-        Assert.Equal(!referenceEquality, expectedContains);
+        Assert.Equal(SuiteCapture.Expected(!referenceEquality, "assert-equal-expected", 87), SuiteCapture.Expected(expectedContains, "assert-equal-actual", 87));
         // No Save: group membership never reaches the directory.
         Assert.Null(expectedGroup.DistinguishedName);
         Assert.Null(actualGroup.DistinguishedName);

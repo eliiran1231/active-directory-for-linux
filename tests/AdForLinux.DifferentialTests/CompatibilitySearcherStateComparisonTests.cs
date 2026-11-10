@@ -1,5 +1,6 @@
 using System.Reflection;
 using Xunit;
+using Xunit.Abstractions;
 using Ms = System.DirectoryServices;
 using Ours = AdForLinux.DirectoryServices;
 
@@ -9,6 +10,10 @@ namespace AdForLinux.DifferentialTests;
 [Trait("Category", "CompatibilityCoverageOffline")]
 public sealed class CompatibilitySearcherStateComparisonTests
 {
+    private readonly ITestOutputHelper _captureOutput;
+
+    public CompatibilitySearcherStateComparisonTests(ITestOutputHelper output) => _captureOutput = output;
+
     public static IEnumerable<object[]> TimeoutBoundaries()
     {
         foreach (var property in new[] { "ClientTimeout", "ServerTimeLimit", "ServerPageTimeLimit" })
@@ -29,6 +34,7 @@ public sealed class CompatibilitySearcherStateComparisonTests
     [MemberData(nameof(TimeoutBoundaries))]
     public void Timeout_boundary_rejection_and_recovery_match_microsoft(string property, long ticks)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         using var microsoft = new Ms.DirectorySearcher();
         using var ours = new Ours.DirectorySearcher();
         var expectedProperty = typeof(Ms.DirectorySearcher).GetProperty(property)!;
@@ -60,6 +66,7 @@ public sealed class CompatibilitySearcherStateComparisonTests
     [InlineData("page-first")]
     public void Coupled_options_preserve_state_through_rejection_and_reset(string scenario)
     {
+        SuiteCapture.LinkOutput(_captureOutput);
         using var microsoft = new Ms.DirectorySearcher();
         using var ours = new Ours.DirectorySearcher();
         var comparison = new Comparison($"Searcher option sequence: {scenario}");

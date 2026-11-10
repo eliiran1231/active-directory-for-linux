@@ -38,8 +38,8 @@ public sealed class PrincipalSearchResultPositionComparisonTests
         var expected = ObserveCurrent(expectedEnumerator, nonGeneric);
         var actual = ObserveCurrent(actualEnumerator, nonGeneric);
 
-        Assert.Equal(typeof(InvalidOperationException), expected.Error);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(typeof(InvalidOperationException), "assert-equal-expected", 41), SuiteCapture.Expected(expected.Error, "assert-equal-actual", 41));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 42), SuiteCapture.Expected(actual, "assert-equal-actual", 42));
     }
 
     [Fact]
@@ -53,14 +53,14 @@ public sealed class PrincipalSearchResultPositionComparisonTests
         // Control: ordinary traversal, reset, and disposal still work alike.
         Assert.False(expected.MoveNext());
         Assert.False(actual.MoveNext());
-        Assert.Equal(expected.MoveNext(), actual.MoveNext());
+        Assert.Equal(SuiteCapture.Expected(expected.MoveNext(), "assert-equal-expected", 56), SuiteCapture.Expected(actual.MoveNext(), "assert-equal-actual", 56));
         expected.Reset();
         actual.Reset();
-        Assert.Equal(expected.MoveNext(), actual.MoveNext());
+        Assert.Equal(SuiteCapture.Expected(expected.MoveNext(), "assert-equal-expected", 59), SuiteCapture.Expected(actual.MoveNext(), "assert-equal-actual", 59));
         expected.Dispose();
         actual.Dispose();
-        Assert.Equal(ObserveCurrent(expected, false), ObserveCurrent(actual, false));
-        Assert.Equal(ObserveCurrent(expected, true), ObserveCurrent(actual, true));
+        Assert.Equal(SuiteCapture.Expected(ObserveCurrent(expected, false), "assert-equal-expected", 62), SuiteCapture.Expected(ObserveCurrent(actual, false), "assert-equal-actual", 62));
+        Assert.Equal(SuiteCapture.Expected(ObserveCurrent(expected, true), "assert-equal-expected", 63), SuiteCapture.Expected(ObserveCurrent(actual, true), "assert-equal-actual", 63));
         Assert.IsType<ObjectDisposedException>(Record.Exception(() => expected.MoveNext()));
         Assert.IsType<ObjectDisposedException>(Record.Exception(() => actual.MoveNext()));
     }

@@ -26,7 +26,7 @@ public sealed class PrincipalValueCollectionComparisonTests
         var microsoftResult = ((IList)microsoft).Add("HOST/new");
         var ourResult = ((IList)ours).Add("HOST/new");
 
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 29), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 29));
         // Microsoft's IList.Add returns the new Count rather than the
         // zero-based index used by the usual IList convention.
         new Comparison("PrincipalValueCollection<string>.IList.Add")
@@ -110,7 +110,7 @@ public sealed class PrincipalValueCollectionComparisonTests
         var microsoftResult = Observe(() => Copy(microsoft, microsoftArray, index, nonGeneric));
         var ourResult = Observe(() => Copy(ours, ourArray, index, nonGeneric));
 
-        Assert.Equal(microsoftArray, ourArray);
+        Assert.Equal(SuiteCapture.Expected(microsoftArray, "assert-equal-expected", 113), SuiteCapture.Expected(ourArray, "assert-equal-actual", 113));
         new Comparison($"Empty PrincipalValueCollection.CopyTo: length={length}, index={index}, nonGeneric={nonGeneric}")
             .Check("operation", microsoftResult, ourResult)
             .Assert();
@@ -133,8 +133,8 @@ public sealed class PrincipalValueCollectionComparisonTests
         var microsoftResult = Observe(() => SetNull(microsoft, index, nonGeneric));
         var ourResult = Observe(() => SetNull(ours, index, nonGeneric));
 
-        Assert.Equal(new[] { "HOST/first" }, microsoft.ToArray());
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
+        Assert.Equal(SuiteCapture.Expected(new[] { "HOST/first" }, "assert-equal-expected", 136), SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-actual", 136));
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 137), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 137));
         new Comparison($"PrincipalValueCollection null assignment: index={index}, nonGeneric={nonGeneric}")
             .Check("operation", microsoftResult, ourResult)
             .Assert();

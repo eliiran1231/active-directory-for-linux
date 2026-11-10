@@ -37,7 +37,7 @@ public sealed class CompatibilityExceptionSerializationComparisonTests
         };
         var expectedError = Record.Exception(() => new MicrosoftNoMatch(expectedInfo!));
         var actualError = Record.Exception(() => new OurNoMatch(actualInfo!));
-        Assert.Equal(Error(expectedError), Error(actualError));
+        Assert.Equal(SuiteCapture.Expected(Error(expectedError), "assert-equal-expected", 40), SuiteCapture.Expected(Error(actualError), "assert-equal-actual", 40));
     }
 
     [Theory]
@@ -64,13 +64,13 @@ public sealed class CompatibilityExceptionSerializationComparisonTests
         Exception actual = serverDown
             ? new OurServerDown(actualInfo)
             : new OurOperation(actualInfo);
-        Assert.Equal(expected.Message, actual.Message);
-        Assert.Equal(expected.HResult, actual.HResult);
+        Assert.Equal(SuiteCapture.Expected(expected.Message, "assert-equal-expected", 67), SuiteCapture.Expected(actual.Message, "assert-equal-actual", 67));
+        Assert.Equal(SuiteCapture.Expected(expected.HResult, "assert-equal-expected", 68), SuiteCapture.Expected(actual.HResult, "assert-equal-actual", 68));
         Assert.Same(inner, expected.InnerException);
         Assert.Same(inner, actual.InnerException);
         if (!serverDown)
-            Assert.Equal(((Ms.PrincipalOperationException)expected).ErrorCode,
-                ((Ours.PrincipalOperationException)actual).ErrorCode);
+            Assert.Equal(SuiteCapture.Expected(((Ms.PrincipalOperationException)expected).ErrorCode, "assert-equal-expected", 72),
+                SuiteCapture.Expected(((Ours.PrincipalOperationException)actual).ErrorCode, "assert-equal-actual", 72));
 
         // ServerDown has no public ErrorCode/ServerName getters. Re-emit its
         // documented serialization fields to observe preserved metadata.
@@ -83,8 +83,8 @@ public sealed class CompatibilityExceptionSerializationComparisonTests
 
     private static void AssertMetadata(SerializationInfo expected, SerializationInfo actual, bool serverDown)
     {
-        Assert.Equal(expected.GetInt32("errorCode"), actual.GetInt32("errorCode"));
-        if (serverDown) Assert.Equal(expected.GetString("serverName"), actual.GetString("serverName"));
+        Assert.Equal(SuiteCapture.Expected(expected.GetInt32("errorCode"), "assert-equal-expected", 86), SuiteCapture.Expected(actual.GetInt32("errorCode"), "assert-equal-actual", 86));
+        if (serverDown) Assert.Equal(SuiteCapture.Expected(expected.GetString("serverName"), "assert-equal-expected", 87), SuiteCapture.Expected(actual.GetString("serverName"), "assert-equal-actual", 87));
     }
 
     private static SerializationInfo NewInfo(Type type) => new(type, new FormatterConverter());

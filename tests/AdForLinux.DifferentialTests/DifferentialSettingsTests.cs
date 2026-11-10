@@ -13,6 +13,6 @@ public class DifferentialSettingsTests
     [InlineData("OU=CI,DC=lab,DC=test", false)]
     [InlineData("OU=another-run,OU=CI,DC=lab,DC=test", false)]
     public void Override_must_have_the_disposable_ou_as_an_actual_ancestor(string container, bool expected)
-        => Assert.Equal(expected,
-            DifferentialSettings.IsWithinTestBase(container, "OU=run,OU=CI,DC=lab,DC=test"));
+        => Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 16),
+            SuiteCapture.Expected(DifferentialSettings.IsWithinTestBase(container, "OU=run,OU=CI,DC=lab,DC=test"), "assert-equal-actual", 16));
 }

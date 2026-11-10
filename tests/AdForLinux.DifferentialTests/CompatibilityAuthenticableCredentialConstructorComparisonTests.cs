@@ -36,7 +36,7 @@ public sealed class CompatibilityAuthenticableCredentialConstructorComparisonTes
             Assert.Null(expectedError);
             Assert.NotNull(expected);
             Assert.Null(expected.Name);
-            Assert.Equal(scenario == "missing-credentials" ? null : AccountName, expected.SamAccountName);
+            Assert.Equal(SuiteCapture.Expected(scenario == "missing-credentials" ? null : AccountName, "assert-equal-expected", 39), SuiteCapture.Expected(expected.SamAccountName, "assert-equal-actual", 39));
             Assert.False(expected.Enabled);
             Assert.Null(expected.Guid);
             Assert.Null(expected.DistinguishedName);

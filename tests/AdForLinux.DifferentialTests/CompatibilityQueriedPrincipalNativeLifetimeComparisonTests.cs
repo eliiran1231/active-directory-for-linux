@@ -28,8 +28,8 @@ public sealed class CompatibilityQueriedPrincipalNativeLifetimeComparisonTests(T
         using (var independent = new MsDirectory.DirectoryEntry(DifferentialSettings.PathFor(data.UserDn),
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword, DifferentialSettings.MicrosoftAuthenticationTypes))
         {
-            Assert.Equal(data.UserDn, Assert.IsType<string>(independent.Properties["distinguishedName"].Value), ignoreCase: true);
-            Assert.Equal(seeded, Assert.IsType<string>(independent.Properties["description"].Value));
+            Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 31), SuiteCapture.Expected(Assert.IsType<string>(independent.Properties["distinguishedName"].Value), "assert-equal-actual", 31), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 32), SuiteCapture.Expected(Assert.IsType<string>(independent.Properties["description"].Value), "assert-equal-actual", 32));
         }
 
         using var expectedContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
@@ -44,10 +44,10 @@ public sealed class CompatibilityQueriedPrincipalNativeLifetimeComparisonTests(T
         Assert.NotNull(actual);
         var leftNative = Assert.IsType<MsDirectory.DirectoryEntry>(expected.GetUnderlyingObject());
         var rightNative = Assert.IsType<OurDirectory.DirectoryEntry>(actual.GetUnderlyingObject());
-        Assert.Equal(data.UserDn, Assert.IsType<string>(leftNative.Properties["distinguishedName"].Value), ignoreCase: true);
-        Assert.Equal(data.UserDn, Assert.IsType<string>(rightNative.Properties["distinguishedName"].Value), ignoreCase: true);
-        Assert.Equal(seeded, Assert.IsType<string>(leftNative.Properties["description"].Value));
-        Assert.Equal(seeded, Assert.IsType<string>(rightNative.Properties["description"].Value));
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 47), SuiteCapture.Expected(Assert.IsType<string>(leftNative.Properties["distinguishedName"].Value), "assert-equal-actual", 47), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 48), SuiteCapture.Expected(Assert.IsType<string>(rightNative.Properties["distinguishedName"].Value), "assert-equal-actual", 48), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 49), SuiteCapture.Expected(Assert.IsType<string>(leftNative.Properties["description"].Value), "assert-equal-actual", 49));
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 50), SuiteCapture.Expected(Assert.IsType<string>(rightNative.Properties["description"].Value), "assert-equal-actual", 50));
         Assert.Same(leftNative, expected.GetUnderlyingObject());
         Assert.Same(rightNative, actual.GetUnderlyingObject());
 
@@ -75,13 +75,13 @@ public sealed class CompatibilityQueriedPrincipalNativeLifetimeComparisonTests(T
         var leftError = Record.Exception(() => { leftDescription = expected.Description; });
         var rightError = Record.Exception(() => { rightDescription = actual.Description; });
         Assert.Null(leftError);
-        Assert.Equal(seeded, leftDescription);
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 78), SuiteCapture.Expected(leftDescription, "assert-equal-actual", 78));
         if (!disposeNative)
         {
             // Close permits native rebinding, so both providers must establish
             // a successful first read independently of the disposed case.
             Assert.Null(rightError);
-            Assert.Equal(seeded, rightDescription);
+            Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 84), SuiteCapture.Expected(rightDescription, "assert-equal-actual", 84));
         }
         new Comparison($"Queried principal first Description after native dispose={disposeNative}")
             .Check("retained native wrapper identity", leftIdentity, rightIdentity)

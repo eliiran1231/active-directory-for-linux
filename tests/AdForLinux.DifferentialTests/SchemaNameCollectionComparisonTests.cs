@@ -43,10 +43,10 @@ public sealed class SchemaNameCollectionComparisonTests
 
             microsoft[0] = "computer";
             ours[0] = "computer";
-            Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+            Assert.Equal(SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-expected", 46), SuiteCapture.Expected(Snapshot(ours), "assert-equal-actual", 46));
             // The delegate-backed reference fixture exposes the array captured
             // by enumeration. This does not model live ADSI array marshaling.
-            Assert.Equal(ReadRemaining(expected), ReadRemaining(actual));
+            Assert.Equal(SuiteCapture.Expected(ReadRemaining(expected), "assert-equal-expected", 49), SuiteCapture.Expected(ReadRemaining(actual), "assert-equal-actual", 49));
         }
         finally
         {
@@ -89,12 +89,12 @@ public sealed class SchemaNameCollectionComparisonTests
 
         // Capture the destination even on failure so an exception mismatch
         // cannot hide any difference in writes performed before rejection.
-        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        Assert.Equal(SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-expected", 92), SuiteCapture.Expected(Snapshot(ours), "assert-equal-actual", 92));
         var expected = (expectedError?.GetType().FullName,
             (expectedError as ArgumentException)?.ParamName, string.Join("|", expectedArray.Cast<object>()));
         var actual = (actualError?.GetType().FullName,
             (actualError as ArgumentException)?.ParamName, string.Join("|", actualArray.Cast<object>()));
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 97), SuiteCapture.Expected(actual, "assert-equal-actual", 97));
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class SchemaNameCollectionComparisonTests
         using var ourEntry = OurEntry();
         var ours = ourEntry.Children.SchemaFilter;
 
-        Assert.Equal(ExerciseCollection(microsoft), ExerciseCollection(ours));
+        Assert.Equal(SuiteCapture.Expected(ExerciseCollection(microsoft), "assert-equal-expected", 107), SuiteCapture.Expected(ExerciseCollection(ours), "assert-equal-actual", 107));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class SchemaNameCollectionComparisonTests
         using var ourEntry = OurEntry();
         var ours = ourEntry.Children.SchemaFilter;
 
-        Assert.Equal(ExerciseNullAndCasing(microsoft), ExerciseNullAndCasing(ours));
+        Assert.Equal(SuiteCapture.Expected(ExerciseNullAndCasing(microsoft), "assert-equal-expected", 117), SuiteCapture.Expected(ExerciseNullAndCasing(ours), "assert-equal-actual", 117));
     }
 
     [Fact]
@@ -146,9 +146,9 @@ public sealed class SchemaNameCollectionComparisonTests
         // Structural changes replace Microsoft's backing array; the enumerator
         // retains the old array. Indexer assignment instead updates that array
         // in place in this delegate-backed fixture. Neither invalidates it.
-        Assert.Equal(mutation == "replace" ? "user|computer" : "user|group", expected.OldValues);
+        Assert.Equal(SuiteCapture.Expected(mutation == "replace" ? "user|computer" : "user|group", "assert-equal-expected", 149), SuiteCapture.Expected(expected.OldValues, "assert-equal-actual", 149));
         Assert.Null(expected.ExceptionType);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 151), SuiteCapture.Expected(actual, "assert-equal-actual", 151));
     }
 
     [Theory]
@@ -167,11 +167,11 @@ public sealed class SchemaNameCollectionComparisonTests
         var expected = Record.Exception(() => AccessIndexer(microsoft, index, write));
         var actual = Record.Exception(() => AccessIndexer(ours, index, write));
 
-        Assert.Equal("user", Snapshot(microsoft));
-        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        Assert.Equal(SuiteCapture.Expected("user", "assert-equal-expected", 170), SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-actual", 170));
+        Assert.Equal(SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-expected", 171), SuiteCapture.Expected(Snapshot(ours), "assert-equal-actual", 171));
         Assert.IsType<IndexOutOfRangeException>(expected);
         Assert.NotNull(actual);
-        Assert.Equal(expected.GetType(), actual.GetType());
+        Assert.Equal(SuiteCapture.Expected(expected.GetType(), "assert-equal-expected", 174), SuiteCapture.Expected(actual.GetType(), "assert-equal-actual", 174));
     }
 
     private static void AccessIndexer(IList collection, int index, bool write)
@@ -232,12 +232,12 @@ public sealed class SchemaNameCollectionComparisonTests
             {
                 Assert.True(microsoftEnumerator.MoveNext());
                 Assert.True(ourEnumerator.MoveNext());
-                Assert.Equal(microsoftEnumerator.Current, ourEnumerator.Current);
+                Assert.Equal(SuiteCapture.Expected(microsoftEnumerator.Current, "assert-equal-expected", 235), SuiteCapture.Expected(ourEnumerator.Current, "assert-equal-actual", 235));
             }
 
             Mutate(microsoft, mutation);
             Mutate(ours, mutation);
-            Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+            Assert.Equal(SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-expected", 240), SuiteCapture.Expected(Snapshot(ours), "assert-equal-actual", 240));
 
             // Microsoft enumerates the array captured by GetEnumerator. A live
             // List<T> enumerator instead throws as soon as the collection changes.
@@ -268,8 +268,8 @@ public sealed class SchemaNameCollectionComparisonTests
         var microsoftException = Record.Exception(() => AccessIndex(microsoft, index, write));
         var ourException = Record.Exception(() => AccessIndex(ours, index, write));
 
-        Assert.Equal("user", Snapshot(microsoft));
-        Assert.Equal(Snapshot(microsoft), Snapshot(ours));
+        Assert.Equal(SuiteCapture.Expected("user", "assert-equal-expected", 271), SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-actual", 271));
+        Assert.Equal(SuiteCapture.Expected(Snapshot(microsoft), "assert-equal-expected", 272), SuiteCapture.Expected(Snapshot(ours), "assert-equal-actual", 272));
         new Comparison($"SchemaNameCollection indexer: index={index}, write={write}")
             .Check("exception type", microsoftException?.GetType().FullName, ourException?.GetType().FullName)
             .Check("parameter", (microsoftException as ArgumentException)?.ParamName,
@@ -391,10 +391,10 @@ public sealed class SchemaNameCollectionComparisonTests
 
         Assert.NotNull(microsoftException);
         Assert.NotNull(ourException);
-        Assert.Equal(microsoftException.GetType(), ourException.GetType());
+        Assert.Equal(SuiteCapture.Expected(microsoftException.GetType(), "assert-equal-expected", 394), SuiteCapture.Expected(ourException.GetType(), "assert-equal-actual", 394));
         Assert.Equal(
-            (microsoftException as ArgumentException)?.ParamName,
-            (ourException as ArgumentException)?.ParamName);
+            SuiteCapture.Expected((microsoftException as ArgumentException)?.ParamName, "assert-equal-expected", 395),
+            SuiteCapture.Expected((ourException as ArgumentException)?.ParamName, "assert-equal-actual", 395));
     }
 
     private sealed record CollectionResult(

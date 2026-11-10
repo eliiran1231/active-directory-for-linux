@@ -130,9 +130,9 @@ public sealed class PropertyDictionaryEnumeratorComparisonTests : IClassFixture<
         {
             MoveToDescription(expected);
             MoveToDescription(actual);
-            Assert.Equal(expected.Key, actual.Key);
-            Assert.Equal(Assert.IsType<Ms.PropertyValueCollection>(expected.Value).Value,
-                Assert.IsType<Ours.PropertyValueCollection>(actual.Value).Value);
+            Assert.Equal(SuiteCapture.Expected(expected.Key, "assert-equal-expected", 133), SuiteCapture.Expected(actual.Key, "assert-equal-actual", 133));
+            Assert.Equal(SuiteCapture.Expected(Assert.IsType<Ms.PropertyValueCollection>(expected.Value).Value, "assert-equal-expected", 134),
+                SuiteCapture.Expected(Assert.IsType<Ours.PropertyValueCollection>(actual.Value).Value, "assert-equal-actual", 134));
         }
         finally
         {

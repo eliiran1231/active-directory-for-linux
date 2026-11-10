@@ -62,12 +62,12 @@ public sealed class CompatibilityAccountControlMergeComparisonTests
             // them independently. No external-entry refresh assumption is needed.
             var expectedNative = Assert.IsType<Ms.DirectoryEntry>(expected.GetUnderlyingObject());
             var actualNative = Assert.IsType<Ours.DirectoryEntry>(actual.GetUnderlyingObject());
-            Assert.Equal(expectedOwned.Identity, expectedNative.Guid);
-            Assert.Equal(actualOwned.Identity, actualNative.Guid);
+            Assert.Equal(SuiteCapture.Expected(expectedOwned.Identity, "assert-equal-expected", 65), SuiteCapture.Expected(expectedNative.Guid, "assert-equal-actual", 65));
+            Assert.Equal(SuiteCapture.Expected(actualOwned.Identity, "assert-equal-expected", 66), SuiteCapture.Expected(actualNative.Guid, "assert-equal-actual", 66));
             var expectedNativeFlags = Convert.ToInt32(expectedNative.Properties["userAccountControl"].Value);
             var actualNativeFlags = Convert.ToInt32(actualNative.Properties["userAccountControl"].Value);
-            Assert.Equal(Disabled, expectedNativeFlags & ObservedBits);
-            Assert.Equal(Disabled, actualNativeFlags & ObservedBits);
+            Assert.Equal(SuiteCapture.Expected(Disabled, "assert-equal-expected", 69), SuiteCapture.Expected(expectedNativeFlags & ObservedBits, "assert-equal-actual", 69));
+            Assert.Equal(SuiteCapture.Expected(Disabled, "assert-equal-expected", 70), SuiteCapture.Expected(actualNativeFlags & ObservedBits, "assert-equal-actual", 70));
             if (editOtherNativeBit)
             {
                 expectedNative.Properties["userAccountControl"].Value = expectedNativeFlags | NotDelegated;
@@ -76,19 +76,19 @@ public sealed class CompatibilityAccountControlMergeComparisonTests
                 actualNative.CommitChanges();
             }
             var beforeSave = Disabled | (editOtherNativeBit ? NotDelegated : 0);
-            Assert.Equal(beforeSave, expectedOwned.ReadFlags() & ObservedBits);
-            Assert.Equal(beforeSave, actualOwned.ReadFlags() & ObservedBits);
+            Assert.Equal(SuiteCapture.Expected(beforeSave, "assert-equal-expected", 79), SuiteCapture.Expected(expectedOwned.ReadFlags() & ObservedBits, "assert-equal-actual", 79));
+            Assert.Equal(SuiteCapture.Expected(beforeSave, "assert-equal-expected", 80), SuiteCapture.Expected(actualOwned.ReadFlags() & ObservedBits, "assert-equal-actual", 80));
 
             expected.Save();
             actual.Save();
             var expectedFlags = expectedOwned.ReadFlags();
             var actualFlags = actualOwned.ReadFlags();
-            Assert.Equal(beforeSave | NeverExpires, expectedFlags & ObservedBits);
+            Assert.Equal(SuiteCapture.Expected(beforeSave | NeverExpires, "assert-equal-expected", 86), SuiteCapture.Expected(expectedFlags & ObservedBits, "assert-equal-actual", 86));
             // Keep account safety a prerequisite on both sides, independent of
             // the compatibility assertion about preserving the unrelated bit.
-            Assert.Equal(Disabled, expectedFlags & Disabled);
-            Assert.Equal(Disabled, actualFlags & Disabled);
-            Assert.Equal(NeverExpires, actualFlags & NeverExpires);
+            Assert.Equal(SuiteCapture.Expected(Disabled, "assert-equal-expected", 89), SuiteCapture.Expected(expectedFlags & Disabled, "assert-equal-actual", 89));
+            Assert.Equal(SuiteCapture.Expected(Disabled, "assert-equal-expected", 90), SuiteCapture.Expected(actualFlags & Disabled, "assert-equal-actual", 90));
+            Assert.Equal(SuiteCapture.Expected(NeverExpires, "assert-equal-expected", 91), SuiteCapture.Expected(actualFlags & NeverExpires, "assert-equal-actual", 91));
             new Comparison($"Staged UAC bit merge; native edit={editOtherNativeBit}")
                 .Check("disabled, expiration and delegation flags", expectedFlags & ObservedBits,
                     actualFlags & ObservedBits)
@@ -138,9 +138,9 @@ public sealed class CompatibilityAccountControlMergeComparisonTests
             child.CommitChanges();
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()));
-            Assert.Equal(Disabled, Convert.ToInt32(persisted.Properties["userAccountControl"].Value) & ObservedBits);
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 141), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 141));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 142), SuiteCapture.Expected(Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()), "assert-equal-actual", 142));
+            Assert.Equal(SuiteCapture.Expected(Disabled, "assert-equal-expected", 143), SuiteCapture.Expected(Convert.ToInt32(persisted.Properties["userAccountControl"].Value) & ObservedBits, "assert-equal-actual", 143));
             Assert.NotEqual(Guid.Empty, persisted.Guid);
             _identity = persisted.Guid;
         }
@@ -149,10 +149,10 @@ public sealed class CompatibilityAccountControlMergeComparisonTests
         {
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(Dn, (string)persisted.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()));
-            Assert.Equal(_identity, persisted.Guid);
+            Assert.Equal(SuiteCapture.Expected(Dn, "assert-equal-expected", 152), SuiteCapture.Expected((string)persisted.Properties["distinguishedName"].Value!, "assert-equal-actual", 152), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 153), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 153));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 154), SuiteCapture.Expected(Assert.Single(persisted.Properties["otherTelephone"].Cast<object>()), "assert-equal-actual", 154));
+            Assert.Equal(SuiteCapture.Expected(_identity, "assert-equal-expected", 155), SuiteCapture.Expected(persisted.Guid, "assert-equal-actual", 155));
             return Convert.ToInt32(persisted.Properties["userAccountControl"].Value);
         }
 

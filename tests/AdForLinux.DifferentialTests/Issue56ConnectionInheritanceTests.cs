@@ -31,7 +31,7 @@ public class Issue56ConnectionInheritanceTests
         try
         {
             var inherited = group.BuildOptions();
-            Assert.Equal(AuthType.Negotiate, inherited.AuthenticationType);
+            Assert.Equal(SuiteCapture.Expected(AuthType.Negotiate, "assert-equal-expected", 34), SuiteCapture.Expected(inherited.AuthenticationType, "assert-equal-actual", 34));
             Assert.True(inherited.Signing);
             Assert.True(inherited.Sealing);
 
@@ -64,7 +64,7 @@ public class Issue56ConnectionInheritanceTests
         {
             user.Save();
             userCreated = true;
-            Assert.Equal($"CN={userName},{DifferentialSettings.BaseDn}", user.DistinguishedName);
+            Assert.Equal(SuiteCapture.Expected($"CN={userName},{DifferentialSettings.BaseDn}", "assert-equal-expected", 67), SuiteCapture.Expected(user.DistinguishedName, "assert-equal-actual", 67));
         }
         finally
         {

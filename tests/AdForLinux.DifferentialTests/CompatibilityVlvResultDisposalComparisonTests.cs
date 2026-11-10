@@ -44,11 +44,11 @@ public sealed class CompatibilityVlvResultDisposalComparisonTests(TestDataFixtur
         {
             var leftDns = leftResults.Cast<Ms.SearchResult>().Select(row => (string)row.Properties["distinguishedName"][0]!).ToArray();
             var rightDns = rightResults.Cast<Ours.SearchResult>().Select(row => (string)row.Properties["distinguishedName"][0]!).ToArray();
-            Assert.Equal(3, leftDns.Length);
-            Assert.Equal(3, rightDns.Length);
+            Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 47), SuiteCapture.Expected(leftDns.Length, "assert-equal-actual", 47));
+            Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 48), SuiteCapture.Expected(rightDns.Length, "assert-equal-actual", 48));
             Assert.True(knownDns.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(leftDns));
             Assert.True(knownDns.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(rightDns));
-            Assert.Equal(leftDns, rightDns, StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(leftDns, "assert-equal-expected", 51), SuiteCapture.Expected(rightDns, "assert-equal-actual", 51), StringComparer.OrdinalIgnoreCase);
 
             // Independently establish VLV support and the one-row window for
             // each case, without consuming the later candidate collection.
@@ -62,10 +62,10 @@ public sealed class CompatibilityVlvResultDisposalComparisonTests(TestDataFixtur
                 .Select(row => (string)row.Properties["distinguishedName"][0]!).ToArray();
             var rightWindowDns = rightWindow.Cast<Ours.SearchResult>()
                 .Select(row => (string)row.Properties["distinguishedName"][0]!).ToArray();
-            Assert.Equal(leftDns[0], Assert.Single(leftWindowDns), ignoreCase: true);
-            Assert.Equal(rightDns[0], Assert.Single(rightWindowDns), ignoreCase: true);
-            Assert.Equal(3, leftControlView.ApproximateTotal);
-            Assert.Equal(3, rightControlView.ApproximateTotal);
+            Assert.Equal(SuiteCapture.Expected(leftDns[0], "assert-equal-expected", 65), SuiteCapture.Expected(Assert.Single(leftWindowDns), "assert-equal-actual", 65), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(rightDns[0], "assert-equal-expected", 66), SuiteCapture.Expected(Assert.Single(rightWindowDns), "assert-equal-actual", 66), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 67), SuiteCapture.Expected(leftControlView.ApproximateTotal, "assert-equal-actual", 67));
+            Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 68), SuiteCapture.Expected(rightControlView.ApproximateTotal, "assert-equal-actual", 68));
         }
 
         var leftView = new Ms.DirectoryVirtualListView(0, 0, 1);
@@ -93,14 +93,14 @@ public sealed class CompatibilityVlvResultDisposalComparisonTests(TestDataFixtur
             var leftDn = Assert.IsType<string>(leftRow.Properties["distinguishedName"][0]);
             var rightDn = Assert.IsType<string>(rightRow.Properties["distinguishedName"][0]);
             Assert.Contains(leftDn, knownDns, StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(leftDn, rightDn, ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(leftDn, "assert-equal-expected", 96), SuiteCapture.Expected(rightDn, "assert-equal-actual", 96), ignoreCase: true);
             if (exhaust)
             {
                 // The VLV window contains exactly one row. This final advance
                 // reaches EOF and clears Microsoft's retained response pointer.
                 Assert.False(leftCursor.MoveNext());
                 Assert.False(rightCursor.MoveNext());
-                Assert.Equal(3, leftView.ApproximateTotal);
+                Assert.Equal(SuiteCapture.Expected(3, "assert-equal-expected", 103), SuiteCapture.Expected(leftView.ApproximateTotal, "assert-equal-actual", 103));
             }
             // Do not read Count or either searcher's VirtualListView getter
             // here: the partial row must retain its unexhausted response state.
@@ -125,7 +125,7 @@ public sealed class CompatibilityVlvResultDisposalComparisonTests(TestDataFixtur
         else
         {
             var failure = Assert.IsType<ObjectDisposedException>(leftError);
-            Assert.Equal(nameof(Ms.SearchResultCollection), failure.ObjectName);
+            Assert.Equal(SuiteCapture.Expected(nameof(Ms.SearchResultCollection), "assert-equal-expected", 128), SuiteCapture.Expected(failure.ObjectName, "assert-equal-actual", 128));
         }
 
         // Capture the failure before changing options. Clearing the option must

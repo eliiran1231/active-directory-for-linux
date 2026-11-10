@@ -14,8 +14,8 @@ public class PrincipalSurfaceComparisonTests
         {
             Assert.True(Enum.TryParse<Ours.ContextOptions>(optionName, out var ourOption));
             Assert.Equal(
-                (int)Enum.Parse<Ms.ContextOptions>(optionName),
-                (int)ourOption);
+                SuiteCapture.Expected((int)Enum.Parse<Ms.ContextOptions>(optionName), "assert-equal-expected", 16),
+                SuiteCapture.Expected((int)ourOption, "assert-equal-actual", 16));
         }
 
         Assert.NotNull(typeof(Ours.PrincipalContext).GetConstructor(new[]
@@ -34,7 +34,7 @@ public class PrincipalSurfaceComparisonTests
         var ourOptions = typeof(Ours.PrincipalContext).GetProperty(nameof(Ours.PrincipalContext.Options));
         Assert.NotNull(microsoftOptions);
         Assert.NotNull(ourOptions);
-        Assert.Equal(microsoftOptions!.CanWrite, ourOptions!.CanWrite);
+        Assert.Equal(SuiteCapture.Expected(microsoftOptions!.CanWrite, "assert-equal-expected", 37), SuiteCapture.Expected(ourOptions!.CanWrite, "assert-equal-actual", 37));
 
         var microsoftContext = typeof(Ms.PrincipalSearcher).GetProperty(
             nameof(Ms.PrincipalSearcher.Context));
@@ -42,20 +42,20 @@ public class PrincipalSurfaceComparisonTests
             nameof(Ours.PrincipalSearcher.Context));
         Assert.NotNull(microsoftContext);
         Assert.NotNull(ourContext);
-        Assert.Equal(microsoftContext!.CanRead, ourContext!.CanRead);
-        Assert.Equal(microsoftContext.CanWrite, ourContext.CanWrite);
+        Assert.Equal(SuiteCapture.Expected(microsoftContext!.CanRead, "assert-equal-expected", 45), SuiteCapture.Expected(ourContext!.CanRead, "assert-equal-actual", 45));
+        Assert.Equal(SuiteCapture.Expected(microsoftContext.CanWrite, "assert-equal-expected", 46), SuiteCapture.Expected(ourContext.CanWrite, "assert-equal-actual", 46));
 
         var microsoftUnderlying = typeof(Ms.PrincipalSearcher).GetMethod(
             nameof(Ms.PrincipalSearcher.GetUnderlyingSearcher), Type.EmptyTypes);
         var ourUnderlying = typeof(Ours.PrincipalSearcher).GetMethod(
             nameof(Ours.PrincipalSearcher.GetUnderlyingSearcher), Type.EmptyTypes);
-        Assert.Equal(microsoftUnderlying!.ReturnType, ourUnderlying!.ReturnType);
+        Assert.Equal(SuiteCapture.Expected(microsoftUnderlying!.ReturnType, "assert-equal-expected", 52), SuiteCapture.Expected(ourUnderlying!.ReturnType, "assert-equal-actual", 52));
 
         var microsoftType = typeof(Ms.PrincipalSearcher).GetMethod(
             nameof(Ms.PrincipalSearcher.GetUnderlyingSearcherType), Type.EmptyTypes);
         var ourType = typeof(Ours.PrincipalSearcher).GetMethod(
             nameof(Ours.PrincipalSearcher.GetUnderlyingSearcherType), Type.EmptyTypes);
-        Assert.Equal(microsoftType!.ReturnType, ourType!.ReturnType);
+        Assert.Equal(SuiteCapture.Expected(microsoftType!.ReturnType, "assert-equal-expected", 58), SuiteCapture.Expected(ourType!.ReturnType, "assert-equal-actual", 58));
     }
 
     [Fact]
@@ -76,21 +76,21 @@ public class PrincipalSurfaceComparisonTests
             var ours = typeof(Ours.AuthenticablePrincipal).GetProperty(propertyName)!;
             Assert.NotNull(microsoft);
             Assert.NotNull(ours);
-            Assert.Equal(microsoft.CanRead, ours.CanRead);
-            Assert.Equal(microsoft.CanWrite, ours.CanWrite);
-            Assert.Equal(microsoft.PropertyType.IsArray, ours.PropertyType.IsArray);
-            Assert.Equal(microsoft.PropertyType.IsGenericType, ours.PropertyType.IsGenericType);
-            Assert.Equal(typeof(Ms.AuthenticablePrincipal), microsoft.DeclaringType);
-            Assert.Equal(typeof(Ours.AuthenticablePrincipal), ours.DeclaringType);
+            Assert.Equal(SuiteCapture.Expected(microsoft.CanRead, "assert-equal-expected", 79), SuiteCapture.Expected(ours.CanRead, "assert-equal-actual", 79));
+            Assert.Equal(SuiteCapture.Expected(microsoft.CanWrite, "assert-equal-expected", 80), SuiteCapture.Expected(ours.CanWrite, "assert-equal-actual", 80));
+            Assert.Equal(SuiteCapture.Expected(microsoft.PropertyType.IsArray, "assert-equal-expected", 81), SuiteCapture.Expected(ours.PropertyType.IsArray, "assert-equal-actual", 81));
+            Assert.Equal(SuiteCapture.Expected(microsoft.PropertyType.IsGenericType, "assert-equal-expected", 82), SuiteCapture.Expected(ours.PropertyType.IsGenericType, "assert-equal-actual", 82));
+            Assert.Equal(SuiteCapture.Expected(typeof(Ms.AuthenticablePrincipal), "assert-equal-expected", 83), SuiteCapture.Expected(microsoft.DeclaringType, "assert-equal-actual", 83));
+            Assert.Equal(SuiteCapture.Expected(typeof(Ours.AuthenticablePrincipal), "assert-equal-expected", 84), SuiteCapture.Expected(ours.DeclaringType, "assert-equal-actual", 84));
         }
 
-        Assert.Equal(typeof(byte[]), typeof(Ours.AuthenticablePrincipal)
-            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedLogonTimes))!.PropertyType);
-        Assert.Equal(typeof(System.Security.Cryptography.X509Certificates.X509Certificate2Collection),
-            typeof(Ours.AuthenticablePrincipal)
-                .GetProperty(nameof(Ours.AuthenticablePrincipal.Certificates))!.PropertyType);
-        Assert.Equal(typeof(Ours.PrincipalValueCollection<string>), typeof(Ours.AuthenticablePrincipal)
-            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedWorkstations))!.PropertyType);
+        Assert.Equal(SuiteCapture.Expected(typeof(byte[]), "assert-equal-expected", 87), SuiteCapture.Expected(typeof(Ours.AuthenticablePrincipal)
+            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedLogonTimes))!.PropertyType, "assert-equal-actual", 87));
+        Assert.Equal(SuiteCapture.Expected(typeof(System.Security.Cryptography.X509Certificates.X509Certificate2Collection), "assert-equal-expected", 89),
+            SuiteCapture.Expected(typeof(Ours.AuthenticablePrincipal)
+                .GetProperty(nameof(Ours.AuthenticablePrincipal.Certificates))!.PropertyType, "assert-equal-actual", 89));
+        Assert.Equal(SuiteCapture.Expected(typeof(Ours.PrincipalValueCollection<string>), "assert-equal-expected", 92), SuiteCapture.Expected(typeof(Ours.AuthenticablePrincipal)
+            .GetProperty(nameof(Ours.AuthenticablePrincipal.PermittedWorkstations))!.PropertyType, "assert-equal-actual", 92));
 
         Assert.NotNull(typeof(Ours.AuthenticablePrincipal).GetMethod(
             nameof(Ms.AuthenticablePrincipal.ChangePassword),
@@ -150,20 +150,20 @@ public class PrincipalSurfaceComparisonTests
             Type.EmptyTypes);
 
         Assert.Equal(
-            typeof(Ms.Principal).GetProperty(nameof(Ms.Principal.Sid))!.PropertyType,
-            PortableSecurityContract.Map(typeof(Ours.Principal).GetProperty(nameof(Ours.Principal.Sid))!.PropertyType));
+            SuiteCapture.Expected(typeof(Ms.Principal).GetProperty(nameof(Ms.Principal.Sid))!.PropertyType, "assert-equal-expected", 152),
+            SuiteCapture.Expected(PortableSecurityContract.Map(typeof(Ours.Principal).GetProperty(nameof(Ours.Principal.Sid))!.PropertyType), "assert-equal-actual", 152));
         Assert.Equal(
-            typeof(Ms.Principal),
-            typeof(Ms.Principal).GetMethod(nameof(object.Equals), new[] { typeof(object) })!.DeclaringType);
+            SuiteCapture.Expected(typeof(Ms.Principal), "assert-equal-expected", 155),
+            SuiteCapture.Expected(typeof(Ms.Principal).GetMethod(nameof(object.Equals), new[] { typeof(object) })!.DeclaringType, "assert-equal-actual", 155));
         Assert.Equal(
-            typeof(Ours.Principal),
-            typeof(Ours.Principal).GetMethod(nameof(object.Equals), new[] { typeof(object) })!.DeclaringType);
+            SuiteCapture.Expected(typeof(Ours.Principal), "assert-equal-expected", 158),
+            SuiteCapture.Expected(typeof(Ours.Principal).GetMethod(nameof(object.Equals), new[] { typeof(object) })!.DeclaringType, "assert-equal-actual", 158));
         Assert.Equal(
-            typeof(Ms.Principal),
-            typeof(Ms.Principal).GetMethod(nameof(object.GetHashCode), Type.EmptyTypes)!.DeclaringType);
+            SuiteCapture.Expected(typeof(Ms.Principal), "assert-equal-expected", 161),
+            SuiteCapture.Expected(typeof(Ms.Principal).GetMethod(nameof(object.GetHashCode), Type.EmptyTypes)!.DeclaringType, "assert-equal-actual", 161));
         Assert.Equal(
-            typeof(Ours.Principal),
-            typeof(Ours.Principal).GetMethod(nameof(object.GetHashCode), Type.EmptyTypes)!.DeclaringType);
+            SuiteCapture.Expected(typeof(Ours.Principal), "assert-equal-expected", 164),
+            SuiteCapture.Expected(typeof(Ours.Principal).GetMethod(nameof(object.GetHashCode), Type.EmptyTypes)!.DeclaringType, "assert-equal-actual", 164));
     }
 
     private static void AssertPublicMethodPair(
@@ -176,8 +176,8 @@ public class PrincipalSurfaceComparisonTests
 
         Assert.NotNull(microsoft);
         Assert.NotNull(ours);
-        Assert.Equal(microsoft!.IsStatic, ours!.IsStatic);
-        Assert.Equal(microsoft.IsPublic, ours.IsPublic);
+        Assert.Equal(SuiteCapture.Expected(microsoft!.IsStatic, "assert-equal-expected", 179), SuiteCapture.Expected(ours!.IsStatic, "assert-equal-actual", 179));
+        Assert.Equal(SuiteCapture.Expected(microsoft.IsPublic, "assert-equal-expected", 180), SuiteCapture.Expected(ours.IsPublic, "assert-equal-actual", 180));
     }
 
     private static void AssertProtectedMethodPair(
@@ -191,7 +191,7 @@ public class PrincipalSurfaceComparisonTests
 
         Assert.NotNull(microsoft);
         Assert.NotNull(ours);
-        Assert.Equal(microsoft!.IsStatic, ours!.IsStatic);
-        Assert.Equal(microsoft.IsFamily, ours.IsFamily);
+        Assert.Equal(SuiteCapture.Expected(microsoft!.IsStatic, "assert-equal-expected", 194), SuiteCapture.Expected(ours!.IsStatic, "assert-equal-actual", 194));
+        Assert.Equal(SuiteCapture.Expected(microsoft.IsFamily, "assert-equal-expected", 195), SuiteCapture.Expected(ours.IsFamily, "assert-equal-actual", 195));
     }
 }

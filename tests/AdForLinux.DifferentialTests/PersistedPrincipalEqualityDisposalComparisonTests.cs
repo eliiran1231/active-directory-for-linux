@@ -41,10 +41,10 @@ public sealed class PersistedPrincipalEqualityDisposalComparisonTests
             Assert.NotSame(ourLeft, ourRight);
             Assert.NotNull(msLeft.Guid);
             Assert.NotNull(msRight.Guid);
-            Assert.Equal(msLeft.Guid, ourLeft.Guid);
-            Assert.Equal(msRight.Guid, ourRight.Guid);
-            Assert.Equal(sameIdentity, msLeft.Equals(msRight));
-            Assert.Equal(sameIdentity, ourLeft.Equals(ourRight));
+            Assert.Equal(SuiteCapture.Expected(msLeft.Guid, "assert-equal-expected", 44), SuiteCapture.Expected(ourLeft.Guid, "assert-equal-actual", 44));
+            Assert.Equal(SuiteCapture.Expected(msRight.Guid, "assert-equal-expected", 45), SuiteCapture.Expected(ourRight.Guid, "assert-equal-actual", 45));
+            Assert.Equal(SuiteCapture.Expected(sameIdentity, "assert-equal-expected", 46), SuiteCapture.Expected(msLeft.Equals(msRight), "assert-equal-actual", 46));
+            Assert.Equal(SuiteCapture.Expected(sameIdentity, "assert-equal-expected", 47), SuiteCapture.Expected(ourLeft.Equals(ourRight), "assert-equal-actual", 47));
 
             if (disposeLeft)
             {

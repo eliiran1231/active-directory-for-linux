@@ -25,8 +25,8 @@ public sealed class PrincipalValueCollectionOfflineComparisonTests
         var expected = ((IList)microsoft).Add("HOST/new");
         var actual = ((IList)ours).Add("HOST/new");
 
-        Assert.Equal(microsoft.ToArray(), ours.ToArray());
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(microsoft.ToArray(), "assert-equal-expected", 28), SuiteCapture.Expected(ours.ToArray(), "assert-equal-actual", 28));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 29), SuiteCapture.Expected(actual, "assert-equal-actual", 29));
     }
 
     [Theory]
@@ -50,8 +50,8 @@ public sealed class PrincipalValueCollectionOfflineComparisonTests
         var expectedError = Record.Exception(() => { expectedValue = expected.Current; });
         var actualError = Record.Exception(() => { actualValue = actual.Current; });
 
-        Assert.Equal(expectedError?.GetType(), actualError?.GetType());
-        Assert.Equal(expectedValue, actualValue);
+        Assert.Equal(SuiteCapture.Expected(expectedError?.GetType(), "assert-equal-expected", 53), SuiteCapture.Expected(actualError?.GetType(), "assert-equal-actual", 53));
+        Assert.Equal(SuiteCapture.Expected(expectedValue, "assert-equal-expected", 54), SuiteCapture.Expected(actualValue, "assert-equal-actual", 54));
     }
 
     [Theory]
@@ -75,7 +75,7 @@ public sealed class PrincipalValueCollectionOfflineComparisonTests
         var actualError = Record.Exception(() => Exercise(actual, operation));
 
         Assert.IsType<ObjectDisposedException>(expectedError);
-        Assert.Equal(expectedError?.GetType(), actualError?.GetType());
+        Assert.Equal(SuiteCapture.Expected(expectedError?.GetType(), "assert-equal-expected", 78), SuiteCapture.Expected(actualError?.GetType(), "assert-equal-actual", 78));
     }
 
     private static void Position(IEnumerator<string> enumerator, string position)

@@ -43,8 +43,8 @@ public sealed class ExtensionAttributeConstructionComparisonTests
         });
 
         Assert.Null(expectedError);
-        Assert.Equal(value, expectedValue);
-        Assert.Equal(expectedError?.GetType(), actualError?.GetType());
-        Assert.Equal(expectedValue, actualValue);
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 46), SuiteCapture.Expected(expectedValue, "assert-equal-actual", 46));
+        Assert.Equal(SuiteCapture.Expected(expectedError?.GetType(), "assert-equal-expected", 47), SuiteCapture.Expected(actualError?.GetType(), "assert-equal-actual", 47));
+        Assert.Equal(SuiteCapture.Expected(expectedValue, "assert-equal-expected", 48), SuiteCapture.Expected(actualValue, "assert-equal-actual", 48));
     }
 }

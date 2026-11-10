@@ -142,7 +142,7 @@ public sealed class Issue45GroupQueryComparisonTests
             using var ourDirectMembers = ourDirectGroup.GetMembers();
             var microsoftDirect = msDirectMembers.Select(MemberSnapshot).Order().ToArray();
             var ourDirect = ourDirectMembers.Select(MemberSnapshot).Order().ToArray();
-            Assert.Equal(microsoftDirect, ourDirect);
+            Assert.Equal(SuiteCapture.Expected(microsoftDirect, "assert-equal-expected", 145), SuiteCapture.Expected(ourDirect, "assert-equal-actual", 145));
             Assert.Contains(microsoftDirect, value => value.StartsWith("UserPrincipal|"));
             Assert.Contains(microsoftDirect, value => value.StartsWith("GroupPrincipal|"));
             Assert.Contains(microsoftDirect, value => value.StartsWith("ComputerPrincipal|"));
@@ -152,8 +152,8 @@ public sealed class Issue45GroupQueryComparisonTests
             using var msRecursiveMembers = msNestedGroup.GetMembers(recursive: true);
             using var ourRecursiveMembers = ourNestedGroup.GetMembers(recursive: true);
             Assert.Equal(
-                msRecursiveMembers.Select(MemberSnapshot).Order().ToArray(),
-                ourRecursiveMembers.Select(MemberSnapshot).Order().ToArray());
+                SuiteCapture.Expected(msRecursiveMembers.Select(MemberSnapshot).Order().ToArray(), "assert-equal-expected", 154),
+                SuiteCapture.Expected(ourRecursiveMembers.Select(MemberSnapshot).Order().ToArray(), "assert-equal-actual", 154));
 
             using var msAuthorization = msUser.GetAuthorizationGroups();
             using var ourAuthorization = ourUser.GetAuthorizationGroups();

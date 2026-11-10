@@ -32,8 +32,8 @@ public sealed class SearcherConstructorFilterComparisonTests
         ours.Filter = filter;
 
         Assert.Equal(
-            new[] { expectedInitial, microsoft.Filter },
-            new[] { actualInitial, ours.Filter });
+            SuiteCapture.Expected(new[] { expectedInitial, microsoft.Filter }, "assert-equal-expected", 34),
+            SuiteCapture.Expected(new[] { actualInitial, ours.Filter }, "assert-equal-actual", 34));
     }
 
     private static Ms.DirectorySearcher CreateMicrosoft(string overload, string? filter) => overload switch

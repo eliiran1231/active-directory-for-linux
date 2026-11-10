@@ -47,9 +47,9 @@ public sealed class PropertyCollectionBindingComparisonTests
     {
         using var microsoft = MicrosoftEntry();
         using var ours = OurEntry();
-        Assert.Equal(microsoft.Path, ours.Path);
-        Assert.Equal(microsoft.UsePropertyCache, ours.UsePropertyCache);
-        Assert.Equal((int)microsoft.AuthenticationType, (int)ours.AuthenticationType);
+        Assert.Equal(SuiteCapture.Expected(microsoft.Path, "assert-equal-expected", 50), SuiteCapture.Expected(ours.Path, "assert-equal-actual", 50));
+        Assert.Equal(SuiteCapture.Expected(microsoft.UsePropertyCache, "assert-equal-expected", 51), SuiteCapture.Expected(ours.UsePropertyCache, "assert-equal-actual", 51));
+        Assert.Equal(SuiteCapture.Expected((int)microsoft.AuthenticationType, "assert-equal-expected", 52), SuiteCapture.Expected((int)ours.AuthenticationType, "assert-equal-actual", 52));
     }
 
     private static object? Observe(Ms.PropertyCollection properties, string operation) => operation switch

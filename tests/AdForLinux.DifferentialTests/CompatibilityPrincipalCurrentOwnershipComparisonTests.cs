@@ -44,9 +44,9 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
             rightOwned.Add(rightSecond);
             // Validate both reads before checking identity or disposing either.
             foreach (var principal in new[] { leftFirst, leftSecond })
-                Assert.Equal(data.UserDn, principal.DistinguishedName, StringComparer.OrdinalIgnoreCase);
+                Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 47), SuiteCapture.Expected(principal.DistinguishedName, "assert-equal-actual", 47), StringComparer.OrdinalIgnoreCase);
             foreach (var principal in new[] { rightFirst, rightSecond })
-                Assert.Equal(data.UserDn, principal.DistinguishedName, StringComparer.OrdinalIgnoreCase);
+                Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 49), SuiteCapture.Expected(principal.DistinguishedName, "assert-equal-actual", 49), StringComparer.OrdinalIgnoreCase);
             Assert.False(leftCursor.MoveNext());
             Assert.False(rightCursor.MoveNext());
 
@@ -63,7 +63,7 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
             var leftAfter = ReadDn(() => leftSecond.DistinguishedName);
             var rightAfter = ReadDn(() => rightSecond.DistinguishedName);
             Assert.Null(leftAfter.Error);
-            Assert.Equal(data.UserDn, leftAfter.Dn, StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 66), SuiteCapture.Expected(leftAfter.Dn, "assert-equal-actual", 66), StringComparer.OrdinalIgnoreCase);
             comparison.Check("retained second wrapper error", leftAfter.Error, rightAfter.Error)
                 .Check("retained second wrapper DN", leftAfter.Dn?.ToUpperInvariant(), rightAfter.Dn?.ToUpperInvariant())
                 .Assert();
@@ -86,8 +86,8 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
         // Both seeded user names share this generated suffix; validate the
         // naming premise and then validate the complete result set separately.
         var suffix = data.UserName.Split('-')[^1];
-        Assert.Equal("adfl-d-u-" + suffix, data.UserName);
-        Assert.Equal("adfl-d-z-" + suffix, data.UnsetUserName);
+        Assert.Equal(SuiteCapture.Expected("adfl-d-u-" + suffix, "assert-equal-expected", 89), SuiteCapture.Expected(data.UserName, "assert-equal-actual", 89));
+        Assert.Equal(SuiteCapture.Expected("adfl-d-z-" + suffix, "assert-equal-expected", 90), SuiteCapture.Expected(data.UnsetUserName, "assert-equal-actual", 90));
         var pattern = "adfl-d-*-" + suffix;
         var expectedDns = new[] { data.UserDn, data.UnsetUserDn };
         using var expectedContext = new Ms.PrincipalContext(Ms.ContextType.Domain,
@@ -207,8 +207,8 @@ public sealed class CompatibilityPrincipalCurrentOwnershipComparisonTests(TestDa
             {
                 using (principal) names.Add(Assert.IsType<string>(dn(principal)));
             }
-            Assert.Equal(expectedDns.Order(StringComparer.OrdinalIgnoreCase),
-                names.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+            Assert.Equal(SuiteCapture.Expected(expectedDns.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-expected", 210),
+                SuiteCapture.Expected(names.Order(StringComparer.OrdinalIgnoreCase), "assert-equal-actual", 210), StringComparer.OrdinalIgnoreCase);
         }
     }
 

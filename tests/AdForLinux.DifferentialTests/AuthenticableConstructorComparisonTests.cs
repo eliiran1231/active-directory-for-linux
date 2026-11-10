@@ -41,7 +41,7 @@ public sealed class AuthenticableConstructorComparisonTests
         });
 
         Assert.IsAssignableFrom<ArgumentException>(expected);
-        Assert.Equal((expected.GetType(), (expected as ArgumentException)?.ParamName),
-            (actual?.GetType(), (actual as ArgumentException)?.ParamName));
+        Assert.Equal(SuiteCapture.Expected((expected.GetType(), (expected as ArgumentException)?.ParamName), "assert-equal-expected", 44),
+            SuiteCapture.Expected((actual?.GetType(), (actual as ArgumentException)?.ParamName), "assert-equal-actual", 44));
     }
 }

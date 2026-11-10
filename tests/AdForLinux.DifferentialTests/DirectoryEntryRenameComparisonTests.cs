@@ -16,8 +16,8 @@ public class DirectoryEntryRenameComparisonTests
         var nullability = new NullabilityInfoContext();
 
         Assert.Equal(
-            nullability.Create(microsoft).ReadState,
-            nullability.Create(ours).ReadState);
+            SuiteCapture.Expected(nullability.Create(microsoft).ReadState, "assert-equal-expected", 18),
+            SuiteCapture.Expected(nullability.Create(ours).ReadState, "assert-equal-actual", 18));
     }
 
     [Theory]
@@ -63,14 +63,14 @@ public class DirectoryEntryRenameComparisonTests
             var microsoftResult = Observe(() => microsoft.Rename(newName));
             var ourResult = Observe(() => ours.Rename(newName));
 
-            Assert.Equal(microsoftResult, ourResult);
+            Assert.Equal(SuiteCapture.Expected(microsoftResult, "assert-equal-expected", 66), SuiteCapture.Expected(ourResult, "assert-equal-actual", 66));
 
             if (microsoftResult.ExceptionType is null)
             {
-                Assert.Equal(microsoft.Name, ours.Name);
+                Assert.Equal(SuiteCapture.Expected(microsoft.Name, "assert-equal-expected", 70), SuiteCapture.Expected(ours.Name, "assert-equal-actual", 70));
                 Assert.Equal(
-                    newName ?? "OU=source",
-                    microsoft.Name,
+                    SuiteCapture.Expected(newName ?? "OU=source", "assert-equal-expected", 71),
+                    SuiteCapture.Expected(microsoft.Name, "assert-equal-actual", 71),
                     ignoreCase: true);
             }
         }
@@ -89,8 +89,8 @@ public class DirectoryEntryRenameComparisonTests
         ours.Dispose();
 
         Assert.Equal(
-            Observe(() => microsoft.Rename(null)),
-            Observe(() => ours.Rename(null)));
+            SuiteCapture.Expected(Observe(() => microsoft.Rename(null)), "assert-equal-expected", 91),
+            SuiteCapture.Expected(Observe(() => ours.Rename(null)), "assert-equal-actual", 91));
     }
 
     [Fact]
@@ -101,8 +101,8 @@ public class DirectoryEntryRenameComparisonTests
         using var ours = OurEntry($"OU={name},{DifferentialSettings.BaseDn}");
 
         Assert.Equal(
-            Observe(() => microsoft.Rename(null)),
-            Observe(() => ours.Rename(null)));
+            SuiteCapture.Expected(Observe(() => microsoft.Rename(null)), "assert-equal-expected", 103),
+            SuiteCapture.Expected(Observe(() => ours.Rename(null)), "assert-equal-actual", 103));
     }
 
     private static ParameterInfo RenameParameter(Type type) =>

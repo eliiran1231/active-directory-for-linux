@@ -139,7 +139,7 @@ public sealed class AdvancedFilterIsolationComparisonTests
             AdvancedFilterInstanceComparisonTests.Configure(actualDetached, method, value);
             var expectedFilter = ExpectedFilter();
             var actualFilter = ActualFilter();
-            Assert.Equal(expectedBaseline, expectedFilter);
+            Assert.Equal(SuiteCapture.Expected(expectedBaseline, "assert-equal-expected", 142), SuiteCapture.Expected(expectedFilter, "assert-equal-actual", 142));
             comparison.Check($"after detached criterion {value}", expectedFilter, actualFilter);
         }
 

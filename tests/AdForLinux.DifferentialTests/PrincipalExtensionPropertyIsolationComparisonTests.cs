@@ -39,8 +39,8 @@ public sealed class PrincipalExtensionPropertyIsolationComparisonTests
         // swallowed or confused with the extension-cache observation.
         expectedProperty.SetValue(microsoft, value);
         actualProperty.SetValue(ours, value);
-        Assert.Equal(value, expectedProperty.GetValue(microsoft));
-        Assert.Equal(value, actualProperty.GetValue(ours));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 42), SuiteCapture.Expected(expectedProperty.GetValue(microsoft), "assert-equal-actual", 42));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 43), SuiteCapture.Expected(actualProperty.GetValue(ours), "assert-equal-actual", 43));
         var expectedAfterStandardSet = microsoft.Read(attribute);
         var actualAfterStandardSet = ours.Read(attribute);
 
@@ -48,11 +48,11 @@ public sealed class PrincipalExtensionPropertyIsolationComparisonTests
         // property's staged value and do become visible to ExtensionGet.
         microsoft.Write(attribute, "extension");
         ours.Write(attribute, "extension");
-        Assert.Equal(new object?[] { "extension" }, microsoft.Read(attribute));
-        Assert.Equal(microsoft.Read(attribute), ours.Read(attribute));
-        Assert.Equal(value, expectedProperty.GetValue(microsoft));
-        Assert.Equal(value, actualProperty.GetValue(ours));
-        Assert.Equal(expectedAfterStandardSet, actualAfterStandardSet);
+        Assert.Equal(SuiteCapture.Expected(new object?[] { "extension" }, "assert-equal-expected", 51), SuiteCapture.Expected(microsoft.Read(attribute), "assert-equal-actual", 51));
+        Assert.Equal(SuiteCapture.Expected(microsoft.Read(attribute), "assert-equal-expected", 52), SuiteCapture.Expected(ours.Read(attribute), "assert-equal-actual", 52));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 53), SuiteCapture.Expected(expectedProperty.GetValue(microsoft), "assert-equal-actual", 53));
+        Assert.Equal(SuiteCapture.Expected(value, "assert-equal-expected", 54), SuiteCapture.Expected(actualProperty.GetValue(ours), "assert-equal-actual", 54));
+        Assert.Equal(SuiteCapture.Expected(expectedAfterStandardSet, "assert-equal-expected", 55), SuiteCapture.Expected(actualAfterStandardSet, "assert-equal-actual", 55));
     }
 
     private sealed class MicrosoftUser(Ms.PrincipalContext context) : Ms.UserPrincipal(context)

@@ -10,8 +10,8 @@ public class GroupScopeValidationComparisonTests
     public void Group_scope_defines_the_same_named_values_as_microsoft()
     {
         Assert.Equal(
-            Enum.GetValues<Ms.GroupScope>().Select(value => (int)value),
-            Enum.GetValues<Ours.GroupScope>().Select(value => (int)value));
+            SuiteCapture.Expected(Enum.GetValues<Ms.GroupScope>().Select(value => (int)value), "assert-equal-expected", 12),
+            SuiteCapture.Expected(Enum.GetValues<Ours.GroupScope>().Select(value => (int)value), "assert-equal-actual", 12));
 
         using var context = new Ours.PrincipalContext(
             Ours.ContextType.Domain,
@@ -22,7 +22,7 @@ public class GroupScopeValidationComparisonTests
         foreach (var scope in Enum.GetValues<Ours.GroupScope>())
         {
             group.GroupScope = scope;
-            Assert.Equal(scope, group.GroupScope);
+            Assert.Equal(SuiteCapture.Expected(scope, "assert-equal-expected", 25), SuiteCapture.Expected(group.GroupScope, "assert-equal-actual", 25));
         }
 
         // Named enum values do not constrain assignments. Undefined-value

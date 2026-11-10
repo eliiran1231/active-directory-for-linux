@@ -54,8 +54,8 @@ public sealed class CompatibilitySaveContextNativeOwnershipComparisonTests
             // No separate using/disposal can manufacture the lifetime result.
             var expectedName = expectedNative.Name;
             var actualName = actualNative.Name;
-            Assert.Equal("CN=" + expectedOwned.Cn, expectedName, ignoreCase: true);
-            Assert.Equal("CN=" + actualOwned.Cn, actualName, ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected("CN=" + expectedOwned.Cn, "assert-equal-expected", 57), SuiteCapture.Expected(expectedName, "assert-equal-actual", 57), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected("CN=" + actualOwned.Cn, "assert-equal-expected", 58), SuiteCapture.Expected(actualName, "assert-equal-actual", 58), ignoreCase: true);
             Assert.Same(expectedNative, expected.GetUnderlyingObject());
             Assert.Same(actualNative, actual.GetUnderlyingObject());
 
@@ -70,19 +70,19 @@ public sealed class CompatibilitySaveContextNativeOwnershipComparisonTests
 
             var expectedCurrent = Assert.IsType<MsDirectory.DirectoryEntry>(expected.GetUnderlyingObject());
             var actualCurrent = Assert.IsType<OurDirectory.DirectoryEntry>(actual.GetUnderlyingObject());
-            Assert.Equal(expectedName, expectedCurrent.Name);
-            Assert.Equal(actualName, actualCurrent.Name);
+            Assert.Equal(SuiteCapture.Expected(expectedName, "assert-equal-expected", 73), SuiteCapture.Expected(expectedCurrent.Name, "assert-equal-actual", 73));
+            Assert.Equal(SuiteCapture.Expected(actualName, "assert-equal-expected", 74), SuiteCapture.Expected(actualCurrent.Name, "assert-equal-actual", 74));
             string? expectedRetainedName = null;
             string? actualRetainedName = null;
             var expectedReadError = Record.Exception(() => expectedRetainedName = expectedNative.Name);
             var actualReadError = Record.Exception(() => actualRetainedName = actualNative.Name);
             Assert.Null(expectedReadError);
-            Assert.Equal(expectedName, expectedRetainedName);
+            Assert.Equal(SuiteCapture.Expected(expectedName, "assert-equal-expected", 80), SuiteCapture.Expected(expectedRetainedName, "assert-equal-actual", 80));
             Assert.Same(expectedNative, expectedCurrent);
             if (!distinctContext)
             {
                 Assert.Null(actualReadError);
-                Assert.Equal(actualName, actualRetainedName);
+                Assert.Equal(SuiteCapture.Expected(actualName, "assert-equal-expected", 85), SuiteCapture.Expected(actualRetainedName, "assert-equal-actual", 85));
                 Assert.Same(actualNative, actualCurrent);
             }
             new Comparison($"Save(context) native ownership: distinctContext={distinctContext}")
@@ -143,8 +143,8 @@ public sealed class CompatibilitySaveContextNativeOwnershipComparisonTests
             child.CommitChanges();
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, persisted.Properties["description"].Value);
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 146), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 146));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 147), SuiteCapture.Expected(persisted.Properties["description"].Value, "assert-equal-actual", 147));
             Assert.NotEqual(Guid.Empty, persisted.Guid);
             _identity = persisted.Guid;
         }
@@ -153,11 +153,11 @@ public sealed class CompatibilitySaveContextNativeOwnershipComparisonTests
         {
             using var persisted = Open(Dn);
             RefreshIdentity(persisted);
-            Assert.Equal(Dn, (string)persisted.Properties["distinguishedName"].Value!, ignoreCase: true);
-            Assert.Equal(Cn, persisted.Properties["cn"].Value);
-            Assert.Equal(_sam, persisted.Properties["sAMAccountName"].Value);
-            Assert.Equal(_marker, persisted.Properties["description"].Value);
-            Assert.Equal(_identity, persisted.Guid);
+            Assert.Equal(SuiteCapture.Expected(Dn, "assert-equal-expected", 156), SuiteCapture.Expected((string)persisted.Properties["distinguishedName"].Value!, "assert-equal-actual", 156), ignoreCase: true);
+            Assert.Equal(SuiteCapture.Expected(Cn, "assert-equal-expected", 157), SuiteCapture.Expected(persisted.Properties["cn"].Value, "assert-equal-actual", 157));
+            Assert.Equal(SuiteCapture.Expected(_sam, "assert-equal-expected", 158), SuiteCapture.Expected(persisted.Properties["sAMAccountName"].Value, "assert-equal-actual", 158));
+            Assert.Equal(SuiteCapture.Expected(_marker, "assert-equal-expected", 159), SuiteCapture.Expected(persisted.Properties["description"].Value, "assert-equal-actual", 159));
+            Assert.Equal(SuiteCapture.Expected(_identity, "assert-equal-expected", 160), SuiteCapture.Expected(persisted.Guid, "assert-equal-actual", 160));
         }
 
         internal void Cleanup(List<Exception> errors)

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "sourceRun": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/42872964497",
+  "sourceCommit": "36d9bc3a6d92e0909a55ec44a646e1e56a30443f",
+  "sourceArtifact": "https://github.com/eliiran1231/active-directory-for-linux/actions/runs/42872964497/artifacts/13790049557",
+  "sourceArchive": {
+    "name": "results.zip",
+    "sha256": "9bf77ae04efe711b764f3d919cf440bb66094de9d2c4cd90eed8fe360d8f14f0"
+  },
+  "caseSources": [
+    {
+      "path": "tests/AdForLinux.DifferentialTests/PrincipalValueCollectionTraversalAndCopyComparisonTests.cs",
+      "recordedSourceSha256": "e75fe05003b3682b53342d70747e0cc89cafaa420ecb22d01a592227e3a4f9f5",
+      "replaySourceSha256": "1df5b23eec7f9d0f23fc54992249605bac2c09debdea32108ab6f80829355f70"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/ResultValueEnumeratorComparisonTests.cs",
+      "recordedSourceSha256": "60bb5dd29bf9c1c11ab45d48c386e569c3b8c06d828b2564fa864d3b45b84309",
+      "replaySourceSha256": "8f4d31694f3a4f5e281c87032c8e0bc40fde5fc64a34d96ac184c0a80c54eba2"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/PrincipalValueCollectionCopyFailureComparisonTests.cs",
+      "recordedSourceSha256": "7ed5a1704aca2e5b55bcedf2fe56be9831afdc455f1b28398b34f10f85765b61",
+      "replaySourceSha256": "b56edd3aae1cd818fd6960511cba96f68a0a5b813e9e9e80fb9f733d31dcfc5a"
+    },
+    {
+      "path": "tests/AdForLinux.DifferentialTests/GroupConstructorValidationComparisonTests.cs",
+      "recordedSourceSha256": "82147504962fee6cdb677ccab127c85415d5b69b199935bac36fd3566dbaac4e",
+      "replaySourceSha256": "f44fa6ef594090cb7ab2cf5aa11ee9c5787759b1fcae3fb9a12853feac4a4e48"
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "run202-net10.0.json",
+      "sha256": "cf64b6d34bc2520c0bee6e601f97f547313c2f2e2575ae037a24bffa3cae5413",
+      "caseCount": 42
+    },
+    {
+      "path": "run202-net8.0.json",
+      "sha256": "31110d4ddf2a93d106097721b9cfbffdaed3ade776293b87f9aea177a638eafc",
+      "caseCount": 42
+    }
+  ]
+}

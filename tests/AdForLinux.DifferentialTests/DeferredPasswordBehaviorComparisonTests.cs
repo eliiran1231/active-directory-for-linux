@@ -68,9 +68,9 @@ public class DeferredPasswordBehaviorComparisonTests
             using var savedOurs = Ours.UserPrincipal.FindByIdentity(ourContext, ourName);
             Assert.NotNull(savedMicrosoft);
             Assert.NotNull(savedOurs);
-            Assert.Equal(savedMicrosoft.Enabled, savedOurs.Enabled);
+            Assert.Equal(SuiteCapture.Expected(savedMicrosoft.Enabled, "assert-equal-expected", 71), SuiteCapture.Expected(savedOurs.Enabled, "assert-equal-actual", 71));
             Assert.True(savedMicrosoft.PasswordNeverExpires);
-            Assert.Equal(savedMicrosoft.PasswordNeverExpires, savedOurs.PasswordNeverExpires);
+            Assert.Equal(SuiteCapture.Expected(savedMicrosoft.PasswordNeverExpires, "assert-equal-expected", 73), SuiteCapture.Expected(savedOurs.PasswordNeverExpires, "assert-equal-actual", 73));
             Assert.NotNull(savedMicrosoft.LastPasswordSet);
             Assert.NotNull(savedOurs.LastPasswordSet);
         }
@@ -114,7 +114,7 @@ public class DeferredPasswordBehaviorComparisonTests
             var msException = Record.Exception(msUser.Save);
             var ourException = Record.Exception(ourUser.Save);
 
-            Assert.Equal(msException?.GetType().Name, ourException?.GetType().Name);
+            Assert.Equal(SuiteCapture.Expected(msException?.GetType().Name, "assert-equal-expected", 117), SuiteCapture.Expected(ourException?.GetType().Name, "assert-equal-actual", 117));
             Assert.IsType<InvalidOperationException>(msException);
             Assert.IsType<InvalidOperationException>(ourException);
 
@@ -144,8 +144,8 @@ public class DeferredPasswordBehaviorComparisonTests
             using var savedOurs = Ours.UserPrincipal.FindByIdentity(ourContext, ourName);
             Assert.NotNull(savedMicrosoft);
             Assert.NotNull(savedOurs);
-            Assert.Equal("Rollback retry", savedMicrosoft!.DisplayName);
-            Assert.Equal(savedMicrosoft.DisplayName, savedOurs!.DisplayName);
+            Assert.Equal(SuiteCapture.Expected("Rollback retry", "assert-equal-expected", 147), SuiteCapture.Expected(savedMicrosoft!.DisplayName, "assert-equal-actual", 147));
+            Assert.Equal(SuiteCapture.Expected(savedMicrosoft.DisplayName, "assert-equal-expected", 148), SuiteCapture.Expected(savedOurs!.DisplayName, "assert-equal-actual", 148));
         }
         finally
         {
@@ -193,11 +193,11 @@ public class DeferredPasswordBehaviorComparisonTests
             var ourException = Record.Exception(ourGroup.Save);
 
             Assert.NotNull(msException);
-            Assert.Equal(msException!.GetType().Name, ourException?.GetType().Name);
+            Assert.Equal(SuiteCapture.Expected(msException!.GetType().Name, "assert-equal-expected", 196), SuiteCapture.Expected(ourException?.GetType().Name, "assert-equal-actual", 196));
             Assert.Null(msGroup.DistinguishedName);
             Assert.Null(ourGroup.DistinguishedName);
-            Assert.Equal(msGroupName, msGroup.Name);
-            Assert.Equal(ourGroupName, ourGroup.Name);
+            Assert.Equal(SuiteCapture.Expected(msGroupName, "assert-equal-expected", 199), SuiteCapture.Expected(msGroup.Name, "assert-equal-actual", 199));
+            Assert.Equal(SuiteCapture.Expected(ourGroupName, "assert-equal-expected", 200), SuiteCapture.Expected(ourGroup.Name, "assert-equal-actual", 200));
             Assert.Null(Ms.GroupPrincipal.FindByIdentity(msContext, msGroupName));
             Assert.Null(Ours.GroupPrincipal.FindByIdentity(ourContext, ourGroupName));
 
@@ -246,9 +246,9 @@ public class DeferredPasswordBehaviorComparisonTests
         Assert.Null(Ms.UserPrincipal.FindByIdentity(context, name));
         Assert.Null(user.DistinguishedName);
         Assert.Null(user.Guid);
-        Assert.Equal(name, user.Name);
-        Assert.Equal(name, user.SamAccountName);
-        Assert.Equal("Rollback retry", user.DisplayName);
+        Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 249), SuiteCapture.Expected(user.Name, "assert-equal-actual", 249));
+        Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 250), SuiteCapture.Expected(user.SamAccountName, "assert-equal-actual", 250));
+        Assert.Equal(SuiteCapture.Expected("Rollback retry", "assert-equal-expected", 251), SuiteCapture.Expected(user.DisplayName, "assert-equal-actual", 251));
         Assert.False(user.Enabled);
         using var groups = user.GetGroups();
         Assert.Empty(groups);
@@ -263,9 +263,9 @@ public class DeferredPasswordBehaviorComparisonTests
         Assert.False(user.IsPersisted);
         Assert.Null(user.DistinguishedName);
         Assert.Null(user.Guid);
-        Assert.Equal(name, user.Name);
-        Assert.Equal(name, user.SamAccountName);
-        Assert.Equal("Rollback retry", user.DisplayName);
+        Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 266), SuiteCapture.Expected(user.Name, "assert-equal-actual", 266));
+        Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 267), SuiteCapture.Expected(user.SamAccountName, "assert-equal-actual", 267));
+        Assert.Equal(SuiteCapture.Expected("Rollback retry", "assert-equal-expected", 268), SuiteCapture.Expected(user.DisplayName, "assert-equal-actual", 268));
         Assert.False(user.Enabled);
         using var groups = user.GetGroups();
         Assert.Empty(groups);

@@ -33,14 +33,14 @@ public sealed class PrincipalEqualityDisposalComparisonTests
         }
 
         // Identity and null comparisons are useful controls even when disposed.
-        Assert.Equal(microsoftLeft.Equals(microsoftLeft), ourLeft.Equals(ourLeft));
+        Assert.Equal(SuiteCapture.Expected(microsoftLeft.Equals(microsoftLeft), "assert-equal-expected", 36), SuiteCapture.Expected(ourLeft.Equals(ourLeft), "assert-equal-actual", 36));
         bool? expectedValue = null;
         bool? actualValue = null;
         var expected = Record.Exception(() => { expectedValue = microsoftLeft.Equals(microsoftRight); });
         var actual = Record.Exception(() => { actualValue = ourLeft.Equals(ourRight); });
 
-        Assert.Equal(expected?.GetType(), actual?.GetType());
-        Assert.Equal(expectedValue, actualValue);
-        Assert.Equal(microsoftLeft.Equals(null), ourLeft.Equals(null));
+        Assert.Equal(SuiteCapture.Expected(expected?.GetType(), "assert-equal-expected", 42), SuiteCapture.Expected(actual?.GetType(), "assert-equal-actual", 42));
+        Assert.Equal(SuiteCapture.Expected(expectedValue, "assert-equal-expected", 43), SuiteCapture.Expected(actualValue, "assert-equal-actual", 43));
+        Assert.Equal(SuiteCapture.Expected(microsoftLeft.Equals(null), "assert-equal-expected", 44), SuiteCapture.Expected(ourLeft.Equals(null), "assert-equal-actual", 44));
     }
 }

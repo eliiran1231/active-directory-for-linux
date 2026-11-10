@@ -69,13 +69,13 @@ public sealed class CompatibilitySearchResultCopyComparisonTests : IClassFixture
         using var ours = ourSearcher.FindAll();
         // Materialize first: these cases isolate copy contracts from paging,
         // streaming and network errors. Do not treat two empty queries as parity.
-        Assert.Equal(count, microsoft.Count);
-        Assert.Equal(count, ours.Count);
+        Assert.Equal(SuiteCapture.Expected(count, "assert-equal-expected", 72), SuiteCapture.Expected(microsoft.Count, "assert-equal-actual", 72));
+        Assert.Equal(SuiteCapture.Expected(count, "assert-equal-expected", 73), SuiteCapture.Expected(ours.Count, "assert-equal-actual", 73));
         var expectedRows = Enumerable.Range(0, count).Select(i => (object)microsoft[i]).ToArray();
         var actualRows = Enumerable.Range(0, count).Select(i => (object)ours[i]).ToArray();
         Assert.Equal(
-            expectedRows.Cast<Ms.SearchResult>().Select(row => row.Properties["samaccountname"][0]?.ToString()).Order(),
-            actualRows.Cast<Ours.SearchResult>().Select(row => row.Properties["samaccountname"][0]?.ToString()).Order());
+            SuiteCapture.Expected(expectedRows.Cast<Ms.SearchResult>().Select(row => row.Properties["samaccountname"][0]?.ToString()).Order(), "assert-equal-expected", 76),
+            SuiteCapture.Expected(actualRows.Cast<Ours.SearchResult>().Select(row => row.Properties["samaccountname"][0]?.ToString()).Order(), "assert-equal-actual", 76));
 
         var expectedDestination = Destination(typeof(Ms.SearchResult), count, shape);
         var actualDestination = Destination(typeof(Ours.SearchResult), count, shape);
@@ -108,7 +108,7 @@ public sealed class CompatibilitySearchResultCopyComparisonTests : IClassFixture
         // cannot hide partial writes by a manual per-element copy loop.
         var expected = Observe(expectedError, expectedDestination, expectedRows);
         var actual = Observe(actualError, actualDestination, actualRows);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 111), SuiteCapture.Expected(actual, "assert-equal-actual", 111));
     }
 
     private static Array? Destination(Type resultType, int count, string shape) => shape switch

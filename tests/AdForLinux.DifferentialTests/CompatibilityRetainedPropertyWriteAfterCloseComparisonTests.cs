@@ -31,11 +31,11 @@ public sealed class CompatibilityRetainedPropertyWriteAfterCloseComparisonTests(
         var rightProperties = actual.Properties;
         var leftRetained = leftProperties["description"];
         var rightRetained = rightProperties["description"];
-        Assert.Equal(seeded, Assert.IsType<string>(leftRetained.Value));
-        Assert.Equal(seeded, Assert.IsType<string>(rightRetained.Value));
-        Assert.Equal(data.UserDn, Assert.IsType<string>(leftProperties["distinguishedName"].Value),
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 34), SuiteCapture.Expected(Assert.IsType<string>(leftRetained.Value), "assert-equal-actual", 34));
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 35), SuiteCapture.Expected(Assert.IsType<string>(rightRetained.Value), "assert-equal-actual", 35));
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 36), SuiteCapture.Expected(Assert.IsType<string>(leftProperties["distinguishedName"].Value), "assert-equal-actual", 36),
             StringComparer.OrdinalIgnoreCase);
-        Assert.Equal(data.UserDn, Assert.IsType<string>(rightProperties["distinguishedName"].Value),
+        Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 38), SuiteCapture.Expected(Assert.IsType<string>(rightProperties["distinguishedName"].Value), "assert-equal-actual", 38),
             StringComparer.OrdinalIgnoreCase);
 
         var close = scenario != "retained-without-close";
@@ -49,14 +49,14 @@ public sealed class CompatibilityRetainedPropertyWriteAfterCloseComparisonTests(
         // before the write: that would alter the cache transition under test.
         var leftWriter = scenario == "fresh-after-close" ? expected.Properties["description"] : leftRetained;
         var rightWriter = scenario == "fresh-after-close" ? actual.Properties["description"] : rightRetained;
-        Assert.Equal(seeded, Assert.IsType<string>(leftWriter.Value));
-        Assert.Equal(seeded, Assert.IsType<string>(rightWriter.Value));
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 52), SuiteCapture.Expected(Assert.IsType<string>(leftWriter.Value), "assert-equal-actual", 52));
+        Assert.Equal(SuiteCapture.Expected(seeded, "assert-equal-expected", 53), SuiteCapture.Expected(Assert.IsType<string>(rightWriter.Value), "assert-equal-actual", 53));
         Assert.True(expected.UsePropertyCache);
         Assert.True(actual.UsePropertyCache);
         var leftError = Record.Exception(() => leftWriter.Value = pending);
         var rightError = Record.Exception(() => rightWriter.Value = pending);
         Assert.Null(leftError);
-        Assert.Equal(pending, Assert.IsType<string>(leftWriter.Value));
+        Assert.Equal(SuiteCapture.Expected(pending, "assert-equal-expected", 59), SuiteCapture.Expected(Assert.IsType<string>(leftWriter.Value), "assert-equal-actual", 59));
 
         var leftCurrentProperties = expected.Properties;
         var rightCurrentProperties = actual.Properties;

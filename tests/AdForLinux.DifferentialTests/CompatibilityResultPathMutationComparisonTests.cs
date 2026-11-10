@@ -35,10 +35,10 @@ public sealed class CompatibilityResultPathMutationComparisonTests(TestDataFixtu
         var actual = Assert.IsType<Ours.SearchResult>(actualSearcher.FindOne());
         var expectedOther = Assert.IsType<Ms.SearchResult>(expectedOtherSearcher.FindOne());
         var actualOther = Assert.IsType<Ours.SearchResult>(actualOtherSearcher.FindOne());
-        Assert.Equal(data.UserName, expected.Properties["sAMAccountName"][0]);
-        Assert.Equal(data.UserName, actual.Properties["sAMAccountName"][0]);
-        Assert.Equal(data.UnsetUserName, expectedOther.Properties["sAMAccountName"][0]);
-        Assert.Equal(data.UnsetUserName, actualOther.Properties["sAMAccountName"][0]);
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 38), SuiteCapture.Expected(expected.Properties["sAMAccountName"][0], "assert-equal-actual", 38));
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 39), SuiteCapture.Expected(actual.Properties["sAMAccountName"][0], "assert-equal-actual", 39));
+        Assert.Equal(SuiteCapture.Expected(data.UnsetUserName, "assert-equal-expected", 40), SuiteCapture.Expected(expectedOther.Properties["sAMAccountName"][0], "assert-equal-actual", 40));
+        Assert.Equal(SuiteCapture.Expected(data.UnsetUserName, "assert-equal-expected", 41), SuiteCapture.Expected(actualOther.Properties["sAMAccountName"][0], "assert-equal-actual", 41));
         IDictionary expectedProperties = expected.Properties;
         IDictionary actualProperties = actual.Properties;
         var expectedOriginal = expectedProperties["adspath"];
@@ -120,8 +120,8 @@ public sealed class CompatibilityResultPathMutationComparisonTests(TestDataFixtu
             expected = Assert.Single(expectedResults.Cast<Ms.SearchResult>());
             actual = Assert.Single(actualResults.Cast<Ours.SearchResult>());
         }
-        Assert.Equal(data.UserName, expected.Properties["sAMAccountName"][0]);
-        Assert.Equal(data.UserName, actual.Properties["sAMAccountName"][0]);
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 123), SuiteCapture.Expected(expected.Properties["sAMAccountName"][0], "assert-equal-actual", 123));
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 124), SuiteCapture.Expected(actual.Properties["sAMAccountName"][0], "assert-equal-actual", 124));
         if (change == "path")
         {
             // A different authority makes unintended reuse of the mutable root

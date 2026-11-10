@@ -47,12 +47,12 @@ public sealed partial class SearcherValidationContractComparisonTests
         var expected = Record.Exception(microsoftAction);
         var actual = Record.Exception(ourAction);
 
-        Assert.Equal(microsoft.SizeLimit, ours.SizeLimit);
-        Assert.Equal(microsoft.PageSize, ours.PageSize);
-        Assert.Equal(microsoft.AttributeScopeQuery, ours.AttributeScopeQuery);
-        Assert.Equal((int)microsoft.SearchScope, (int)ours.SearchScope);
+        Assert.Equal(SuiteCapture.Expected(microsoft.SizeLimit, "assert-equal-expected", 50), SuiteCapture.Expected(ours.SizeLimit, "assert-equal-actual", 50));
+        Assert.Equal(SuiteCapture.Expected(microsoft.PageSize, "assert-equal-expected", 51), SuiteCapture.Expected(ours.PageSize, "assert-equal-actual", 51));
+        Assert.Equal(SuiteCapture.Expected(microsoft.AttributeScopeQuery, "assert-equal-expected", 52), SuiteCapture.Expected(ours.AttributeScopeQuery, "assert-equal-actual", 52));
+        Assert.Equal(SuiteCapture.Expected((int)microsoft.SearchScope, "assert-equal-expected", 53), SuiteCapture.Expected((int)ours.SearchScope, "assert-equal-actual", 53));
         var expectedArgument = Assert.IsType<ArgumentException>(expected);
         var actualArgument = Assert.IsType<ArgumentException>(actual);
-        Assert.Equal(expectedArgument.ParamName, actualArgument.ParamName);
+        Assert.Equal(SuiteCapture.Expected(expectedArgument.ParamName, "assert-equal-expected", 56), SuiteCapture.Expected(actualArgument.ParamName, "assert-equal-actual", 56));
     }
 }

@@ -60,9 +60,9 @@ public sealed class CompatibilityMemberCursorOwnerLifetimeComparisonTests
             Assert.True(actualMembers.Count == 1);
         }
 
-        Assert.Equal(lifetime == "cursor-disposed" ? "threw ObjectDisposedException" : "returned True", expectedCurrent);
-        Assert.Equal(lifetime == "cursor-disposed" ? "threw ObjectDisposedException" : "returned reset", expectedReset);
-        Assert.Equal(new[] { expectedCurrent, expectedReset }, new[] { actualCurrent, actualReset });
+        Assert.Equal(SuiteCapture.Expected(lifetime == "cursor-disposed" ? "threw ObjectDisposedException" : "returned True", "assert-equal-expected", 63), SuiteCapture.Expected(expectedCurrent, "assert-equal-actual", 63));
+        Assert.Equal(SuiteCapture.Expected(lifetime == "cursor-disposed" ? "threw ObjectDisposedException" : "returned reset", "assert-equal-expected", 64), SuiteCapture.Expected(expectedReset, "assert-equal-actual", 64));
+        Assert.Equal(SuiteCapture.Expected(new[] { expectedCurrent, expectedReset }, "assert-equal-expected", 65), SuiteCapture.Expected(new[] { actualCurrent, actualReset }, "assert-equal-actual", 65));
     }
 
     private static string Observe(Func<object?> action)

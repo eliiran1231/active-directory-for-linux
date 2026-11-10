@@ -28,7 +28,7 @@ public class ExceptionTranslationComparisonTests
         var ourException = Record.Exception(ours.RefreshCache);
 
         AssertEquivalent("missing object", microsoftException, ourException);
-        Assert.Equal(unchecked((int)0x80072030), ourException!.HResult);
+        Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80072030), "assert-equal-expected", 31), SuiteCapture.Expected(ourException!.HResult, "assert-equal-actual", 31));
     }
 
     [Fact]

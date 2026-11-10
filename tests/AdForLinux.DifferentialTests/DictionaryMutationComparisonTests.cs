@@ -15,10 +15,10 @@ public sealed class DictionaryMutationComparisonTests
         IDictionary microsoft = entry.Properties;
         IDictionary ours = new Ours.PropertyCollection();
 
-        Assert.Equal(ExerciseRejectedMutations(microsoft), ExerciseRejectedMutations(ours));
+        Assert.Equal(SuiteCapture.Expected(ExerciseRejectedMutations(microsoft), "assert-equal-expected", 18), SuiteCapture.Expected(ExerciseRejectedMutations(ours), "assert-equal-actual", 18));
         Assert.All(
             ExerciseRejectedMutations(ours),
-            exceptionType => Assert.Equal(typeof(NotSupportedException).FullName, exceptionType));
+            exceptionType => Assert.Equal(SuiteCapture.Expected(typeof(NotSupportedException).FullName, "assert-equal-expected", 21), SuiteCapture.Expected(exceptionType, "assert-equal-actual", 21)));
     }
 
     [Fact]
@@ -30,8 +30,8 @@ public sealed class DictionaryMutationComparisonTests
         var microsoftResult = ExerciseAllowedMutations(microsoft);
         var ourResult = ExerciseAllowedMutations(ours);
 
-        Assert.Equal(microsoftResult, ourResult);
-        Assert.Equal(new MutationResult(false, false, 1, 2, 1, 0), ourResult);
+        Assert.Equal(SuiteCapture.Expected(microsoftResult, "assert-equal-expected", 33), SuiteCapture.Expected(ourResult, "assert-equal-actual", 33));
+        Assert.Equal(SuiteCapture.Expected(new MutationResult(false, false, 1, 2, 1, 0), "assert-equal-expected", 34), SuiteCapture.Expected(ourResult, "assert-equal-actual", 34));
     }
 
     private static string?[] ExerciseRejectedMutations(IDictionary dictionary) =>

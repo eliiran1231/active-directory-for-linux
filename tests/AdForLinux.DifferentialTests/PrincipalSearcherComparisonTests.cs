@@ -231,7 +231,7 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
 
         Assert.NotNull(microsoftException);
         Assert.NotNull(ourException);
-        Assert.Equal(microsoftException!.GetType().Name, ourException!.GetType().Name);
+        Assert.Equal(SuiteCapture.Expected(microsoftException!.GetType().Name, "assert-equal-expected", 234), SuiteCapture.Expected(ourException!.GetType().Name, "assert-equal-actual", 234));
         Assert.IsType<ArgumentException>(microsoftException);
         Assert.IsType<ArgumentException>(ourException);
     }
@@ -375,8 +375,8 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
         using (var ours = new Ours.UserPrincipal(ourContext))
         {
             Assert.Equal(
-                Record.Exception(() => ms.Enabled = null)?.GetType().Name,
-                Record.Exception(() => ours.Enabled = null)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => ms.Enabled = null)?.GetType().Name, "assert-equal-expected", 377),
+                SuiteCapture.Expected(Record.Exception(() => ours.Enabled = null)?.GetType().Name, "assert-equal-actual", 377));
             ms.PermittedLogonTimes = null;
             ours.PermittedLogonTimes = null;
             CompareQuery("null PermittedLogonTimes", ms, ours);
@@ -406,11 +406,11 @@ public class PrincipalSearcherComparisonTests : IClassFixture<TestDataFixture>
         using (var ours = new Ours.GroupPrincipal(ourContext))
         {
             Assert.Equal(
-                Record.Exception(() => ms.GroupScope = null)?.GetType().Name,
-                Record.Exception(() => ours.GroupScope = null)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => ms.GroupScope = null)?.GetType().Name, "assert-equal-expected", 408),
+                SuiteCapture.Expected(Record.Exception(() => ours.GroupScope = null)?.GetType().Name, "assert-equal-actual", 408));
             Assert.Equal(
-                Record.Exception(() => ms.IsSecurityGroup = null)?.GetType().Name,
-                Record.Exception(() => ours.IsSecurityGroup = null)?.GetType().Name);
+                SuiteCapture.Expected(Record.Exception(() => ms.IsSecurityGroup = null)?.GetType().Name, "assert-equal-expected", 411),
+                SuiteCapture.Expected(Record.Exception(() => ours.IsSecurityGroup = null)?.GetType().Name, "assert-equal-actual", 411));
         }
     }
 

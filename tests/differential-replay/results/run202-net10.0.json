@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "framework": "net10.0",
+  "provenance": {
+    "OS": "Microsoft Windows 10.0.26100; architecture: X64",
+    "Runtime": ".NET 10.0.12; target: .NETCoreApp,Version=v10.0",
+    "SDK": "10.0.401",
+    "Commit/build": "36d9bc3a6d92e0909a55ec44a646e1e56a30443f",
+    "Microsoft DirectoryServices": "9.0.0+9d5a6a9aa463d6d10b0b0ba6d5982cc82f363dc3",
+    "Microsoft AccountManagement": "9.0.0+9d5a6a9aa463d6d10b0b0ba6d5982cc82f363dc3"
+  },
+  "cases": {
+    "AdForLinux.DifferentialTests.GroupConstructorValidationComparisonTests.Null_context_matches_microsoft_for_each_constructor(named: False, name: null)": {
+      "microsoft": "ArgumentException; parameter=<null>",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.GroupConstructorValidationComparisonTests.Null_context_matches_microsoft_for_each_constructor(named: True, name: \"\")": {
+      "microsoft": "ArgumentException; parameter=<null>",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.GroupConstructorValidationComparisonTests.Null_context_matches_microsoft_for_each_constructor(named: True, name: \"group-name\")": {
+      "microsoft": "ArgumentException; parameter=<null>",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.GroupConstructorValidationComparisonTests.Null_context_matches_microsoft_for_each_constructor(named: True, name: null)": {
+      "microsoft": "ArgumentException; parameter=<null>",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Copy_to_covariant_array_matches_failure_and_partial_writes(generic: False, compatible: False)": {
+      "microsoft": "InvalidCastException; ParamName=<null>; destination=[guard,first,old-2,old-3,tail]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Copy_to_covariant_array_matches_failure_and_partial_writes(generic: False, compatible: True)": {
+      "microsoft": "success; destination=[guard,first,second,third,tail]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Copy_to_covariant_array_matches_failure_and_partial_writes(generic: True, compatible: False)": {
+      "microsoft": "InvalidCastException; ParamName=<null>; destination=[guard,first,old-2,old-3,tail]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Copy_to_covariant_array_matches_failure_and_partial_writes(generic: True, compatible: True)": {
+      "microsoft": "success; destination=[guard,first,second,third,tail]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Non_generic_copy_to_incompatible_element_type_matches_microsoft(empty: False)": {
+      "microsoft": "InvalidCastException; ParamName=<null>; destination=[17,23]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Non_generic_copy_to_incompatible_element_type_matches_microsoft(empty: True)": {
+      "microsoft": "success; destination=[17,23]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Non_generic_copy_to_multidimensional_array_matches_validation(count: 0)": {
+      "microsoft": "ArgumentException; ParamName=<null>; destination=[,,,]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionCopyFailureComparisonTests.Non_generic_copy_to_multidimensional_array_matches_validation(count: 1)": {
+      "microsoft": "ArgumentException; ParamName=<null>; destination=[,,,]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: -1, generic: False)": {
+      "microsoft": "System.ArgumentOutOfRangeException; ParamName=index; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: -1, generic: True)": {
+      "microsoft": "System.ArgumentOutOfRangeException; ParamName=index; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 1, generic: False)": {
+      "microsoft": "accepted; Destination=[untouched,first,second]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 1, generic: True)": {
+      "microsoft": "accepted; Destination=[untouched,first,second]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 2, generic: False)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 2, generic: True)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 3, generic: False)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 3, generic: True)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 4, generic: False)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Copy_destination_bounds_match_microsoft(index: 4, generic: True)": {
+      "microsoft": "System.ArgumentException; ParamName=<null>; Destination=[untouched,untouched,untouched]",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"append-after-end\", nonGeneric: False)": {
+      "microsoft": "System.InvalidOperationException; ParamName=<null>; Current=<null>; Count=3",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"append-after-end\", nonGeneric: True)": {
+      "microsoft": "System.InvalidOperationException; ParamName=<null>; Current=<null>; Count=3",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"append-while-positioned\", nonGeneric: False)": {
+      "microsoft": "accepted; Current=first; Count=3",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"append-while-positioned\", nonGeneric: True)": {
+      "microsoft": "accepted; Current=first; Count=3",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"clear\", nonGeneric: False)": {
+      "microsoft": "accepted; Current=first; Count=0",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"clear\", nonGeneric: True)": {
+      "microsoft": "accepted; Current=first; Count=0",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"remove-current\", nonGeneric: False)": {
+      "microsoft": "accepted; Current=second; Count=1",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.PrincipalValueCollectionTraversalAndCopyComparisonTests.Current_after_count_changes_matches_microsoft(mutation: \"remove-current\", nonGeneric: True)": {
+      "microsoft": "accepted; Current=second; Count=1",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: False, position: \"before\")": {
+      "microsoft": "error:System.InvalidOperationException",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: False, position: \"finished\")": {
+      "microsoft": "error:System.InvalidOperationException",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: False, position: \"positioned\")": {
+      "microsoft": "value:first",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: True, position: \"before\")": {
+      "microsoft": "error:System.InvalidOperationException",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: True, position: \"finished\")": {
+      "microsoft": "error:System.InvalidOperationException",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Current_position_validation_matches(throughInterface: True, position: \"positioned\")": {
+      "microsoft": "value:first",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: False, position: \"before\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: False, position: \"finished\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: False, position: \"positioned\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: True, position: \"before\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: True, position: \"finished\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    },
+    "AdForLinux.DifferentialTests.ResultValueEnumeratorComparisonTests.Reset_restarts_traversal_like_microsoft(throughInterface: True, position: \"positioned\")": {
+      "microsoft": "value:reset; Current=error:System.InvalidOperationException; remaining=first,second",
+      "policy": "match-microsoft",
+      "sourceOutcome": "Passed"
+    }
+  },
+  "source": {
+    "archiveMember": "tests/AdForLinux.DifferentialTests/TestResults/differential-net10.trx",
+    "sha256": "cfac3c303d039b998976399395cff4490456527ffac809ea7d418d8c759262cc"
+  }
+}

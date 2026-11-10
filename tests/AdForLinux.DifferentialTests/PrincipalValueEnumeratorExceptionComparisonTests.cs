@@ -30,13 +30,13 @@ public sealed class PrincipalValueEnumeratorExceptionComparisonTests
         var actual = Observe(ours);
         // Namespace differences are intentional; internal implementation type
         // names leaking through this public exception are not normalized away.
-        Assert.Equal(expected, actual?.Replace("AdForLinux.DirectoryServices", "System.DirectoryServices"));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 33), SuiteCapture.Expected(actual?.Replace("AdForLinux.DirectoryServices", "System.DirectoryServices"), "assert-equal-actual", 33));
 
         string? Observe(IEnumerable<string> values)
         {
             using var enumerator = values.GetEnumerator();
             Assert.True(enumerator.MoveNext());
-            Assert.Equal("first", enumerator.Current);
+            Assert.Equal(SuiteCapture.Expected("first", "assert-equal-expected", 39), SuiteCapture.Expected(enumerator.Current, "assert-equal-actual", 39));
             enumerator.Dispose();
             var error = Record.Exception(() =>
             {

@@ -27,18 +27,18 @@ public sealed class CompatibilityLiveSchemaFilterCursorComparisonTests
         using var actualParent = new Ours.DirectoryEntry(DifferentialSettings.PathFor(DifferentialSettings.UsersContainer),
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword, DifferentialSettings.OurAuthenticationTypes);
         // Establish an actual usable binding before accessing the filter.
-        Assert.Equal(DifferentialSettings.UsersContainer,
-            Assert.IsType<string>(expectedParent.Properties["distinguishedName"].Value), ignoreCase: true);
-        Assert.Equal(DifferentialSettings.UsersContainer,
-            Assert.IsType<string>(actualParent.Properties["distinguishedName"].Value), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(DifferentialSettings.UsersContainer, "assert-equal-expected", 30),
+            SuiteCapture.Expected(Assert.IsType<string>(expectedParent.Properties["distinguishedName"].Value), "assert-equal-actual", 30), ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(DifferentialSettings.UsersContainer, "assert-equal-expected", 32),
+            SuiteCapture.Expected(Assert.IsType<string>(actualParent.Properties["distinguishedName"].Value), "assert-equal-actual", 32), ignoreCase: true);
         var expected = expectedParent.Children.SchemaFilter;
         var actual = actualParent.Children.SchemaFilter;
         expected.Clear();
         actual.Clear();
         expected.AddRange(new[] { "user", "group" });
         actual.AddRange(new[] { "user", "group" });
-        Assert.Equal(new[] { "user", "group" }, expected.Cast<string>().ToArray());
-        Assert.Equal(new[] { "user", "group" }, actual.Cast<string>().ToArray());
+        Assert.Equal(SuiteCapture.Expected(new[] { "user", "group" }, "assert-equal-expected", 40), SuiteCapture.Expected(expected.Cast<string>().ToArray(), "assert-equal-actual", 40));
+        Assert.Equal(SuiteCapture.Expected(new[] { "user", "group" }, "assert-equal-expected", 41), SuiteCapture.Expected(actual.Cast<string>().ToArray(), "assert-equal-actual", 41));
         var leftCursor = expected.GetEnumerator();
         var rightCursor = actual.GetEnumerator();
         try
@@ -58,24 +58,24 @@ public sealed class CompatibilityLiveSchemaFilterCursorComparisonTests
                 actual[1] = "computer";
             }
 
-            Assert.Equal(new[] { "user", "computer" }, expected.Cast<string>().ToArray());
-            Assert.Equal(new[] { "user", "computer" }, actual.Cast<string>().ToArray());
+            Assert.Equal(SuiteCapture.Expected(new[] { "user", "computer" }, "assert-equal-expected", 61), SuiteCapture.Expected(expected.Cast<string>().ToArray(), "assert-equal-actual", 61));
+            Assert.Equal(SuiteCapture.Expected(new[] { "user", "computer" }, "assert-equal-expected", 62), SuiteCapture.Expected(actual.Cast<string>().ToArray(), "assert-equal-actual", 62));
             // Independently reacquired wrappers establish that the mutation
             // reached the parent's filter, not just the supplied wrapper.
-            Assert.Equal(new[] { "user", "computer" }, expectedParent.Children.SchemaFilter.Cast<string>().ToArray());
-            Assert.Equal(new[] { "user", "computer" }, actualParent.Children.SchemaFilter.Cast<string>().ToArray());
+            Assert.Equal(SuiteCapture.Expected(new[] { "user", "computer" }, "assert-equal-expected", 65), SuiteCapture.Expected(expectedParent.Children.SchemaFilter.Cast<string>().ToArray(), "assert-equal-actual", 65));
+            Assert.Equal(SuiteCapture.Expected(new[] { "user", "computer" }, "assert-equal-expected", 66), SuiteCapture.Expected(actualParent.Children.SchemaFilter.Cast<string>().ToArray(), "assert-equal-actual", 66));
             var left = ReadRemaining(leftCursor);
             var right = ReadRemaining(rightCursor);
-            Assert.Equal(2, left.Length);
-            Assert.Equal(2, right.Length);
+            Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 69), SuiteCapture.Expected(left.Length, "assert-equal-actual", 69));
+            Assert.Equal(SuiteCapture.Expected(2, "assert-equal-expected", 70), SuiteCapture.Expected(right.Length, "assert-equal-actual", 70));
             if (replaceArray)
             {
-                Assert.Equal(new[] { "user", "group" }, left);
-                Assert.Equal(new[] { "user", "group" }, right);
+                Assert.Equal(SuiteCapture.Expected(new[] { "user", "group" }, "assert-equal-expected", 73), SuiteCapture.Expected(left, "assert-equal-actual", 73));
+                Assert.Equal(SuiteCapture.Expected(new[] { "user", "group" }, "assert-equal-expected", 74), SuiteCapture.Expected(right, "assert-equal-actual", 74));
             }
             // Do not prescribe the Microsoft indexer case from assumptions
             // about COM marshaling; its actual captured values are the oracle.
-            Assert.Equal(left, right);
+            Assert.Equal(SuiteCapture.Expected(left, "assert-equal-expected", 78), SuiteCapture.Expected(right, "assert-equal-actual", 78));
         }
         finally
         {

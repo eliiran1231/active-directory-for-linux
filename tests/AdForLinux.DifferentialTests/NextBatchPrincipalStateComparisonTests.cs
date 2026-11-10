@@ -52,7 +52,7 @@ public sealed class NextBatchPrincipalStateComparisonTests
             };
         });
         if (!disposed) Assert.Null(expected);
-        Assert.Equal(Error(expected), Error(actual));
+        Assert.Equal(SuiteCapture.Expected(Error(expected), "assert-equal-expected", 55), SuiteCapture.Expected(Error(actual), "assert-equal-actual", 55));
     }
 
     [Theory]
@@ -66,7 +66,7 @@ public sealed class NextBatchPrincipalStateComparisonTests
         var expected = Record.Exception(() => { using var group = new Ms.GroupPrincipal(expectedContext, name!); });
         var actual = Record.Exception(() => { using var group = new Ours.GroupPrincipal(actualContext, name!); });
         if (name == "valid-name") Assert.Null(expected);
-        Assert.Equal(Error(expected), Error(actual));
+        Assert.Equal(SuiteCapture.Expected(Error(expected), "assert-equal-expected", 69), SuiteCapture.Expected(Error(actual), "assert-equal-actual", 69));
     }
 
     [Theory]
@@ -136,7 +136,7 @@ public sealed class NextBatchPrincipalStateComparisonTests
             using var actualReloaded = Ours.UserPrincipal.FindByIdentity(actual.Context, Ours.IdentityType.DistinguishedName, actual.DistinguishedName!);
             Assert.NotNull(expectedReloaded);
             Assert.NotNull(actualReloaded);
-            Assert.Equal("pending-principal-value", expectedReloaded.Description);
+            Assert.Equal(SuiteCapture.Expected("pending-principal-value", "assert-equal-expected", 139), SuiteCapture.Expected(expectedReloaded.Description, "assert-equal-actual", 139));
             comparison.Check("persisted value from fresh lookup", expectedReloaded.Description, actualReloaded.Description).Assert();
         });
     }
@@ -152,9 +152,9 @@ public sealed class NextBatchPrincipalStateComparisonTests
             expected.Name = actual.Name = pending;
             // Keep this isolated from Rename/Save behavior. The fixture deletes
             // the original DNs through fresh bindings; these edits never commit.
-            Assert.Equal(expectedDn, expected.DistinguishedName);
-            Assert.Equal(actualDn, actual.DistinguishedName);
-            Assert.Equal(pending, expected.Name);
+            Assert.Equal(SuiteCapture.Expected(expectedDn, "assert-equal-expected", 155), SuiteCapture.Expected(expected.DistinguishedName, "assert-equal-actual", 155));
+            Assert.Equal(SuiteCapture.Expected(actualDn, "assert-equal-expected", 156), SuiteCapture.Expected(actual.DistinguishedName, "assert-equal-actual", 156));
+            Assert.Equal(SuiteCapture.Expected(pending, "assert-equal-expected", 157), SuiteCapture.Expected(expected.Name, "assert-equal-actual", 157));
             new Comparison("Persisted Name setter/getter")
                 .Check("Name", expected.Name, actual.Name)
                 .Check("ToString", expected.ToString(), actual.ToString()).Assert();

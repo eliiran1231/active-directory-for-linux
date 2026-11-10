@@ -39,7 +39,7 @@ public sealed class SecurityRuleValidationComparisonTests
 
         var expectedArgument = Assert.IsType<InvalidEnumArgumentException>(expected);
         var actualArgument = Assert.IsType<InvalidEnumArgumentException>(actual);
-        Assert.Equal("inheritanceType", expectedArgument.ParamName);
-        Assert.Equal(expectedArgument.ParamName, actualArgument.ParamName);
+        Assert.Equal(SuiteCapture.Expected("inheritanceType", "assert-equal-expected", 42), SuiteCapture.Expected(expectedArgument.ParamName, "assert-equal-actual", 42));
+        Assert.Equal(SuiteCapture.Expected(expectedArgument.ParamName, "assert-equal-expected", 43), SuiteCapture.Expected(actualArgument.ParamName, "assert-equal-actual", 43));
     }
 }

@@ -98,12 +98,12 @@ public sealed class CompatibilitySearchExecutionStateComparisonTests(TestDataFix
             .Assert();
     }
 
-    private void AssertKnown(string[] names) => Assert.Equal(data.UserDn, Assert.Single(names), ignoreCase: true);
+    private void AssertKnown(string[] names) => Assert.Equal(SuiteCapture.Expected(data.UserDn, "assert-equal-expected", 101), SuiteCapture.Expected(Assert.Single(names), "assert-equal-actual", 101), ignoreCase: true);
 
     private static void AssertMissing(Exception? error)
     {
         var failure = Assert.IsAssignableFrom<COMException>(error);
-        Assert.Equal(unchecked((int)0x80072030), failure.ErrorCode);
+        Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80072030), "assert-equal-expected", 106), SuiteCapture.Expected(failure.ErrorCode, "assert-equal-actual", 106));
     }
 
     private static string[] Read(Ms.DirectorySearcher searcher, bool findAll = true)

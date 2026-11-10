@@ -22,7 +22,7 @@ public sealed class PrincipalContextNameComparisonTests
             DifferentialSettings.UsersContainer, DifferentialSettings.OurContextOptions,
             DifferentialSettings.BindDn, DifferentialSettings.BindPassword);
 
-        Assert.Equal(name, expected.Name);
+        Assert.Equal(SuiteCapture.Expected(name, "assert-equal-expected", 25), SuiteCapture.Expected(expected.Name, "assert-equal-actual", 25));
         new Comparison("PrincipalContext constructed with an explicit port")
             .Check("Name", expected.Name, actual.Name)
             .Check("Container control", expected.Container, actual.Container)

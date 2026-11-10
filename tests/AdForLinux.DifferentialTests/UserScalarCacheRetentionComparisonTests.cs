@@ -51,12 +51,12 @@ public sealed class UserScalarCacheRetentionComparisonTests
             Assert.True(actualEntry.UsePropertyCache);
             expectedEntry.Properties[attribute].Value = initial;
             actualEntry.Properties[attribute].Value = initial;
-            Assert.Equal(initial, expectedEntry.Properties[attribute].Value);
-            Assert.Equal(initial, actualEntry.Properties[attribute].Value);
+            Assert.Equal(SuiteCapture.Expected(initial, "assert-equal-expected", 54), SuiteCapture.Expected(expectedEntry.Properties[attribute].Value, "assert-equal-actual", 54));
+            Assert.Equal(SuiteCapture.Expected(initial, "assert-equal-expected", 55), SuiteCapture.Expected(actualEntry.Properties[attribute].Value, "assert-equal-actual", 55));
 
             var expectedFirst = Read(expected, property);
             var actualFirst = Read(actual, property);
-            Assert.Equal(initial, expectedFirst);
+            Assert.Equal(SuiteCapture.Expected(initial, "assert-equal-expected", 59), SuiteCapture.Expected(expectedFirst, "assert-equal-actual", 59));
             var comparison = new Comparison($"{property}: {transition}")
                 .Check("first projection", expectedFirst, actualFirst);
 
@@ -67,8 +67,8 @@ public sealed class UserScalarCacheRetentionComparisonTests
             }
             // Prove that both raw caches changed before comparing the separate
             // principal cache. No Save or Commit follows these assignments.
-            Assert.Equal(replacement, expectedEntry.Properties[attribute].Value);
-            Assert.Equal(replacement, actualEntry.Properties[attribute].Value);
+            Assert.Equal(SuiteCapture.Expected(replacement, "assert-equal-expected", 70), SuiteCapture.Expected(expectedEntry.Properties[attribute].Value, "assert-equal-actual", 70));
+            Assert.Equal(SuiteCapture.Expected(replacement, "assert-equal-expected", 71), SuiteCapture.Expected(actualEntry.Properties[attribute].Value, "assert-equal-actual", 71));
             comparison.Check("second projection", Read(expected, property), Read(actual, property));
             comparison.Check("repeated projection", Read(expected, property), Read(actual, property));
             comparison.Assert();

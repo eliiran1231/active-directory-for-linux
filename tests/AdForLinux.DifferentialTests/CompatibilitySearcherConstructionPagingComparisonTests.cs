@@ -42,7 +42,7 @@ public sealed class CompatibilitySearcherConstructionPagingComparisonTests
         var right = Assert.IsType<OurDirectory.DirectorySearcher>(actual.GetUnderlyingSearcher());
         Assert.NotEmpty(left.PropertiesToLoad);
         Assert.NotEmpty(right.PropertiesToLoad);
-        Assert.Equal(constructorFilter ? 256 : 0, left.PageSize);
+        Assert.Equal(SuiteCapture.Expected(constructorFilter ? 256 : 0, "assert-equal-expected", 45), SuiteCapture.Expected(left.PageSize, "assert-equal-actual", 45));
         var comparison = new Comparison($"Native paging: constructorFilter={constructorFilter}")
             .Check("initial PageSize", left.PageSize, right.PageSize);
 
@@ -53,7 +53,7 @@ public sealed class CompatibilitySearcherConstructionPagingComparisonTests
         Assert.Same(left, expected.GetUnderlyingSearcher());
         comparison.Check("native identity", true, ReferenceEquals(right, actual.GetUnderlyingSearcher()))
             .Check("explicit PageSize retained", left.PageSize, right.PageSize);
-        Assert.Equal(37, left.PageSize);
+        Assert.Equal(SuiteCapture.Expected(37, "assert-equal-expected", 56), SuiteCapture.Expected(left.PageSize, "assert-equal-actual", 56));
         comparison.Assert();
     }
 }

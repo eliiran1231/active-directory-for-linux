@@ -47,8 +47,8 @@ public sealed class PrincipalSearchResultLivePositionComparisonTests : IClassFix
         using var ourUser = actualEnumerator.Current;
         Assert.NotNull(microsoftUser);
         Assert.NotNull(ourUser);
-        Assert.Equal(_data.UserName, microsoftUser.SamAccountName);
-        Assert.Equal(microsoftUser.SamAccountName, ourUser.SamAccountName);
+        Assert.Equal(SuiteCapture.Expected(_data.UserName, "assert-equal-expected", 50), SuiteCapture.Expected(microsoftUser.SamAccountName, "assert-equal-actual", 50));
+        Assert.Equal(SuiteCapture.Expected(microsoftUser.SamAccountName, "assert-equal-expected", 51), SuiteCapture.Expected(ourUser.SamAccountName, "assert-equal-actual", 51));
         Assert.False(expectedEnumerator.MoveNext());
         Assert.False(actualEnumerator.MoveNext());
 
@@ -63,7 +63,7 @@ public sealed class PrincipalSearchResultLivePositionComparisonTests : IClassFix
             actual = PrincipalSearchResultPositionComparisonTests.ObserveCurrent(actualEnumerator, nonGeneric);
         }
 
-        Assert.Equal(typeof(InvalidOperationException), expected.Error);
-        Assert.Equal(expected, actual);
+        Assert.Equal(SuiteCapture.Expected(typeof(InvalidOperationException), "assert-equal-expected", 66), SuiteCapture.Expected(expected.Error, "assert-equal-actual", 66));
+        Assert.Equal(SuiteCapture.Expected(expected, "assert-equal-expected", 67), SuiteCapture.Expected(actual, "assert-equal-actual", 67));
     }
 }

@@ -33,8 +33,8 @@ public sealed class CompatibilityEntryOptionsLifecycleComparisonTests(TestDataFi
         var expected = Assert.IsType<Ms.DirectoryEntryConfiguration>(expectedEntry.Options);
         var actual = actualEntry.Options;
         // Establish that both entries resolve before testing lifecycle behavior.
-        Assert.Equal(data.UserName, expectedEntry.Properties["sAMAccountName"].Value);
-        Assert.Equal(data.UserName, actualEntry.Properties["sAMAccountName"].Value);
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 36), SuiteCapture.Expected(expectedEntry.Properties["sAMAccountName"].Value, "assert-equal-actual", 36));
+        Assert.Equal(SuiteCapture.Expected(data.UserName, "assert-equal-expected", 37), SuiteCapture.Expected(actualEntry.Properties["sAMAccountName"].Value, "assert-equal-actual", 37));
         expectedEntry.Dispose();
         actualEntry.Dispose();
 
@@ -60,7 +60,7 @@ public sealed class CompatibilityEntryOptionsLifecycleComparisonTests(TestDataFi
         // Only default values differ, not setters, exceptions or reset behavior.
         if (property == "PageSize")
         {
-            Assert.Equal(new Observation(null, null, 0), Observe(actual, property, "get"));
+            Assert.Equal(SuiteCapture.Expected(new Observation(null, null, 0), "assert-equal-expected", 63), SuiteCapture.Expected(Observe(actual, property, "get"), "assert-equal-actual", 63));
             Assert.Null(freshExpected.Error);
         }
         Set(expected, property, value);

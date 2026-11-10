@@ -520,9 +520,9 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             var ourError = Record.Exception(() => ourDomain.Children.Remove(ourParent));
 
             var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
-            Assert.Equal(unchecked((int)0x80072015), msComError.HResult);
+            Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80072015), "assert-equal-expected", 523), SuiteCapture.Expected(msComError.HResult, "assert-equal-actual", 523));
             var ourComError = Assert.IsType<Ours.DirectoryServicesCOMException>(ourError);
-            Assert.Equal(msComError.HResult, ourComError.HResult);
+            Assert.Equal(SuiteCapture.Expected(msComError.HResult, "assert-equal-expected", 525), SuiteCapture.Expected(ourComError.HResult, "assert-equal-actual", 525));
             Assert.True(MicrosoftEntryExists(msParentDn));
             Assert.True(MicrosoftEntryExists(msChildDn));
             Assert.True(OurEntryExists(ourParentDn));
@@ -574,9 +574,9 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
             var ourError = Record.Exception(() => ourFirst.Children.Remove(ourChild));
 
             var msComError = Assert.IsType<Ms.DirectoryServicesCOMException>(msError);
-            Assert.Equal(unchecked((int)0x80072030), msComError.HResult);
+            Assert.Equal(SuiteCapture.Expected(unchecked((int)0x80072030), "assert-equal-expected", 577), SuiteCapture.Expected(msComError.HResult, "assert-equal-actual", 577));
             var ourComError = Assert.IsType<Ours.DirectoryServicesCOMException>(ourError);
-            Assert.Equal(msComError.HResult, ourComError.HResult);
+            Assert.Equal(SuiteCapture.Expected(msComError.HResult, "assert-equal-expected", 579), SuiteCapture.Expected(ourComError.HResult, "assert-equal-actual", 579));
             Assert.True(MicrosoftEntryExists(msChildDn));
             Assert.True(OurEntryExists(ourChildDn));
         }
@@ -768,7 +768,7 @@ public class DirectoryEntryComparisonTests : IClassFixture<TestDataFixture>
         var ourValue = ourSearcher.FindOne()!.Properties["distinguishedName"][0].ToString();
 
         Assert.Contains("<GUID=", msValue, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(msValue, ourValue, ignoreCase: true);
+        Assert.Equal(SuiteCapture.Expected(msValue, "assert-equal-expected", 771), SuiteCapture.Expected(ourValue, "assert-equal-actual", 771), ignoreCase: true);
     }
 
     [Fact]
