@@ -24,6 +24,11 @@ on:
         description: "Optional PR number for the run name; dispatch from that trusted PR branch separately"
         required: false
         default: ""
+      record_expected_outputs:
+        description: "Record reviewed lab scalar observations, including matches (private raw files; sanitized logs only)"
+        type: boolean
+        required: false
+        default: false
       backend:
         description: "Windows differential, or explicit read-only restricted Linux Kerberos interop"
         type: choice
@@ -42,9 +47,29 @@ jobs:
     # fork's PR, forked workflows never receive repository secrets, so
     # AD_BIND_PW simply comes through empty and the job fails closed.
     environment: ad-lab
+    env:
+      ADFL_RECORD_EXPECTED_OUTPUTS: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs }}
+      # Self-hosted runner leftovers must never opt a default/scheduled run in.
+      # The source pin lives in the review file; clearing its pointer clears it too.
+      ADFL_SUITE_CAPTURE_DIRECTORY: ""
+      ADFL_SUITE_CAPTURE_MODE: ""
+      ADFL_SUITE_CAPTURE_REVIEW_FILE: ""
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Respect the existing offline safety guard
+        shell: powershell
+        run: |
+          if (-not [string]::IsNullOrEmpty($env:ADFL_OFFLINE_TESTS)) {
+            throw "Live workflow blocked by the existing offline safety guard."
+          }
+
+      - name: Prepare private optional capture
+        id: capture_prepare
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs }}
+        shell: powershell
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Prepare
 
       - name: Create per-run test OU
         id: ou
@@ -57,46 +82,63 @@ jobs:
           AD_CI_ROOT_DN: ${{ secrets.AD_LAB_CI_ROOT_DN }}
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
-          $ErrorActionPreference = "Stop"
-
-          foreach ($name in "AD_BIND_DN", "AD_BIND_PW", "AD_CI_ROOT_DN") {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              throw "Required GitHub secret for $name is not configured."
+          function Invoke-PerRunOuCreate {
+            $ErrorActionPreference = "Stop"
+  
+            foreach ($name in "AD_BIND_DN", "AD_BIND_PW", "AD_CI_ROOT_DN") {
+              if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+                throw "Required GitHub secret for $name is not configured."
+              }
             }
+  
+            if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER) -and $env:PR_NUMBER -notmatch '^\d+$') {
+              throw "pr_number must contain digits only."
+            }
+  
+            $runSuffix = "run$env:GITHUB_RUN_ID-attempt$env:GITHUB_RUN_ATTEMPT"
+            $ouName = if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER)) {
+              "pr-$env:PR_NUMBER-$runSuffix"
+            } else {
+              "scheduled-$runSuffix"
+            }
+  
+            Import-Module ActiveDirectory
+            $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
+            $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
+            New-ADOrganizationalUnit `
+              -Name $ouName `
+              -Path $env:AD_CI_ROOT_DN `
+              -Server "localhost" `
+              -Credential $credential `
+              -ProtectedFromAccidentalDeletion $false
+  
+            $ouDn = "OU=$ouName,$env:AD_CI_ROOT_DN"
+            if ($env:ADFL_RECORD_EXPECTED_OUTPUTS -eq 'true') {
+              Write-Host "Created private disposable test OU."
+            } else {
+              Write-Host "Created test OU: $ouDn"
+            }
+            # Downstream steps (and the cleanup step) both read this via env.
+            "AD_BASE_DN=$ouDn" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "ou_dn=$ouDn" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           }
-
-          if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER) -and $env:PR_NUMBER -notmatch '^\d+$') {
-            throw "pr_number must contain digits only."
-          }
-
-          $runSuffix = "run$env:GITHUB_RUN_ID-attempt$env:GITHUB_RUN_ATTEMPT"
-          $ouName = if (-not [string]::IsNullOrWhiteSpace($env:PR_NUMBER)) {
-            "pr-$env:PR_NUMBER-$runSuffix"
-          } else {
-            "scheduled-$runSuffix"
-          }
-
-          Import-Module ActiveDirectory
-          $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
-          $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
-          New-ADOrganizationalUnit `
-            -Name $ouName `
-            -Path $env:AD_CI_ROOT_DN `
-            -Server "localhost" `
-            -Credential $credential `
-            -ProtectedFromAccidentalDeletion $false
-
-          $ouDn = "OU=$ouName,$env:AD_CI_ROOT_DN"
-          Write-Host "Created test OU: $ouDn"
-          # Downstream steps (and the cleanup step) both read this via env.
-          "AD_BASE_DN=$ouDn" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "ou_dn=$ouDn" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if ($env:ADFL_RECORD_EXPECTED_OUTPUTS -eq 'true') {
+            try { Invoke-PerRunOuCreate *> (Join-Path $env:ADFL_WORKFLOW_CAPTURE_ROOT 'ou-create.private.log') }
+            catch { Write-Host 'Disposable OU creation failed; private diagnostics retained.'; exit 1 }
+          } else { Invoke-PerRunOuCreate }
 
       - name: Restore
         id: restore
         run: dotnet restore AdForLinux.sln
 
+      - name: Build original Windows suite for optional capture
+        id: capture_build
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs }}
+        shell: powershell
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Build
+
       - name: Run differential tests (net10.0-windows)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
         env:
           AD_HOST: ${{ secrets.AD_LAB_HOST }}
           AD_PORT: "636"
@@ -106,7 +148,7 @@ jobs:
         run: dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --no-restore --logger "trx;LogFileName=differential-net10.trx"
 
       - name: Run differential tests (net8.0-windows)
-        if: ${{ always() && steps.ou.outcome == 'success' && steps.restore.outcome == 'success' }}
+        if: ${{ always() && steps.ou.outcome == 'success' && steps.restore.outcome == 'success' && !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
         env:
           AD_HOST: ${{ secrets.AD_LAB_HOST }}
           AD_PORT: "636"
@@ -115,8 +157,43 @@ jobs:
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
         run: dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --no-restore --logger "trx;LogFileName=differential-net8.trx"
 
+      # Same original full suite, fixtures and assertions. Recording is opt-in and
+      # raw process output/TRX/JSONL never become Actions logs or uploaded artifacts.
+      - name: Record original differential suite (net10.0-windows)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.capture_build.outcome == 'success' }}
+        shell: powershell
+        env:
+          AD_HOST: ${{ secrets.AD_LAB_HOST }}
+          AD_PORT: "636"
+          AD_USE_TLS: "true"
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net10.0-windows
+
+      - name: Record original differential suite (net8.0-windows)
+        # Preserve the original workflow's second-framework attempt after a test failure.
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.ou.outcome == 'success' && steps.restore.outcome == 'success' && steps.capture_build.outcome == 'success' }}
+        shell: powershell
+        env:
+          AD_HOST: ${{ secrets.AD_LAB_HOST }}
+          AD_PORT: "636"
+          AD_USE_TLS: "true"
+          AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
+          AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net8.0-windows
+
+      - name: Print admitted observations (net10.0-windows)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.capture_build.outcome == 'success' }}
+        shell: powershell
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net10.0-windows
+
+      - name: Print admitted observations (net8.0-windows)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.capture_build.outcome == 'success' }}
+        shell: powershell
+        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net8.0-windows
+
       - name: Upload test results
-        if: always()
+        if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
         uses: actions/upload-artifact@v4
         with:
           name: differential-test-results
@@ -131,16 +208,22 @@ jobs:
           AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
         run: |
-          $ErrorActionPreference = "Stop"
-          Import-Module ActiveDirectory
-          $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
-          $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
-          Remove-ADOrganizationalUnit `
-            -Identity "${{ steps.ou.outputs.ou_dn }}" `
-            -Server "localhost" `
-            -Credential $credential `
-            -Recursive `
-            -Confirm:$false
+          function Invoke-PerRunOuCleanup {
+            $ErrorActionPreference = "Stop"
+            Import-Module ActiveDirectory
+            $securePassword = ConvertTo-SecureString $env:AD_BIND_PW -AsPlainText -Force
+            $credential = New-Object System.Management.Automation.PSCredential($env:AD_BIND_DN, $securePassword)
+            Remove-ADOrganizationalUnit `
+              -Identity "${{ steps.ou.outputs.ou_dn }}" `
+              -Server "localhost" `
+              -Credential $credential `
+              -Recursive `
+              -Confirm:$false
+          }
+          if ($env:ADFL_RECORD_EXPECTED_OUTPUTS -eq 'true') {
+            try { Invoke-PerRunOuCleanup *> (Join-Path $env:ADFL_WORKFLOW_CAPTURE_ROOT 'ou-cleanup.private.log') }
+            catch { Write-Host 'Disposable OU cleanup failed; private diagnostics retained. Manual review required.'; exit 1 }
+          } else { Invoke-PerRunOuCleanup }
 
   restricted-linux-kerberos:
     name: Restricted Linux owned Kerberos (read only)

@@ -16,6 +16,12 @@ internal static class SuiteCapture
 {
     private static readonly AsyncLocal<Session?> Current = new();
     internal const string DirectoryVariable = "ADFL_SUITE_CAPTURE_DIRECTORY";
+    internal const string ModeVariable = "ADFL_SUITE_CAPTURE_MODE";
+    internal const string ReviewFileVariable = "ADFL_SUITE_CAPTURE_REVIEW_FILE";
+    internal const string LiveScalarPolicy = "reviewed-live-lab-scalars-v1";
+
+    internal sealed record LiveScalarReview(int SchemaVersion, string CapturePolicy,
+        string PrivacyScope, string SourceTreeSha256, string AssemblySha256);
 
     internal sealed class Session
     {
@@ -24,6 +30,7 @@ internal static class SuiteCapture
         internal required string Execution { get; init; }
         internal int Sequence;
         internal bool LinkedOutput;
+        internal LiveScalarReview? Review;
         internal readonly object Gate = new();
     }
 
@@ -31,7 +38,13 @@ internal static class SuiteCapture
     {
         Current.Value = null;
         var directory = Environment.GetEnvironmentVariable(DirectoryVariable);
-        if (string.IsNullOrEmpty(directory)) return;
+        if (string.IsNullOrEmpty(directory))
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ModeVariable)) ||
+                !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ReviewFileVariable)))
+                throw new InvalidOperationException("Suite capture mode requires a capture directory.");
+            return;
+        }
         if (!OperatingSystem.IsWindows())
             throw new InvalidOperationException("Fresh Microsoft suite capture requires Windows.");
         // Use a pre-created private local directory, never shared CI output.
@@ -39,13 +52,15 @@ internal static class SuiteCapture
         if (!System.IO.Path.IsPathFullyQualified(directory) || !Directory.Exists(directory) ||
             (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
             throw new InvalidOperationException("Suite capture requires an existing absolute, non-symlink private directory.");
+        var assembly = typeof(SuiteCapture).Assembly;
+        var review = ReadReview(Environment.GetEnvironmentVariable(ModeVariable),
+            Environment.GetEnvironmentVariable(ReviewFileVariable), FileHash(assembly.Location));
         var execution = Guid.NewGuid().ToString("N");
         var path = System.IO.Path.Combine(directory, execution + ".jsonl");
         using (var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { }
-        var session = new Session { Path = path, Execution = execution,
+        var session = new Session { Path = path, Execution = execution, Review = review,
             Test = $"{method.DeclaringType!.FullName}.{method.Name}" };
         Current.Value = session;
-        var assembly = typeof(SuiteCapture).Assembly;
         Write(session, new { kind = "begin", schemaVersion = 1, execution,
             testMethod = session.Test, source = "existing-windows-differential-suite",
             provenance = new { os = RuntimeInformation.OSDescription,
@@ -58,8 +73,68 @@ internal static class SuiteCapture
                 microsoftDirectoryServices = typeof(System.DirectoryServices.DirectoryEntry).Assembly.GetName().Version?.ToString(),
                 microsoftAccountManagement = typeof(System.DirectoryServices.AccountManagement.Principal).Assembly.GetName().Version?.ToString(),
                 offlineGuard = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ADFL_OFFLINE_TESTS")),
-                capturePolicy = "redacted-scalars-v2" } });
+                capturePolicy = review is null ? "redacted-scalars-v2" : LiveScalarPolicy } });
+        if (review is not null)
+            Write(session, new { kind = "live-scalar-review", schemaVersion = 1, execution,
+                capturePolicy = review.CapturePolicy, privacyScope = review.PrivacyScope,
+                sourceTreeSha256 = review.SourceTreeSha256, assemblySha256 = review.AssemblySha256,
+                sourcePinVerification = "wrapper-attested-not-runtime-source-verification",
+                replayEligibility = "unverified-no-automatic-promotion" });
     }
+
+    // This file is an explicit wrapper attestation, not an authorization/security
+    // boundary. The wrapper must verify reviewed source pins and lab/privacy scope.
+    // No environment flag alone enables the expanded privacy policy.
+    internal static LiveScalarReview? ReadReview(string? mode, string? path, string assemblySha256)
+    {
+        if (string.IsNullOrEmpty(mode) || mode == "redacted-scalars-v2")
+        {
+            if (!string.IsNullOrEmpty(path)) throw new InvalidOperationException("Unexpected suite scalar review document.");
+            return null;
+        }
+        if (mode != LiveScalarPolicy || string.IsNullOrEmpty(path) ||
+            !System.IO.Path.IsPathFullyQualified(path) || !File.Exists(path) ||
+            !PlainLocalPath(path))
+            throw new InvalidOperationException("Invalid suite scalar review configuration.");
+        LiveScalarReview? review;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var buffer = new byte[4097];
+            var length = stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
+            if (length > 4096) throw new InvalidOperationException("Suite scalar review document is too large.");
+            using var document = JsonDocument.Parse(buffer.AsMemory(0, length));
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                document.RootElement.EnumerateObject().Select(p => p.Name).Distinct(StringComparer.Ordinal).Count() != 5 ||
+                document.RootElement.EnumerateObject().Count() != 5)
+                throw new InvalidOperationException("Invalid suite scalar review fields.");
+            review = document.RootElement.Deserialize<LiveScalarReview>(
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow });
+        }
+        catch (JsonException)
+        {
+            throw new InvalidOperationException("Invalid suite scalar review document.");
+        }
+        if (review is null || review.SchemaVersion != 1 || review.CapturePolicy != LiveScalarPolicy ||
+            review.PrivacyScope != "isolated-lab-scalar-values-reviewed" ||
+            !IsHash(review.SourceTreeSha256) || !IsHash(review.AssemblySha256) ||
+            review.AssemblySha256 != assemblySha256)
+            throw new InvalidOperationException("Suite scalar review does not match this capture.");
+        return review;
+    }
+
+    private static bool PlainLocalPath(string path)
+    {
+        if (path.StartsWith(@"\\", StringComparison.Ordinal)) return false;
+        for (var current = new FileInfo(path) as FileSystemInfo; current is not null;
+            current = current is FileInfo file ? file.Directory : ((DirectoryInfo)current).Parent)
+            if ((current.Attributes & FileAttributes.ReparsePoint) != 0) return false;
+        return true;
+    }
+
+    private static bool IsHash(string? value) => value is { Length: 64 } &&
+        value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
 
     private static string? Commit(Assembly assembly)
     {
@@ -129,7 +204,7 @@ internal static class SuiteCapture
     // synthetic controls and setter/getter state; no directory values. Unknown
     // sites (including new lines/methods) redact numeric/boolean observations.
     private static bool NumericAdmitted(Session session, string file, int line) =>
-        NumericSites.Contains((session.Test, System.IO.Path.GetFileName(file), line));
+        session.Review is not null || NumericSites.Contains((session.Test, System.IO.Path.GetFileName(file), line));
 
     private static readonly HashSet<(string TestMethod, string SourceFile, int SourceLine)> NumericSites = new()
     {
@@ -211,8 +286,9 @@ internal static class SuiteCapture
 
     private static object EnumSnapshot(Enum value)
     {
-        var underlying = Enum.GetUnderlyingType(value.GetType());
-        return underlying == typeof(ulong)
+        // Enum.GetTypeCode and the numeric conversions are runtime enum operations,
+        // not user-defined IConvertible/ToString or reflected property access.
+        return value.GetTypeCode() == TypeCode.UInt64
             ? Scalar("enum-uint64", Convert.ToUInt64(value, System.Globalization.CultureInfo.InvariantCulture))
             : Scalar("enum-int64", Convert.ToInt64(value, System.Globalization.CultureInfo.InvariantCulture));
     }
