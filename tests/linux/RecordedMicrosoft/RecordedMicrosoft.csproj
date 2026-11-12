@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj" />
+    <ProjectReference Include="../../../src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj" />
     <None Update="oracle.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

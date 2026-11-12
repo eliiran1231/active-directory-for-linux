@@ -2,14 +2,17 @@
 
 ## What actually runs
 
-This console test runner targets net8.0 and net10.0 and references only the Linux clone project, not Microsoft's Windows-only DirectoryServices implementation. It copies the clone-side operation sequence from four original `DirectorySearchOptionsComparisonTests` Facts:
+This console test runner targets net8.0 and net10.0 and references only the Linux clone projects, not Microsoft's Windows-only DirectoryServices implementation. It copies the clone-side operation sequence from 16 original Facts. Four Facts retain the structured JSON oracle, while 12 additional mirrors use values hardcoded directly from the supplied Microsoft run.
 
 - Security mask setter state: 19 observed integers.
 - Virtual list view constructors: 36 observations across six constructions.
 - Virtual list view validation and derived state: 18 observations across three states.
 - Virtual list view response setter/update sequence: six observations.
+- Principal and extension surface reflection: 54 hardcoded observations across four Facts.
+- Offline entry, empty-result, and synchronization controls: five hardcoded observations across three Facts.
+- Validation exception types: 19 hardcoded observations across five Facts.
 
-Total: **four partial Facts, 79 scalar checks per runtime**. No LDAP binds, AD reads/writes, credentials, environment-specific identifiers, or live server are used. The `System.DirectoryServices.Protocols` dependency belongs to the clone, but these operations never use it.
+Total: **16 partial Facts, 157 scalar checks per runtime**. No LDAP binds, AD reads/writes, credentials, environment-specific identifiers, or live server are used. The `System.DirectoryServices.Protocols` dependency belongs to the clone, but these operations never use it.
 
 ## Evidence and admission
 
@@ -24,11 +27,11 @@ Source: [commit 93f1f9c](https://github.com/eliiran1231/active-directory-for-lin
 - Each Fact has exactly one execution per framework, with no theory parameters. Occurrences are ordered by the recorder's record number within that execution. Expected occurrence counts are fixed; duplicates, missing observations, changed source, wrong types, or multiple executions fail admission.
 - Frameworks remain separate. No values are inferred from Linux results or copied between frameworks.
 
-The original Windows source remains the reference. Runtime logs and source are evidence, not cryptographic proof of the runner's honesty. The extractor deliberately does not automatically admit other assertions.
+The original Windows source remains the reference. Runtime logs and source are evidence, not cryptographic proof of the runner's honesty. The extractor deliberately does not automatically admit other assertions. The 78 additional hardcoded observations are limited to booleans, integers, and exception type names whose Microsoft-expected operands were identifiable in both framework captures. Both frameworks produced identical values at all 78 admitted sites; the source method and line are retained in each hardcoded key.
 
 ## Limits
 
-These are partial adaptations of four Facts, not four fully reproduced tests. Redacted strings (including VLV Target), exception identity/parameter assertions, and the literal final `15` assertion are not claimed as recorded comparisons. Invalid setter/constructor attempts are still made; ArgumentException is caught so later state can be checked. Whether an invalid operation threw is outside this oracle's admitted coverage. Unexpected other exceptions fail the runner.
+These are partial adaptations of 16 Facts, not fully reproduced tests. Redacted strings (including VLV Target), opaque tuples/types, enum-name loops, unrecorded parameter names, and other unavailable operands are not guessed or claimed as comparisons. Invalid setter/constructor attempts in the added mirrors compare only their recorded exception type names. Unexpected behavior fails the runner.
 
 The full Windows run had 1,398 execution files per framework and 2,986 explicit scalar pairs. This Linux subset uses source-proven assertion operands instead. Most remaining tests need recorded theory inputs, fixture-aware normalization, strings/collections or live Linux AD execution. They are **not silently counted as passing**. Re-running the full original Windows suite on Linux unchanged would not be valid.
 
