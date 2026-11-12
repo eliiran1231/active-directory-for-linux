@@ -69,7 +69,7 @@ jobs:
         id: capture_prepare
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs }}
         shell: powershell
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Prepare
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Prepare
 
       - name: Create per-run test OU
         id: ou
@@ -135,7 +135,7 @@ jobs:
         id: capture_build
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs }}
         shell: powershell
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Build
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Build
 
       - name: Run differential tests (net10.0-windows)
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
@@ -145,7 +145,7 @@ jobs:
           AD_USE_TLS: "true"
           AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
-        run: dotnet test tests/AdForLinux.DifferentialTests -f net10.0-windows --no-restore --logger "trx;LogFileName=differential-net10.trx"
+        run: dotnet test tests/windows/AdForLinux.DifferentialTests -f net10.0-windows --no-restore --logger "trx;LogFileName=differential-net10.trx"
 
       - name: Run differential tests (net8.0-windows)
         if: ${{ always() && steps.ou.outcome == 'success' && steps.restore.outcome == 'success' && !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
@@ -155,7 +155,7 @@ jobs:
           AD_USE_TLS: "true"
           AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
-        run: dotnet test tests/AdForLinux.DifferentialTests -f net8.0-windows --no-restore --logger "trx;LogFileName=differential-net8.trx"
+        run: dotnet test tests/windows/AdForLinux.DifferentialTests -f net8.0-windows --no-restore --logger "trx;LogFileName=differential-net8.trx"
 
       # Same original full suite, fixtures and assertions. Recording is opt-in and
       # raw process output/TRX/JSONL never become Actions logs or uploaded artifacts.
@@ -168,7 +168,7 @@ jobs:
           AD_USE_TLS: "true"
           AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net10.0-windows
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net10.0-windows
 
       - name: Record original differential suite (net8.0-windows)
         # Preserve the original workflow's second-framework attempt after a test failure.
@@ -180,17 +180,17 @@ jobs:
           AD_USE_TLS: "true"
           AD_BIND_DN: ${{ secrets.AD_LAB_BIND_DN }}
           AD_BIND_PW: ${{ secrets.AD_LAB_ADMIN_PASSWORD }}
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net8.0-windows
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Run -Framework net8.0-windows
 
       - name: Print admitted observations (net10.0-windows)
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.capture_build.outcome == 'success' }}
         shell: powershell
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net10.0-windows
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net10.0-windows
 
       - name: Print admitted observations (net8.0-windows)
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs && steps.capture_build.outcome == 'success' }}
         shell: powershell
-        run: ./tests/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net8.0-windows
+        run: ./tests/windows/full-suite-recording/WorkflowCapture/Invoke-WorkflowCapture.ps1 -Action Summarize -Framework net8.0-windows
 
       - name: Upload test results
         if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.record_expected_outputs) }}
@@ -254,13 +254,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release
+          dotnet build tests/windows/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release
       - name: Preflight without credential reads or authentication
         shell: bash
         run: |
           set -euo pipefail
           for framework in net8.0 net10.0; do
-            dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+            dotnet "tests/windows/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
               --ad-kerberos-preflight "$ADFL_AD_KERBEROS_CONFIG" "$GITHUB_SHA"
           done
       - name: Read-only owned Kerberos interop (no Basic fallback)
@@ -268,7 +268,7 @@ jobs:
         run: |
           set -euo pipefail
           for framework in net8.0 net10.0; do
-            dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+            dotnet "tests/windows/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
               --ad-kerberos-run "$ADFL_AD_KERBEROS_CONFIG" "$GITHUB_SHA"
           done
       # Deliberately no upload: configuration, caches, native diagnostics and

@@ -11,13 +11,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DirectoryService
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C2AA4E38-FAB4-4339-8690-72187906222C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.FunctionalTests", "tests\AdForLinux.FunctionalTests\AdForLinux.FunctionalTests.csproj", "{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.FunctionalTests", "tests\windows\AdForLinux.FunctionalTests\AdForLinux.FunctionalTests.csproj", "{9CAEC4EB-8D9F-488E-8AE9-A63C1B112EE4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DifferentialTests", "tests\AdForLinux.DifferentialTests\AdForLinux.DifferentialTests.csproj", "{1B2F0979-D404-49CE-B660-825276F9B40D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DifferentialTests", "tests\windows\AdForLinux.DifferentialTests\AdForLinux.DifferentialTests.csproj", "{1B2F0979-D404-49CE-B660-825276F9B40D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.DirectoryServices.MicrosoftInterop", "src\AdForLinux.DirectoryServices.MicrosoftInterop\AdForLinux.DirectoryServices.MicrosoftInterop.csproj", "{F10C0BB3-9757-4DBB-B761-DED8B6B2B7C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.MicrosoftInterop.Tests", "tests\AdForLinux.MicrosoftInterop.Tests\AdForLinux.MicrosoftInterop.Tests.csproj", "{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdForLinux.MicrosoftInterop.Tests", "tests\windows\AdForLinux.MicrosoftInterop.Tests\AdForLinux.MicrosoftInterop.Tests.csproj", "{3F7E3622-A3DA-4B06-9E70-BE8C27F7C6E7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

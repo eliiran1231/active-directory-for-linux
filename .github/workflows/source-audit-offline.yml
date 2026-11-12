@@ -28,23 +28,23 @@ jobs:
             8.0.x
             10.0.x
       - run: dotnet build AdForLinux.sln --configuration Release
-      - run: dotnet build tests/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }}
-      - run: python tests/test_offline_runner.py
+      - run: dotnet build tests/windows/acl-windows-oracle/AclWindowsOracle.csproj --configuration Release --framework ${{ matrix.framework }}
+      - run: python tests/windows/test_offline_runner.py
       - if: runner.os == 'Linux'
-        run: python tests/test_worker_bundle_descriptor.py
-      - run: python tests/run-offline-tests.py functional --framework ${{ matrix.framework }} --results-directory artifacts/functional
+        run: python tests/windows/test_worker_bundle_descriptor.py
+      - run: python tests/windows/run-offline-tests.py functional --framework ${{ matrix.framework }} --results-directory artifacts/functional
       - name: Compile AD Kerberos harness and check negative admission offline
         if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
-          dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release --framework '${{ matrix.framework }}'
-          python3 tests/test_ad_kerberos_entrypoint.py --dotnet dotnet \
-            --assembly 'tests/native-session/worker-demo/bin/Release/${{ matrix.framework }}/AdForLinux.NativeWorkerDemo.dll'
+          dotnet build tests/windows/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj --configuration Release --framework '${{ matrix.framework }}'
+          python3 tests/windows/test_ad_kerberos_entrypoint.py --dotnet dotnet \
+            --assembly 'tests/windows/native-session/worker-demo/bin/Release/${{ matrix.framework }}/AdForLinux.NativeWorkerDemo.dll'
       - if: runner.os == 'Windows'
-        run: python tests/run-offline-tests.py surface --framework ${{ matrix.framework }} --results-directory artifacts/surface
+        run: python tests/windows/run-offline-tests.py surface --framework ${{ matrix.framework }} --results-directory artifacts/surface
       - if: runner.os == 'Windows'
-        run: python tests/run-offline-tests.py companion --framework ${{ matrix.framework }} --results-directory artifacts/companion
+        run: python tests/windows/run-offline-tests.py companion --framework ${{ matrix.framework }} --results-directory artifacts/companion
       - uses: actions/upload-artifact@v4
         if: always()
         with:

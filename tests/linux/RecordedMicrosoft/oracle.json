@@ -1,0 +1,682 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+  "sourceFileSha256": "57daa564ee766aee7080cd3eef8a834627105dbc49eecf09cfe239a513250143",
+  "runId": 43105205156,
+  "jobId": 130806631589,
+  "coverage": "partial-four-parameterless-facts",
+  "frameworks": {
+    "net8.0-windows": {
+      "Directory_searcher_security_mask_validation_matches_microsoft": {
+        "142": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "3f932194717f48b4789c027fdb382a1333775d61be1267a8b3cf4b081c81d914",
+          "values": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "publicRecordNumbers": [
+            6426,
+            6428,
+            6430,
+            6432,
+            6434,
+            6436,
+            6438,
+            6440,
+            6442,
+            6444,
+            6446,
+            6448,
+            6450,
+            6452,
+            6454,
+            6456
+          ]
+        },
+        "149": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "15266b9fafb4c01132caca7bb3d891b7f7138218776801e108dbf55624f76437",
+          "values": [
+            -1
+          ],
+          "publicRecordNumbers": [
+            6458
+          ]
+        },
+        "156": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "aa7a31cb85e9ffd845a6954e702672faf165689a7e2d7c39fe495a19abc67a56",
+          "values": [
+            -1,
+            -1
+          ],
+          "publicRecordNumbers": [
+            6464,
+            6470
+          ]
+        }
+      },
+      "Virtual_list_view_constructors_match_microsoft": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "04442cdd05672b94b66f3942993324a7feb7f9c4bd9d45b322a60ff4cb2ccc33",
+          "values": [
+            0,
+            0,
+            2,
+            2,
+            2,
+            2
+          ],
+          "publicRecordNumbers": [
+            5233,
+            5247,
+            5261,
+            5275,
+            5289,
+            5303
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "bd259a64b30c8907306732bff07ffe80bbc17129738fae5396ebd1b8d87ddfaf",
+          "values": [
+            0,
+            20,
+            3,
+            3,
+            3,
+            3
+          ],
+          "publicRecordNumbers": [
+            5235,
+            5249,
+            5263,
+            5277,
+            5291,
+            5305
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "2d4136db8427af4a2a7ab5a4e1f52821daaebecce55495575b616424b577595b",
+          "values": [
+            0,
+            0,
+            10,
+            10,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            5237,
+            5251,
+            5265,
+            5279,
+            5293,
+            5307
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "afc87ebc17576b5b394145af26a46c38ad5389e37763620cce0d5dd811cb0a54",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            5239,
+            5253,
+            5267,
+            5281,
+            5295,
+            5309
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "f5cfd367d6fa80e503792d67b5695ac937763d512dffb95b6208f13d8eef1e7d",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            5241,
+            5255,
+            5269,
+            5283,
+            5297,
+            5311
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "be1b595b6efc9bd4118513126c3fb9b89b822f29bba61217647b9f4a03ab1562",
+          "values": [
+            true,
+            true,
+            true,
+            false,
+            true,
+            false
+          ],
+          "publicRecordNumbers": [
+            5245,
+            5259,
+            5273,
+            5287,
+            5301,
+            5315
+          ]
+        }
+      },
+      "Virtual_list_view_validation_and_derived_values_match_microsoft": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "e7c610987d3f2b26c703f3f1d50fda23cf6d6ea153e5745a5695e68c9f29ca91",
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            1096,
+            1110,
+            1124
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "5fa953f09f6c4b1f802a071420f461c0d9932838081a568e5268c86d5b86c838",
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            1098,
+            1112,
+            1126
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "c34b48785967845cdca6605335b712490fddd6e3b20617fea46c9229bfe2680d",
+          "values": [
+            20,
+            40,
+            40
+          ],
+          "publicRecordNumbers": [
+            1100,
+            1114,
+            1128
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "41b02eb1b884f35b5396afa942074e1160b9f3f74e1e64330ecab8f11851c55d",
+          "values": [
+            80,
+            80,
+            80
+          ],
+          "publicRecordNumbers": [
+            1102,
+            1116,
+            1130
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "c17460f65258260f5d3ce9d02e147baa372ba7970aa1104835719e443cb498ef",
+          "values": [
+            25,
+            50,
+            50
+          ],
+          "publicRecordNumbers": [
+            1104,
+            1118,
+            1132
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "d667558cb8b4352f64a115bbd16ad46381b23da8b32b96e2767b073405402111",
+          "values": [
+            true,
+            true,
+            true
+          ],
+          "publicRecordNumbers": [
+            1108,
+            1122,
+            1136
+          ]
+        }
+      },
+      "Virtual_list_view_response_update_uses_the_returned_total_for_percentage": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "3476dedc51d0c6370be8408b13457c9a57e7cdf35f6ec157eb5db9b137ee5d6b",
+          "values": [
+            0
+          ],
+          "publicRecordNumbers": [
+            1843
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "7d3bdf3008ea3f4a0454904161b4138e5812d3aa1064161ec29e08117a595b21",
+          "values": [
+            0
+          ],
+          "publicRecordNumbers": [
+            1845
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "4a03e0a30a2f8a27506d58aaa2cfba03af63321af2edde83775f27e43b0b8d67",
+          "values": [
+            1
+          ],
+          "publicRecordNumbers": [
+            1847
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "358a0a474b159b88eca56f656fb28ec164660f698288081591fe8849a3694c4d",
+          "values": [
+            13
+          ],
+          "publicRecordNumbers": [
+            1849
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "6f50a26bb2a2c71bb4aeaf7a542d2011b6c207da21a940e7e16512016ef323d8",
+          "values": [
+            15
+          ],
+          "publicRecordNumbers": [
+            1851
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "a966f4810d93246a1f42f1bc3e2312c5a94b4bcdc51c808213a8c53f2ab0cbbb",
+          "values": [
+            false
+          ],
+          "publicRecordNumbers": [
+            1855
+          ]
+        }
+      }
+    },
+    "net10.0-windows": {
+      "Directory_searcher_security_mask_validation_matches_microsoft": {
+        "142": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "3f932194717f48b4789c027fdb382a1333775d61be1267a8b3cf4b081c81d914",
+          "values": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "publicRecordNumbers": [
+            531,
+            533,
+            535,
+            537,
+            539,
+            541,
+            543,
+            545,
+            547,
+            549,
+            551,
+            553,
+            555,
+            557,
+            559,
+            561
+          ]
+        },
+        "149": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "15266b9fafb4c01132caca7bb3d891b7f7138218776801e108dbf55624f76437",
+          "values": [
+            -1
+          ],
+          "publicRecordNumbers": [
+            563
+          ]
+        },
+        "156": {
+          "property": "SecurityMasks",
+          "sourceSiteSha256": "aa7a31cb85e9ffd845a6954e702672faf165689a7e2d7c39fe495a19abc67a56",
+          "values": [
+            -1,
+            -1
+          ],
+          "publicRecordNumbers": [
+            569,
+            575
+          ]
+        }
+      },
+      "Virtual_list_view_constructors_match_microsoft": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "04442cdd05672b94b66f3942993324a7feb7f9c4bd9d45b322a60ff4cb2ccc33",
+          "values": [
+            0,
+            0,
+            2,
+            2,
+            2,
+            2
+          ],
+          "publicRecordNumbers": [
+            9405,
+            9419,
+            9433,
+            9447,
+            9461,
+            9475
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "bd259a64b30c8907306732bff07ffe80bbc17129738fae5396ebd1b8d87ddfaf",
+          "values": [
+            0,
+            20,
+            3,
+            3,
+            3,
+            3
+          ],
+          "publicRecordNumbers": [
+            9407,
+            9421,
+            9435,
+            9449,
+            9463,
+            9477
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "2d4136db8427af4a2a7ab5a4e1f52821daaebecce55495575b616424b577595b",
+          "values": [
+            0,
+            0,
+            10,
+            10,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            9409,
+            9423,
+            9437,
+            9451,
+            9465,
+            9479
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "afc87ebc17576b5b394145af26a46c38ad5389e37763620cce0d5dd811cb0a54",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            9411,
+            9425,
+            9439,
+            9453,
+            9467,
+            9481
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "f5cfd367d6fa80e503792d67b5695ac937763d512dffb95b6208f13d8eef1e7d",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            9413,
+            9427,
+            9441,
+            9455,
+            9469,
+            9483
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "be1b595b6efc9bd4118513126c3fb9b89b822f29bba61217647b9f4a03ab1562",
+          "values": [
+            true,
+            true,
+            true,
+            false,
+            true,
+            false
+          ],
+          "publicRecordNumbers": [
+            9417,
+            9431,
+            9445,
+            9459,
+            9473,
+            9487
+          ]
+        }
+      },
+      "Virtual_list_view_validation_and_derived_values_match_microsoft": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "e7c610987d3f2b26c703f3f1d50fda23cf6d6ea153e5745a5695e68c9f29ca91",
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            3267,
+            3281,
+            3295
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "5fa953f09f6c4b1f802a071420f461c0d9932838081a568e5268c86d5b86c838",
+          "values": [
+            0,
+            0,
+            0
+          ],
+          "publicRecordNumbers": [
+            3269,
+            3283,
+            3297
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "c34b48785967845cdca6605335b712490fddd6e3b20617fea46c9229bfe2680d",
+          "values": [
+            20,
+            40,
+            40
+          ],
+          "publicRecordNumbers": [
+            3271,
+            3285,
+            3299
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "41b02eb1b884f35b5396afa942074e1160b9f3f74e1e64330ecab8f11851c55d",
+          "values": [
+            80,
+            80,
+            80
+          ],
+          "publicRecordNumbers": [
+            3273,
+            3287,
+            3301
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "c17460f65258260f5d3ce9d02e147baa372ba7970aa1104835719e443cb498ef",
+          "values": [
+            25,
+            50,
+            50
+          ],
+          "publicRecordNumbers": [
+            3275,
+            3289,
+            3303
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "d667558cb8b4352f64a115bbd16ad46381b23da8b32b96e2767b073405402111",
+          "values": [
+            true,
+            true,
+            true
+          ],
+          "publicRecordNumbers": [
+            3279,
+            3293,
+            3307
+          ]
+        }
+      },
+      "Virtual_list_view_response_update_uses_the_returned_total_for_percentage": {
+        "241": {
+          "property": "BeforeCount",
+          "sourceSiteSha256": "3476dedc51d0c6370be8408b13457c9a57e7cdf35f6ec157eb5db9b137ee5d6b",
+          "values": [
+            0
+          ],
+          "publicRecordNumbers": [
+            2373
+          ]
+        },
+        "242": {
+          "property": "AfterCount",
+          "sourceSiteSha256": "7d3bdf3008ea3f4a0454904161b4138e5812d3aa1064161ec29e08117a595b21",
+          "values": [
+            0
+          ],
+          "publicRecordNumbers": [
+            2375
+          ]
+        },
+        "243": {
+          "property": "Offset",
+          "sourceSiteSha256": "4a03e0a30a2f8a27506d58aaa2cfba03af63321af2edde83775f27e43b0b8d67",
+          "values": [
+            1
+          ],
+          "publicRecordNumbers": [
+            2377
+          ]
+        },
+        "244": {
+          "property": "ApproximateTotal",
+          "sourceSiteSha256": "358a0a474b159b88eca56f656fb28ec164660f698288081591fe8849a3694c4d",
+          "values": [
+            13
+          ],
+          "publicRecordNumbers": [
+            2379
+          ]
+        },
+        "245": {
+          "property": "TargetPercentage",
+          "sourceSiteSha256": "6f50a26bb2a2c71bb4aeaf7a542d2011b6c207da21a940e7e16512016ef323d8",
+          "values": [
+            15
+          ],
+          "publicRecordNumbers": [
+            2381
+          ]
+        },
+        "247": {
+          "property": "ContextNull",
+          "sourceSiteSha256": "a966f4810d93246a1f42f1bc3e2312c5a94b4bcdc51c808213a8c53f2ab0cbbb",
+          "values": [
+            false
+          ],
+          "publicRecordNumbers": [
+            2385
+          ]
+        }
+      }
+    }
+  }
+}

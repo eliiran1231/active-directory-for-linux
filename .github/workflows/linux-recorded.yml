@@ -1,0 +1,30 @@
+name: Linux recorded Microsoft oracle (partial)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recorded-oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    env:
+      DOTNET_ROLL_FORWARD: LatestPatch
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      ADFL_OFFLINE_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Validate source and oracle admission
+        run: python3 -m unittest discover -s tests/linux/RecordedMicrosoft -p 'test_*.py' -v
+      - name: Restore clone-only runner
+        run: dotnet restore tests/linux/RecordedMicrosoft/RecordedMicrosoft.csproj
+      - name: Compare Linux operations against recorded Microsoft values
+        run: dotnet run --project tests/linux/RecordedMicrosoft/RecordedMicrosoft.csproj -c Release -f ${{ matrix.framework }} --no-restore

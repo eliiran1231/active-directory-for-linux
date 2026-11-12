@@ -17,12 +17,12 @@ Use a .NET 10 SDK with the selected runtime installed. Restore/build prerequisit
 dotnet build AdForLinux.sln --configuration Release
 bash docs/examples/kerberos-session-demo.sh net8.0
 bash docs/examples/kerberos-session-demo.sh net10.0
-bash tests/native-session/run-demo.sh
-bash tests/native-session/run-managed-demo.sh net8.0
-bash tests/native-session/run-managed-demo.sh net10.0
+bash tests/windows/native-session/run-demo.sh
+bash tests/windows/native-session/run-managed-demo.sh net8.0
+bash tests/windows/native-session/run-managed-demo.sh net10.0
 ADFL_NATIVE_OUT=/tmp/adfl-native-sanitized \
   ADFL_NATIVE_CFLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
-  bash tests/native-session/run-demo.sh
+  bash tests/windows/native-session/run-demo.sh
 ```
 
 `ADFL_DEMO_DOTNET` selects a dotnet executable. The managed demonstrations use the permanent
@@ -31,7 +31,7 @@ libraries, Cyrus runtime, and a C11 compiler; they run recording dependencies an
 probe. No package is installed or downloaded. The source-reviewed versions are MIT 1.21.3,
 OpenLDAP 2.6.8/2.6.10 and Cyrus 2.1.28. Version agreement is necessary, not authentication proof.
 MIT is checked by pkg-config at build time, not attested at runtime. If Cyrus development headers
-are absent, the runner uses the licensed upstream headers in `tests/native-session/headers`;
+are absent, the runner uses the licensed upstream headers in `tests/windows/native-session/headers`;
 `ADFL_SASL_INCLUDE` can select another header root.
 
 The demonstrations traverse actual managed/C ABI orchestration, public discovery in both
@@ -156,8 +156,8 @@ The minimal pinned Cyrus patch requires the consumed `client_creds` after initia
 but before *any* client credential fallback or GSS initiation, including the TLS/no-CI branch:
 
 ```sh
-python3 tests/native-session/verify-plugin-guard.py /path/to/cyrus-sasl-2.1.28/plugins/gssapi.c
-python3 tests/native-session/verify-plugin-guard.py /path/to/cyrus-sasl-2.1.28/plugins/gssapi.c --sanitize
+python3 tests/windows/native-session/verify-plugin-guard.py /path/to/cyrus-sasl-2.1.28/plugins/gssapi.c
+python3 tests/windows/native-session/verify-plugin-guard.py /path/to/cyrus-sasl-2.1.28/plugins/gssapi.c --sanitize
 ```
 
 This verifies the source hash, applies the patch and runs an extracted-source ordering harness.
@@ -172,7 +172,7 @@ requires the full private composition and independent parent/child admission.
 Run the actual exec/IPC/native-dispatch demonstration (Linux with pidfd and glibc closefrom):
 
 ```sh
-ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/native-session/run-process-demo.sh net8.0
+ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/windows/native-session/run-process-demo.sh net8.0
 ```
 
 `NativeLdapWorkerPool` separates worker ownership from an exclusive operation lease. One
@@ -206,7 +206,7 @@ archive with its checked-in guard, without downloading or installing anything:
 ```sh
 python3 src/AdForLinux.DirectoryServices.Native/packaging/build-private-cyrus.py \
   /path/to/cyrus-sasl-2.1.28.tar.gz /new/private/build-directory
-bash tests/native-session/run-private-cyrus-demo.sh \
+bash tests/windows/native-session/run-private-cyrus-demo.sh \
   /new/private/build-directory/cyrus-sasl-2.1.28
 ```
 
@@ -222,7 +222,7 @@ authentication. The companion bridge recipe performs that private linking with p
 python3 src/AdForLinux.DirectoryServices.Native/packaging/build-private-bridge.py \
   /path/to/cyrus-sasl-2.1.28.tar.gz /path/to/openldap-release-tag.tar.gz \
   /new/private/bridge-directory
-bash tests/native-session/run-private-bridge-demo.sh /new/private/bridge-directory
+bash tests/windows/native-session/run-private-bridge-demo.sh /new/private/bridge-directory
 ```
 
 Source URLs and exact archive hashes are recorded in the recipes. The bridge build verifies
@@ -265,8 +265,8 @@ represented or enabled.
 
 ```sh
 ADFL_PRIVATE_MIT_SOURCE=/private/bridge/mit/krb5-1.21.3/src \
-  ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/native-session/run-process-demo.sh net8.0
-bash tests/native-session/run-private-bind-demo.sh /private/bridge
+  ADFL_DEMO_DOTNET=/path/to/dotnet bash tests/windows/native-session/run-process-demo.sh net8.0
+bash tests/windows/native-session/run-private-bind-demo.sh /private/bridge
 ```
 
 The optional worker probe uses real private MIT profile reads and GSS mechanism enumeration;
@@ -340,18 +340,18 @@ Compile-only preparation, using the already described private bridge and pinned
 archives (plus Berkeley yacc 2.0.20221106, whose digest the script checks):
 
 ```sh
-bash tests/native-session/lab/build-servers.sh MIT_ARCHIVE LDAP_ARCHIVE BYACC_ARCHIVE PRIVATE_BRIDGE NEW_SERVERS
-bash tests/native-session/build-private-login-lab.sh PRIVATE_BRIDGE
-DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release -f net8.0
-ADFL_OFFLINE_TESTS=1 dotnet tests/native-session/worker-demo/bin/Release/net8.0/AdForLinux.NativeWorkerDemo.dll --generate-lab-profile > LAB_PROFILE
-python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_IMAGE_CONTEXT
+bash tests/windows/native-session/lab/build-servers.sh MIT_ARCHIVE LDAP_ARCHIVE BYACC_ARCHIVE PRIVATE_BRIDGE NEW_SERVERS
+bash tests/windows/native-session/build-private-login-lab.sh PRIVATE_BRIDGE
+DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build tests/windows/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release -f net8.0
+ADFL_OFFLINE_TESTS=1 dotnet tests/windows/native-session/worker-demo/bin/Release/net8.0/AdForLinux.NativeWorkerDemo.dll --generate-lab-profile > LAB_PROFILE
+python3 tests/windows/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_IMAGE_CONTEXT
 docker --config DOCKER_CONFIG build --network none --pull=false -t adfl-disposable-lab NEW_IMAGE_CONTEXT
 ```
 
 Only with explicit authorization for real test credentials/authentication:
 
 ```sh
-python3 tests/native-session/lab/run-container.py --authorize-disposable-lab --docker-config DOCKER_CONFIG adfl-disposable-lab
+python3 tests/windows/native-session/lab/run-container.py --authorize-disposable-lab --docker-config DOCKER_CONFIG adfl-disposable-lab
 docker --config DOCKER_CONFIG image rm adfl-disposable-lab
 ```
 
@@ -403,7 +403,7 @@ separate test fixtures. No ambient cache or user configuration is imported.
 Offline module-denial proof (no credentials):
 
 ```sh
-bash tests/native-session/run-private-plugin-probe.sh PRIVATE_BRIDGE
+bash tests/windows/native-session/run-private-plugin-probe.sh PRIVATE_BRIDGE
 ```
 
 ### Real authentication through the supervised managed worker
@@ -421,11 +421,11 @@ This adds real supervised integration evidence, not ambient pooling eligibility.
 After the compile-only preparation above:
 
 ```sh
-bash tests/native-session/build-lab-worker-native.sh PRIVATE_BRIDGE
-bash tests/native-session/run-worker-demo.sh
-python3 tests/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_MANAGED_IMAGE_CONTEXT \
+bash tests/windows/native-session/build-lab-worker-native.sh PRIVATE_BRIDGE
+bash tests/windows/native-session/run-worker-demo.sh
+python3 tests/windows/native-session/lab/assemble-image.py NEW_SERVERS /tmp/adfl-private-login-lab-build/private-login-lab LAB_PROFILE NEW_MANAGED_IMAGE_CONTEXT \
   --dotnet EXISTING_DOTNET_ROOT \
-  --worker-demo tests/native-session/worker-demo/bin/Release/net8.0 \
+  --worker-demo tests/windows/native-session/worker-demo/bin/Release/net8.0 \
   --supervisor /tmp/adfl-worker-demo/libadfl_worker.so \
   --lab-native /tmp/adfl-lab-worker-native/libadfl_lab_worker.so
 ```
@@ -683,15 +683,15 @@ For a trusted clean local checkout, the equivalent commands are:
 
 ```sh
 export DOTNET_GENERATE_ASPNET_CERTIFICATE=false DOTNET_CLI_TELEMETRY_OPTOUT=1
-dotnet build tests/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release
+dotnet build tests/windows/native-session/worker-demo/AdForLinux.NativeWorkerDemo.csproj -c Release
 revision=$(git rev-parse HEAD)
 for framework in net8.0 net10.0; do
-  dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+  dotnet "tests/windows/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
     --ad-kerberos-preflight "$ADFL_AD_KERBEROS_CONFIG" "$revision"
 done
 # Only after reviewing the selected AD target, test snapshots and fixture scope:
 for framework in net8.0 net10.0; do
-  dotnet "tests/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
+  dotnet "tests/windows/native-session/worker-demo/bin/Release/$framework/AdForLinux.NativeWorkerDemo.dll" \
     --ad-kerberos-run "$ADFL_AD_KERBEROS_CONFIG" "$revision"
 done
 ```
