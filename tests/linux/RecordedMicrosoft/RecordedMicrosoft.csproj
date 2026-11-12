@@ -8,5 +8,7 @@
     <ProjectReference Include="../../../src/AdForLinux.DirectoryServices/AdForLinux.DirectoryServices.csproj" />
     <ProjectReference Include="../../../src/AdForLinux.DirectoryServices.AccountManagement/AdForLinux.DirectoryServices.AccountManagement.csproj" />
     <None Update="oracle.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="offline-oracle.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="reviewed-assertions-oracle.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,298 @@
+[
+  {
+    "method": "SearcherValidationContractComparisonTests.Detached_enum_rejection_preserves_previous_value",
+    "file": "SearcherValidationContractComparisonTests.DetachedControls.cs",
+    "sha": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "rows": 10,
+    "checks": 40,
+    "sites": [
+      [
+        30,
+        null,
+        "int32"
+      ],
+      [
+        37,
+        null,
+        "int32"
+      ],
+      [
+        38,
+        null,
+        "int32"
+      ],
+      [
+        217,
+        "CompareDetachedFailure",
+        "exception-type|null"
+      ]
+    ]
+  },
+  {
+    "method": "SearcherValidationContractComparisonTests.Detached_time_limits_match_fractional_and_overflow_boundaries",
+    "file": "SearcherValidationContractComparisonTests.DetachedControls.cs",
+    "sha": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "rows": 3,
+    "checks": 24,
+    "sites": [
+      [
+        217,
+        "CompareDetachedFailure",
+        "exception-type|null"
+      ]
+    ]
+  },
+  {
+    "method": "SearcherValidationContractComparisonTests.Detached_paging_and_sync_conflicts_preserve_state_and_allow_recovery",
+    "file": "SearcherValidationContractComparisonTests.DetachedControls.cs",
+    "sha": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "rows": 2,
+    "checks": 8,
+    "sites": [
+      [
+        217,
+        "CompareDetachedFailure",
+        "exception-type"
+      ],
+      [
+        219,
+        "CompareDetachedFailure",
+        "null"
+      ],
+      [
+        104,
+        null,
+        "int32"
+      ],
+      [
+        105,
+        null,
+        "boolean"
+      ]
+    ]
+  },
+  {
+    "method": "SearcherValidationContractComparisonTests.Detached_virtual_list_conflicts_preserve_explicit_cache_intent",
+    "file": "SearcherValidationContractComparisonTests.DetachedControls.cs",
+    "sha": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "rows": 2,
+    "checks": 8,
+    "sites": [
+      [
+        217,
+        "CompareDetachedFailure",
+        "exception-type"
+      ],
+      [
+        219,
+        "CompareDetachedFailure",
+        "null"
+      ],
+      [
+        179,
+        null,
+        "boolean"
+      ],
+      [
+        180,
+        null,
+        "boolean"
+      ]
+    ]
+  },
+  {
+    "method": "SearcherValidationContractComparisonTests.Detached_virtual_list_rejected_setter_preserves_coupled_state",
+    "file": "SearcherValidationContractComparisonTests.DetachedControls.cs",
+    "sha": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "rows": 6,
+    "checks": 42,
+    "sites": [
+      [
+        217,
+        "CompareDetachedFailure",
+        "exception-type"
+      ],
+      [
+        219,
+        "CompareDetachedFailure",
+        "null"
+      ],
+      [
+        203,
+        null,
+        "int32"
+      ],
+      [
+        204,
+        null,
+        "int32"
+      ],
+      [
+        205,
+        null,
+        "int32"
+      ],
+      [
+        206,
+        null,
+        "int32"
+      ],
+      [
+        207,
+        null,
+        "int32"
+      ]
+    ]
+  },
+  {
+    "method": "SearcherValidationContractComparisonTests.Rejected_setter_matches_exception_parameter_and_preserves_state",
+    "file": "SearcherValidationContractComparisonTests.cs",
+    "sha": "4ce9fe20086cb5c39e1d8b157af8ca92772bc21f60c46ac43aa7af2fa158cffc",
+    "rows": 4,
+    "checks": 16,
+    "sites": [
+      [
+        50,
+        null,
+        "int32"
+      ],
+      [
+        51,
+        null,
+        "int32"
+      ],
+      [
+        53,
+        null,
+        "int32"
+      ],
+      [
+        56,
+        null,
+        "null"
+      ]
+    ]
+  },
+  {
+    "method": "PrincipalSearcherDisposalComparisonTests.QueryFilter_getter_matches_microsoft_after_disposal",
+    "file": "PrincipalSearcherDisposalComparisonTests.cs",
+    "sha": "01039ec3a74b9e7e5ec02bc0d05f638b28914f5faf1fa63c957d885ffaedc85d",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        28,
+        null,
+        "exception-type|null"
+      ]
+    ]
+  },
+  {
+    "method": "PrincipalSearcherDisposalComparisonTests.Null_QueryFilter_validation_precedence_matches_microsoft",
+    "file": "PrincipalSearcherDisposalComparisonTests.cs",
+    "sha": "01039ec3a74b9e7e5ec02bc0d05f638b28914f5faf1fa63c957d885ffaedc85d",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        48,
+        null,
+        "exception-type"
+      ]
+    ]
+  },
+  {
+    "method": "PrincipalValueCollectionOfflineComparisonTests.Non_generic_add_return_value_matches_microsoft",
+    "file": "PrincipalValueCollectionOfflineComparisonTests.cs",
+    "sha": "96a63ec7d0fda1ec5aad498455af8caa5925cca3d7b246db3186e2c3a71f11c0",
+    "rows": 3,
+    "checks": 3,
+    "sites": [
+      [
+        29,
+        null,
+        "int32"
+      ]
+    ]
+  },
+  {
+    "method": "PrincipalValueCollectionOfflineComparisonTests.Generic_enumerator_current_matches_microsoft",
+    "file": "PrincipalValueCollectionOfflineComparisonTests.cs",
+    "sha": "96a63ec7d0fda1ec5aad498455af8caa5925cca3d7b246db3186e2c3a71f11c0",
+    "rows": 4,
+    "checks": 7,
+    "sites": [
+      [
+        53,
+        null,
+        "exception-type|null"
+      ],
+      [
+        54,
+        null,
+        "null"
+      ]
+    ]
+  },
+  {
+    "method": "PrincipalValueCollectionOfflineComparisonTests.Disposed_enumerator_operations_match_microsoft",
+    "file": "PrincipalValueCollectionOfflineComparisonTests.cs",
+    "sha": "96a63ec7d0fda1ec5aad498455af8caa5925cca3d7b246db3186e2c3a71f11c0",
+    "rows": 3,
+    "checks": 3,
+    "sites": [
+      [
+        78,
+        null,
+        "exception-type"
+      ]
+    ]
+  },
+  {
+    "method": "PropertyCollectionValidationComparisonTests.Invalid_lookup_key_matches_microsoft",
+    "file": "PropertyCollectionValidationComparisonTests.cs",
+    "sha": "4be767078253109f72b593048dd1324f1185ac76f99e403011f5487c00155fc3",
+    "rows": 6,
+    "checks": 10,
+    "sites": [
+      [
+        31,
+        null,
+        "exception-type"
+      ],
+      [
+        32,
+        null,
+        "null"
+      ]
+    ]
+  },
+  {
+    "method": "PropertyCollectionValidationComparisonTests.CopyTo_validation_before_binding_matches_microsoft",
+    "file": "PropertyCollectionValidationComparisonTests.cs",
+    "sha": "4be767078253109f72b593048dd1324f1185ac76f99e403011f5487c00155fc3",
+    "rows": 3,
+    "checks": 3,
+    "sites": [
+      [
+        58,
+        null,
+        "exception-type"
+      ]
+    ]
+  },
+  {
+    "method": "SchemaNameCollectionComparisonTests.Invalid_indexer_access_matches_exception_and_preserves_contents",
+    "file": "SchemaNameCollectionComparisonTests.cs",
+    "sha": "7719e6843503855de63a598ca83b2d4cf72ec16d759c317403f60100e5200e8d",
+    "rows": 4,
+    "checks": 4,
+    "sites": [
+      [
+        174,
+        null,
+        "exception-type"
+      ]
+    ]
+  }
+]

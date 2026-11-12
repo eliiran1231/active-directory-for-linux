@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+  "runId": 43105205156,
+  "jobId": 130806631589,
+  "coverage": "partial-reviewed-Microsoft-assertion-method-multisets",
+  "sourceSha256": {
+    "SearcherValidationContractComparisonTests.DetachedControls.cs": "3afb248e2a346c128a08cc2b6bc4f724b1009f74e3b384b274d303645728f51c",
+    "SearcherValidationContractComparisonTests.cs": "4ce9fe20086cb5c39e1d8b157af8ca92772bc21f60c46ac43aa7af2fa158cffc",
+    "PrincipalSearcherDisposalComparisonTests.cs": "01039ec3a74b9e7e5ec02bc0d05f638b28914f5faf1fa63c957d885ffaedc85d",
+    "PrincipalValueCollectionOfflineComparisonTests.cs": "96a63ec7d0fda1ec5aad498455af8caa5925cca3d7b246db3186e2c3a71f11c0",
+    "PropertyCollectionValidationComparisonTests.cs": "4be767078253109f72b593048dd1324f1185ac76f99e403011f5487c00155fc3",
+    "SchemaNameCollectionComparisonTests.cs": "7719e6843503855de63a598ca83b2d4cf72ec16d759c317403f60100e5200e8d"
+  },
+  "frameworks": {
+    "net8.0-windows": {
+      "SearcherValidationContractComparisonTests.Detached_enum_rejection_preserves_previous_value": [
+        "30=i32:-1,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:-1,38=i32:-1",
+        "30=i32:-1,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:-1,38=i32:-1",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:2,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:2,38=i32:2",
+        "30=i32:2,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:2,38=i32:2",
+        "30=i32:64,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:64,38=i32:64",
+        "30=i32:64,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:64,38=i32:64"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_time_limits_match_fractional_and_overflow_boundaries": [
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException",
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException",
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_paging_and_sync_conflicts_preserve_state_and_allow_recovery": [
+        "217=e:System.ArgumentException,219=n,104=i32:0,105=b0",
+        "217=e:System.ArgumentException,219=n,104=i32:17,105=b1"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_virtual_list_conflicts_preserve_explicit_cache_intent": [
+        "217=e:System.ArgumentException,219=n,179=b0,180=b0",
+        "217=e:System.ArgumentException,219=n,179=b1,180=b1"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_virtual_list_rejected_setter_preserves_coupled_state": [
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40"
+      ],
+      "SearcherValidationContractComparisonTests.Rejected_setter_matches_exception_parameter_and_preserves_state": [
+        "50=i32:0,51=i32:0,53=i32:0,56=n",
+        "50=i32:0,51=i32:0,53=i32:1,56=n",
+        "50=i32:0,51=i32:12,53=i32:2,56=n",
+        "50=i32:12,51=i32:0,53=i32:2,56=n"
+      ],
+      "PrincipalSearcherDisposalComparisonTests.QueryFilter_getter_matches_microsoft_after_disposal": [
+        "28=e:System.ObjectDisposedException",
+        "28=n"
+      ],
+      "PrincipalSearcherDisposalComparisonTests.Null_QueryFilter_validation_precedence_matches_microsoft": [
+        "48=e:System.ArgumentNullException",
+        "48=e:System.ArgumentNullException"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Non_generic_add_return_value_matches_microsoft": [
+        "29=i32:1",
+        "29=i32:2",
+        "29=i32:4"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Generic_enumerator_current_matches_microsoft": [
+        "53=e:System.InvalidOperationException,54=n",
+        "53=e:System.InvalidOperationException,54=n",
+        "53=e:System.InvalidOperationException,54=n",
+        "53=n"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Disposed_enumerator_operations_match_microsoft": [
+        "78=e:System.ObjectDisposedException",
+        "78=e:System.ObjectDisposedException",
+        "78=e:System.ObjectDisposedException"
+      ],
+      "PropertyCollectionValidationComparisonTests.Invalid_lookup_key_matches_microsoft": [
+        "31=e:System.ArgumentNullException",
+        "31=e:System.ArgumentNullException",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n"
+      ],
+      "PropertyCollectionValidationComparisonTests.CopyTo_validation_before_binding_matches_microsoft": [
+        "58=e:System.ArgumentException",
+        "58=e:System.ArgumentNullException",
+        "58=e:System.ArgumentOutOfRangeException"
+      ],
+      "SchemaNameCollectionComparisonTests.Invalid_indexer_access_matches_exception_and_preserves_contents": [
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException"
+      ]
+    },
+    "net10.0-windows": {
+      "SearcherValidationContractComparisonTests.Detached_enum_rejection_preserves_previous_value": [
+        "30=i32:-1,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:-1,38=i32:-1",
+        "30=i32:-1,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:-1,38=i32:-1",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:0,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:0,38=i32:0",
+        "30=i32:2,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:2,38=i32:2",
+        "30=i32:2,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:2,38=i32:2",
+        "30=i32:64,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:64,38=i32:64",
+        "30=i32:64,217=e:System.ComponentModel.InvalidEnumArgumentException,37=i32:64,38=i32:64"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_time_limits_match_fractional_and_overflow_boundaries": [
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException",
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException",
+        "217=n,217=n,217=n,217=n,217=n,217=n,217=e:System.ArgumentException,217=e:System.ArgumentException"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_paging_and_sync_conflicts_preserve_state_and_allow_recovery": [
+        "217=e:System.ArgumentException,219=n,104=i32:0,105=b0",
+        "217=e:System.ArgumentException,219=n,104=i32:17,105=b1"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_virtual_list_conflicts_preserve_explicit_cache_intent": [
+        "217=e:System.ArgumentException,219=n,179=b0,180=b0",
+        "217=e:System.ArgumentException,219=n,179=b1,180=b1"
+      ],
+      "SearcherValidationContractComparisonTests.Detached_virtual_list_rejected_setter_preserves_coupled_state": [
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40",
+        "217=e:System.ArgumentException,219=n,203=i32:2,204=i32:3,205=i32:40,206=i32:100,207=i32:40"
+      ],
+      "SearcherValidationContractComparisonTests.Rejected_setter_matches_exception_parameter_and_preserves_state": [
+        "50=i32:0,51=i32:0,53=i32:0,56=n",
+        "50=i32:0,51=i32:0,53=i32:1,56=n",
+        "50=i32:0,51=i32:12,53=i32:2,56=n",
+        "50=i32:12,51=i32:0,53=i32:2,56=n"
+      ],
+      "PrincipalSearcherDisposalComparisonTests.QueryFilter_getter_matches_microsoft_after_disposal": [
+        "28=e:System.ObjectDisposedException",
+        "28=n"
+      ],
+      "PrincipalSearcherDisposalComparisonTests.Null_QueryFilter_validation_precedence_matches_microsoft": [
+        "48=e:System.ArgumentNullException",
+        "48=e:System.ArgumentNullException"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Non_generic_add_return_value_matches_microsoft": [
+        "29=i32:1",
+        "29=i32:2",
+        "29=i32:4"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Generic_enumerator_current_matches_microsoft": [
+        "53=e:System.InvalidOperationException,54=n",
+        "53=e:System.InvalidOperationException,54=n",
+        "53=e:System.InvalidOperationException,54=n",
+        "53=n"
+      ],
+      "PrincipalValueCollectionOfflineComparisonTests.Disposed_enumerator_operations_match_microsoft": [
+        "78=e:System.ObjectDisposedException",
+        "78=e:System.ObjectDisposedException",
+        "78=e:System.ObjectDisposedException"
+      ],
+      "PropertyCollectionValidationComparisonTests.Invalid_lookup_key_matches_microsoft": [
+        "31=e:System.ArgumentNullException",
+        "31=e:System.ArgumentNullException",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n",
+        "31=e:System.InvalidCastException,32=n"
+      ],
+      "PropertyCollectionValidationComparisonTests.CopyTo_validation_before_binding_matches_microsoft": [
+        "58=e:System.ArgumentException",
+        "58=e:System.ArgumentNullException",
+        "58=e:System.ArgumentOutOfRangeException"
+      ],
+      "SchemaNameCollectionComparisonTests.Invalid_indexer_access_matches_exception_and_preserves_contents": [
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException",
+        "174=e:System.IndexOutOfRangeException"
+      ]
+    }
+  }
+}

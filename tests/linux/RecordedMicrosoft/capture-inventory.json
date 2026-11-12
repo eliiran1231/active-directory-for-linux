@@ -1,0 +1,5392 @@
+{
+  "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+  "runId": 43105205156,
+  "jobId": 130806631589,
+  "captureSummaries": [
+    {
+      "framework": "net10.0-windows",
+      "coverage": "partial-not-runtime-coverage",
+      "kind": "capture-summary",
+      "capturePolicy": "reviewed-live-lab-scalars-v1",
+      "cleanup": "unverified",
+      "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+      "sourceTreeSha256": "e5a12e1eb6bcdb1c3cbbb4b83ab0c1d33e9c4064b700124cf1eb949e76a997e0",
+      "rawFiles": "private-runner-only",
+      "assemblySha256": "dedf133daf5b4fb7d0fa6c450614f46866a6ffe76a0bb94c79d75e4c76ed3784",
+      "counts": {
+        "files": 1398,
+        "explicitPairs": 2986,
+        "redactedOrUnsupported": 5666,
+        "unverifiedOperands": 6958,
+        "incomplete": 0,
+        "observations": 11006,
+        "malformed": 0
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "coverage": "partial-not-runtime-coverage",
+      "kind": "capture-summary",
+      "capturePolicy": "reviewed-live-lab-scalars-v1",
+      "cleanup": "unverified",
+      "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+      "sourceTreeSha256": "e5a12e1eb6bcdb1c3cbbb4b83ab0c1d33e9c4064b700124cf1eb949e76a997e0",
+      "rawFiles": "private-runner-only",
+      "assemblySha256": "90896431b6cf6b3871466d086369ba2d5c4c6c739cf8cb0c4dfaa71a0c480dc7",
+      "counts": {
+        "files": 1398,
+        "explicitPairs": 2986,
+        "redactedOrUnsupported": 5666,
+        "unverifiedOperands": 6958,
+        "incomplete": 0,
+        "observations": 11006,
+        "malformed": 0
+      }
+    }
+  ],
+  "methods": {
+    "c45a276d3cfbbf51e4af6938aabee3b635d3532a503eb293a1249ed8db7918f3": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "588672a189d3b46dc0d24b6426238cf0d1865c600c3e7868b567384db92a1e42": {
+      "net10.0-windows": {
+        "records": 17,
+        "kinds": {
+          "reviewed-scalar-pair": 17
+        },
+        "types": {
+          "boolean": 16,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 17,
+        "kinds": {
+          "reviewed-scalar-pair": 17
+        },
+        "types": {
+          "null": 1,
+          "boolean": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "bcfde1e59d6597531b761c0c53de8dc0ad427c527a86ad4d24e0e284787745ce": {
+      "net10.0-windows": {
+        "records": 312,
+        "kinds": {
+          "unverified-assertion-operand": 312
+        },
+        "types": {
+          "int32": 312
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 78
+      },
+      "net8.0-windows": {
+        "records": 312,
+        "kinds": {
+          "unverified-assertion-operand": 312
+        },
+        "types": {
+          "int32": 312
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 78
+      }
+    },
+    "3f113ac5766e1b0e7db749a02536523d7392a15cc4f05581e90e093a12782375": {
+      "net10.0-windows": {
+        "records": 34,
+        "kinds": {
+          "unverified-assertion-operand": 34
+        },
+        "types": {
+          "boolean": 16,
+          "int32": 10,
+          "null": 4,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 34,
+        "kinds": {
+          "unverified-assertion-operand": 34
+        },
+        "types": {
+          "boolean": 16,
+          "int32": 10,
+          "null": 4,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "732536eaab69004b0deb76ba3f8dabe8cecf67b3ed15249a14b040928e0e365a": {
+      "net10.0-windows": {
+        "records": 48,
+        "kinds": {
+          "reviewed-scalar-pair": 48
+        },
+        "types": {
+          "null": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 48,
+        "kinds": {
+          "reviewed-scalar-pair": 48
+        },
+        "types": {
+          "null": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "67e07c6723b7827e030dca688f68d54650569a48f851e81b6035c5dd77ec6866": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "dc8bea14a46117673447ea231f9ffe038c84393ed76f24cc6b79a2f00d6cb539": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "5e82435603a190e5ab5c332e2ff559500d56cff4e506b65ea658b64340da53a3": {
+      "net10.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 24,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 32
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 24,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 32
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "f4eb95d4ce5db447f079c39ac5d8844800145e970e7c33ab1aa2833ecc6e1ef0": {
+      "net10.0-windows": {
+        "records": 112,
+        "kinds": {
+          "reviewed-scalar-pair": 112
+        },
+        "types": {
+          "null": 112
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      },
+      "net8.0-windows": {
+        "records": 112,
+        "kinds": {
+          "reviewed-scalar-pair": 112
+        },
+        "types": {
+          "null": 112
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      }
+    },
+    "6b6b3d721997fbc3a061b0e6c5c489b6a1f359620915ff9d6f8f29d1a86d532d": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "exception-type": 24
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "exception-type": 24
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "f6b7553c8bb27dc4e2c79140f6f4c7a4d0bca749c0c4392e7b7fd54a558f418e": {
+      "net10.0-windows": {
+        "records": 60,
+        "kinds": {
+          "reviewed-scalar-pair": 60
+        },
+        "types": {
+          "boolean": 60
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 30
+      },
+      "net8.0-windows": {
+        "records": 60,
+        "kinds": {
+          "reviewed-scalar-pair": 60
+        },
+        "types": {
+          "boolean": 60
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 30
+      }
+    },
+    "aec654c69865d72ead6c8eb2d847921b5d8b74d4b989c0edc8febdb85457bf3f": {
+      "net10.0-windows": {
+        "records": 28,
+        "kinds": {
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "null": 18,
+          "boolean": 8,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 28,
+        "kinds": {
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "exception-type": 2,
+          "null": 18,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "ab4743202d3f22a938ce9b8bf5c5f3f87680496418e8824eb0199ec6182d4926": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "null": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "null": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "c82c593c73f5343613b442a8ea29c31401d6419a60a0f49050df339ed53c713b": {
+      "net10.0-windows": {
+        "records": 28,
+        "kinds": {
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "boolean": 4,
+          "int64": 24
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 28,
+        "kinds": {
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "boolean": 4,
+          "int64": 24
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "8553b42c12401b3de050245358fa7486ae27c7eb74b5478fbf879c26b8262621": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "f7f0905e198b5f507d563058df2c3d2a8ce046e56445d347112cb9315d475710": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "exception-type": 6,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "exception-type": 6,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "1fa776171f5179dbdd94841dc8fd67ca11b7fea67008b90680245bbe8df2b049": {
+      "net10.0-windows": {
+        "records": 144,
+        "kinds": {
+          "unverified-assertion-operand": 144
+        },
+        "types": {
+          "exception-type": 12,
+          "null": 12,
+          "int32": 120
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 144,
+        "kinds": {
+          "unverified-assertion-operand": 144
+        },
+        "types": {
+          "exception-type": 12,
+          "null": 12,
+          "int32": 120
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "6918d4c72107c7088f3444c60e4d6f6268ca1cc215da3928127020088fe9742b": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 16,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 20,
+          "exception-type": 2,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 16,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 20,
+          "exception-type": 2,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "a0ac5b613bb0d1a20448187e0954aff790030e8d668d59118d4d6d7031819325": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "c3f6d6981b56c34ba9dc14c1ab4cf8b065892d211fe6be37054b11af34b51ea0": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      }
+    },
+    "e32b31bd76c47758478d1694ada1db19c3c33540942e26f2801181dd6f65feb1": {
+      "net10.0-windows": {
+        "records": 80,
+        "kinds": {
+          "unverified-assertion-operand": 80
+        },
+        "types": {
+          "int32": 60,
+          "exception-type": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 80,
+        "kinds": {
+          "unverified-assertion-operand": 80
+        },
+        "types": {
+          "int32": 60,
+          "exception-type": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "e09fd5497892d070f8216eed9035b6f84767aa76555992243eb9a9374e5aa814": {
+      "net10.0-windows": {
+        "records": 58,
+        "kinds": {
+          "reviewed-scalar-pair": 58
+        },
+        "types": {
+          "exception-type": 18,
+          "null": 22,
+          "int32": 18
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      },
+      "net8.0-windows": {
+        "records": 58,
+        "kinds": {
+          "reviewed-scalar-pair": 58
+        },
+        "types": {
+          "exception-type": 18,
+          "null": 22,
+          "int32": 18
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      }
+    },
+    "fbb9b35013e69b951f1a85b89b5ff2b16e69fbf1ac1953750602cb9dd838f28b": {
+      "net10.0-windows": {
+        "records": 20,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 19,
+        "kinds": {
+          "unverified-assertion-operand": 7,
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "int32": 11,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "71df6355313812537a9879dfb1727cb8b63d1df994143e277fa1ba0bd153582b": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "reviewed-scalar-pair": 24
+        },
+        "types": {
+          "null": 23,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "reviewed-scalar-pair": 24
+        },
+        "types": {
+          "null": 23,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      }
+    },
+    "af4c463dd5439b6a443bd8d5d620b5cfcb5040bdb7668b0dc7e5812b265963c4": {
+      "net10.0-windows": {
+        "records": 150,
+        "kinds": {
+          "reviewed-scalar-pair": 120,
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "null": 54,
+          "int32": 63,
+          "boolean": 24,
+          "exception-type": 9
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 150,
+        "kinds": {
+          "reviewed-scalar-pair": 120,
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "exception-type": 9,
+          "int32": 63,
+          "null": 54,
+          "boolean": 24
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "87ef0ae175c83a6e4d1ff410bc10b0c651734ec6cda5e4cb5142a01924050e77": {
+      "net10.0-windows": {
+        "records": 120,
+        "kinds": {
+          "unverified-assertion-operand": 120
+        },
+        "types": {
+          "int32": 72,
+          "boolean": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 120,
+        "kinds": {
+          "unverified-assertion-operand": 120
+        },
+        "types": {
+          "int32": 72,
+          "boolean": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "66737da86615eaa9ae40c7c987de67fb32226fb684a34c33d021f507d362fee9": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4,
+          "int32": 12,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4,
+          "int32": 12,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "f576722f079a03fbda2ecb8c4c87221866c9ba2027eb7d93b1f1af19c87a5fa6": {
+      "net10.0-windows": {
+        "records": 102,
+        "kinds": {
+          "reviewed-scalar-pair": 102
+        },
+        "types": {
+          "exception-type": 18,
+          "boolean": 24,
+          "int64": 24,
+          "null": 36
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 102,
+        "kinds": {
+          "reviewed-scalar-pair": 102
+        },
+        "types": {
+          "exception-type": 18,
+          "boolean": 24,
+          "int64": 24,
+          "null": 36
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "45841e463a356b2d311b853e2d7447920152db47ab1d1315e1b4f71d6ec1d81f": {
+      "net10.0-windows": {
+        "records": 52,
+        "kinds": {
+          "unverified-assertion-operand": 52
+        },
+        "types": {
+          "int32": 44,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 52,
+        "kinds": {
+          "unverified-assertion-operand": 52
+        },
+        "types": {
+          "int32": 44,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7": {
+      "net10.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 48
+        },
+        "types": {
+          "boolean": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 48
+        },
+        "types": {
+          "boolean": 48
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "48fe30500ad66df9233c9bb10b72f29f18a4603f6b50eecad2e23cd7087b754f": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "682bae17fe821f143ee622983aced5f8ba6729fc1ded7ffd9c891faa76636715": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 2,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 2,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "0ae72f5d35f6521d0ff490ffc1ba36009893edd9923737f6b1430f6528705825": {
+      "net10.0-windows": {
+        "records": 42,
+        "kinds": {
+          "unverified-assertion-operand": 42
+        },
+        "types": {
+          "int32": 38,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 42,
+        "kinds": {
+          "unverified-assertion-operand": 42
+        },
+        "types": {
+          "int32": 38,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b296168d06d3cd4453822807937947031359f26b3965e273992a7e27d4f63fcc": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "a4bfdf432853ee1c7e8f2aef63753ad224f73f5e031517a17273ed043071e46e": {
+      "net10.0-windows": {
+        "records": 30,
+        "kinds": {
+          "reviewed-scalar-pair": 30
+        },
+        "types": {
+          "null": 12,
+          "int32": 6,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 30,
+        "kinds": {
+          "reviewed-scalar-pair": 30
+        },
+        "types": {
+          "null": 12,
+          "int32": 6,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "94a478a33df930d812b208e510236b70c7e2856e8169bd759bb53450919fcebb": {
+      "net10.0-windows": {
+        "records": 27,
+        "kinds": {
+          "reviewed-scalar-pair": 27
+        },
+        "types": {
+          "exception-type": 16,
+          "null": 11
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 16
+      },
+      "net8.0-windows": {
+        "records": 27,
+        "kinds": {
+          "reviewed-scalar-pair": 27
+        },
+        "types": {
+          "exception-type": 16,
+          "null": 11
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 16
+      }
+    },
+    "5fc7f0e59f53c05bc2ceb446feb447ebb4956b9b4d268477bca074363d6e174b": {
+      "net10.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "3d12100682480808585da14909776d719b2e72bbeeaf9efbd5be34058a544989": {
+      "net10.0-windows": {
+        "records": 63,
+        "kinds": {
+          "unverified-assertion-operand": 6,
+          "reviewed-scalar-pair": 57
+        },
+        "types": {
+          "int32": 51,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 63,
+        "kinds": {
+          "unverified-assertion-operand": 6,
+          "reviewed-scalar-pair": 57
+        },
+        "types": {
+          "int32": 51,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "b3fb69b61fbc512606c93294838e04f1602d4893a9165fae4e96ed3cff88aecb": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "d74cbb182a967a0fec3881b3ef66bde3ba71268200b99e75c6ce70fc032b6698": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "dfb27d768d867f0cd9f3a6feae737766b99a66598fd220e38b323b6b19ac84b5": {
+      "net10.0-windows": {
+        "records": 30,
+        "kinds": {
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "null": 30
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      },
+      "net8.0-windows": {
+        "records": 30,
+        "kinds": {
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "null": 30
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      }
+    },
+    "014e1e5ff186c6a4533593297087c00eabec6d8bb46b72a5161ef53559db879d": {
+      "net10.0-windows": {
+        "records": 96,
+        "kinds": {
+          "reviewed-scalar-pair": 50,
+          "unverified-assertion-operand": 46
+        },
+        "types": {
+          "null": 35,
+          "int32": 61
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 96,
+        "kinds": {
+          "unverified-assertion-operand": 46,
+          "reviewed-scalar-pair": 50
+        },
+        "types": {
+          "int32": 61,
+          "null": 35
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "d44741e7803d9da38da5cb5595680b3d6f4fc7cc055c084105b29d12b3eaa90d": {
+      "net10.0-windows": {
+        "records": 81,
+        "kinds": {
+          "reviewed-scalar-pair": 81
+        },
+        "types": {
+          "exception-type": 28,
+          "null": 53
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      },
+      "net8.0-windows": {
+        "records": 81,
+        "kinds": {
+          "reviewed-scalar-pair": 81
+        },
+        "types": {
+          "exception-type": 28,
+          "null": 53
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      }
+    },
+    "2d9f18c512552475590c734ef6c6c48358db543ac0da7cb938be22a89a99c2c6": {
+      "net10.0-windows": {
+        "records": 192,
+        "kinds": {
+          "reviewed-scalar-pair": 192
+        },
+        "types": {
+          "null": 120,
+          "int64": 66,
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 33
+      },
+      "net8.0-windows": {
+        "records": 192,
+        "kinds": {
+          "reviewed-scalar-pair": 192
+        },
+        "types": {
+          "null": 120,
+          "int64": 66,
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 33
+      }
+    },
+    "aed8fb77c3053ee3b830bfa4a908b068e6e77ba20bbc6049de4c0f745ac57c09": {
+      "net10.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "int32": 32
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "int32": 32
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "eed67826b3c4b16eecc425fc5dfce83254f39fbdd9fd20a165ed262987f77265": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 12
+      }
+    },
+    "d4fa53701bcd2b10cc4e0d73b2a348e3cf5335123df86922c2c4874d3edafdb8": {
+      "net10.0-windows": {
+        "records": 54,
+        "kinds": {
+          "reviewed-scalar-pair": 30,
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "null": 12,
+          "exception-type": 18,
+          "boolean": 12,
+          "int32": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 54,
+        "kinds": {
+          "reviewed-scalar-pair": 30,
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "null": 12,
+          "exception-type": 18,
+          "boolean": 12,
+          "int32": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "5fc31f3da9f582a0b99c3c48d0038f9eaeed34e4a6694f8f3d3f52b8db126558": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "163368783e6fb95facbf55d75825b7138d602637211cd9ad4768a09cd340ffa3": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "1cafaff44f8b842c26e527685480faafb223e69947984a746b57304afd04b352": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "int32": 2,
+          "boolean": 2,
+          "enum-int64": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 24
+        },
+        "types": {
+          "int32": 2,
+          "boolean": 2,
+          "enum-int64": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "50b8a6835d9af87b58da8a79cd36bbdd77263ac4a6704c02c64040dd7f5a6783": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "9a53bfa4cd429ad6d0da1c0b3ed5de7578cbf16b690f70ff48c8e20185205cfa": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "ce080461a6c90ee26d21d7f24fb15d69ec0c1cb96a7502094541bed47c28cf9e": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 4,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 4,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "9d6d3d6c223cf79d93522f1b176f2783179c11d44c3ec3f9d4eec04619a53abe": {
+      "net10.0-windows": {
+        "records": 5,
+        "kinds": {
+          "reviewed-scalar-pair": 3,
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2,
+          "boolean": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 5,
+        "kinds": {
+          "reviewed-scalar-pair": 3,
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2,
+          "boolean": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "d260808a9dafab8d950c9ba36786bc27fa52cd032b5add4f00d16b5bd873c9d4": {
+      "net10.0-windows": {
+        "records": 40,
+        "kinds": {
+          "unverified-assertion-operand": 40
+        },
+        "types": {
+          "boolean": 40
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 40,
+        "kinds": {
+          "unverified-assertion-operand": 40
+        },
+        "types": {
+          "boolean": 40
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "35bd3b938c7e73a8d4f519d3dc74c0fcdf8e18e27e37a2b8780ba768a025b54e": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "7aaee64a4dcb8ac6bc28466c214ed86bd29b7212e97459c61fc66ee1c1bc961f": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "89e0c6f3c05f78e7a19c0bfd921e892816d46ec8f778278a1e04d84689961d13": {
+      "net10.0-windows": {
+        "records": 51,
+        "kinds": {
+          "reviewed-scalar-pair": 51
+        },
+        "types": {
+          "null": 12,
+          "int32": 30,
+          "boolean": 9
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 51,
+        "kinds": {
+          "reviewed-scalar-pair": 51
+        },
+        "types": {
+          "null": 12,
+          "int32": 30,
+          "boolean": 9
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "3b1fe6b9404e4393251f3e4a5bca0ed9e5e9306cbf794fac967cb5af335bd54d": {
+      "net10.0-windows": {
+        "records": 36,
+        "kinds": {
+          "unverified-assertion-operand": 36
+        },
+        "types": {
+          "int32": 36
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      },
+      "net8.0-windows": {
+        "records": 36,
+        "kinds": {
+          "unverified-assertion-operand": 36
+        },
+        "types": {
+          "int32": 36
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 9
+      }
+    },
+    "d86a718911e1640a47896079da0638de463a11c6a7c41b6058f189813768a3c0": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 10,
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "null": 9,
+          "boolean": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 2,
+          "reviewed-scalar-pair": 10
+        },
+        "types": {
+          "null": 9,
+          "boolean": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "9562d28a4dc841c31c26c38943d08180b7c7d7cebe325f1f5321f7f73b54ea60": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "904d04a4741fcb2e41d7dd36ea20f2180ed851f3106a9df41065d8f164c653b7": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 4,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 4,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "03db247047c3c26f3a3296da93d1855a2194b0bd25e25465faf2c5a2e49ae090": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "4cd1bb8986d1ce894ad11fb84f0788f7b96c4d33b79f398cbeea44113f21a95e": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "enum-int64": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "enum-int64": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "163f885e6bb8955f12d24f2613e7207052551d0a3a5f7c18e35d709696983e4c": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "57514429312385ac28e6a3dd13193039741ea8dd3b3d81bdde091b390ba38bb8": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "658a5db46267df01b5acab908262d03b968b96fa91cd1beecb3228d82e628415": {
+      "net10.0-windows": {
+        "records": 296,
+        "kinds": {
+          "reviewed-scalar-pair": 296
+        },
+        "types": {
+          "null": 67,
+          "boolean": 148,
+          "int32": 74,
+          "exception-type": 7
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 296,
+        "kinds": {
+          "reviewed-scalar-pair": 296
+        },
+        "types": {
+          "null": 67,
+          "boolean": 148,
+          "int32": 74,
+          "exception-type": 7
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "f17c4e2969abcdaf5cb8a253454a6cc4729ce48742aedda0d75a7fde4246c8ff": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "exception-type": 3,
+          "null": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "exception-type": 3,
+          "null": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "6a5d0dacd288b7c6c553690c0d89524399cd799b1c53465c130a8ddce0a17685": {
+      "net10.0-windows": {
+        "records": 21,
+        "kinds": {
+          "unverified-assertion-operand": 20,
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 20,
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 21,
+        "kinds": {
+          "unverified-assertion-operand": 20,
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 20,
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "105d84d10e7910c784df684375b371905d767a599dd6a0a9d4661e9f659a38bb": {
+      "net10.0-windows": {
+        "records": 80,
+        "kinds": {
+          "reviewed-scalar-pair": 80
+        },
+        "types": {
+          "null": 80
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 80,
+        "kinds": {
+          "reviewed-scalar-pair": 80
+        },
+        "types": {
+          "null": 80
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "7b3d48bd673620a95ac590da8d47548c55b0966b1a6fc8e95c822d88cf3771ac": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7e7d7e6200b435c9631220b61697683151a0d8bfaee386ee291a7c7d74495713": {
+      "net10.0-windows": {
+        "records": 18,
+        "kinds": {
+          "unverified-assertion-operand": 16,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 16,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 18,
+        "kinds": {
+          "unverified-assertion-operand": 16,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 16,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "3714d3f40eb0f15a5ebb5001f6ec905c2e0e0a95a5cf4a634dc1844dd28fd8c2": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      }
+    },
+    "52a4dcb5b442e7594ec938e17d8a8551996cd4810a1a5985b0baf01fc00f2997": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "157518a3344eadc0f87ed00175c7781c03b14fb16a7f2603dc6ff1a7684212bc": {
+      "net10.0-windows": {
+        "records": 112,
+        "kinds": {
+          "unverified-assertion-operand": 32,
+          "reviewed-scalar-pair": 80
+        },
+        "types": {
+          "boolean": 72,
+          "null": 40
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 112,
+        "kinds": {
+          "unverified-assertion-operand": 32,
+          "reviewed-scalar-pair": 80
+        },
+        "types": {
+          "boolean": 72,
+          "null": 40
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "08a86cee674395edbfdfbcd06ad6ab89f64a770a9d46f98a7e77584accb7beba": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "1ee277b02adc6b31d7cf854d9bcba5d75049754e1fe3869b794a4026cbf0c9c4": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "6613b0889b101e8173c2c2eab013c48e11d5e57ac970c4b0e46386f8ab048784": {
+      "net10.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 40,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int64": 44,
+          "enum-int64": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 40,
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int64": 44,
+          "enum-int64": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "149542dcd7ba20891125cc84b8b981571f70535b20454b9fb8c177f6aabcd051": {
+      "net10.0-windows": {
+        "records": 52,
+        "kinds": {
+          "unverified-assertion-operand": 24,
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "exception-type": 36,
+          "null": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 52,
+        "kinds": {
+          "unverified-assertion-operand": 24,
+          "reviewed-scalar-pair": 28
+        },
+        "types": {
+          "exception-type": 36,
+          "null": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "f76bfd74595c9826d68f66c6bb4a477f30f1585998af62101fff624a1ec46a98": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "int64": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "reviewed-scalar-pair": 12
+        },
+        "types": {
+          "int64": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "cebd81d04a7c3c7a0eeb7700af7495d025cc658b09ef0cbbca032e0ac7685328": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "reviewed-scalar-pair": 24
+        },
+        "types": {
+          "null": 16,
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "reviewed-scalar-pair": 24
+        },
+        "types": {
+          "null": 16,
+          "int32": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "8e42884cf8e1154aebad6fc8fbc41cf7b0f222683f2137c268170a36498fc936": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "6b068738160b0c85f6b271b9f79a06376c14b2a9116eaf3f3da0895488a1cd9f": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "900bf43de978c2c6ac12cfd9c0ac56834fdcacc5a7aaf914baf4ca2a758e2efd": {
+      "net10.0-windows": {
+        "records": 128,
+        "kinds": {
+          "reviewed-scalar-pair": 128
+        },
+        "types": {
+          "exception-type": 8,
+          "null": 24,
+          "int32": 80,
+          "boolean": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 128,
+        "kinds": {
+          "reviewed-scalar-pair": 128
+        },
+        "types": {
+          "exception-type": 8,
+          "null": 24,
+          "int32": 80,
+          "boolean": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "80c23aaa2191e5c90020e0ed8cd563db3fe9401192af8c3096f53a6309dbddee": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "9f23a249075f8438c50e1edf6e6134178a207fd352cebf7d45e958031b4d027e": {
+      "net10.0-windows": {
+        "records": 16,
+        "kinds": {
+          "reviewed-scalar-pair": 16
+        },
+        "types": {
+          "null": 8,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 16,
+        "kinds": {
+          "reviewed-scalar-pair": 16
+        },
+        "types": {
+          "null": 8,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "a97e098d118f9531cb405135c9b8923e3cd4c680ec1a9d031d6eb7b4ae6275d5": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "06b3b3933c0a3fae609aa6b86c8f798cfaa2341b99f876065190d8e7c11b7e9f": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "exception-type": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7effd4ac669606ec62b8fc11dc97b89578d7aff2365ff9a19639f5dfa388c477": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 4,
+          "reviewed-scalar-pair": 10
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 4,
+          "reviewed-scalar-pair": 10
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "c5b4a46fcdbacaac83c97a1191f58726fa0550f13b6fa510ff54066ce2004326": {
+      "net10.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "28ae84d0fc9d75aedee8cc27d5120d93697f6bd976409d04dbcc8a43e3d62e0d": {
+      "net10.0-windows": {
+        "records": 7,
+        "kinds": {
+          "reviewed-scalar-pair": 7
+        },
+        "types": {
+          "null": 1,
+          "int32": 1,
+          "boolean": 5
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 7,
+        "kinds": {
+          "reviewed-scalar-pair": 7
+        },
+        "types": {
+          "null": 1,
+          "int32": 1,
+          "boolean": 5
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "bd35e1437ce243daa3cc342e58c50bc72d8549dc415024fd92fe12fc89da4d93": {
+      "net10.0-windows": {
+        "records": 15,
+        "kinds": {
+          "reviewed-scalar-pair": 15
+        },
+        "types": {
+          "null": 3,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 15,
+        "kinds": {
+          "reviewed-scalar-pair": 15
+        },
+        "types": {
+          "null": 3,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "a8142a0583e0770dae69f028c57d97918c6def88ba59ff355524fadf719839e6": {
+      "net10.0-windows": {
+        "records": 27,
+        "kinds": {
+          "reviewed-scalar-pair": 27
+        },
+        "types": {
+          "exception-type": 3,
+          "int32": 6,
+          "boolean": 12,
+          "null": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 27,
+        "kinds": {
+          "reviewed-scalar-pair": 27
+        },
+        "types": {
+          "exception-type": 3,
+          "int32": 6,
+          "boolean": 12,
+          "null": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "731b009203ec8251426929208ef6b51999c0f68d2e0ff55678f359b26eca1b1b": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "b5134c23884f90350deb0a5b075ccc15c4a77bc34b06397ea39e9e8b782a940f": {
+      "net10.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "int32": 24,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "int32": 24,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "a394b447397806a2ebc46a07ec87c15352dd9073c71ce243e447d733ab4db977": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b15a4b688083657ebea96745b28b7fbc3963624d59f5c156b9f238e7b0420ebb": {
+      "net10.0-windows": {
+        "records": 20,
+        "kinds": {
+          "unverified-assertion-operand": 20
+        },
+        "types": {
+          "int32": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      },
+      "net8.0-windows": {
+        "records": 20,
+        "kinds": {
+          "unverified-assertion-operand": 20
+        },
+        "types": {
+          "int32": 20
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      }
+    },
+    "3c85401878b9a813f6ed4bc406bf7f215b4d82292e3f96536bab6440b789a34f": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "1efeeabe92ea44c06bb5ae2101688679010ddc0bfb3803728db8de76ce04711e": {
+      "net10.0-windows": {
+        "records": 20,
+        "kinds": {
+          "unverified-assertion-operand": 20
+        },
+        "types": {
+          "exception-type": 12,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      },
+      "net8.0-windows": {
+        "records": 20,
+        "kinds": {
+          "unverified-assertion-operand": 20
+        },
+        "types": {
+          "exception-type": 12,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 6
+      }
+    },
+    "f489dd20985f7f8685829b7fa6ed4f6969773778232f96cc12c3a8545f69daa2": {
+      "net10.0-windows": {
+        "records": 44,
+        "kinds": {
+          "unverified-assertion-operand": 44
+        },
+        "types": {
+          "int64": 28,
+          "int32": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 44,
+        "kinds": {
+          "unverified-assertion-operand": 44
+        },
+        "types": {
+          "int64": 28,
+          "int32": 16
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "470e6a524d5d79f6916305578f13dcaf3eebca5ac8a637aca53e6713b4ff0940": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "ab02b9bac4617f076140dc4f1c668006e22e9520746ad88c250675052174500b": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "e3f030c03e1a83cb09138f3bb3490f1b95e7277c1961819b96b7c540426fce42": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "int32": 6,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "int32": 6,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "6005ca45b91ea3774d4919751d3540801f81891c84b1b59f98905175e3a92bd2": {
+      "net10.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "boolean": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "boolean": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "86cf904955c2d5e0a8e8f0e8a32c7c35839dcd0441ea644127cc34ebb05be749": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "null": 5,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "null": 5,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "1bfdef193c83e76028dc6d30a69938f897a2793f5ad5c8081c9de57b4ca10a05": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7e9d51ed3fa15d417d2e787059519d36b9dbdf3f343cfeb0cb0495f04751f8e0": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "587ef909e50fc3aa5548b1bd47644d88b273dfec1d45bdd50fc2e694bf184e0a": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "null": 6,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "exception-type": 2,
+          "null": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "63d9272ebb411a7b35c9cef03023a0dfee0c3f461c8988ca51588a8ed454955d": {
+      "net10.0-windows": {
+        "records": 9,
+        "kinds": {
+          "reviewed-scalar-pair": 9
+        },
+        "types": {
+          "boolean": 5,
+          "int32": 3,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 9,
+        "kinds": {
+          "reviewed-scalar-pair": 9
+        },
+        "types": {
+          "null": 1,
+          "int32": 3,
+          "boolean": 5
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "838fa5d642cfb2c8121795778e2c4ad6819a03b9684005b8ab179cbbc3cd3829": {
+      "net10.0-windows": {
+        "records": 23,
+        "kinds": {
+          "reviewed-scalar-pair": 23
+        },
+        "types": {
+          "boolean": 16,
+          "null": 7
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "reviewed-scalar-pair": 24
+        },
+        "types": {
+          "boolean": 16,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 8
+      }
+    },
+    "2630dbfd782c4ab117fdd7810c6f55c231987d6ec24c5acaab69fb9b3106590b": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "162000320b3cf2bb9de321b8fb4b16fb76568155a11a067f217fe6825c940a6f": {
+      "net10.0-windows": {
+        "records": 91,
+        "kinds": {
+          "unverified-assertion-operand": 70,
+          "reviewed-scalar-pair": 21
+        },
+        "types": {
+          "null": 91
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      },
+      "net8.0-windows": {
+        "records": 91,
+        "kinds": {
+          "unverified-assertion-operand": 70,
+          "reviewed-scalar-pair": 21
+        },
+        "types": {
+          "null": 91
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 14
+      }
+    },
+    "f134118c876d8ab3110236fb5b9fa030159d5b48f61db6a0a6a17c753c195262": {
+      "net10.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "int32": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "int32": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "ea3af172df16ace8cd81a7d202a9255602d8e7de11588f5cea5a0b74069b8d41": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "5fef630685bc537cc51151efe48751a90b4b6c33d66744d1663a925d325755c3": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "4a4d038a494e4af051349be1ad507f97e73f7ece2ab399651cca6142638354d1": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "null": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 14
+        },
+        "types": {
+          "null": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 7
+      }
+    },
+    "ad46a5ea06e52ae7cbce8011956b9eb79813c55d007394f64474d718ccf33da9": {
+      "net10.0-windows": {
+        "records": 21,
+        "kinds": {
+          "reviewed-scalar-pair": 21
+        },
+        "types": {
+          "null": 6,
+          "int64": 9,
+          "enum-int64": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 21,
+        "kinds": {
+          "reviewed-scalar-pair": 21
+        },
+        "types": {
+          "null": 6,
+          "int64": 9,
+          "enum-int64": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "ab790ad65fe445e782b70768645d146760707973a20733893a252712da085e50": {
+      "net10.0-windows": {
+        "records": 23,
+        "kinds": {
+          "unverified-assertion-operand": 18,
+          "reviewed-scalar-pair": 5
+        },
+        "types": {
+          "int32": 18,
+          "null": 2,
+          "boolean": 2,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 23,
+        "kinds": {
+          "unverified-assertion-operand": 18,
+          "reviewed-scalar-pair": 5
+        },
+        "types": {
+          "int32": 18,
+          "null": 2,
+          "boolean": 2,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "77705dc8087c50866a3d8031fcff4e9b13ac651c1f10abd5ae49e559096a19ff": {
+      "net10.0-windows": {
+        "records": 16,
+        "kinds": {
+          "unverified-assertion-operand": 16
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 16,
+        "kinds": {
+          "unverified-assertion-operand": 16
+        },
+        "types": {
+          "exception-type": 4,
+          "null": 4,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "5891f0a20f8f50295864a50f8c8457b5b9450b15e25902edd78fc0b28d433f95": {
+      "net10.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "null": 2,
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "null": 2,
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "905bf6fe4bb7a58003c32dc4d5c712881993ed41e24826af51eebfe44d307e0e": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3": {
+      "net10.0-windows": {
+        "records": 64,
+        "kinds": {
+          "unverified-assertion-operand": 64
+        },
+        "types": {
+          "exception-type": 14,
+          "null": 14,
+          "int32": 30,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 64,
+        "kinds": {
+          "unverified-assertion-operand": 64
+        },
+        "types": {
+          "exception-type": 14,
+          "null": 14,
+          "int32": 30,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "799230090f900d3d8c89ab1720e225586029600eeb02e5600210646e3fa31039": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "cb0f0458ad53431813222bb23f515e818e51f82adbb600623c743b5b37c3a5b6": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "62c894bac0aef39f706ba41e2c63857ec52bcd219cfdbe38cf0a1887042efb63": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "reviewed-scalar-pair": 14
+        },
+        "types": {
+          "null": 9,
+          "boolean": 4,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "reviewed-scalar-pair": 14
+        },
+        "types": {
+          "null": 9,
+          "boolean": 4,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 5
+      }
+    },
+    "5d535e02992beae186287a57709a363796f8fc03bf97902f330c0c1df83494fd": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "8a678853047ed6aa3f11500f71531cb4de49f5d965a1409a075555169bc767be": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "8a02443bdbb2dade0c0b8218f3536a89d0fad769a5c85e35e8d9c4a0a79023bb": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2,
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "047cff8a30062b9f1ffc6e21f843bd63d672125afa3e2eeeb8b47faf1837f54e": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "0416d1ca5caef530f9a1a326564be70e1a83eeb0e6b98d23ab93bce9a603879b": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530": {
+      "net10.0-windows": {
+        "records": 44,
+        "kinds": {
+          "unverified-assertion-operand": 44
+        },
+        "types": {
+          "boolean": 44
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 44,
+        "kinds": {
+          "unverified-assertion-operand": 44
+        },
+        "types": {
+          "boolean": 44
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "963842f3535886e26e759bd98ce3c3b93a623e04c72e020cde998eb06031a20d": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "8584a55f320305cfaeba0a488a636360f8aac69bd6fefa635e6f7bbc0d6eba68": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "f2f6b4839f6bef8b7806e3f38bdf865364989b53e980f0610f7fd7538314d616": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "9d81932f27fa88c3354e04d1c737e843e0d037332c988927a31a672255d22d40": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "c4128ec1f9afabe5fddca2044351d4a083265fdb5af96e6edcdaf95d98c2c018": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "ec96c2a39274d45b1e88e67864f4ca6eb91bf3f4f99906e9bb732e7c0f02604c": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "a9c69c4b5be01cc90ba582cbc219de8523bb3d39f0da5c3eff0a28fa2a3b40e8": {
+      "net10.0-windows": {
+        "records": 9,
+        "kinds": {
+          "reviewed-scalar-pair": 9
+        },
+        "types": {
+          "boolean": 4,
+          "int32": 4,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 9,
+        "kinds": {
+          "reviewed-scalar-pair": 9
+        },
+        "types": {
+          "boolean": 4,
+          "int32": 4,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "f4087a6c1be5660ac60f4c243ff206bb499d6f9cae5931b21df7103a0850e7fe": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 2,
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 2,
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "72a8589cfea9fdc35c9fc2e792a2ae542b26a403fe2072577e6a247d69056453": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "d6402568dffd82dcae7d6ad274be8879b0b58bc3cbdc86bd6652bde72b4bbc22": {
+      "net10.0-windows": {
+        "records": 13,
+        "kinds": {
+          "reviewed-scalar-pair": 13
+        },
+        "types": {
+          "null": 12,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 13,
+        "kinds": {
+          "reviewed-scalar-pair": 13
+        },
+        "types": {
+          "null": 12,
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "d3a77c18cb3859b0a4172347b89438b889801b5d6107a9730881ab1953e450d7": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "72953db3eeab8102240101b665ad2545413b918d0fe3c359f639c9cd0b57fd0c": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "d9aa6ee60a4e79943b584bcd4c7fd653b3bb3462d5e30e7cc95131e5da85be26": {
+      "net10.0-windows": {
+        "records": 10,
+        "kinds": {
+          "reviewed-scalar-pair": 10
+        },
+        "types": {
+          "boolean": 8,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 10,
+        "kinds": {
+          "reviewed-scalar-pair": 10
+        },
+        "types": {
+          "boolean": 8,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "3fb3fe5c4c59b22b1db9db3f13c53a3950a24807f8ed29a21ef64d386b267243": {
+      "net10.0-windows": {
+        "records": 58,
+        "kinds": {
+          "unverified-assertion-operand": 52,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int64": 42,
+          "int32": 12,
+          "enum-int64": 2,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 58,
+        "kinds": {
+          "unverified-assertion-operand": 52,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "int64": 42,
+          "int32": 12,
+          "null": 2,
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "e961a45cb06b11f9e733c342f05971b98562d764ed63f5098231a2d23b48e545": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 2,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 2,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "6e9f91fa4394180a1179939eb4cfed40614d3b9da17ecc0ca821299bcc355e1b": {
+      "net10.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 48
+        },
+        "types": {
+          "null": 36,
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 48,
+        "kinds": {
+          "unverified-assertion-operand": 48
+        },
+        "types": {
+          "null": 36,
+          "exception-type": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "ad2198b1cd03b65bf0e350f041ec092eff706a021749ce015b72827e66ac5602": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "ba999e7a81a35db5600587f7d9a34db510b412daf663a5cca2bcc770c3f40dba": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "9c283df6f282353260c3e3d528c873b24e0080892116610e48db47fc735817c2": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "145a2d72658a5b536c881eab4f9dbffb0ab3fe494d2d259eef52a3b869f49637": {
+      "net10.0-windows": {
+        "records": 560,
+        "kinds": {
+          "reviewed-scalar-pair": 560
+        },
+        "types": {
+          "null": 140,
+          "int32": 350,
+          "boolean": 70
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      },
+      "net8.0-windows": {
+        "records": 559,
+        "kinds": {
+          "reviewed-scalar-pair": 559
+        },
+        "types": {
+          "null": 140,
+          "int32": 349,
+          "boolean": 70
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 10
+      }
+    },
+    "b5b2908d8962d5bac2a7c18139ceda41a60b3338a31f4c01d7e990a6021343de": {
+      "net10.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 20,
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 22,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 24,
+        "kinds": {
+          "unverified-assertion-operand": 20,
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 22,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "e16ed6db09775bbcc1cb44ff49bfc417591deeaacb38ffbbde03f33e457e991b": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7c46c60fbb451e87867ec9fc704837040dfd0e5b5e80c02cafca90002b55f56d": {
+      "net10.0-windows": {
+        "records": 30,
+        "kinds": {
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "int32": 30
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 30,
+        "kinds": {
+          "unverified-assertion-operand": 30
+        },
+        "types": {
+          "int32": 30
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "18683fe6eff10deb7cdc10874532d28697ec65c9ad9170b23cabcaa735858a6b": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 3
+      }
+    },
+    "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "4df03a0d7fe0e539cf6d668d72a20455baee07e69ceaa06c9d5ddbbd37f4df6e": {
+      "net10.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "ed37c3bcc6151fd92c8189d7d61f4a3c1fd3442d35b5960ede5d85375593d10c": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "951574dab32d021a993bb32335426a171485bbb75b9690662539cbdb4c4d7ab3": {
+      "net10.0-windows": {
+        "records": 26,
+        "kinds": {
+          "reviewed-scalar-pair": 26
+        },
+        "types": {
+          "int32": 26
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 26,
+        "kinds": {
+          "reviewed-scalar-pair": 26
+        },
+        "types": {
+          "int32": 26
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "1fd570e598e233a6fec9300e45e3c10b142877db1cbe19996bc03b03f13cadd8": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "int32": 4,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "42fe616906d962263b3342ed5d8e735154ac1bc378c176ec1da78684ad15155b": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7ef3a9bbc3f719f2718e63204b46ae98f8afcea209a522a56cf574ddfe97b753": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "f67a37b4a0f31401fb2be28e626fb6b3b595aca9b4622e0fa3ca6129018eb59b": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b9798a9932103c035c9b6c143df8c767886acb170b4eb8d2a2a467541c36d904": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 2,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 3,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 2,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 3,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b32e8da56805ce9a67da323773bb3cb04fd27fd53a58a5adaccd70e0dc60cf98": {
+      "net10.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "boolean": 24,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 32,
+        "kinds": {
+          "unverified-assertion-operand": 32
+        },
+        "types": {
+          "boolean": 24,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12": {
+      "net10.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "boolean": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "boolean": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "638918bb1309cd063ca2e799e074e975daff62e519013c608dab68a2cdd19fb3": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "702a295a1f79398a4b57753eb984ba69fe6353fa18166e7f547ba921b9f84a8b": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "int32": 2,
+          "boolean": 2,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "null": 4,
+          "int32": 2,
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "74fbc333a625ce7a723778a57a3de8f49b94a4621a356d19f386e147c3de9989": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "9fdd683e801a7854f0d4a5617d4adc82be3dde0929d974f3f668bc451b1bcf41": {
+      "net10.0-windows": {
+        "records": 32,
+        "kinds": {
+          "reviewed-scalar-pair": 32
+        },
+        "types": {
+          "exception-type": 8,
+          "int32": 16,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 32,
+        "kinds": {
+          "reviewed-scalar-pair": 32
+        },
+        "types": {
+          "exception-type": 8,
+          "int32": 16,
+          "boolean": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b7c04bb42e8b8d83c7334a70f294a47f3148eaf05f1f97d8bf6b1108939cb65d": {
+      "net10.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "boolean": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 3,
+        "kinds": {
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "boolean": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "6105965213be1ef45eb9c6023111fc0ed9e67bf6a194f48f486d6d236413ebfd": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "93b1a559f63d2cf431456fade8517e2d028280d99cf283ea39e25b5e0db48e76": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "6e598b58202a95d21fd87c63db033b692ce66bc09fbbf1d251eec5d827870879": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "40f40defcad0856afce7b1368a7deb04b928081e71f8d9379144f2e7cf938e2d": {
+      "net10.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 14,
+        "kinds": {
+          "unverified-assertion-operand": 8,
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 14
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "083d4f4cf8e0aa0ff6142dcab67b632b3299467d09fcdb1cc3d06298c9d8a23a": {
+      "net10.0-windows": {
+        "records": 16,
+        "kinds": {
+          "reviewed-scalar-pair": 16
+        },
+        "types": {
+          "exception-type": 8,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 16,
+        "kinds": {
+          "reviewed-scalar-pair": 16
+        },
+        "types": {
+          "exception-type": 8,
+          "null": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "32bbd4ca5202954af4667b166ad8286ef5ec174d137960d44beae2297280adb5": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "0d9a80f1a2efa750c466b9ec1826fe7a097d1eb94c9797c39b0c5dff966a7822": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "8fa82b7477bb538878710ddf7b4204c69f46607388c2af2cf9ca3148fdc05aed": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "reviewed-scalar-pair": 6
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "4d44240adca8eeaf2aab4f42d87b23e4aaedfea547597429bac68dcc2359fd64": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "689df1b9d393df3ff3002d8b9d079e6786a8d485e6892eea0ba5fa8693ff8d3e": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "d366ce02555e047ec35471a7c15aa60cd488e86e245cfa2962888978195320f1": {
+      "net10.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "boolean": 4,
+          "int32": 4,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 12,
+        "kinds": {
+          "unverified-assertion-operand": 12
+        },
+        "types": {
+          "boolean": 4,
+          "int32": 4,
+          "exception-type": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "9bb02deb9a63130d681c81fdab5e2dcd1967717ee66392d19dde2cded1f5ab11": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "5dee8d4e3fd1043352bf94285eff2119d2ae12e7a663a07487afbe4f471b9e98": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "327217787f0ad815ce5276a1f5b549d427ffa987f9e57e01db7cbffdd864748f": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "c8233775a29702fa183f63a34c3c6c099cb568b6344e4b0459d0a7cb285bb3f2": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "c11091db238cc4514a399c0e579aefdc5788cd460dac9c16ac319de619fcd9e8": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "02e16cdf28ceb904f073e1cee5161bcfb37e7ac6f6f0b5c7ad4d332b8ea8f9d5": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "76e93946b452cf09b63919945b90a4168e60dda9f45172c44f9622674e37a8a3": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f": {
+      "net10.0-windows": {
+        "records": 18,
+        "kinds": {
+          "unverified-assertion-operand": 18
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 18,
+        "kinds": {
+          "unverified-assertion-operand": 18
+        },
+        "types": {
+          "int32": 12,
+          "boolean": 6
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "21f0bbc1d5de1b8381e0cedb3dbcc8d3f804c27d6930e8110a643c4cb9afbc38": {
+      "net10.0-windows": {
+        "records": 22,
+        "kinds": {
+          "reviewed-scalar-pair": 22
+        },
+        "types": {
+          "boolean": 14,
+          "exception-type": 4,
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 22,
+        "kinds": {
+          "reviewed-scalar-pair": 22
+        },
+        "types": {
+          "boolean": 14,
+          "exception-type": 4,
+          "int32": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "6db90f6cb395f48a1cb1d3298010bab339ef8aa6035331f96a60849a43a757fb": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "2fb39ab36aee610e19aae0579fa4cd57dd45ecb481a879be09c023070fd1f2d6": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "bf99c126560b4c020fc82170b16e917dc9021cd2b499508af2303603853e81e6": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "1da31ddce7da0f37e9e4d172ff26ce77e94557d85cf2a563e617b3c3deb879b1": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 4
+      }
+    },
+    "31dd9e2484c07b8c240d72bfffcb2e643ff1241869c13222e2d91a716de3a9ee": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "exception-type": 1,
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "7e0708e1efa67005e68a40563591b3ac1d9b3859ef30774b9ec0218bd087fb1e": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "96a0b4c1360ac7020918f9d4bac3d8b1c17bad8de93220aa487f7496a5a4bbdf": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "02521d72130c2e05cee329bd861cef659ca6c28c2fec6c27b3f972ea8a006afa": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "6bfe1b89239cf06661f472e5bcd911a48f9e3d6b66da82879ccb8d15b7db631c": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "39b8413914c2f36fd9fe95b16e6c82c4f64c78fe2634f82b0c7e855fd3bd0440": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "null": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "c635681657450c8748eef874b29a9ab0c1a957f64bcad4eae1629e6e9267ef5e": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "9fa19de99f2633b2f9b9cbd1028e7e96b02c115ad571e02e132263237e591f9f": {
+      "net10.0-windows": {
+        "records": 9,
+        "kinds": {
+          "unverified-assertion-operand": 6,
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 6,
+          "null": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 9,
+        "kinds": {
+          "unverified-assertion-operand": 6,
+          "reviewed-scalar-pair": 3
+        },
+        "types": {
+          "exception-type": 6,
+          "null": 3
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b403fede3110cd3a2db1df90b5f1de21ea87ae10c9315a480090f404c33cb140": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "dd339c91c6324e06c86ae74003f05d47a1a120dd1b31e595497fb3d62ff6e73c": {
+      "net10.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "boolean": 4,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 6,
+        "kinds": {
+          "unverified-assertion-operand": 6
+        },
+        "types": {
+          "boolean": 4,
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "2425c9e141d90172c9b1370cf0655c8d291831442cbd55331481e23185c0a942": {
+      "net10.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "int32": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 10,
+        "kinds": {
+          "unverified-assertion-operand": 10
+        },
+        "types": {
+          "int32": 10
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "b3069d9efd87ed7eb9684e73d353f79cd88f2510d188b2fbf4686e01c83cfe49": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "2ad6d25e35223803f497f9f9666aaf546a95d856333ec81cccb11b7db7e4cac9": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "f8b650b5873a2e18df791394dc6b2d8c8d259723b01ef14b1b71f3f534704423": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "exception-type": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "3e6b086609d36e02f7b58ffb8d2bca9666c8c09da6d6ed9b2b3a22ffacec139a": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "ef990492f764769c366800d9c72dfbaa6a3eec37c37f723d3c1287683bfac7b2": {
+      "net10.0-windows": {
+        "records": 72,
+        "kinds": {
+          "unverified-assertion-operand": 72
+        },
+        "types": {
+          "int32": 60,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 72,
+        "kinds": {
+          "unverified-assertion-operand": 72
+        },
+        "types": {
+          "int32": 60,
+          "boolean": 12
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "0257b3f00aa273b83ad2412a5fc163bba7dc92f4cf20933bd639874909e6ea71": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "null": 1,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "24e8563d381d976658360c27f2139aa2b33e8aa8c6426db15869d555e781aad8": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "5c5986b06c7f8a3b207533d22e127011008e76b3dc04cad779b9716dd1b83041": {
+      "net10.0-windows": {
+        "records": 42,
+        "kinds": {
+          "unverified-assertion-operand": 40,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 42
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      },
+      "net8.0-windows": {
+        "records": 42,
+        "kinds": {
+          "unverified-assertion-operand": 40,
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "int32": 42
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 2
+      }
+    },
+    "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "unverified-assertion-operand": 8
+        },
+        "types": {
+          "exception-type": 8
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "e068e76f4849d1b249d317047940b029d63633a8ae6a9db39f61064283cff17f": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "bdd303979a7479fb4d0ec081c1b321361fc8c58276da5aa6c69b141fd62136b4": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "e1b45fc20cd9ddabac4f32d6d2c5f4f24e5beeda3dae80fd50779822ab4b67f9": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "unverified-assertion-operand": 2
+        },
+        "types": {
+          "null": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "918d5021f01e185c21499a8688ef8386e23c2ebff6f0ceb9ef6b5f9fbbdd8fcd": {
+      "net10.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 2,
+        "kinds": {
+          "reviewed-scalar-pair": 2
+        },
+        "types": {
+          "boolean": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "a3de902e2e6416fcce0b2636068602a508c4023b17a05968eab94a6ae957891b": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "587ee828d52f8f67928c347d21f01e262fe251277575f20e4e4ab9dd02a05147": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "boolean": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "211675d67c94ca600fc7ab36c9a4b840cac9eef75d60c9324f3d1ed4641b56cb": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "exception-type": 2,
+          "int32": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "dd3ddc52a41dab53c53eba2edcadd342adf0a0d51bb5623fa7f04e1fc56958c9": {
+      "net10.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 1,
+        "kinds": {
+          "reviewed-scalar-pair": 1
+        },
+        "types": {
+          "boolean": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "4a9afa74b97af4128a543ec46caf699171200e357432f43638bbaf8467f04e96": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 2,
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "unverified-assertion-operand": 4
+        },
+        "types": {
+          "int32": 2,
+          "enum-int64": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "1d8243d43946493cdbcfc5a533445c62971e38d2afd1179f6ee7cdd22552f3d3": {
+      "net10.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 1,
+          "boolean": 2,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 4,
+        "kinds": {
+          "reviewed-scalar-pair": 4
+        },
+        "types": {
+          "null": 1,
+          "boolean": 2,
+          "int32": 1
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "d4368f435316963d1ffef7ab063fd2782acd03a0073ed9d73833b8d1d16aca29": {
+      "net10.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 5,
+          "null": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 8,
+        "kinds": {
+          "reviewed-scalar-pair": 8
+        },
+        "types": {
+          "boolean": 5,
+          "null": 1,
+          "exception-type": 2
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    },
+    "fd5e4baa90a938f8cd51a9b173d4dc3d8da20975a12a981fe56ba3a57e2767a0": {
+      "net10.0-windows": {
+        "records": 5,
+        "kinds": {
+          "reviewed-scalar-pair": 5
+        },
+        "types": {
+          "int32": 1,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      },
+      "net8.0-windows": {
+        "records": 5,
+        "kinds": {
+          "reviewed-scalar-pair": 5
+        },
+        "types": {
+          "int32": 1,
+          "null": 4
+        },
+        "observedExecutionIdentitiesWithPublicScalars": 1
+      }
+    }
+  },
+  "limitations": [
+    "Counts cover parseable public scalar records from the job log; private execution files and redacted payloads are unavailable.",
+    "Observed execution identities with public scalars are not runtime-discovered or fully captured case counts.",
+    "An unverified assertion operand is not evidence of Microsoft origin without source review."
+  ]
+}

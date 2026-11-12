@@ -3,6 +3,7 @@ using Ours = AdForLinux.DirectoryServices;
 
 // Clone-only adaptations of the four source-pinned Windows Facts documented in README.
 // No directory bindings, PrincipalContexts, or network operations occur here.
+Environment.SetEnvironmentVariable("ADFL_OFFLINE_TESTS", "1");
 if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("Run this oracle suite on Linux.");
 using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"oracle.json")));
 var framework = $"net{Environment.Version.Major}.0-windows";
@@ -61,4 +62,10 @@ Finish();
 if(count!=79 || cases!=4) throw new InvalidOperationException("Unexpected coverage count");
 var hardcodedCount = HardcodedMirrors.Run();
 var theory = RecordedTheoryMirrors.Run();
-Console.WriteLine($"PASS: {cases + 12 + theory.Methods} partial source methods ({theory.Executions} recorded theory rows), {count + hardcodedCount + theory.Checks} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");
+var offline = OfflineTheoryMirrors.Run();
+var partialMethods = new HashSet<string>(oracle.EnumerateObject().Select(method => "DirectorySearchOptionsComparisonTests." + method.Name), StringComparer.Ordinal);
+partialMethods.UnionWith(HardcodedExpectations.Values.Keys.Select(key => key[..key.LastIndexOf(':')]));
+partialMethods.UnionWith(RecordedTheoryExpectations.Values.Keys.Where(key => key.StartsWith(framework + "|", StringComparison.Ordinal)).Select(key => key[(framework.Length + 1)..]));
+partialMethods.UnionWith(OfflineTheoryMirrors.MethodNames);
+if (partialMethods.Count != 44) throw new InvalidOperationException("Unexpected distinct method coverage");
+Console.WriteLine($"PASS: {partialMethods.Count} distinct partial source methods ({theory.Executions + offline.Executions} source-declared theory rows; method multisets, row identities unresolved), {count + hardcodedCount + theory.Checks + offline.Checks} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");
