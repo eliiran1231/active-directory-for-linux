@@ -2,7 +2,7 @@
 
 ## What actually runs
 
-This console test runner targets net8.0 and net10.0 and references only the Linux clone projects, not Microsoft's Windows-only DirectoryServices implementation. It copies the clone-side operation sequence from 16 original Facts. Four Facts retain the structured JSON oracle, while 12 additional mirrors use values hardcoded directly from the supplied Microsoft run.
+This console test runner targets net8.0 and net10.0 and references only the Linux clone projects, not Microsoft's Windows-only DirectoryServices implementation. It copies the clone-side operation sequence from 24 original methods. Four Facts retain the structured JSON oracle, 12 Facts use direct hardcoded values, and eight Theories replay all 80 source-declared input rows against recorded per-execution multisets.
 
 - Security mask setter state: 19 observed integers.
 - Virtual list view constructors: 36 observations across six constructions.
@@ -11,8 +11,9 @@ This console test runner targets net8.0 and net10.0 and references only the Linu
 - Principal and extension surface reflection: 54 hardcoded observations across four Facts.
 - Offline entry, empty-result, and synchronization controls: five hardcoded observations across three Facts.
 - Validation exception types: 19 hardcoded observations across five Facts.
+- Offline searcher, synchronization, and VLV theory sequences: 1,369 explicit Microsoft observations across eight Theories and 80 input rows.
 
-Total: **16 partial Facts, 157 scalar checks per runtime**. No LDAP binds, AD reads/writes, credentials, environment-specific identifiers, or live server are used. The `System.DirectoryServices.Protocols` dependency belongs to the clone, but these operations never use it.
+Total: **24 partial source methods, 1,526 scalar checks per runtime**. No LDAP binds, AD reads/writes, credentials, environment-specific identifiers, or live server are used. The `System.DirectoryServices.Protocols` dependency belongs to the clone, but these operations never use it.
 
 ## Evidence and admission
 
@@ -29,9 +30,11 @@ Source: [commit 93f1f9c](https://github.com/eliiran1231/active-directory-for-lin
 
 The original Windows source remains the reference. Runtime logs and source are evidence, not cryptographic proof of the runner's honesty. The extractor deliberately does not automatically admit other assertions. The 78 additional hardcoded observations are limited to booleans, integers, and exception type names whose Microsoft-expected operands were identifiable in both framework captures. Both frameworks produced identical values at all 78 admitted sites; the source method and line are retained in each hardcoded key.
 
+The theory fixture contains only `reviewed-scalar-pair` Microsoft operands from the supplied run. Public logs retained the method hash and execution GUID but not the theory arguments. The mirror therefore compares complete observation sequences as a multiset for each framework and method; it does not invent an execution-to-input mapping. Framework fixtures remain separate where Microsoft produced different sequences.
+
 ## Limits
 
-These are partial adaptations of 16 Facts, not fully reproduced tests. Redacted strings (including VLV Target), opaque tuples/types, enum-name loops, unrecorded parameter names, and other unavailable operands are not guessed or claimed as comparisons. Invalid setter/constructor attempts in the added mirrors compare only their recorded exception type names. Unexpected behavior fails the runner.
+These are partial adaptations, not fully reproduced tests. Redacted strings (including VLV Target, cookies, attribute names, and exception parameter names), opaque tuples/types, enum-name loops, and other unavailable operands are not guessed or claimed as comparisons. Invalid setter/constructor attempts in the added mirrors compare only their recorded exception type names. Unexpected behavior fails the runner.
 
 The full Windows run had 1,398 execution files per framework and 2,986 explicit scalar pairs. This Linux subset uses source-proven assertion operands instead. Most remaining tests need recorded theory inputs, fixture-aware normalization, strings/collections or live Linux AD execution. They are **not silently counted as passing**. Re-running the full original Windows suite on Linux unchanged would not be valid.
 

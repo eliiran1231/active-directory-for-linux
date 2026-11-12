@@ -1,0 +1,220 @@
+#nullable enable
+
+// Generated from explicit Microsoft comparison operands in run 43105205156,
+// job 130806631589. Theory execution identities were not exported, so each
+// framework/method is intentionally represented as a multiset of sequences.
+internal static class RecordedTheoryExpectations
+{
+    internal static readonly IReadOnlyDictionary<string, string[]> Values =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["net10.0-windows|CompatibilitySearcherStateComparisonTests.Coupled_options_preserve_state_through_rejection_and_reset"] =
+            [
+                "n,n,b0,i32:2,i32:0,b1,b1,b0,e:System.ArgumentException,n,b0,i32:2,i32:0,b1,b1,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b1,b1,b0",
+                "n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:1,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:1,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:1,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:1,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b1,b1,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b1,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0",
+                "n,n,b1,i32:2,i32:5,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:5,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0",
+            ],
+            ["net10.0-windows|CompatibilitySearcherStateComparisonTests.Timeout_boundary_rejection_and_recovery_match_microsoft"] =
+            [
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+            ],
+            ["net10.0-windows|CompatibilitySynchronizationComparisonTests.Copies_preserve_options_and_isolate_later_mutations"] =
+            [
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+            ],
+            ["net10.0-windows|CompatibilitySynchronizationComparisonTests.Full_width_option_validation_matches_for_constructors_and_setter"] =
+            [
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "n,n,b1,i64:0,n,n,b1,i64:0,n,n,i64:0",
+                "n,n,b1,i64:10241,n,n,b1,i64:10241,n,n,i64:10241",
+                "n,n,b1,i64:2048,n,n,b1,i64:2048,n,n,i64:2048",
+                "n,n,b1,i64:2147483648,n,n,b1,i64:2147483648,n,n,i64:2147483648",
+                "n,n,b1,i64:2147493889,n,n,b1,i64:2147493889,n,n,i64:2147493889",
+                "n,n,b1,i64:8192,n,n,b1,i64:8192,n,n,i64:8192",
+            ],
+            ["net10.0-windows|CompatibilitySynchronizationComparisonTests.Reset_preserves_options_and_detaches_cookie_buffers"] =
+            [
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+            ],
+            ["net10.0-windows|CompatibilityVlvStateComparisonTests.Percentage_offset_and_total_transitions_match_microsoft"] =
+            [
+                "n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:7,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:1,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:1,i32:50,b1,n,n,i32:2,i32:3,i32:2147483647,i32:1,i32:2147483647,b1,n,n,i32:2,i32:3,i32:2147483647,i32:7,i32:2147483647,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:2147483647,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:1,i32:0,b1,n,n,i32:2,i32:3,i32:1,i32:1,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:1,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:100,i32:0,b1,n,n,i32:2,i32:3,i32:100,i32:100,i32:100,b1,n,n,i32:2,i32:3,i32:101,i32:100,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:7,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:0,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:101,i32:0,b1,n,n,i32:2,i32:3,i32:99,i32:101,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:101,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:7,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:0,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:99,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:13,i32:0,b1,n,n,i32:2,i32:3,i32:1,i32:13,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:13,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:7,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:15,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:21474836,i32:0,b1,n,n,i32:2,i32:3,i32:21474836,i32:21474836,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:21474836,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:2147483647,i32:0,b1,n,n,i32:2,i32:3,i32:21474835,i32:2147483647,i32:99,b1,n,n,i32:2,i32:3,i32:2147483647,i32:2147483647,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:99,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:21474837,i32:0,b1,n,n,i32:2,i32:3,i32:-21474835,i32:21474837,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:21474837,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:3,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:3,i32:33,b1,n,n,i32:2,i32:3,i32:2,i32:3,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:7,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:33,b1",
+            ],
+            ["net10.0-windows|CompatibilityVlvStateComparisonTests.Rejected_setter_preserves_all_existing_state_like_microsoft"] =
+            [
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+            ],
+            ["net10.0-windows|CompatibilityVlvStateComparisonTests.Target_changes_preserve_position_and_context_like_microsoft"] =
+            [
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+            ],
+            ["net8.0-windows|CompatibilitySearcherStateComparisonTests.Coupled_options_preserve_state_through_rejection_and_reset"] =
+            [
+                "n,n,b0,i32:2,i32:0,b1,b1,b0,e:System.ArgumentException,n,b0,i32:2,i32:0,b1,b1,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b1,b1,b0",
+                "n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:1,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:1,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:1,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:1,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0,n,n,b1,i32:0,i32:0,b0,b0,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b0,b0,b0,n,n,b0,i32:2,i32:0,b1,b1,b0",
+                "n,n,b1,i32:2,i32:0,b0,b0,b1,e:System.ArgumentException,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0",
+                "n,n,b1,i32:2,i32:5,b0,b0,b0,e:System.ArgumentException,n,b1,i32:2,i32:5,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:0,b0,b0,b1,n,n,b1,i32:2,i32:0,b0,b0,b0,n,n,b1,i32:2,i32:5,b0,b0,b0",
+            ],
+            ["net8.0-windows|CompatibilitySearcherStateComparisonTests.Timeout_boundary_rejection_and_recovery_match_microsoft"] =
+            [
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "e:System.ArgumentException,i64:70000000,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-1,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000000,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-10000001,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:-9223372036854775808,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:0,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:1,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836469999999,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000000,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+                "n,n,i64:21474836470000001,n,n,i64:12345678",
+            ],
+            ["net8.0-windows|CompatibilitySynchronizationComparisonTests.Copies_preserve_options_and_isolate_later_mutations"] =
+            [
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+                "b0,i64:2048,i64:2048,i64:8192,i64:2147483648,i64:2147483648,i64:8192",
+            ],
+            ["net8.0-windows|CompatibilitySynchronizationComparisonTests.Full_width_option_validation_matches_for_constructors_and_setter"] =
+            [
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,b0,e:System.ComponentModel.InvalidEnumArgumentException,i64:1",
+                "n,n,b1,i64:0,n,n,b1,i64:0,n,n,i64:0",
+                "n,n,b1,i64:10241,n,n,b1,i64:10241,n,n,i64:10241",
+                "n,n,b1,i64:2048,n,n,b1,i64:2048,n,n,i64:2048",
+                "n,n,b1,i64:2147483648,n,n,b1,i64:2147483648,n,n,i64:2147483648",
+                "n,n,b1,i64:2147493889,n,n,b1,i64:2147493889,n,n,i64:2147493889",
+                "n,n,b1,i64:8192,n,n,b1,i64:8192,n,n,i64:8192",
+            ],
+            ["net8.0-windows|CompatibilitySynchronizationComparisonTests.Reset_preserves_options_and_detaches_cookie_buffers"] =
+            [
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+                "i64:2147483648,i64:2147483648,i64:2147483648",
+            ],
+            ["net8.0-windows|CompatibilityVlvStateComparisonTests.Percentage_offset_and_total_transitions_match_microsoft"] =
+            [
+                "n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:7,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:1,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:1,i32:50,b1,n,n,i32:2,i32:3,i32:2147483647,i32:1,i32:-2147483648,b1,n,n,i32:2,i32:3,i32:2147483647,i32:7,i32:-2147483648,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:-2147483648,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:50,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:1,i32:0,b1,n,n,i32:2,i32:3,i32:1,i32:1,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:1,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:1,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:100,i32:0,b1,n,n,i32:2,i32:3,i32:100,i32:100,i32:100,b1,n,n,i32:2,i32:3,i32:101,i32:100,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:7,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:0,i32:101,b1,n,n,i32:2,i32:3,i32:101,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:101,i32:0,b1,n,n,i32:2,i32:3,i32:99,i32:101,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:101,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:7,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:0,i32:99,b1,n,n,i32:2,i32:3,i32:100,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:99,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:13,i32:0,b1,n,n,i32:2,i32:3,i32:1,i32:13,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:13,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:7,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:15,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:15,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:21474836,i32:0,b1,n,n,i32:2,i32:3,i32:21474836,i32:21474836,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:21474836,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:21474836,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:2147483647,i32:0,b1,n,n,i32:2,i32:3,i32:21474835,i32:2147483647,i32:99,b1,n,n,i32:2,i32:3,i32:2147483647,i32:2147483647,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:2147483647,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:99,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:21474837,i32:0,b1,n,n,i32:2,i32:3,i32:-21474835,i32:21474837,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:21474837,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:7,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:0,i32:100,b1,n,n,i32:2,i32:3,i32:21474837,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:100,b1",
+                "n,n,i32:2,i32:3,i32:0,i32:3,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:3,i32:33,b1,n,n,i32:2,i32:3,i32:2,i32:3,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:7,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:66,b1,n,n,i32:2,i32:3,i32:2,i32:0,i32:0,b1,n,n,i32:2,i32:3,i32:0,i32:0,i32:33,b1",
+            ],
+            ["net8.0-windows|CompatibilityVlvStateComparisonTests.Rejected_setter_preserves_all_existing_state_like_microsoft"] =
+            [
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+                "e:System.ArgumentException,n,i32:2,i32:3,i32:67,i32:101,i32:67,b1,n,n,i32:2,i32:3,i32:9,i32:101,i32:8,b1",
+            ],
+            ["net8.0-windows|CompatibilityVlvStateComparisonTests.Target_changes_preserve_position_and_context_like_microsoft"] =
+            [
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+                "n,n,i32:2,i32:3,i32:11,i32:17,i32:0,b0,b1,n,n,i32:2,i32:3,i32:7,i32:17,i32:41,b0",
+            ],
+        };
+}

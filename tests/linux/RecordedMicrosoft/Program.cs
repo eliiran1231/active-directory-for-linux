@@ -60,4 +60,5 @@ view.Update(offset:2,approximateTotal:13,contextId:null);View(view);
 Finish();
 if(count!=79 || cases!=4) throw new InvalidOperationException("Unexpected coverage count");
 var hardcodedCount = HardcodedMirrors.Run();
-Console.WriteLine($"PASS: {cases + 12} partial source Facts, {count + hardcodedCount} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");
+var theory = RecordedTheoryMirrors.Run();
+Console.WriteLine($"PASS: {cases + 12 + theory.Methods} partial source methods ({theory.Executions} recorded theory rows), {count + hardcodedCount + theory.Checks} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");
