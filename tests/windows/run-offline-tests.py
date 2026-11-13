@@ -28,11 +28,16 @@ GROUPS = {
 EXTRA = {
     # Detached local collections and controlled producers; no directory fixtures.
     "functional": ["CollectionCompatibilityTests", "DirectorySearcherConstructorFilterTests",
-                   "StreamingSearchResultTests"],
+                   "StreamingSearchResultTests", "GroupPrincipalCultureTests", "ProtocolTimeCultureTests"],
     # Reviewed detached/delegate-backed comparisons: no directory fixture or bind.
     "surface": ["SchemaNameCollectionComparisonTests", "SearcherConstructorFilterComparisonTests",
                 "SearcherValidationContractComparisonTests"],
 }
+
+
+def project_path(project):
+    # Projects move with this launcher; resolve independently of caller cwd.
+    return (Path(__file__).resolve().parent / project / f"{project}.csproj").relative_to(ROOT).as_posix()
 
 
 def prepare(group, framework, classes=None, dotnet="dotnet", results_directory=None):
@@ -49,7 +54,7 @@ def prepare(group, framework, classes=None, dotnet="dotnet", results_directory=N
     target = framework if group == "functional" else framework + "-windows"
     # Always build current sources: --no-build could silently run an old assembly
     # that has neither the fixture guard nor the pre-native LDAP guard.
-    command = [dotnet, "test", f"tests/{project}/{project}.csproj", "--configuration", "Release",
+    command = [dotnet, "test", project_path(project), "--configuration", "Release",
                "--framework", target, "--no-restore", "--filter", test_filter]
     if results_directory:
         label = {"functional": "acl-offline", "surface": "public-surface", "companion": "companion"}[group]

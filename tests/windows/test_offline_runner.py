@@ -38,6 +38,13 @@ class OfflineRunnerTests(unittest.TestCase):
         self.assertEqual("FullyQualifiedName~AdForLinux.FunctionalTests.OfflineExecutionGuardTests.", command[-1])
         self.assertNotIn("--no-build", command)
 
+    def test_generated_project_paths_exist_after_layout_move(self):
+        for group in runner.GROUPS:
+            for framework in ('net8.0','net10.0'):
+                with self.subTest(group=group,framework=framework):
+                    command,_=runner.prepare(group,framework)
+                    self.assertTrue((runner.ROOT/command[2]).is_file(),command[2])
+
     def test_every_group_runs_with_guard(self):
         for group in runner.GROUPS:
             with self.subTest(group=group), patch.object(runner.subprocess, "run") as process:

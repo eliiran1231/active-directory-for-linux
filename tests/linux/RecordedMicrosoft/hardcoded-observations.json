@@ -1,0 +1,1726 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+  "runId": 43105205156,
+  "jobId": 130806631589,
+  "recordKind": "unverified-assertion-operand",
+  "projection": "source-reviewed-Microsoft-expected-operands",
+  "rows": [
+    {
+      "framework": "net10.0-windows",
+      "record": 417,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 419,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 421,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 423,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 429,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 431,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 433,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 435,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 441,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 443,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 445,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 447,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 453,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 455,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 457,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 459,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 465,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 467,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 469,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 471,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 477,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 479,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 481,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 483,
+      "execution": "0b9a9068f0ec43b8aa08f379ffb57ff9",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 565,
+      "execution": "0d5c35b04e894ee4bdadb6d6ad1734e1",
+      "testMethodSha256": "0ae72f5d35f6521d0ff490ffc1ba36009893edd9923737f6b1430f6528705825",
+      "sourceSiteSha256": "18bc4e0bd6a70869cddc5e6bf72fceba042b20b53b5432065724e55a4bd30ed6",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 571,
+      "execution": "0d5c35b04e894ee4bdadb6d6ad1734e1",
+      "testMethodSha256": "0ae72f5d35f6521d0ff490ffc1ba36009893edd9923737f6b1430f6528705825",
+      "sourceSiteSha256": "18bc4e0bd6a70869cddc5e6bf72fceba042b20b53b5432065724e55a4bd30ed6",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 2397,
+      "execution": "39698ff1466343818711b06025bc8f32",
+      "testMethodSha256": "ab02b9bac4617f076140dc4f1c668006e22e9520746ad88c250675052174500b",
+      "sourceSiteSha256": "67355804fd57511d1eba7898745dec6a4c9b58d8f34e80f991d560045835f682",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 2403,
+      "execution": "39698ff1466343818711b06025bc8f32",
+      "testMethodSha256": "ab02b9bac4617f076140dc4f1c668006e22e9520746ad88c250675052174500b",
+      "sourceSiteSha256": "67355804fd57511d1eba7898745dec6a4c9b58d8f34e80f991d560045835f682",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3239,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3243,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3247,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3251,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3255,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3259,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3263,
+      "execution": "4e4642d8578f4e599a8b2dd7dccedb6a",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3349,
+      "execution": "4efc3b2318b6438792f91b076c2e74b6",
+      "testMethodSha256": "cb0f0458ad53431813222bb23f515e818e51f82adbb600623c743b5b37c3a5b6",
+      "sourceSiteSha256": "7d90322d1422d5e459563868a3c90dd1dfa2e68fc74d0fbbade11a9eab6d6b47",
+      "operand": {
+        "value": 2147483648,
+        "type": "int64"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3630,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3632,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3634,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3636,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3638,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3640,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3642,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3644,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3646,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3648,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3650,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3652,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3654,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3656,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3658,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3660,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3662,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3664,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3666,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3668,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3670,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 3672,
+      "execution": "570ae42737d94166949a14195514a366",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 4756,
+      "execution": "6a9f2dcefedf4c159136f51820485aac",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 4762,
+      "execution": "6a9f2dcefedf4c159136f51820485aac",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 4768,
+      "execution": "6a9f2dcefedf4c159136f51820485aac",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 4774,
+      "execution": "6a9f2dcefedf4c159136f51820485aac",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 5671,
+      "execution": "80753b62be664d9cb36ff3b8c3a55b5f",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "4a4523a6350c925d6e907c6f1ea177527b9dbe6fa315b25b73b9889ffba7d317",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 5673,
+      "execution": "80753b62be664d9cb36ff3b8c3a55b5f",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "921f6cfc69dd657bcdfe06f85d19981061f64f4367600878fe356982f8a770e8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 5675,
+      "execution": "80753b62be664d9cb36ff3b8c3a55b5f",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "8557f6710894ded0ab2290290588ab38b2dd3d7165906b70d796dfc253714794",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 5677,
+      "execution": "80753b62be664d9cb36ff3b8c3a55b5f",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "5da463b9cf743e1780191fc32185ac9778e16165f478166e48c1ddef5381b584",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 5679,
+      "execution": "80753b62be664d9cb36ff3b8c3a55b5f",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "3cb177961c44506c0905d6d85ce2f13760d63bf027147d280f38ef671b47a736",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 7679,
+      "execution": "b3dbafb1d3fd4b05bd451f5107ceb16e",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "b5678a2d589691ca978a4ff04d07d7d4b1d7cc297686d385b74fdd403dba0646",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 7681,
+      "execution": "b3dbafb1d3fd4b05bd451f5107ceb16e",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "a5dfb5c4bc835f55248d5da8e6ea4aca06d0975ad14e90338e8680b05f52345e",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 7683,
+      "execution": "b3dbafb1d3fd4b05bd451f5107ceb16e",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "b001975ee3dd89435f9040ad1437fe55c186c447990483adba42e397722c33d2",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 7915,
+      "execution": "b92056568c5648d48889dad40997b337",
+      "testMethodSha256": "bf99c126560b4c020fc82170b16e917dc9021cd2b499508af2303603853e81e6",
+      "sourceSiteSha256": "da6b654487a3aa2fc486cd414c226217772bf0c822995d4b731fdf681eab6bb9",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 7917,
+      "execution": "b92056568c5648d48889dad40997b337",
+      "testMethodSha256": "bf99c126560b4c020fc82170b16e917dc9021cd2b499508af2303603853e81e6",
+      "sourceSiteSha256": "0903f980e2ce32a077eb87abdad3cf20e955396b086fa2165c3362549af470db",
+      "operand": {
+        "value": 64,
+        "type": "int32"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 9784,
+      "execution": "e03aafe7c4b84807b11c645a501f180e",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ArgumentNullException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 9790,
+      "execution": "e03aafe7c4b84807b11c645a501f180e",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 9796,
+      "execution": "e03aafe7c4b84807b11c645a501f180e",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ArgumentNullException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 9800,
+      "execution": "e03aafe7c4b84807b11c645a501f180e",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 10175,
+      "execution": "eba47d18d67a4e33af1420902f47b48a",
+      "testMethodSha256": "587ee828d52f8f67928c347d21f01e262fe251277575f20e4e4ab9dd02a05147",
+      "sourceSiteSha256": "623864878d585c4d4c90c09263bc38db3de9dbedca9ad15f560a725688c69b52",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net10.0-windows",
+      "record": 10177,
+      "execution": "eba47d18d67a4e33af1420902f47b48a",
+      "testMethodSha256": "587ee828d52f8f67928c347d21f01e262fe251277575f20e4e4ab9dd02a05147",
+      "sourceSiteSha256": "881b4f958e59ef62fe79e84ffdc5d0e949877a10b625a9c26859e535f760b86e",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1068,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1072,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1076,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1080,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1084,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1088,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1092,
+      "execution": "1d1d5d3afaf24124bf0cb8f015272a53",
+      "testMethodSha256": "686e4fed3e8a903685d75f2cb2297b96d8d613efcc878d241b71dce7fe6ad8b3",
+      "sourceSiteSha256": "a8c648ef735ef603ef1d5f5024296205578c8a7bec20f9bb353637cc530ceea5",
+      "operand": {
+        "value": "System.ArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1332,
+      "execution": "216ab0c6839f4c3d863d86453305dd06",
+      "testMethodSha256": "ab02b9bac4617f076140dc4f1c668006e22e9520746ad88c250675052174500b",
+      "sourceSiteSha256": "67355804fd57511d1eba7898745dec6a4c9b58d8f34e80f991d560045835f682",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 1338,
+      "execution": "216ab0c6839f4c3d863d86453305dd06",
+      "testMethodSha256": "ab02b9bac4617f076140dc4f1c668006e22e9520746ad88c250675052174500b",
+      "sourceSiteSha256": "67355804fd57511d1eba7898745dec6a4c9b58d8f34e80f991d560045835f682",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4002,
+      "execution": "64b1fcaf20114a5d98b6216b651386ef",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "b5678a2d589691ca978a4ff04d07d7d4b1d7cc297686d385b74fdd403dba0646",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4004,
+      "execution": "64b1fcaf20114a5d98b6216b651386ef",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "a5dfb5c4bc835f55248d5da8e6ea4aca06d0975ad14e90338e8680b05f52345e",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4006,
+      "execution": "64b1fcaf20114a5d98b6216b651386ef",
+      "testMethodSha256": "654d57c0240fd4fb2011ee6166bb5b29bc626fb008b7a5c15660b7769cf27a9f",
+      "sourceSiteSha256": "b001975ee3dd89435f9040ad1437fe55c186c447990483adba42e397722c33d2",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4249,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4251,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4253,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4255,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4257,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4259,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4261,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4263,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4265,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4267,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4269,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "625a60b8ae3871a61c3aeb773532e6abd06cd692b6b8e72e533777543359efe6",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4271,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f6ceb05649d4b5d3b38d63d2bfc9e2e577ab0268e7abdcc98fac19f42de30e46",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4273,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4275,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4277,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4279,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4281,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4283,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4285,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4287,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4289,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "f0c2f0dd3f28b0abefdae0736a0bf11b99d00b81cc429c86bba40b8e97a30be8",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4291,
+      "execution": "6cf83b6860874087992c8e252b858132",
+      "testMethodSha256": "2cb7c5b3b6b36720b3e28eb3b2dd24bc8f29c9ba9dbfe31a7c6d69e3beda5530",
+      "sourceSiteSha256": "7f1ee27624759345e5bae6272724364e734a484ab424feada5d314700c7cd63d",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4480,
+      "execution": "71752ea380d149b890e6a2a7263dcb1d",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ArgumentNullException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4486,
+      "execution": "71752ea380d149b890e6a2a7263dcb1d",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4492,
+      "execution": "71752ea380d149b890e6a2a7263dcb1d",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ArgumentNullException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 4496,
+      "execution": "71752ea380d149b890e6a2a7263dcb1d",
+      "testMethodSha256": "710a30083c4556f98a6d190703cf80dda8c0a6e5ed35f8388007637bfbb4bab6",
+      "sourceSiteSha256": "db47b75e3fad7fb021c11aa81ecfc5b65d6c47b424000962c83cbdd2bff22604",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 6460,
+      "execution": "9a1f8d3c7c634296b5bfe056de0ecbd5",
+      "testMethodSha256": "0ae72f5d35f6521d0ff490ffc1ba36009893edd9923737f6b1430f6528705825",
+      "sourceSiteSha256": "18bc4e0bd6a70869cddc5e6bf72fceba042b20b53b5432065724e55a4bd30ed6",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 6466,
+      "execution": "9a1f8d3c7c634296b5bfe056de0ecbd5",
+      "testMethodSha256": "0ae72f5d35f6521d0ff490ffc1ba36009893edd9923737f6b1430f6528705825",
+      "sourceSiteSha256": "18bc4e0bd6a70869cddc5e6bf72fceba042b20b53b5432065724e55a4bd30ed6",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8059,
+      "execution": "bb88d9d71f0641ed99620cb04ca77a7a",
+      "testMethodSha256": "587ee828d52f8f67928c347d21f01e262fe251277575f20e4e4ab9dd02a05147",
+      "sourceSiteSha256": "623864878d585c4d4c90c09263bc38db3de9dbedca9ad15f560a725688c69b52",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8061,
+      "execution": "bb88d9d71f0641ed99620cb04ca77a7a",
+      "testMethodSha256": "587ee828d52f8f67928c347d21f01e262fe251277575f20e4e4ab9dd02a05147",
+      "sourceSiteSha256": "881b4f958e59ef62fe79e84ffdc5d0e949877a10b625a9c26859e535f760b86e",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8079,
+      "execution": "bc71ec228527481a97651420c00ed023",
+      "testMethodSha256": "cb0f0458ad53431813222bb23f515e818e51f82adbb600623c743b5b37c3a5b6",
+      "sourceSiteSha256": "7d90322d1422d5e459563868a3c90dd1dfa2e68fc74d0fbbade11a9eab6d6b47",
+      "operand": {
+        "value": 2147483648,
+        "type": "int64"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8466,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8468,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8470,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8472,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8478,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8480,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8482,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8484,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8490,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8492,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8494,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8496,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8502,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8504,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8506,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8508,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8514,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8516,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8518,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8520,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8526,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "d6c2d45be9f8e9417e5f70ff49e4afc8d44f3835e9bb8af66f1727a2413072ac",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8528,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "f24c5075a850cfa2134131f682cfa8be45d08ad32a25dcf85e7aff4422716acc",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8530,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "56bd0a2083d0e2b847b46fe33f7517b5dafcdf6789ae7cc0d9e90eb4341703fb",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 8532,
+      "execution": "c686eab3d2e54f25bac1a3adb953d3a1",
+      "testMethodSha256": "415ca148f8c8009b31a76f350692d3a5b2251d913bfca67907429fdf1c0646c7",
+      "sourceSiteSha256": "bd87d6a7753640c0e2022836f84cf83f0a282a0b4737efcf85b8c1c715835cdd",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9125,
+      "execution": "d5a6e9ff0e55481d81a627f91b4f9560",
+      "testMethodSha256": "bf99c126560b4c020fc82170b16e917dc9021cd2b499508af2303603853e81e6",
+      "sourceSiteSha256": "da6b654487a3aa2fc486cd414c226217772bf0c822995d4b731fdf681eab6bb9",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9127,
+      "execution": "d5a6e9ff0e55481d81a627f91b4f9560",
+      "testMethodSha256": "bf99c126560b4c020fc82170b16e917dc9021cd2b499508af2303603853e81e6",
+      "sourceSiteSha256": "0903f980e2ce32a077eb87abdad3cf20e955396b086fa2165c3362549af470db",
+      "operand": {
+        "value": 64,
+        "type": "int32"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9551,
+      "execution": "e11fba5421184c3b8e6ac37d83c5d4bc",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9557,
+      "execution": "e11fba5421184c3b8e6ac37d83c5d4bc",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9563,
+      "execution": "e11fba5421184c3b8e6ac37d83c5d4bc",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 9569,
+      "execution": "e11fba5421184c3b8e6ac37d83c5d4bc",
+      "testMethodSha256": "5bbe38b909a8a566298d4793fa6fd922363379e40f793d182d2c8e463402e3c8",
+      "sourceSiteSha256": "7616d1d84f295cec037fae61c39c6d4c9dd24c0b6f7f5a1806785c5079c454d1",
+      "operand": {
+        "value": "System.ComponentModel.InvalidEnumArgumentException",
+        "type": "exception-type"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 10910,
+      "execution": "fdfadef54017472ab109f0647b6a0e82",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "4a4523a6350c925d6e907c6f1ea177527b9dbe6fa315b25b73b9889ffba7d317",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 10912,
+      "execution": "fdfadef54017472ab109f0647b6a0e82",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "921f6cfc69dd657bcdfe06f85d19981061f64f4367600878fe356982f8a770e8",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 10914,
+      "execution": "fdfadef54017472ab109f0647b6a0e82",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "8557f6710894ded0ab2290290588ab38b2dd3d7165906b70d796dfc253714794",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 10916,
+      "execution": "fdfadef54017472ab109f0647b6a0e82",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "5da463b9cf743e1780191fc32185ac9778e16165f478166e48c1ddef5381b584",
+      "operand": {
+        "value": true,
+        "type": "boolean"
+      }
+    },
+    {
+      "framework": "net8.0-windows",
+      "record": 10918,
+      "execution": "fdfadef54017472ab109f0647b6a0e82",
+      "testMethodSha256": "fcdbdfdadd7b90f89b37798b67c8a9c879f19d514f6e676f6ba62483a78aba12",
+      "sourceSiteSha256": "3cb177961c44506c0905d6d85ce2f13760d63bf027147d280f38ef671b47a736",
+      "operand": {
+        "value": false,
+        "type": "boolean"
+      }
+    }
+  ]
+}

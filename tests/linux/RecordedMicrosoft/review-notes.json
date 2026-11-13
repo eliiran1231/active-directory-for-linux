@@ -1,0 +1,399 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+  "runId": 43105205156,
+  "notes": [
+    {
+      "method": "LowLevelPublicSurfaceComparisonTests.Newly_added_public_type_members_match_microsoft",
+      "file": "LowLevelPublicSurfaceComparisonTests.cs",
+      "sourceSha256": "5cd1ff03e64a508019930e5690af1c0bc7968d9582dc85dbcabb939e1a606610",
+      "decision": "incomplete-public-execution-projection",
+      "sourceDeclaredInputs": 22,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        91
+      ],
+      "reason": "Only one of 22 source-declared inputs has a public scalar execution identity. Base-type strings and member collections for the rest are redacted or opaque.",
+      "nextEvidenceNeeded": "Capture safe type/member identities and explicit input-row identities for all 22 cases."
+    },
+    {
+      "method": "PrincipalExtensionCacheComparisonTests.Extension_cache_operations_after_disposal_match_microsoft",
+      "file": "PrincipalExtensionCacheComparisonTests.cs",
+      "sourceSha256": "55ce623de46b789671c063646fd37b29da7b703445f207e6444800f380ec1438",
+      "decision": "incomplete-public-execution-projection",
+      "sourceDeclaredInputs": 3,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        107,
+        108
+      ],
+      "reason": "Only one of three source-declared inputs has public null operands. The other exception descriptions and cached arrays are absent from the scalar projection.",
+      "nextEvidenceNeeded": "Record sanitized exception type/parameter and collection observations with explicit identities for all three rows."
+    },
+    {
+      "method": "PrincipalValueCollectionEdgeCaseComparisonTests.Empty_copy_at_destination_boundary_matches_microsoft",
+      "file": "PrincipalValueCollectionEdgeCaseComparisonTests.cs",
+      "sourceSha256": "bfded04045f1f61ed41389fec5f7815df7eb9ce33ba1996799c2cc36dc4a5807",
+      "decision": "incomplete-public-execution-projection",
+      "sourceDeclaredInputs": 6,
+      "observedPublicExecutionsPerRuntime": 2,
+      "reviewedLines": [
+        31,
+        32
+      ],
+      "reason": "Only two of six source-declared inputs have public null operands. Destination arrays and non-null exception descriptions are not available as admitted scalar evidence.",
+      "nextEvidenceNeeded": "Capture destination-array state and sanitized exception type/parameter for every input row."
+    },
+    {
+      "method": "PrincipalValueCollectionEdgeCaseComparisonTests.Enumerator_after_mutation_attempt_matches_microsoft",
+      "file": "PrincipalValueCollectionEdgeCaseComparisonTests.cs",
+      "sourceSha256": "bfded04045f1f61ed41389fec5f7815df7eb9ce33ba1996799c2cc36dc4a5807",
+      "decision": "incomplete-public-execution-projection",
+      "sourceDeclaredInputs": 19,
+      "observedPublicExecutionsPerRuntime": 7,
+      "reviewedLines": [
+        131,
+        141,
+        142,
+        144
+      ],
+      "reason": "Only seven of 19 source-declared inputs have public null operands. Enumerator outcomes, collection snapshots and error descriptions are opaque or redacted.",
+      "nextEvidenceNeeded": "Capture structured enumerator outcome, mutation errors and collection snapshots with every input-row identity."
+    },
+    {
+      "method": "DictionaryMutationComparisonTests.Property_collection_dictionary_mutations_match_microsoft",
+      "file": "DictionaryMutationComparisonTests.cs",
+      "sourceSha256": "c9e37aa3f4039644213dc8240a76c94f0f12a6934e709d16cb9abcdedea0261d",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        18,
+        21
+      ],
+      "reason": "The public exception operands at line 21 compare literal NotSupportedException metadata to clone results. The Microsoft result is the opaque collection at line 18.",
+      "nextEvidenceNeeded": "Capture the Microsoft exception sequence as safe structured values; never promote the literal or clone operands into Microsoft evidence."
+    },
+    {
+      "method": "GroupScopeValidationComparisonTests.Group_scope_defines_the_same_named_values_as_microsoft",
+      "file": "GroupScopeValidationComparisonTests.cs",
+      "sourceSha256": "a77fb4164b884f99f73b690be1151566a38b6f388ac60a173a93e070404a93cb",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        12,
+        25
+      ],
+      "reason": "Public enum operands at line 25 come from the clone enum and clone group. Microsoft enum values occur in the opaque sequence at line 12.",
+      "nextEvidenceNeeded": "Capture the Microsoft enum sequence explicitly before claiming recorded equivalence."
+    },
+    {
+      "method": "CompatibilityNativeProjectionComparisonTests.Native_projection_tracks_repeated_access_and_filter_type_like_microsoft",
+      "file": "CompatibilityNativeProjectionComparisonTests.cs",
+      "sourceSha256": "d77a1e007fa92a3fa9a51bea42b87ac938e497ee978fcd935df370221fa76dc0",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": 2,
+      "observedPublicExecutionsPerRuntime": 2,
+      "reviewedLines": [
+        50,
+        64
+      ],
+      "reason": "All six public boolean pairs per runtime have literal true expected operands. Microsoft projection and filter snapshots were redacted.",
+      "nextEvidenceNeeded": "Capture sanitized Microsoft projection contents/multiplicity and filter structure; literal identity controls cannot supply the missing oracle."
+    },
+    {
+      "method": "PortableSecurityContractTests.Approved_identity_helper_exports_only_the_exact_factory_and_translation_contract",
+      "file": "PortableSecurityContractTests.cs",
+      "sourceSha256": "0aea8125b4ecc1b4d5ab1d714e1aba028f6823474765bc96c7c3dbd69e1a0fcd",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        26,
+        28,
+        40,
+        50,
+        55,
+        56,
+        63,
+        64
+      ],
+      "reason": "The method inspects the clone DirectoryIdentityResolver and PrincipalContext contract. Its scalar operands are literal contract requirements, framework metadata or clone reflection reads; none is a Microsoft DirectoryServices observation.",
+      "nextEvidenceNeeded": "Keep this as an independent clone surface-contract test. It cannot be included in Microsoft recorded-equivalence counts."
+    },
+    {
+      "method": "CompatibilitySearchResultCopyComparisonTests.CopyTo_validation_and_destination_state_match_microsoft",
+      "file": "CompatibilitySearchResultCopyComparisonTests.cs",
+      "sourceSha256": "c55f6dbcc07d05a638889c3e2a885cc7a4320ddf0bd73b33cabf601622c9cb5b",
+      "decision": "no-public-operation-outcome",
+      "sourceDeclaredInputs": 78,
+      "observedPublicExecutionsPerRuntime": 78,
+      "reviewedLines": [
+        72,
+        73,
+        76,
+        111
+      ],
+      "reason": "The MemberData generator declares 78 inputs (three counts, twenty typed/untyped shapes plus six collection-only shapes per count). All 312 public scalar operands per runtime are pre-copy Count assertions, including literals and clone reads. The actual copy exception, parameter and destination-reference sequence at line 111 is opaque, and source row keys at line 76 are not public. Setup counts alone do not establish any copy contract.",
+      "nextEvidenceNeeded": "Capture structured exception type/parameter and the normalized destination reference-position sequence with explicit input identities for every copy shape."
+    },
+    {
+      "method": "CompatibilitySearchResultLifecycleComparisonTests.Disposed_collection_access_matches_microsoft",
+      "file": "CompatibilitySearchResultLifecycleComparisonTests.cs",
+      "sourceSha256": "26b856e1d909c3111612773a7025941837b17ce745339ce2e03b2b00c8a04437",
+      "decision": "no-public-operation-outcome",
+      "sourceDeclaredInputs": 18,
+      "observedPublicExecutionsPerRuntime": 9,
+      "reviewedLines": [
+        103,
+        104,
+        108
+      ],
+      "reason": "The MemberData generator declares eighteen inputs (two materialization modes by nine operations). Only the nine materialized cases have public scalars: 36 pre-disposal Count operands per runtime, including literals and clone reads. Every actual disposed-access observation at line 108 is a redacted string, and unmaterialized cases have no public scalar execution identity. Setup counts cannot validate disposed access.",
+      "nextEvidenceNeeded": "Capture sanitized disposed-operation result or exception type/parameter with explicit materialization and operation identities for all eighteen rows."
+    },
+    {
+      "method": "CompatibilityCachedScalarLifecycleComparisonTests.Loaded_scalar_reread_matches_microsoft_after_underlying_cache_change",
+      "file": "CompatibilityCachedScalarLifecycleComparisonTests.cs",
+      "sourceSha256": "a1413c82a41eb60064c415630dfff0355ecf91532116159c7ac5b034457f1072",
+      "decision": "projected-cache-value-evidence-missing",
+      "sourceDeclaredInputs": 6,
+      "observedPublicExecutionsPerRuntime": 4,
+      "reviewedLines": [
+        29,
+        58,
+        60,
+        69,
+        84,
+        90
+      ],
+      "reason": "Only four of six source inputs have public scalar execution identities. Describe converts all projected values to redacted strings; visible integer operands describe raw cache setup, not projected retention. The shared WithSavedUsers helper saves new users before observation and deletes them during cleanup. The managed found-principal fixture is not equivalent: AttachExisting captures an initial scalar snapshot, whereas the new SaveCore insert path refreshes the created entry without that snapshot. A normal managed create/save/delete fixture is now available; missing projected values and input identities remain the blocker.",
+      "nextEvidenceNeeded": "Use the normal saved-new managed fixture and capture structured Microsoft projected values/types with explicit input identities for all rows. Preserve load/staging order and keep raw cache setup checks separate from projected retention outcomes.",
+      "relatedSources": [
+        {
+          "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+          "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+          "reviewedLines": [
+            121,
+            148,
+            151,
+            166
+          ]
+        }
+      ]
+    },
+    {
+      "method": "UserScalarCacheRetentionComparisonTests.Loaded_scalar_retains_its_value_after_raw_cache_edits",
+      "file": "UserScalarCacheRetentionComparisonTests.cs",
+      "sourceSha256": "d5ebe4962fac462db6c06a993c570a0f5974598341c5ddac05b7aa8b687f3d24",
+      "decision": "projected-cache-value-evidence-missing",
+      "sourceDeclaredInputs": 28,
+      "observedPublicExecutionsPerRuntime": 14,
+      "reviewedLines": [
+        12,
+        24,
+        29,
+        54,
+        59,
+        61,
+        70,
+        72,
+        73
+      ],
+      "reason": "The generator declares seven properties by four transitions, but only fourteen executions have public scalars. All 91 visible operands per runtime are null; twenty-one explicit pairs cover null projections in seven initially-absent executions. The nulls do not identify which property was exercised or supply missing replace/unchanged string projections. The shared WithSavedUsers helper saves new users before observation and deletes them during cleanup. The managed found-principal fixture is not equivalent: AttachExisting captures an initial scalar snapshot, whereas the new SaveCore insert path refreshes the created entry without that snapshot. A normal managed create/save/delete fixture is now available; missing projected values and input identities remain the blocker.",
+      "nextEvidenceNeeded": "Use the normal saved-new managed fixture and capture structured Microsoft projected values/types with explicit input identities for all rows. Preserve load/staging order and keep raw cache setup checks separate from projected retention outcomes.",
+      "relatedSources": [
+        {
+          "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+          "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+          "reviewedLines": [
+            121,
+            148,
+            151,
+            166
+          ]
+        }
+      ]
+    },
+    {
+      "method": "CompatibilityDeferredSearchErrorComparisonTests.Filter_error_stage_contract_and_same_searcher_recovery_match_microsoft",
+      "file": "CompatibilityDeferredSearchErrorComparisonTests.cs",
+      "sourceSha256": "c5d8e339d919ff3911fa53daef2b5687c0ea78e99583001f123bf5b1a022ebda",
+      "decision": "backend-validation-scenario-review-required",
+      "sourceDeclaredInputs": 12,
+      "observedPublicExecutionsPerRuntime": 12,
+      "reviewedLines": [
+        18,
+        42,
+        53,
+        56,
+        65,
+        69,
+        82,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130
+      ],
+      "reason": "The generator declares four filters by three cache/asynchronous modes and all twelve executions have public scalars. The source specifically measures FindAll/GetEnumerator/MoveNext failure stage and same-searcher recovery; those stage strings are redacted. The clone currently applies managed structural preflight only under NET10_0_OR_GREATER, while net8 relies on the native protocol path for malformed filter rejection. A scripted transport that supplies matching errors would bypass that validation path and cannot establish its timing or syntax contract. Setup/recovery zero counts alone are insufficient.",
+      "nextEvidenceNeeded": "Review a controlled backend that performs the ordinary filter validation for both runtimes, preserving cached/asynchronous disposal and same-searcher recovery; capture safe failure-stage enums, exception type/HResult/parameter and explicit input identities. Otherwise keep any injected-response test separately scoped to response propagation rather than claiming filter validation equivalence.",
+      "relatedImplementationSources": [
+        {
+          "file": "src/AdForLinux.DirectoryServices/DirectorySearcher.cs",
+          "sourceSha256": "26d91a5cadcfc7c5456f16cd58fe7b1babb9dcf498fefc9f93e9858ff766338b",
+          "reviewedLines": [
+            507,
+            513,
+            521,
+            853,
+            854,
+            1108,
+            1109
+          ]
+        }
+      ]
+    },
+    {
+      "method": "PrincipalExtensionPropertyIsolationComparisonTests.Unsaved_standard_property_does_not_populate_extension_cache",
+      "file": "PrincipalExtensionPropertyIsolationComparisonTests.cs",
+      "sourceSha256": "8801933ec55433fe400163d1d47408cfc990961ee6103df74f93daed9c71606d",
+      "decision": "incomplete-public-execution-projection",
+      "sourceDeclaredInputs": 7,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        13,
+        42,
+        43,
+        51,
+        52,
+        53,
+        54,
+        55
+      ],
+      "reason": "Only the null-valued Description input among seven declared rows has public scalar execution identity. Of its eight null operands per runtime, only the actual Microsoft getter operands at lines 42 and 53 are Microsoft reads; adjacent expected values are input literals and the other getters are clone reads. The actual ExtensionGet arrays before/after standard and extension writes are opaque. A narrow null-getter control would not establish the seven-row extension-cache isolation contract.",
+      "nextEvidenceNeeded": "Capture explicit identities for all seven inputs and structured Microsoft extension-array count/value roles before/after each write, keeping standard getter controls separate from the cache-isolation outcome."
+    },
+    {
+      "method": "PropertyValueTypeComparisonTests.DirectoryEntry_and_SearchResult_preserve_schema_CLR_types",
+      "file": "PropertyValueTypeComparisonTests.cs",
+      "sourceSha256": "9fbab2ff51020c6c885c8096144e89f24e539600e2fda877e399357b604f0d6e",
+      "decision": "typed-value-projection-missing",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        43,
+        66,
+        146,
+        152,
+        159,
+        161,
+        166
+      ],
+      "reason": "All thirty public integer operands per runtime are collection lengths from CompareValues line 146: fifteen Microsoft lengths and fifteen clone lengths. CLR type/value matching happens through ValuesEqual and an unhooked Assert.True; no successful typed-value snapshot is present in the scalar recording. Microsoft lengths are usable count controls, but equal lengths can hide wrong CLR types or values and do not establish this typed-value contract.",
+      "nextEvidenceNeeded": "Capture safe finite CLR type identifiers and typed Microsoft value projections, normalizing generated SID/GUID identities to reviewed roles. Keep any count-only adaptation explicitly limited to counts; do not infer type/value equality from source fixture literals or successful length comparisons."
+    },
+    {
+      "method": "PropertyValueTypeComparisonTests.Typed_writes_are_culture_invariant_and_round_trip",
+      "file": "PropertyValueTypeComparisonTests.cs",
+      "sourceSha256": "9fbab2ff51020c6c885c8096144e89f24e539600e2fda877e399357b604f0d6e",
+      "decision": "typed-value-projection-missing",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        87,
+        94,
+        109,
+        110,
+        111,
+        146,
+        159,
+        161,
+        166
+      ],
+      "reason": "All six public integer operands per runtime are three Microsoft/clone collection-length pairs at CompareValues line 146. The source creates through the clone under ar-SA and reads back through both providers, while exact CLR type/value comparisons are unhooked. Lengths do not prove invariant serialization, timestamp/binary round-trip values or Microsoft CLR projections.",
+      "nextEvidenceNeeded": "Capture structured Microsoft type/value readback and reviewed wire/value normalization for the three attributes. Preserve the culture and actual create/write/readback scenario; a count-only mirror must not be represented as typed or culture-invariance equivalence."
+    },
+    {
+      "method": "DifferentialSettingsTests.Override_must_have_the_disposable_ou_as_an_actual_ancestor",
+      "file": "DifferentialSettingsTests.cs",
+      "sourceSha256": "936c92e3b3aba1b85d3007db1b0f418dc83e0aa6bf94858131d0dc55f2ec5c99",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": 7,
+      "observedPublicExecutionsPerRuntime": 7,
+      "reviewedLines": [
+        8,
+        15,
+        16,
+        17
+      ],
+      "reason": "The expected booleans are InlineData policy requirements and the actual booleans come from the repository DifferentialSettings.IsWithinTestBase helper. This is a clone/lab-scope safety contract, with no Microsoft DirectoryServices object or observation on either side.",
+      "nextEvidenceNeeded": "Keep and run this independent path-safety contract in its existing offline utility suite; it cannot supply Microsoft recorded-equivalence coverage.",
+      "relatedSources": [
+        {
+          "file": "DifferentialSettings.cs",
+          "sourceSha256": "35488d45ae33ac85791b49a03c68ef915056aab7e9388a11bb640bad84022059",
+          "reviewedLines": [
+            62
+          ]
+        }
+      ]
+    },
+    {
+      "method": "Issue56ConnectionInheritanceTests.Direct_children_add_inherits_protected_negotiate_options",
+      "file": "Issue56ConnectionInheritanceTests.cs",
+      "sourceSha256": "7bf1a4e156ebf35eafa8dab6edec62aafb30576d809b72bc6d4a8e6096147a07",
+      "decision": "no-admissible-microsoft-scalar",
+      "sourceDeclaredInputs": null,
+      "observedPublicExecutionsPerRuntime": 1,
+      "reviewedLines": [
+        24,
+        28,
+        33,
+        34,
+        35,
+        36,
+        39
+      ],
+      "reason": "The expected enum at line 34 is the framework AuthType.Negotiate constant; the actual enum is the clone child.BuildOptions AuthenticationType. This class uses only clone contexts/entries and performs its own protected-bind integration scenario. Neither operand is a Microsoft DirectoryServices observation.",
+      "nextEvidenceNeeded": "Keep this as an independent clone protected-connection inheritance/integration test. Do not promote the framework constant or clone option into a recorded Microsoft oracle."
+    },
+    {
+      "method": "NextBatchPrincipalStateComparisonTests.Staged_principal_scalar_is_independent_of_entry_cache_and_refresh",
+      "file": "NextBatchPrincipalStateComparisonTests.cs",
+      "sourceSha256": "6d6699d71d670ce886b3173bdc3c893ee0b1987deda88fe7b2d6bb9a1ee533de",
+      "decision": "projected-cache-value-evidence-missing",
+      "sourceDeclaredInputs": 2,
+      "observedPublicExecutionsPerRuntime": 2,
+      "reviewedLines": [
+        125,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        139,
+        140
+      ],
+      "reason": "Both optional-refresh inputs expose one explicit Microsoft null at raw entry before Save (line 129). The staged principal getter, getter after optional native RefreshCache and fresh lookup after Save are redacted strings. The null alone establishes an initial raw-cache observation, not retention or persistence of the staged principal scalar. Unlike a found AttachExisting substitute, the shared helper uses the new-user SaveCore path; the normal saved-new managed fixture is available, but the projected contract values remain missing.",
+      "nextEvidenceNeeded": "Capture structured Microsoft principal/raw/reloaded values with explicit input identities for both refresh modes; retain normal new-user creation and independent reload, and do not claim the pre-Save null alone proves staged retention.",
+      "relatedSources": [
+        {
+          "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+          "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+          "reviewedLines": [
+            121,
+            148,
+            151,
+            166
+          ]
+        }
+      ]
+    }
+  ]
+}

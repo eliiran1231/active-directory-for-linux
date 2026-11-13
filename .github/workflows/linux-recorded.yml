@@ -11,10 +11,13 @@ jobs:
       fail-fast: false
       matrix:
         framework: [net8.0, net10.0]
+        locale: [C.UTF-8, fa_IR.UTF-8]
     env:
       DOTNET_ROLL_FORWARD: LatestPatch
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       ADFL_OFFLINE_TESTS: '1'
+      LANG: ${{ matrix.locale }}
+      LC_ALL: ${{ matrix.locale }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -27,4 +30,36 @@ jobs:
       - name: Restore clone-only runner
         run: dotnet restore tests/linux/RecordedMicrosoft/RecordedMicrosoft.csproj
       - name: Compare Linux operations against recorded Microsoft values
+        env:
+          TZ: UTC
         run: dotnet run --project tests/linux/RecordedMicrosoft/RecordedMicrosoft.csproj -c Release -f ${{ matrix.framework }} --no-restore
+
+  historical-replay:
+    name: Historical source-linked replay (${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net8.0, net10.0]
+    env:
+      DOTNET_ROLL_FORWARD: LatestPatch
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      ADFL_OFFLINE_TESTS: '1'
+      DOTNET_PROCESSOR_COUNT: '1'
+      UseSharedCompilation: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Validate historical source and fixture tooling
+        run: python3 -m unittest discover -s tests/windows/differential-replay -p 'test_replay.py' -v
+      - name: Restore bounded source-linked replay
+        run: dotnet restore tests/windows/differential-replay/AdForLinux.DifferentialTests.csproj
+      - name: Verify all 42 exact historical cases
+        run: python3 tests/windows/differential-replay/run.py --framework ${{ matrix.framework }}

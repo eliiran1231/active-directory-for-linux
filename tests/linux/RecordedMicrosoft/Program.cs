@@ -2,9 +2,11 @@ using System.Text.Json;
 using Ours = AdForLinux.DirectoryServices;
 
 // Clone-only adaptations of the four source-pinned Windows Facts documented in README.
-// No directory bindings, PrincipalContexts, or network operations occur here.
+// All adapters run under the offline guard; synthetic contexts configure local state only.
 Environment.SetEnvironmentVariable("ADFL_OFFLINE_TESTS", "1");
 if (!OperatingSystem.IsLinux()) throw new InvalidOperationException("Run this oracle suite on Linux.");
+MirrorExceptionCapture.ValidateBoundary();
+SavedPrincipalMirrors.ValidateCreationBoundary();
 using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"oracle.json")));
 var framework = $"net{Environment.Version.Major}.0-windows";
 var oracle = document.RootElement.GetProperty("frameworks").GetProperty(framework);
@@ -63,9 +65,11 @@ if(count!=79 || cases!=4) throw new InvalidOperationException("Unexpected covera
 var hardcodedCount = HardcodedMirrors.Run();
 var theory = RecordedTheoryMirrors.Run();
 var offline = OfflineTheoryMirrors.Run();
-var partialMethods = new HashSet<string>(oracle.EnumerateObject().Select(method => "DirectorySearchOptionsComparisonTests." + method.Name), StringComparer.Ordinal);
-partialMethods.UnionWith(HardcodedExpectations.Values.Keys.Select(key => key[..key.LastIndexOf(':')]));
-partialMethods.UnionWith(RecordedTheoryExpectations.Values.Keys.Where(key => key.StartsWith(framework + "|", StringComparison.Ordinal)).Select(key => key[(framework.Length + 1)..]));
-partialMethods.UnionWith(OfflineTheoryMirrors.MethodNames);
-if (partialMethods.Count != 44) throw new InvalidOperationException("Unexpected distinct method coverage");
-Console.WriteLine($"PASS: {partialMethods.Count} distinct partial source methods ({theory.Executions + offline.Executions} source-declared theory rows; method multisets, row identities unresolved), {count + hardcodedCount + theory.Checks + offline.Checks} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");
+var mirroredMethods = new HashSet<string>(oracle.EnumerateObject().Select(method => "DirectorySearchOptionsComparisonTests." + method.Name), StringComparer.Ordinal);
+mirroredMethods.UnionWith(HardcodedExpectations.Values.Keys.Select(key => key[..key.LastIndexOf(':')]));
+mirroredMethods.UnionWith(RecordedTheoryExpectations.Values.Keys.Where(key => key.StartsWith(framework + "|", StringComparison.Ordinal)).Select(key => key[(framework.Length + 1)..]));
+mirroredMethods.UnionWith(OfflineTheoryMirrors.MethodNames);
+if (mirroredMethods.Count != 150) throw new InvalidOperationException("Unexpected distinct method coverage");
+var completeMetadataCount=OfflineTheoryMirrors.CompleteMetadataMethods.Count;
+if (!OfflineTheoryMirrors.CompleteMetadataMethods.All(mirroredMethods.Contains)) throw new InvalidOperationException("Complete metadata method missing from coverage");
+Console.WriteLine($"PASS: {mirroredMethods.Count} distinct source methods ({completeMetadataCount} complete metadata Fact; {mirroredMethods.Count-completeMetadataCount} partial; {theory.Executions + offline.Executions} source-declared theory rows; {OfflineTheoryMirrors.InputSubsetMethods} reviewed input subset; method multisets, row identities unresolved), {count + hardcodedCount + theory.Checks + offline.Checks} recorded Microsoft scalar observations ({framework}). No live AD; remaining suite NOT covered.");

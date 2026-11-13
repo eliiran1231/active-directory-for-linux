@@ -1,0 +1,49 @@
+{
+  "description": "Authentic public helper calls excluded because their targets are Microsoft-only or expected operands are portable literals; not Linux-to-Microsoft comparisons.",
+  "rows": [
+    {
+      "assertionOutcome": "unverified",
+      "execution": "b5c2cdc61d60462999ab40190aa56c27",
+      "record": 7791,
+      "testMethodSha256": "cebd81d04a7c3c7a0eeb7700af7495d025cc658b09ef0cbbca032e0ac7685328",
+      "observedScalarsEqual": true,
+      "sourceSiteSha256": "ec9e78fb8118d2ce60911e67e10e23102cb8d8a374449a450e39db7159a63eda",
+      "kind": "reviewed-scalar-pair",
+      "ourActualObservation": {
+        "value": null,
+        "type": "null"
+      },
+      "candidate": "matching-scalars",
+      "replayEligibility": "unverified",
+      "framework": "net8.0-windows",
+      "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+      "microsoftExpectedObservation": {
+        "value": null,
+        "type": "null"
+      },
+      "theoryInputMapping": "unresolved"
+    },
+    {
+      "assertionOutcome": "unverified",
+      "execution": "b5c2cdc61d60462999ab40190aa56c27",
+      "record": 7797,
+      "testMethodSha256": "cebd81d04a7c3c7a0eeb7700af7495d025cc658b09ef0cbbca032e0ac7685328",
+      "observedScalarsEqual": true,
+      "sourceSiteSha256": "ec9e78fb8118d2ce60911e67e10e23102cb8d8a374449a450e39db7159a63eda",
+      "kind": "reviewed-scalar-pair",
+      "ourActualObservation": {
+        "value": null,
+        "type": "null"
+      },
+      "candidate": "matching-scalars",
+      "replayEligibility": "unverified",
+      "framework": "net8.0-windows",
+      "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+      "microsoftExpectedObservation": {
+        "value": null,
+        "type": "null"
+      },
+      "theoryInputMapping": "unresolved"
+    }
+  ]
+}

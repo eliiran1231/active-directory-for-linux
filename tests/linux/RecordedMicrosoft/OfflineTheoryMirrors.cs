@@ -8,6 +8,8 @@ using DS = AdForLinux.DirectoryServices;
 internal static class OfflineTheoryMirrors
 {
     internal static IReadOnlyCollection<string> MethodNames { get; private set; } = [];
+    internal static IReadOnlyCollection<string> CompleteMetadataMethods { get; private set; } = [];
+    internal static int InputSubsetMethods { get; private set; }
 
     internal static TheoryMirrorResult Run()
     {
@@ -22,6 +24,7 @@ internal static class OfflineTheoryMirrors
         var methods = 0;
         var executions = 0;
         var checks = 0;
+        var factExecutions = 0;
         void Verify(string name, List<Sequence> rows)
         {
             if (!verified.Add(name)) throw new InvalidOperationException("Duplicate mirror method: " + name);
@@ -31,6 +34,14 @@ internal static class OfflineTheoryMirrors
                 throw new InvalidOperationException("Offline recorded method multiset differs: " + name);
             methods++;
             executions += rows.Count;
+            var kind = document.RootElement.GetProperty("methodKinds").TryGetProperty(name,out var explicitKind)
+                ? explicitKind.GetString()
+                : assertions.RootElement.GetProperty("methodKinds").GetProperty(name).GetString();
+            if (kind=="Fact")
+            {
+                if (rows.Count!=1) throw new InvalidOperationException("Fact has multiple executions: "+name);
+                factExecutions += rows.Count;
+            }
             checks += rows.Sum(row => row.Count);
         }
         Verify("CompatibilityContextValidationComparisonTests.Full_constructor_local_validation_precedence_matches_microsoft", ContextValidation());
@@ -43,10 +54,47 @@ internal static class OfflineTheoryMirrors
         Verify("SchemaNameCollectionComparisonTests.Invalid_indexer_exception_type_matches_microsoft", CollectionAssertionMirrors.SchemaIndexes(paired:true));
         ReviewedAssertionMirrors.Run(Verify);
         CollectionAssertionMirrors.Run(Verify);
-        if (expected.Count != methods || methods != 22 || executions != 110 || checks != 369)
+        MiscOfflineMirrors.Run(Verify);
+        DetachedEntryMirrors.Run(Verify);
+        DetachedResultMirrors.Run(Verify);
+        DetachedControlMirrors.Run(Verify);
+        UnsavedContextMirrors.Run(Verify);
+        NativeSearcherMirrors.Run(Verify);
+        QueryTranslationMirrors.Run(Verify);
+        RetainedCollectionMirrors.Run(Verify);
+        DictionaryCursorMirrors.Run(Verify);
+        AdvancedSetterMirrors.Run(Verify);
+        QueryInputMirrors.Run(Verify);
+        ControlledResultCursorMirrors.Run(Verify);
+        PrincipalCursorMirrors.Run(Verify);
+        EntryOptionsMirrors.Run(Verify);
+        NeutralFailureMirrors.Run(Verify);
+        NeutralVlvMirrors.Run(Verify);
+        StoredIdentityMirrors.Run(Verify);
+        ResultFactoryMirrors.Run(Verify);
+        StatefulEntryMirrors.Run(Verify);
+        SavedPrincipalMirrors.Run(Verify);
+        ChildEnumerationMirrors.Run(Verify);
+        if (expected.Count != methods || methods != 128 || executions != 467 || checks != 1449 || factExecutions != 39)
             throw new InvalidOperationException($"Unexpected offline coverage: {methods}/{executions}/{checks}");
+        var complete=assertions.RootElement.GetProperty("completeMetadataFacts").EnumerateArray()
+            .Select(value => value.GetString()!).ToArray();
+        if (complete.Length!=1 || complete.Any(name => !verified.Contains(name)
+                || assertions.RootElement.GetProperty("methodKinds").GetProperty(name).GetString()!="Fact"
+                || expected[name].GetArrayLength()!=1
+                || expected[name][0].GetString()!.Split(',').Length!=1))
+            throw new InvalidOperationException("Unverified complete metadata scope");
+        var subsets=assertions.RootElement.GetProperty("inputProjections").EnumerateObject().ToArray();
+        if (subsets.Length!=1 || subsets.Any(subset => !verified.Contains(subset.Name)
+                || complete.Contains(subset.Name)
+                || assertions.RootElement.GetProperty("methodKinds").GetProperty(subset.Name).GetString()!="Theory"
+                || expected[subset.Name].GetArrayLength()!=subset.Value.GetProperty("includedInputs").GetArrayLength()
+                || subset.Value.GetProperty("excludedInputs").GetArrayLength()==0))
+            throw new InvalidOperationException("Unverified source-branch subset scope");
+        InputSubsetMethods=subsets.Length;
+        CompleteMetadataMethods=complete;
         MethodNames = verified.ToArray();
-        return new(methods, executions, checks);
+        return new(methods, executions-factExecutions, checks);
     }
 
     internal sealed class Sequence
@@ -54,6 +102,17 @@ internal static class OfflineTheoryMirrors
         private readonly List<string> values = new();
         internal int Count => values.Count;
         internal string Text => string.Join(',', values);
+        internal void ObserveNullability(int line, System.Reflection.NullabilityState value) =>
+            values.Add(line + "=enum64:" + ((long)value).ToString(CultureInfo.InvariantCulture));
+
+        internal void ObserveDateTimeKind(int line, DateTimeKind? value)
+        {
+            if (value is null) { Observe(line,null);return; }
+            if (value.Value is not (DateTimeKind.Unspecified or DateTimeKind.Utc or DateTimeKind.Local))
+                throw new InvalidOperationException("Unreviewed DateTimeKind domain");
+            values.Add(line+"=enum64:"+((long)value.Value).ToString(CultureInfo.InvariantCulture));
+        }
+
         internal void Observe(int line, object? value, bool exceptionType = false)
         {
             var token = value switch
@@ -61,6 +120,7 @@ internal static class OfflineTheoryMirrors
                 null => "n",
                 bool boolean => boolean ? "b1" : "b0",
                 int integer => "i32:" + integer.ToString(CultureInfo.InvariantCulture),
+                long integer => "i64:" + integer.ToString(CultureInfo.InvariantCulture),
                 string name when exceptionType => "e:" + name,
                 _ => null, // Non-null parameter/object/type strings were redacted.
             };
@@ -68,11 +128,7 @@ internal static class OfflineTheoryMirrors
         }
     }
 
-    internal static Exception? Capture(Action action)
-    {
-        try { action(); return null; }
-        catch (Exception error) { return error; }
-    }
+    internal static Exception? Capture(Action action) => MirrorExceptionCapture.Capture(action);
 
     private static List<Sequence> ContextValidation()
     {

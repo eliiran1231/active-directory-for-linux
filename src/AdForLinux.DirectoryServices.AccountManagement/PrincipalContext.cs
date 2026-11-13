@@ -525,7 +525,11 @@ public partial class PrincipalContext : IDisposable
     {
         CheckDisposed();
         _readOnlyProbe?.Check();
-        return new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
+        var entry = new DirectoryEntry(PathFor(distinguishedName), BuildOptions());
+        // Derived entries retain an explicitly selected controlled operation backend.
+        entry.OperationSessionFactory = _searchRoot?.OperationSessionFactory;
+        entry.OperationSessionFactoryWithBudget = _searchRoot?.OperationSessionFactoryWithBudget;
+        return entry;
     }
 
     // Internal AccountManagement searches inherit the explicitly selected exact

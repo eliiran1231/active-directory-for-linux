@@ -16,8 +16,15 @@ def extract(rows, source):
  result={'schemaVersion':1,'sourceCommit':COMMIT,'sourceFileSha256':SOURCE_SHA,'runId':43105205156,'jobId':130806631589,'coverage':'partial-four-parameterless-facts','frameworks':{}}
  for framework in ('net8.0-windows','net10.0-windows'):
   out={}
+  seen_records=set()
   for method,sites in METHODS.items():
    candidates=[r for r in rows if r.get('framework')==framework and r.get('testMethodSha256')==sha(CLASS+method)]
+   for r in candidates:
+    record=r.get('record')
+    if type(record) is not int or record<=0 or record in seen_records:raise ValueError('Duplicate or invalid public record')
+    seen_records.add(record)
+    execution=r.get('execution')
+    if type(execution) is not str or len(execution)!=32 or any(c not in '0123456789abcdef' for c in execution):raise ValueError('Invalid execution identity')
    if len({r['execution'] for r in candidates})!=1:raise ValueError('Missing or ambiguous Fact execution')
    props={}
    for line,prop,count in sites:
@@ -31,6 +38,7 @@ def extract(rows, source):
      if r['commit']!=COMMIT or r['kind']!='unverified-assertion-operand' or r['operand']['type']!=expected:raise ValueError('Unexpected provenance/type')
      value=r['operand']['value']
      if type(value) is not (bool if expected=='boolean' else int):raise ValueError('Invalid typed value')
+     if expected=='int32' and not -(2**31)<=value<2**31:raise ValueError('Int32 outside declared range')
      values.append(value)
     props[str(line)]={'property':prop,'sourceSiteSha256':site,'values':values,'publicRecordNumbers':[r['record'] for r in matches]}
    out[method]=props

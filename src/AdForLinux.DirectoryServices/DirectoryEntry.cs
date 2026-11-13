@@ -540,6 +540,8 @@ public partial class DirectoryEntry : Component
             ? new DirectoryEntry(path, parent._username, parent._password, parent._authenticationType)
             : new DirectoryEntry(path, parent._connectionOptionsOverride.Clone());
         child.RestrictedKerberos = parent.RestrictedKerberos;
+        child.OperationSessionFactory = parent.OperationSessionFactory;
+        child.OperationSessionFactoryWithBudget = parent.OperationSessionFactoryWithBudget;
         child._isNew = true;
         child._properties = new PropertyCollection(child.OnPropertyChanged, validateOwner: child.CapturePropertyOwnerValidation());
 

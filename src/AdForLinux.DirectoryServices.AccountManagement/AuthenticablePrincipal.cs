@@ -403,7 +403,7 @@ public class AuthenticablePrincipal : Principal
         // lockoutDuration lives on the domain object at the naming context root,
         // which is not the container when the context is scoped.
         using var domain = ContextRef.CreateDirectoryEntry(ContextRef.DefaultNamingContext);
-        return AdFileTime.ToDuration(domain.Properties["lockoutDuration"].Value?.ToString());
+        return AdFileTime.ToDuration(domain.Properties["lockoutDuration"].Value);
     }
 
     private bool HasUserAccountControlBit(int bit)

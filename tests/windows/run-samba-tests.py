@@ -18,15 +18,16 @@ def prepare(framework, environment=None):
     if framework not in ("net8.0", "net10.0"):
         raise ValueError("Unsupported runtime.")
     project, defaults = offline["GROUPS"]["functional"]
+    project_file = offline["project_path"](project)
     classes = list(dict.fromkeys(defaults + offline["EXTRA"].get("functional", [])))
     guarded, _ = offline["prepare"]("functional", framework, classes)
     # Exact complements of the same canonical set: every test is assigned to
     # one process. In particular ConnectionPoolSambaTests stays in the live set.
     remainder = "&".join(f"FullyQualifiedName!~{project}.{name}." for name in classes)
-    live = ["dotnet", "test", f"tests/{project}/{project}.csproj", "--configuration", "Release",
+    live = ["dotnet", "test", project_file, "--configuration", "Release",
             "--framework", framework, "--no-restore", "--filter", remainder]
     environment["DOTNET_GENERATE_ASPNET_CERTIFICATE"] = "false"
-    return [(["dotnet", "restore", f"tests/{project}/{project}.csproj"], environment),
+    return [(["dotnet", "restore", project_file], environment),
             (guarded, dict(environment, ADFL_OFFLINE_TESTS="1")), (live, environment)]
 
 

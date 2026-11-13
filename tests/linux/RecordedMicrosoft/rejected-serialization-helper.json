@@ -1,0 +1,19 @@
+{
+  "purpose": "Rejection-only public record from the fourth clone-only AssertMetadata invocation; never oracle input.",
+  "row": {
+    "framework": "net8.0-windows",
+    "operand": {
+      "value": -2147024891,
+      "type": "int32"
+    },
+    "microsoftOrigin": "unverified",
+    "kind": "unverified-assertion-operand",
+    "execution": "33addb358f124919a060e315ea5e9ece",
+    "theoryInputMapping": "unresolved",
+    "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+    "record": 2030,
+    "testMethodSha256": "45841e463a356b2d311b853e2d7447920152db47ab1d1315e1b4f71d6ec1d81f",
+    "sourceSiteSha256": "c8192f02835f6af0071eae8820e017c983a92d17f8d7b87df6c69fda9fff19af",
+    "replayEligibility": "unverified"
+  }
+}

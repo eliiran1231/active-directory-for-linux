@@ -140,13 +140,6 @@ wrong source metadata, changed sources, tampered fixture bytes, exact execution
 counts and mismatched structured/legacy values. Python syntax and Git whitespace
 checks also pass.
 
-The first 30-case version, commit `2be9e14`, was separately validated on Linux:
-30/30 passed on .NET 8 and .NET 10, no skips, with exact case identities verified.
-**The expansion to 42 cases and new Windows recording helper have not yet been
-compiled or executed.** No .NET SDK/runtime is installed in this implementation
-environment. All 84 selected original Windows rows passed in the retained run,
-but that is not evidence that the expanded replay or recorder builds or passes.
-The project is intentionally outside the solution and CI while awaiting that
-validation. Restore this project explicitly using the command above; solution
-restore does not prepare its assets. No live directory tests, push or publication
-were performed.
+The expanded 42-case project was compiled and executed on Linux on 2026-11-12 using SDK 10.0.404, runtime 8.0.34 and runtime 10.0.15. Both targets passed **42/42 cases with no skips**, and `run.py` verified the exact recorded case names and passing TRX outcomes. All 37 Python extraction/runner/schema checks passed as well. Single-processor MSBuild execution avoided the cloud sandbox's denied worker-pipe creation.
+
+The project remains outside the solution and has its own separate job in the manual `Linux recorded Microsoft oracle (partial)` workflow. Its expectations remain attributed to run #202; they are not new observations from run 43105205156. No live directory operation was performed during this validation.

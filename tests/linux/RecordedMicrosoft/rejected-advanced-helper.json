@@ -1,0 +1,25 @@
+{
+  "purpose": "Rejection-only public record from a literal-null translation helper call; never oracle input.",
+  "row": {
+    "assertionOutcome": "unverified",
+    "execution": "18a8e8a250374466be33c15d36b88274",
+    "record": 792,
+    "testMethodSha256": "105d84d10e7910c784df684375b371905d767a599dd6a0a9d4661e9f659a38bb",
+    "observedScalarsEqual": true,
+    "sourceSiteSha256": "3ca8345ec5d29bfaa7b66f8495719289a363b7c7152cdcd50605bd02ca018756",
+    "kind": "reviewed-scalar-pair",
+    "ourActualObservation": {
+      "value": null,
+      "type": "null"
+    },
+    "candidate": "matching-scalars",
+    "replayEligibility": "unverified",
+    "framework": "net8.0-windows",
+    "commit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
+    "microsoftExpectedObservation": {
+      "value": null,
+      "type": "null"
+    },
+    "theoryInputMapping": "unresolved"
+  }
+}

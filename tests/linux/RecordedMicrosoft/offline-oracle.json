@@ -3,7 +3,86 @@
   "sourceCommit": "93f1f9c6b593d9f4dd38d23616632dc6a015f4ca",
   "runId": 43105205156,
   "jobId": 130806631589,
-  "coverage": "partial-eight-offline-theory-method-multisets",
+  "coverage": "partial-offline-method-scalar-multisets",
+  "methodKinds": {
+    "CompatibilityContextValidationComparisonTests.Full_constructor_local_validation_precedence_matches_microsoft": "Theory",
+    "CompatibilityContextlessSearcherComparisonTests.Rejected_contextless_filter_assignment_and_followup_match_microsoft": "Theory",
+    "AdvancedFilterInstanceComparisonTests.Built_in_criteria_can_be_configured_without_an_owner": "Theory",
+    "AdvancedFiltersOwnerComparisonTests.Protected_constructor_accepts_the_same_owner_values": "Theory",
+    "CompatibilityDisposedEntryValidationComparisonTests.Disposed_entry_and_invalid_argument_precedence_match_microsoft": "Theory",
+    "CompatibilityDisposedPropertyContainsComparisonTests.Disposed_owner_and_null_name_validation_have_matching_precedence": "Theory",
+    "CompatibilityFailedRefreshWrapperComparisonTests.Failed_refresh_preserves_property_wrapper_like_microsoft": "Theory",
+    "SchemaNameCollectionComparisonTests.Invalid_indexer_exception_type_matches_microsoft": "Theory",
+    "DirectoryEntryDisposedWrapperComparisonTests.Property_wrapper_access_after_dispose_matches_microsoft": "Theory",
+    "DirectoryEntryCredentialCacheComparisonTests.Credential_assignment_invalidates_property_wrapper_like_microsoft": "Theory",
+    "DirectoryEntryCredentialCacheComparisonTests.Authentication_assignment_invalidates_property_wrapper_like_microsoft": "Theory",
+    "DirectoryEntryPathEquivalenceComparisonTests.Equivalent_path_assignment_preserves_text_and_property_wrapper_like_microsoft": "Theory",
+    "DirectoryEntryUnboundCommitComparisonTests.Unbound_commit_and_cache_mode_transition_match_microsoft": "Theory",
+    "PropertyCollectionBindingComparisonTests.Collection_access_defers_binding_like_microsoft": "Theory",
+    "PrincipalValueCollectionComparisonTests.Non_generic_Add_return_value_matches_microsoft": "Theory",
+    "NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match": "Theory",
+    "NextBatchPrincipalStateComparisonTests.Unsaved_group_scope_and_security_have_independent_assignment_state": "Theory",
+    "CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard": "Theory",
+    "CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties": "Theory",
+    "NextBatchMembershipComparisonTests.Unsaved_member_operations_do_not_require_a_directory_identity": "Theory",
+    "CompatibilityNativeSearcherReplacementComparisonTests.Replacing_filter_retains_native_searcher_configuration_like_microsoft": "Theory",
+    "CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state": "Theory",
+    "PrincipalSearcherComparisonTests.User_account_control_QBE_filters_match": "Theory",
+    "PrincipalSearcherComparisonTests.Group_QBE_filters_match": "Theory",
+    "PrincipalSearcherComparisonTests.Replacing_query_filter_updates_context_like_microsoft": "Fact",
+    "PrincipalSearcherComparisonTests.Account_expiration_and_null_QBE_filters_match": "Fact",
+    "PrincipalSearcherComparisonTests.Unsupported_user_cannot_change_password_QBE_exception_matches": "Fact",
+    "PrincipalSearcherComparisonTests.Extension_QBE_converters_and_null_behavior_match": "Fact",
+    "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft": "Theory",
+    "PropertyValueCollectionComparisonTests.Case_varied_strings_and_equal_byte_arrays_use_object_equality": "Fact",
+    "CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal": "Theory",
+    "PropertyDictionaryEnumeratorComparisonTests.Unpositioned_dictionary_enumerator_read_matches_microsoft": "Theory",
+    "PropertyDictionaryEnumeratorComparisonTests.Positioned_reads_return_property_wrappers_with_matching_identity": "Theory",
+    "PropertyDictionaryEnumeratorComparisonTests.Pending_attribute_addition_does_not_change_an_existing_enumeration": "Fact",
+    "PrincipalSearcherReferentialComparisonTests.Changed_group_members_QBE_exception_matches_in_an_isolated_OU": "Fact",
+    "CompatibilityAdvancedExtensionQueryComparisonTests.Custom_advanced_filter_conversion_and_replacement_match_microsoft": "Theory",
+    "CompatibilityQueryEscapingComparisonTests.Papi_quoted_values_and_subsequent_replacement_match_microsoft": "Theory",
+    "CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position": "Theory",
+    "CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization": "Theory",
+    "CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership": "Theory",
+    "CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position": "Theory",
+    "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_after_entry_disposal_match_microsoft": "Theory",
+    "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft": "Theory",
+    "DirectoryEntryOptionDefaultsComparisonTests.Fresh_and_rebound_options_match_microsoft": "Theory",
+    "DirectoryEntryComparisonTests.Disposed_entry_lifecycle_matches_for_cached_and_uncached_entries": "Theory",
+    "CompatibilityNativeFailureStateComparisonTests.Failed_search_preserves_native_limit_like_microsoft": "Theory",
+    "CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state": "Theory",
+    "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft": "Theory",
+    "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close": "Theory",
+    "DirectoryEntryConfigurationCompatibilityTests.Password_port_setter_matches_microsoft_for_nondefault_port": "Fact",
+    "DirectoryEntryConfigurationCompatibilityTests.Clear_password_encoding_setter_matches_microsoft": "Fact",
+    "CompatibilityResultPathMutationComparisonTests.Entry_factory_retains_search_time_root_state_like_microsoft": "Theory",
+    "CompatibilityRetainedSearchRootComparisonTests.Retained_native_root_lifetime_matches_microsoft": "Theory",
+    "DirectoryEntryComparisonTests.Missing_property_behaves_the_same": "Fact",
+    "DirectoryEntryComparisonTests.Partial_refresh_cache_and_pending_change_semantics_match": "Fact",
+    "DirectoryEntryComparisonTests.Partial_refresh_edge_cases_match": "Fact",
+    "DirectoryEntryComparisonTests.Missing_entry_name_and_parent_errors_match": "Fact",
+    "ExceptionTranslationComparisonTests.MissingObjectHasDirectoryServicesComExceptionParity": "Fact",
+    "DirectoryEntryComparisonTests.Parent_identity_and_inherited_state_match": "Fact",
+    "SchemaFilterBindingComparisonTests.Schema_filters_share_parent_binding_state": "Theory",
+    "ObjectSecurityComparisonTests.Empty_cached_commit_invalidates_initialized_security_like_Microsoft": "Fact",
+    "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_enabled_is_deferred_like_Microsoft": "Fact",
+    "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_disabled_commits_immediately_like_Microsoft": "Fact",
+    "DirectoryEntryComparisonTests.CommitChanges_after_update_matches_cached_and_uncached_behavior": "Theory",
+    "MembershipLifecycleComparisonTests.Pending_member_matches_reloaded_wrapper_after_member_save": "Theory",
+    "NextBatchMembershipComparisonTests.Pending_membership_enumeration_retains_the_inserted_principal_instance": "Fact",
+    "NextBatchMembershipComparisonTests.GetMembers_queries_persisted_membership_rather_than_pending_collection": "Theory",
+    "MembershipLifecycleComparisonTests.Identity_added_member_remains_usable_after_group_disposal": "Fact",
+    "UserPrincipalComparisonTests.FindByIdentity_agrees_for_each_identity_type": "Theory",
+    "UserPrincipalComparisonTests.FindByIdentity_agrees_when_the_user_is_missing": "Fact",
+    "DirectoryEntryComparisonTests.Searcher_findone_agrees_when_nothing_matches": "Fact",
+    "CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft": "Theory",
+    "CompatibilityChildEnumeratorComparisonTests.Child_enumerator_position_and_reset_match_microsoft": "Theory",
+    "DirectoryEntryComparisonTests.Directory_entries_find_requires_the_actual_schema_class": "Fact",
+    "PrincipalSearcherComparisonTests.FindOne_by_sam_account_name_matches": "Fact",
+    "PrincipalSearcherComparisonTests.FindOne_agrees_when_nothing_matches": "Fact",
+    "PrincipalSearcherComparisonTests.Underlying_searcher_customization_matches": "Fact"
+  },
   "sourceSha256": {
     "CompatibilityContextValidationComparisonTests.cs": "77b3d08e9b92924ec610a6b3da21fb3e056eb544c4087acce2433fbcf6118678",
     "CompatibilityContextlessSearcherComparisonTests.cs": "f4b9f9dba7cca739025a313dbd321f0066278b41c1c591df728da9525c5207fa",
@@ -12,7 +91,47 @@
     "CompatibilityDisposedEntryValidationComparisonTests.cs": "86d49aeeb6e76da9b02b1531978169acb854949dec75cb54435b063562608db5",
     "CompatibilityDisposedPropertyContainsComparisonTests.cs": "eeaca65b3658b8b830287d59af77e6994159be4fbea84d9a1544f6898f7b6ed5",
     "CompatibilityFailedRefreshWrapperComparisonTests.cs": "33ecf919ff512b6f7ffdcfeed57fbd444eaccd35305bd49ef21aaff1504f9b00",
-    "SchemaNameCollectionComparisonTests.cs": "7719e6843503855de63a598ca83b2d4cf72ec16d759c317403f60100e5200e8d"
+    "SchemaNameCollectionComparisonTests.cs": "7719e6843503855de63a598ca83b2d4cf72ec16d759c317403f60100e5200e8d",
+    "DirectoryEntryDisposedWrapperComparisonTests.cs": "214e95cc5dbe38b9f1d18b19612c82558de5cf3a4ba6756e97306f1c52526fe4",
+    "DirectoryEntryCredentialCacheComparisonTests.cs": "59f54dca44a7051d9a93a053085ccc4b94b743a70d6ebbaef533d9db70c27e1a",
+    "DirectoryEntryPathEquivalenceComparisonTests.cs": "562201d8ed03f60b80a5ab6b4311b5c68af4fa6cce71867e42de78e1f34a6b1e",
+    "DirectoryEntryUnboundCommitComparisonTests.cs": "9f779454d037db93ecf9a3359bfc7ce8f5c50f9e13fd78bdec946f602de4193d",
+    "PropertyCollectionBindingComparisonTests.cs": "918590de61254de26a89828743b11f787f885d857a69d6561e3438d303a860fb",
+    "PrincipalValueCollectionComparisonTests.cs": "cdd52d0fec41fd5cf39bc0cabb4f32d6ef4d0c88652f5e9b2d87d83360551442",
+    "NextBatchPrincipalStateComparisonTests.cs": "6d6699d71d670ce886b3173bdc3c893ee0b1987deda88fe7b2d6bb9a1ee533de",
+    "CompatibilityUnsavedUnlockComparisonTests.cs": "aed7a7789b75f2dd58582f6f967df4ab39f3a3ce26ea7c2760e79969bb5e06bd",
+    "CompatibilityAuthenticableCredentialConstructorComparisonTests.cs": "06251c5844030cb1c4cc12f8798750455938ccffafa0638cd9a63f81c485e57c",
+    "NextBatchMembershipComparisonTests.cs": "6d94440ae7ac7638041f3905059a3c63499a49680f37ca30b0b81532c0d04088",
+    "CompatibilityNativeSearcherReplacementComparisonTests.cs": "22c4024787342bf1467f774d86d2f77c3497f84de50f5a59f7653d31e16f6e8c",
+    "CompatibilitySearcherConstructionPagingComparisonTests.cs": "683e227a1bfb1dc6479037d0dacf9d7615faf861709b9f11941a1a0baa91b2db",
+    "PrincipalSearcherComparisonTests.cs": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.cs": "e5577586eda5cb42bd2febe74e7ced44da78362c37ebde6088b615c731c32c27",
+    "PropertyValueCollectionComparisonTests.cs": "aca018ab2b0f33bd285baf67f27ba84b76a850cc2b849406c9c6d31803ef7df8",
+    "CompatibilityRetainedValueReplacementComparisonTests.cs": "42f6dfbc8ab88a116eef9946858e7e980259b0f5fcf1ede093bf853730a53a4b",
+    "PropertyDictionaryEnumeratorComparisonTests.cs": "b10fbd8ed79e2e4ebb80a5710d6540d67031b5b96e39aaa6010397b284c93486",
+    "PrincipalSearcherReferentialComparisonTests.cs": "f23736646abfff7b32a9b5900aff07da9696c3560c4e5ed27a93f6abcbbe1bd4",
+    "CompatibilityAdvancedExtensionQueryComparisonTests.cs": "bcafc3ed5970d5578ed701d16ec13d14ddd045201682b4c5ea417ab17163761f",
+    "CompatibilityQueryEscapingComparisonTests.cs": "13a4ff026d916d66d7e0277c384b9af59152482da8828e7e28837846ec28c45b",
+    "CompatibilityDirectoryResultCursorComparisonTests.cs": "c4f8b56c99a9d5d3e91feabaa54011b9bf9da88480d80e1e5b8a78bd2b5f5042",
+    "CompatibilityPrincipalCurrentOwnershipComparisonTests.cs": "fdf64541b1f6c078f010bb3ab09b8a969bbe6ad611be700185fed0c8e73e5e45",
+    "CompatibilityEntryOptionsLifecycleComparisonTests.cs": "7293d4ecaec418d043f459cce62f92a655c3e55a5e37c91f92aeb767c3938086",
+    "DirectoryEntryOptionDefaultsComparisonTests.cs": "9041bfe4d739fabe9f96488e1e53efbf9f6260fac4191bda02aaf9ce110df2f2",
+    "DirectoryEntryComparisonTests.cs": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "CompatibilityNativeFailureStateComparisonTests.cs": "c86770c230f97d76f2503738b2aff6f42dee98510e7b6d3f936235806ddaa978",
+    "CompatibilityVlvResultDisposalComparisonTests.cs": "bee2a4311e92bd18732f71afb7c3dd005d7531e14e6f937c3f0c58fb17ff559e",
+    "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.cs": "24978e91889596f88742d4b3892a2fc656df33ae9ed660a87cfaf93e597c3c96",
+    "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.cs": "31d0a2dba82c14636bd10cecf6ff2df81b974273dda011fd532984daed6c6d50",
+    "DirectoryEntryConfigurationCompatibilityTests.cs": "df48b4b9d14efe2338aa7db32523837be595af083142d5ee94c9ba27efd1ff94",
+    "CompatibilityResultPathMutationComparisonTests.cs": "c50d80fa5ae86d316116c2002efc815023aec7c1b836bdf5b54b60c82f6e50a3",
+    "CompatibilityRetainedSearchRootComparisonTests.cs": "f36a6b99252c222a37163b265416888aa39fb9c68dea4812fab81e1f1202933b",
+    "ExceptionTranslationComparisonTests.cs": "cde60e02a4b260dcedfa5491462e4bb84a24b462f310f6e5d9b729243b85369b",
+    "SchemaFilterBindingComparisonTests.cs": "a3951b4eb35740196c9f16bf81f1e189bb54fbe28664f92c804fc2a66e01a7c8",
+    "ObjectSecurityComparisonTests.cs": "a94470c416945aa5df5d6de66fa54123f7acdcd522d8005442d1f48844ef4e76",
+    "MembershipLifecycleComparisonTests.cs": "94257258a7465b1ac0cc7918cbc9c2b01e3dd040d000b9ab6b5b8866ee6a63ca",
+    "UserPrincipalComparisonTests.cs": "548506823d4aa15fad3eeecb390384f855a3e59239324c76bace71969f58ac30",
+    "CompatibilityExtensionPersistenceLifecycleComparisonTests.cs": "29479323b4e0489aa14d2354f309ed7c7eee731c379607f523fc7fd66e275028",
+    "CompatibilityChildEnumeratorComparisonTests.cs": "b4e377ec985072260e5888cb4527907a6e2c4638c9dd0ae8779e8f547bd14cf1",
+    "CompatibilityCachedLogonProjectionComparisonTests.cs": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c"
   },
   "frameworks": {
     "net8.0-windows": {
@@ -87,6 +206,381 @@
         "274=e:System.IndexOutOfRangeException,275=n",
         "274=e:System.IndexOutOfRangeException,275=n",
         "274=e:System.IndexOutOfRangeException,275=n"
+      ],
+      "DirectoryEntryDisposedWrapperComparisonTests.Property_wrapper_access_after_dispose_matches_microsoft": [
+        "45=e:System.ArgumentNullException,48=n",
+        "45=e:System.ArgumentNullException,48=n",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1"
+      ],
+      "DirectoryEntryCredentialCacheComparisonTests.Credential_assignment_invalidates_property_wrapper_like_microsoft": [
+        "42=n,44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b1,46=b1",
+        "44=b1,46=b1"
+      ],
+      "DirectoryEntryCredentialCacheComparisonTests.Authentication_assignment_invalidates_property_wrapper_like_microsoft": [
+        "67=i32:0,68=b0",
+        "67=i32:1,68=b1",
+        "67=i32:16,68=b0",
+        "67=i32:65,68=b0"
+      ],
+      "DirectoryEntryPathEquivalenceComparisonTests.Equivalent_path_assignment_preserves_text_and_property_wrapper_like_microsoft": [
+        "33=b0",
+        "33=b1",
+        "33=b1",
+        "33=b1",
+        "33=b1",
+        "33=b1"
+      ],
+      "DirectoryEntryUnboundCommitComparisonTests.Unbound_commit_and_cache_mode_transition_match_microsoft": [
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b1",
+        "62=n,63=b1",
+        "62=n,63=b1",
+        "62=n,63=b1"
+      ],
+      "PropertyCollectionBindingComparisonTests.Collection_access_defers_binding_like_microsoft": [
+        "37=e:System.ArgumentNullException,40=n",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1"
+      ],
+      "PrincipalValueCollectionComparisonTests.Non_generic_Add_return_value_matches_microsoft": [
+        "33=i32:1,34=i32:1",
+        "33=i32:2,34=i32:2",
+        "33=i32:4,34=i32:4"
+      ],
+      "NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match": [
+        "86=i32:-1,91=i32:2",
+        "86=i32:1,91=i32:2",
+        "86=i32:2147483647,91=i32:2",
+        "86=i32:3,91=i32:2"
+      ],
+      "NextBatchPrincipalStateComparisonTests.Unsaved_group_scope_and_security_have_independent_assignment_state": [
+        "112=i32:2,113=b0",
+        "112=i32:2,113=n",
+        "112=n,113=b0",
+        "112=n,113=n"
+      ],
+      "CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard": [
+        "53=e:ObjectDisposedException,54=n,53=e:ObjectDisposedException,54=n",
+        "53=n,54=n,53=n,54=n"
+      ],
+      "CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties": [
+        "45=n,52=n,53=n,54=b0",
+        "45=n,52=n,54=b0",
+        "45=n,52=n,54=b0"
+      ],
+      "NextBatchMembershipComparisonTests.Unsaved_member_operations_do_not_require_a_directory_identity": [
+        "45=b0,46=i32:0",
+        "45=b0,46=i32:0",
+        "45=n,46=i32:1,51=b1,52=b1,53=i32:0"
+      ],
+      "CompatibilityNativeSearcherReplacementComparisonTests.Replacing_filter_retains_native_searcher_configuration_like_microsoft": [
+        "55=b1,57=b1,63=b1,64=i32:17,65=i32:3,67=b1",
+        "55=b1,57=b1,63=b1,64=i32:17,65=i32:3,67=b1"
+      ],
+      "CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state": [
+        "47=i32:0,55=i32:37",
+        "47=i32:256,55=i32:37"
+      ],
+      "PrincipalSearcherComparisonTests.User_account_control_QBE_filters_match": [
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Group_QBE_filters_match": [
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Replacing_query_filter_updates_context_like_microsoft": [
+        "208=b1,211=b0"
+      ],
+      "PrincipalSearcherComparisonTests.Account_expiration_and_null_QBE_filters_match": [
+        "460=n,460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Unsupported_user_cannot_change_password_QBE_exception_matches": [
+        "460=e:InvalidOperationException,461=n"
+      ],
+      "PrincipalSearcherComparisonTests.Extension_QBE_converters_and_null_behavior_match": [
+        "460=n,460=n,460=n,460=n,460=n,460=e:NullReferenceException,461=n"
+      ],
+      "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft": [
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:2,79=b1,80=b1",
+        "74=n,75=n,77=i32:2,79=b1,80=b1"
+      ],
+      "PropertyValueCollectionComparisonTests.Case_varied_strings_and_equal_byte_arrays_use_object_equality": [
+        "39=b0,40=i32:-1,41=i32:1,42=b0,43=i32:-1,44=i32:1"
+      ],
+      "CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal": [
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=n,47=n,49=i32:0,54=b1,55=b0",
+        "46=n,47=n,49=i32:1,54=b0,55=b0",
+        "46=n,47=n,49=i32:2,54=b0,55=b1"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Unpositioned_dictionary_enumerator_read_matches_microsoft": [
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Positioned_reads_return_property_wrappers_with_matching_identity": [
+        "72=b0,74=b0",
+        "72=b0,74=b0",
+        "72=b0,74=b0"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Pending_attribute_addition_does_not_change_an_existing_enumeration": [
+        "111=n"
+      ],
+      "PrincipalSearcherReferentialComparisonTests.Changed_group_members_QBE_exception_matches_in_an_isolated_OU": [
+        "96=e:InvalidOperationException,96=e:InvalidOperationException,96=e:InvalidOperationException"
+      ],
+      "CompatibilityAdvancedExtensionQueryComparisonTests.Custom_advanced_filter_conversion_and_replacement_match_microsoft": [
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n"
+      ],
+      "CompatibilityQueryEscapingComparisonTests.Papi_quoted_values_and_subsequent_replacement_match_microsoft": [
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n"
+      ],
+      "CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position": [
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=n,45=n",
+        "45=n,45=n"
+      ],
+      "CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization": [
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n"
+      ],
+      "CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership": [
+        "54=b0",
+        "54=b0"
+      ],
+      "CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position": [
+        "137=b1,139=b0",
+        "137=b1,139=b0",
+        "137=b1,139=b0,169=b0,169=b0"
+      ],
+      "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_after_entry_disposal_match_microsoft": [
+        "128=e:System.ArgumentException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n"
+      ],
+      "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft": [
+        "128=n,129=n,130=i32:17",
+        "128=n,129=n,130=i32:3,128=n,129=n,130=i32:7,128=n,129=n,130=i32:7"
+      ],
+      "DirectoryEntryOptionDefaultsComparisonTests.Fresh_and_rebound_options_match_microsoft": [
+        "30=i32:7,36=i32:3,48=i32:7,49=i32:7,36=i32:5,48=i32:7,49=i32:7",
+        "36=i32:17,36=i32:31"
+      ],
+      "DirectoryEntryComparisonTests.Disposed_entry_lifecycle_matches_for_cached_and_uncached_entries": [
+        "85=e:ObjectDisposedException,87=e:ObjectDisposedException,89=n,90=n,94=e:ObjectDisposedException,96=e:ObjectDisposedException",
+        "85=e:ObjectDisposedException,87=e:ObjectDisposedException,89=n,90=n,94=e:ObjectDisposedException,96=e:ObjectDisposedException"
+      ],
+      "CompatibilityNativeFailureStateComparisonTests.Failed_search_preserves_native_limit_like_microsoft": [
+        "86=e:PrincipalOperationException,87=i32:-2147016656,89=i32:1,90=b1",
+        "86=e:PrincipalOperationException,87=i32:-2147016656,89=i32:7,90=b1"
+      ],
+      "CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state": [
+        "138=e:ObjectDisposedException,141=b0",
+        "138=n,139=n,141=b1"
+      ],
+      "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft": [
+        "87=b1,88=n,89=n",
+        "87=b1,88=n,89=n"
+      ],
+      "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close": [
+        "66=n,70=b0,72=b0,74=b0,76=b1",
+        "66=n,70=b0,72=b0,74=b1,76=b1",
+        "66=n,70=b1,72=b1,74=b1,76=b1"
+      ],
+      "DirectoryEntryConfigurationCompatibilityTests.Password_port_setter_matches_microsoft_for_nondefault_port": [
+        "22=n,23=i32:1636"
+      ],
+      "DirectoryEntryConfigurationCompatibilityTests.Clear_password_encoding_setter_matches_microsoft": [
+        "41=n,42=i32:1"
+      ],
+      "CompatibilityResultPathMutationComparisonTests.Entry_factory_retains_search_time_root_state_like_microsoft": [
+        "141=i32:2",
+        "141=i32:2",
+        "141=i32:2",
+        "141=i32:2"
+      ],
+      "CompatibilityRetainedSearchRootComparisonTests.Retained_native_root_lifetime_matches_microsoft": [
+        "81=e:ObjectDisposedException,84=n",
+        "81=n,82=n",
+        "81=n,82=n"
+      ],
+      "DirectoryEntryComparisonTests.Missing_property_behaves_the_same": [
+        "318=n,320=i32:0"
+      ],
+      "DirectoryEntryComparisonTests.Partial_refresh_cache_and_pending_change_semantics_match": [
+        "346=b1,349=b0,358=b1"
+      ],
+      "DirectoryEntryComparisonTests.Partial_refresh_edge_cases_match": [
+        "386=b0,389=n,392=b1,401=b0,402=b1,405=b1,414=e:NullReferenceException,417=e:COMException"
+      ],
+      "DirectoryEntryComparisonTests.Missing_entry_name_and_parent_errors_match": [
+        "189=e:DirectoryServicesCOMException,190=i32:-2147016656,191=e:DirectoryServicesCOMException,192=i32:-2147016656"
+      ],
+      "ExceptionTranslationComparisonTests.MissingObjectHasDirectoryServicesComExceptionParity": [
+        "207=e:DirectoryServicesCOMException,208=i32:-2147016656"
+      ],
+      "DirectoryEntryComparisonTests.Parent_identity_and_inherited_state_match": [
+        "164=b0"
+      ],
+      "SchemaFilterBindingComparisonTests.Schema_filters_share_parent_binding_state": [
+        "26=b0",
+        "26=b0"
+      ],
+      "ObjectSecurityComparisonTests.Empty_cached_commit_invalidates_initialized_security_like_Microsoft": [
+        "71=b1"
+      ],
+      "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_enabled_is_deferred_like_Microsoft": [
+        "32=b0,33=b1"
+      ],
+      "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_disabled_commits_immediately_like_Microsoft": [
+        "47=b1,48=b1"
+      ],
+      "DirectoryEntryComparisonTests.CommitChanges_after_update_matches_cached_and_uncached_behavior": [
+        "271=b1",
+        "271=b1"
+      ],
+      "MembershipLifecycleComparisonTests.Pending_member_matches_reloaded_wrapper_after_member_save": [
+        "61=b1,62=i32:0,63=b0",
+        "61=b1,62=i32:1,63=b1",
+        "61=n,62=i32:1,63=b1"
+      ],
+      "NextBatchMembershipComparisonTests.Pending_membership_enumeration_retains_the_inserted_principal_instance": [
+        "82=b1"
+      ],
+      "NextBatchMembershipComparisonTests.GetMembers_queries_persisted_membership_rather_than_pending_collection": [
+        "130=i32:0,131=i32:0",
+        "130=i32:0,131=i32:0",
+        "130=i32:0,131=i32:1",
+        "130=i32:0,131=i32:1"
+      ],
+      "MembershipLifecycleComparisonTests.Identity_added_member_remains_usable_after_group_disposal": [
+        "106=b1"
+      ],
+      "UserPrincipalComparisonTests.FindByIdentity_agrees_for_each_identity_type": [
+        "117=b1",
+        "117=b1"
+      ],
+      "UserPrincipalComparisonTests.FindByIdentity_agrees_when_the_user_is_missing": [
+        "135=b0"
+      ],
+      "DirectoryEntryComparisonTests.Searcher_findone_agrees_when_nothing_matches": [
+        "699=b0"
+      ],
+      "CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft": [
+        "39=b1",
+        "39=b1"
+      ],
+      "CompatibilityChildEnumeratorComparisonTests.Child_enumerator_position_and_reset_match_microsoft": [
+        "70=i32:0,71=n,78=i32:0,79=n",
+        "70=i32:0,71=n,78=i32:0,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "90=i32:0,91=n",
+        "90=i32:0,91=n",
+        "90=i32:0,91=n",
+        "90=i32:2,91=n",
+        "90=i32:3,91=n"
+      ],
+      "DirectoryEntryComparisonTests.Directory_entries_find_requires_the_actual_schema_class": [
+        "480=b1"
+      ],
+      "PrincipalSearcherComparisonTests.FindOne_by_sam_account_name_matches": [
+        "70=b1,72=b1"
+      ],
+      "PrincipalSearcherComparisonTests.FindOne_agrees_when_nothing_matches": [
+        "138=b0"
+      ],
+      "PrincipalSearcherComparisonTests.Underlying_searcher_customization_matches": [
+        "161=i32:256,176=i32:1,177=i32:1"
       ]
     },
     "net10.0-windows": {
@@ -161,6 +655,381 @@
         "274=e:System.IndexOutOfRangeException,275=n",
         "274=e:System.IndexOutOfRangeException,275=n",
         "274=e:System.IndexOutOfRangeException,275=n"
+      ],
+      "DirectoryEntryDisposedWrapperComparisonTests.Property_wrapper_access_after_dispose_matches_microsoft": [
+        "45=e:System.ArgumentNullException,48=n",
+        "45=e:System.ArgumentNullException,48=n",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1",
+        "45=n,46=n,48=b1"
+      ],
+      "DirectoryEntryCredentialCacheComparisonTests.Credential_assignment_invalidates_property_wrapper_like_microsoft": [
+        "42=n,44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b0,46=b1",
+        "44=b1,46=b1",
+        "44=b1,46=b1"
+      ],
+      "DirectoryEntryCredentialCacheComparisonTests.Authentication_assignment_invalidates_property_wrapper_like_microsoft": [
+        "67=i32:0,68=b0",
+        "67=i32:1,68=b1",
+        "67=i32:16,68=b0",
+        "67=i32:65,68=b0"
+      ],
+      "DirectoryEntryPathEquivalenceComparisonTests.Equivalent_path_assignment_preserves_text_and_property_wrapper_like_microsoft": [
+        "33=b0",
+        "33=b1",
+        "33=b1",
+        "33=b1",
+        "33=b1",
+        "33=b1"
+      ],
+      "DirectoryEntryUnboundCommitComparisonTests.Unbound_commit_and_cache_mode_transition_match_microsoft": [
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b0",
+        "62=n,63=b1",
+        "62=n,63=b1",
+        "62=n,63=b1",
+        "62=n,63=b1"
+      ],
+      "PropertyCollectionBindingComparisonTests.Collection_access_defers_binding_like_microsoft": [
+        "37=e:System.ArgumentNullException,40=n",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1",
+        "37=n,38=n,40=b1"
+      ],
+      "PrincipalValueCollectionComparisonTests.Non_generic_Add_return_value_matches_microsoft": [
+        "33=i32:1,34=i32:1",
+        "33=i32:2,34=i32:2",
+        "33=i32:4,34=i32:4"
+      ],
+      "NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match": [
+        "86=i32:-1,91=i32:2",
+        "86=i32:1,91=i32:2",
+        "86=i32:2147483647,91=i32:2",
+        "86=i32:3,91=i32:2"
+      ],
+      "NextBatchPrincipalStateComparisonTests.Unsaved_group_scope_and_security_have_independent_assignment_state": [
+        "112=i32:2,113=b0",
+        "112=i32:2,113=n",
+        "112=n,113=b0",
+        "112=n,113=n"
+      ],
+      "CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard": [
+        "53=e:ObjectDisposedException,54=n,53=e:ObjectDisposedException,54=n",
+        "53=n,54=n,53=n,54=n"
+      ],
+      "CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties": [
+        "45=n,52=n,53=n,54=b0",
+        "45=n,52=n,54=b0",
+        "45=n,52=n,54=b0"
+      ],
+      "NextBatchMembershipComparisonTests.Unsaved_member_operations_do_not_require_a_directory_identity": [
+        "45=b0,46=i32:0",
+        "45=b0,46=i32:0",
+        "45=n,46=i32:1,51=b1,52=b1,53=i32:0"
+      ],
+      "CompatibilityNativeSearcherReplacementComparisonTests.Replacing_filter_retains_native_searcher_configuration_like_microsoft": [
+        "55=b1,57=b1,63=b1,64=i32:17,65=i32:3,67=b1",
+        "55=b1,57=b1,63=b1,64=i32:17,65=i32:3,67=b1"
+      ],
+      "CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state": [
+        "47=i32:0,55=i32:37",
+        "47=i32:256,55=i32:37"
+      ],
+      "PrincipalSearcherComparisonTests.User_account_control_QBE_filters_match": [
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Group_QBE_filters_match": [
+        "460=n",
+        "460=n",
+        "460=n",
+        "460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Replacing_query_filter_updates_context_like_microsoft": [
+        "208=b1,211=b0"
+      ],
+      "PrincipalSearcherComparisonTests.Account_expiration_and_null_QBE_filters_match": [
+        "460=n,460=n"
+      ],
+      "PrincipalSearcherComparisonTests.Unsupported_user_cannot_change_password_QBE_exception_matches": [
+        "460=e:InvalidOperationException,461=n"
+      ],
+      "PrincipalSearcherComparisonTests.Extension_QBE_converters_and_null_behavior_match": [
+        "460=n,460=n,460=n,460=n,460=n,460=e:NullReferenceException,461=n"
+      ],
+      "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft": [
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:0,79=b0,80=b0",
+        "74=n,75=n,77=i32:2,79=b1,80=b1",
+        "74=n,75=n,77=i32:2,79=b1,80=b1"
+      ],
+      "PropertyValueCollectionComparisonTests.Case_varied_strings_and_equal_byte_arrays_use_object_equality": [
+        "39=b0,40=i32:-1,41=i32:1,42=b0,43=i32:-1,44=i32:1"
+      ],
+      "CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal": [
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=e:System.ObjectDisposedException,49=i32:0,54=b1,55=b0",
+        "46=n,47=n,49=i32:0,54=b1,55=b0",
+        "46=n,47=n,49=i32:1,54=b0,55=b0",
+        "46=n,47=n,49=i32:2,54=b0,55=b1"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Unpositioned_dictionary_enumerator_read_matches_microsoft": [
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException",
+        "36=e:System.InvalidOperationException"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Positioned_reads_return_property_wrappers_with_matching_identity": [
+        "72=b0,74=b0",
+        "72=b0,74=b0",
+        "72=b0,74=b0"
+      ],
+      "PropertyDictionaryEnumeratorComparisonTests.Pending_attribute_addition_does_not_change_an_existing_enumeration": [
+        "111=n"
+      ],
+      "PrincipalSearcherReferentialComparisonTests.Changed_group_members_QBE_exception_matches_in_an_isolated_OU": [
+        "96=e:InvalidOperationException,96=e:InvalidOperationException,96=e:InvalidOperationException"
+      ],
+      "CompatibilityAdvancedExtensionQueryComparisonTests.Custom_advanced_filter_conversion_and_replacement_match_microsoft": [
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n",
+        "109=n,110=n,109=n,110=n"
+      ],
+      "CompatibilityQueryEscapingComparisonTests.Papi_quoted_values_and_subsequent_replacement_match_microsoft": [
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n",
+        "116=n,117=n,116=n,117=n,116=n,117=n,116=n,117=n"
+      ],
+      "CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position": [
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=e:System.InvalidOperationException,46=n,45=e:System.InvalidOperationException,46=n",
+        "45=n,45=n",
+        "45=n,45=n"
+      ],
+      "CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization": [
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n",
+        "84=n,102=n"
+      ],
+      "CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership": [
+        "54=b0",
+        "54=b0"
+      ],
+      "CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position": [
+        "137=b1,139=b0",
+        "137=b1,139=b0",
+        "137=b1,139=b0,169=b0,169=b0"
+      ],
+      "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_after_entry_disposal_match_microsoft": [
+        "128=e:System.ArgumentException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ComponentModel.InvalidEnumArgumentException,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n",
+        "128=e:System.ObjectDisposedException,129=n,130=n,128=e:System.ObjectDisposedException,129=n,130=n"
+      ],
+      "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft": [
+        "128=n,129=n,130=i32:17",
+        "128=n,129=n,130=i32:3,128=n,129=n,130=i32:7,128=n,129=n,130=i32:7"
+      ],
+      "DirectoryEntryOptionDefaultsComparisonTests.Fresh_and_rebound_options_match_microsoft": [
+        "30=i32:7,36=i32:3,48=i32:7,49=i32:7,36=i32:5,48=i32:7,49=i32:7",
+        "36=i32:17,36=i32:31"
+      ],
+      "DirectoryEntryComparisonTests.Disposed_entry_lifecycle_matches_for_cached_and_uncached_entries": [
+        "85=e:ObjectDisposedException,87=e:ObjectDisposedException,89=n,90=n,94=e:ObjectDisposedException,96=e:ObjectDisposedException",
+        "85=e:ObjectDisposedException,87=e:ObjectDisposedException,89=n,90=n,94=e:ObjectDisposedException,96=e:ObjectDisposedException"
+      ],
+      "CompatibilityNativeFailureStateComparisonTests.Failed_search_preserves_native_limit_like_microsoft": [
+        "86=e:PrincipalOperationException,87=i32:-2147016656,89=i32:1,90=b1",
+        "86=e:PrincipalOperationException,87=i32:-2147016656,89=i32:7,90=b1"
+      ],
+      "CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state": [
+        "138=e:ObjectDisposedException,141=b0",
+        "138=n,139=n,141=b1"
+      ],
+      "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft": [
+        "87=b1,88=n,89=n",
+        "87=b1,88=n,89=n"
+      ],
+      "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close": [
+        "66=n,70=b0,72=b0,74=b0,76=b1",
+        "66=n,70=b0,72=b0,74=b1,76=b1",
+        "66=n,70=b1,72=b1,74=b1,76=b1"
+      ],
+      "DirectoryEntryConfigurationCompatibilityTests.Password_port_setter_matches_microsoft_for_nondefault_port": [
+        "22=n,23=i32:1636"
+      ],
+      "DirectoryEntryConfigurationCompatibilityTests.Clear_password_encoding_setter_matches_microsoft": [
+        "41=n,42=i32:1"
+      ],
+      "CompatibilityResultPathMutationComparisonTests.Entry_factory_retains_search_time_root_state_like_microsoft": [
+        "141=i32:2",
+        "141=i32:2",
+        "141=i32:2",
+        "141=i32:2"
+      ],
+      "CompatibilityRetainedSearchRootComparisonTests.Retained_native_root_lifetime_matches_microsoft": [
+        "81=e:ObjectDisposedException,84=n",
+        "81=n,82=n",
+        "81=n,82=n"
+      ],
+      "DirectoryEntryComparisonTests.Missing_property_behaves_the_same": [
+        "318=n,320=i32:0"
+      ],
+      "DirectoryEntryComparisonTests.Partial_refresh_cache_and_pending_change_semantics_match": [
+        "346=b1,349=b0,358=b1"
+      ],
+      "DirectoryEntryComparisonTests.Partial_refresh_edge_cases_match": [
+        "386=b0,389=n,392=b1,401=b0,402=b1,405=b1,414=e:NullReferenceException,417=e:COMException"
+      ],
+      "DirectoryEntryComparisonTests.Missing_entry_name_and_parent_errors_match": [
+        "189=e:DirectoryServicesCOMException,190=i32:-2147016656,191=e:DirectoryServicesCOMException,192=i32:-2147016656"
+      ],
+      "ExceptionTranslationComparisonTests.MissingObjectHasDirectoryServicesComExceptionParity": [
+        "207=e:DirectoryServicesCOMException,208=i32:-2147016656"
+      ],
+      "DirectoryEntryComparisonTests.Parent_identity_and_inherited_state_match": [
+        "164=b0"
+      ],
+      "SchemaFilterBindingComparisonTests.Schema_filters_share_parent_binding_state": [
+        "26=b0",
+        "26=b0"
+      ],
+      "ObjectSecurityComparisonTests.Empty_cached_commit_invalidates_initialized_security_like_Microsoft": [
+        "71=b1"
+      ],
+      "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_enabled_is_deferred_like_Microsoft": [
+        "32=b0,33=b1"
+      ],
+      "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_disabled_commits_immediately_like_Microsoft": [
+        "47=b1,48=b1"
+      ],
+      "DirectoryEntryComparisonTests.CommitChanges_after_update_matches_cached_and_uncached_behavior": [
+        "271=b1",
+        "271=b1"
+      ],
+      "MembershipLifecycleComparisonTests.Pending_member_matches_reloaded_wrapper_after_member_save": [
+        "61=b1,62=i32:0,63=b0",
+        "61=b1,62=i32:1,63=b1",
+        "61=n,62=i32:1,63=b1"
+      ],
+      "NextBatchMembershipComparisonTests.Pending_membership_enumeration_retains_the_inserted_principal_instance": [
+        "82=b1"
+      ],
+      "NextBatchMembershipComparisonTests.GetMembers_queries_persisted_membership_rather_than_pending_collection": [
+        "130=i32:0,131=i32:0",
+        "130=i32:0,131=i32:0",
+        "130=i32:0,131=i32:1",
+        "130=i32:0,131=i32:1"
+      ],
+      "MembershipLifecycleComparisonTests.Identity_added_member_remains_usable_after_group_disposal": [
+        "106=b1"
+      ],
+      "UserPrincipalComparisonTests.FindByIdentity_agrees_for_each_identity_type": [
+        "117=b1",
+        "117=b1"
+      ],
+      "UserPrincipalComparisonTests.FindByIdentity_agrees_when_the_user_is_missing": [
+        "135=b0"
+      ],
+      "DirectoryEntryComparisonTests.Searcher_findone_agrees_when_nothing_matches": [
+        "699=b0"
+      ],
+      "CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft": [
+        "39=b1",
+        "39=b1"
+      ],
+      "CompatibilityChildEnumeratorComparisonTests.Child_enumerator_position_and_reset_match_microsoft": [
+        "70=i32:0,71=n,78=i32:0,79=n",
+        "70=i32:0,71=n,78=i32:0,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "70=i32:3,71=n,78=i32:3,79=n",
+        "90=i32:0,91=n",
+        "90=i32:0,91=n",
+        "90=i32:0,91=n",
+        "90=i32:2,91=n",
+        "90=i32:3,91=n"
+      ],
+      "DirectoryEntryComparisonTests.Directory_entries_find_requires_the_actual_schema_class": [
+        "480=b1"
+      ],
+      "PrincipalSearcherComparisonTests.FindOne_by_sam_account_name_matches": [
+        "70=b1,72=b1"
+      ],
+      "PrincipalSearcherComparisonTests.FindOne_agrees_when_nothing_matches": [
+        "138=b0"
+      ],
+      "PrincipalSearcherComparisonTests.Underlying_searcher_customization_matches": [
+        "161=i32:256,176=i32:1,177=i32:1"
       ]
     }
   }

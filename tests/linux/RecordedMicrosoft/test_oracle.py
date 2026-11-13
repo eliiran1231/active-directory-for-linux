@@ -25,6 +25,32 @@ class AdmissionTests(unittest.TestCase):
  def test_boolean_not_integer(self):
   self.rows[0]['operand']['value']=False
   with self.assertRaises(ValueError):extract(self.rows,self.source)
+ def test_int32_range_rejected(self):
+  for value in (2**31,-(2**31)-1):
+   rows=copy.deepcopy(self.rows)
+   next(r for r in rows if r['operand']['type']=='int32')['operand']['value']=value
+   with self.subTest(value=value),self.assertRaisesRegex(ValueError,'Int32'):
+    extract(rows,self.source)
+ def test_invalid_public_record_rejected(self):
+  for value in (0,-1,True,'1'):
+   rows=copy.deepcopy(self.rows);rows[0]['record']=value
+   with self.subTest(value=value),self.assertRaisesRegex(ValueError,'public record'):
+    extract(rows,self.source)
+ def test_duplicate_record_across_sites_rejected(self):
+  rows=copy.deepcopy(self.rows)
+  first=rows[0]
+  other=next(r for r in rows if r['framework']==first['framework'] and r['sourceSiteSha256']!=first['sourceSiteSha256'])
+  first['record']=other['record']
+  with self.assertRaisesRegex(ValueError,'public record'):
+   extract(rows,self.source)
+ def test_invalid_execution_identity_rejected(self):
+  for value in ('g'*32,'0'*31,True):
+   rows=copy.deepcopy(self.rows)
+   group=rows[0]['framework'],rows[0]['testMethodSha256']
+   for row in rows:
+    if (row['framework'],row['testMethodSha256'])==group:row['execution']=value
+   with self.subTest(value=value),self.assertRaisesRegex(ValueError,'execution identity'):
+    extract(rows,self.source)
  def test_coverage_count(self):
   oracle=extract(self.rows,self.source)
   for methods in oracle['frameworks'].values():

@@ -1,0 +1,302 @@
+[
+  {
+    "method": "CompatibilitySearcherStateComparisonTests.Coupled_options_preserve_state_through_rejection_and_reset",
+    "file": "CompatibilitySearcherStateComparisonTests.cs",
+    "sha": "baa55311320360ef929066ce6c5e9a983d36d165e0a78080a5ed5847f10a54a0",
+    "rows": 6,
+    "checks": 296,
+    "sites": [
+      [
+        81,
+        null,
+        "boolean"
+      ],
+      [
+        82,
+        null,
+        "int32"
+      ],
+      [
+        84,
+        null,
+        "int32"
+      ],
+      [
+        85,
+        null,
+        "boolean"
+      ],
+      [
+        86,
+        null,
+        "boolean"
+      ],
+      [
+        87,
+        null,
+        "boolean"
+      ],
+      [
+        129,
+        "CompareStep",
+        "exception-type|null"
+      ],
+      [
+        130,
+        "CompareStep",
+        "null"
+      ]
+    ],
+    "review": "Microsoft reflection/state reads and Microsoft-object reference relationships. CompareStep first action targets Microsoft and unwraps reflection exceptions. Local Step callers retain the enclosing method identity. Non-null attribute/parameter strings are excluded."
+  },
+  {
+    "method": "CompatibilitySearcherStateComparisonTests.Timeout_boundary_rejection_and_recovery_match_microsoft",
+    "file": "CompatibilitySearcherStateComparisonTests.cs",
+    "sha": "baa55311320360ef929066ce6c5e9a983d36d165e0a78080a5ed5847f10a54a0",
+    "rows": 33,
+    "checks": 192,
+    "sites": [
+      [
+        51,
+        null,
+        "int64"
+      ],
+      [
+        56,
+        null,
+        "int64"
+      ],
+      [
+        129,
+        "CompareStep",
+        "exception-type|null"
+      ],
+      [
+        130,
+        "CompareStep",
+        "null"
+      ]
+    ],
+    "review": "Microsoft reflection/state reads and Microsoft-object reference relationships. CompareStep first action targets Microsoft and unwraps reflection exceptions. Local Step callers retain the enclosing method identity. Non-null attribute/parameter strings are excluded."
+  },
+  {
+    "method": "CompatibilitySynchronizationComparisonTests.Copies_preserve_options_and_isolate_later_mutations",
+    "file": "CompatibilitySynchronizationComparisonTests.cs",
+    "sha": "bf46e4a52761f38531f3d3e0a5c1f457e7686072985714d8cf79a071166c47c1",
+    "rows": 4,
+    "checks": 28,
+    "sites": [
+      [
+        75,
+        null,
+        "boolean"
+      ],
+      [
+        149,
+        "State",
+        "int64"
+      ]
+    ],
+    "review": "expected/expectedCopy are Microsoft DirectorySynchronization objects. State first parameter is Microsoft-typed; Exceptions first action operates on Microsoft; CompareCreated closes over the Microsoft variable. Cookie hex strings are always excluded."
+  },
+  {
+    "method": "CompatibilitySynchronizationComparisonTests.Full_width_option_validation_matches_for_constructors_and_setter",
+    "file": "CompatibilitySynchronizationComparisonTests.cs",
+    "sha": "bf46e4a52761f38531f3d3e0a5c1f457e7686072985714d8cf79a071166c47c1",
+    "rows": 12,
+    "checks": 102,
+    "sites": [
+      [
+        54,
+        null,
+        "boolean"
+      ],
+      [
+        143,
+        "Exceptions",
+        "exception-type|null"
+      ],
+      [
+        144,
+        "Exceptions",
+        "null"
+      ],
+      [
+        149,
+        "State",
+        "int64"
+      ]
+    ],
+    "review": "expected/expectedCopy are Microsoft DirectorySynchronization objects. State first parameter is Microsoft-typed; Exceptions first action operates on Microsoft; CompareCreated closes over the Microsoft variable. Cookie hex strings are always excluded."
+  },
+  {
+    "method": "CompatibilitySynchronizationComparisonTests.Reset_preserves_options_and_detaches_cookie_buffers",
+    "file": "CompatibilitySynchronizationComparisonTests.cs",
+    "sha": "bf46e4a52761f38531f3d3e0a5c1f457e7686072985714d8cf79a071166c47c1",
+    "rows": 4,
+    "checks": 12,
+    "sites": [
+      [
+        149,
+        "State",
+        "int64"
+      ]
+    ],
+    "review": "expected/expectedCopy are Microsoft DirectorySynchronization objects. State first parameter is Microsoft-typed; Exceptions first action operates on Microsoft; CompareCreated closes over the Microsoft variable. Cookie hex strings are always excluded."
+  },
+  {
+    "method": "CompatibilityVlvStateComparisonTests.Percentage_offset_and_total_transitions_match_microsoft",
+    "file": "CompatibilityVlvStateComparisonTests.cs",
+    "sha": "0c6efa0e7bd5683b967b14cf607315766399012cc56c244f7e14bfd0010b3581",
+    "rows": 10,
+    "checks": 560,
+    "sites": [
+      [
+        124,
+        "Exceptions",
+        "exception-type|null"
+      ],
+      [
+        125,
+        "Exceptions",
+        "null"
+      ],
+      [
+        130,
+        "State",
+        "int32"
+      ],
+      [
+        131,
+        "State",
+        "int32"
+      ],
+      [
+        132,
+        "State",
+        "int32"
+      ],
+      [
+        133,
+        "State",
+        "int32"
+      ],
+      [
+        134,
+        "State",
+        "int32"
+      ],
+      [
+        136,
+        "State",
+        "boolean"
+      ]
+    ],
+    "review": "State first parameter is Microsoft DirectoryVirtualListView, Exceptions first action targets Microsoft, and context identity compares two Microsoft objects. Only null Target shape is admitted; non-null targets/parameters are excluded."
+  },
+  {
+    "method": "CompatibilityVlvStateComparisonTests.Rejected_setter_preserves_all_existing_state_like_microsoft",
+    "file": "CompatibilityVlvStateComparisonTests.cs",
+    "sha": "0c6efa0e7bd5683b967b14cf607315766399012cc56c244f7e14bfd0010b3581",
+    "rows": 8,
+    "checks": 128,
+    "sites": [
+      [
+        124,
+        "Exceptions",
+        "exception-type|null"
+      ],
+      [
+        125,
+        "Exceptions",
+        "null"
+      ],
+      [
+        130,
+        "State",
+        "int32"
+      ],
+      [
+        131,
+        "State",
+        "int32"
+      ],
+      [
+        132,
+        "State",
+        "int32"
+      ],
+      [
+        133,
+        "State",
+        "int32"
+      ],
+      [
+        134,
+        "State",
+        "int32"
+      ],
+      [
+        136,
+        "State",
+        "boolean"
+      ]
+    ],
+    "review": "State first parameter is Microsoft DirectoryVirtualListView, Exceptions first action targets Microsoft, and context identity compares two Microsoft objects. Only null Target shape is admitted; non-null targets/parameters are excluded."
+  },
+  {
+    "method": "CompatibilityVlvStateComparisonTests.Target_changes_preserve_position_and_context_like_microsoft",
+    "file": "CompatibilityVlvStateComparisonTests.cs",
+    "sha": "0c6efa0e7bd5683b967b14cf607315766399012cc56c244f7e14bfd0010b3581",
+    "rows": 3,
+    "checks": 51,
+    "sites": [
+      [
+        124,
+        "Exceptions",
+        "exception-type|null"
+      ],
+      [
+        125,
+        "Exceptions",
+        "null"
+      ],
+      [
+        130,
+        "State",
+        "int32"
+      ],
+      [
+        131,
+        "State",
+        "int32"
+      ],
+      [
+        132,
+        "State",
+        "int32"
+      ],
+      [
+        133,
+        "State",
+        "int32"
+      ],
+      [
+        134,
+        "State",
+        "int32"
+      ],
+      [
+        136,
+        "State",
+        "boolean"
+      ],
+      [
+        113,
+        null,
+        "boolean"
+      ]
+    ],
+    "review": "State first parameter is Microsoft DirectoryVirtualListView, Exceptions first action targets Microsoft, and context identity compares two Microsoft objects. Only null Target shape is admitted; non-null targets/parameters are excluded."
+  }
+]

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
@@ -331,12 +333,13 @@ public class GroupPrincipal : Principal
 
     private int? ReadGroupType()
     {
-        var raw = GetString("groupType");
-        return raw is not null && int.TryParse(raw, out var groupType) ? groupType : null;
+        var raw = GetString("groupType", CultureInfo.InvariantCulture);
+        return raw is not null && int.TryParse(raw, NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out var groupType) ? groupType : null;
     }
 
     private void WriteGroupType(int groupType) =>
-        SetString("groupType", groupType.ToString());
+        SetString("groupType", groupType.ToString(CultureInfo.InvariantCulture));
 
     private protected override void OnBeforeCreate()
     {

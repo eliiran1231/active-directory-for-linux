@@ -1289,19 +1289,26 @@ public abstract partial class Principal : IDisposable
     public override int GetHashCode() => base.GetHashCode();
 
     /// <summary>Reads a single string attribute, from the entry or a pending value.</summary>
-    private protected string? GetString(string attributeName)
+    private protected string? GetString(string attributeName) => GetString(attributeName, null);
+
+    // Protocol numeric attributes need invariant conversion, including boxed
+    // numbers returned by an entry. Keep pending-value precedence and guards.
+    private protected string? GetString(string attributeName, IFormatProvider? provider)
     {
+        string? Format(object? value) => value is null ? null : provider is null
+            ? value.ToString()
+            : Convert.ToString(value, provider);
         CheckDisposedOrDeleted();
         // Microsoft requires an initialized context even for unsaved properties.
         if (ContextRef is null) throw new NullReferenceException();
-        if (_pending.TryGetValue(attributeName, out var pendingValue)) return pendingValue?.ToString();
+        if (_pending.TryGetValue(attributeName, out var pendingValue)) return Format(pendingValue);
         if (Entry is not null)
         {
             return AccountManagementExceptionTranslator.Execute(
-                () => Entry.Properties[attributeName].Value?.ToString());
+                () => Format(Entry.Properties[attributeName].Value));
         }
 
-        return _pending.TryGetValue(attributeName, out var value) ? value?.ToString() : null;
+        return _pending.TryGetValue(attributeName, out var value) ? Format(value) : null;
     }
 
     private protected string? GetCachedString(string attributeName)

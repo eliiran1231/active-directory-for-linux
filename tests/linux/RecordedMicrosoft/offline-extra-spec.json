@@ -1,0 +1,2412 @@
+[
+  {
+    "method": "DirectoryEntryCredentialCacheComparisonTests.Credential_assignment_invalidates_property_wrapper_like_microsoft",
+    "rows": 8,
+    "checks": 17,
+    "sites": [
+      [
+        42,
+        null,
+        "null"
+      ],
+      [
+        44,
+        null,
+        "boolean"
+      ],
+      [
+        46,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryCredentialCacheComparisonTests.cs",
+    "sha": "59f54dca44a7051d9a93a053085ccc4b94b743a70d6ebbaef533d9db70c27e1a"
+  },
+  {
+    "method": "DirectoryEntryCredentialCacheComparisonTests.Authentication_assignment_invalidates_property_wrapper_like_microsoft",
+    "rows": 4,
+    "checks": 8,
+    "sites": [
+      [
+        67,
+        null,
+        "int32"
+      ],
+      [
+        68,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryCredentialCacheComparisonTests.cs",
+    "sha": "59f54dca44a7051d9a93a053085ccc4b94b743a70d6ebbaef533d9db70c27e1a"
+  },
+  {
+    "method": "DirectoryEntryPathEquivalenceComparisonTests.Equivalent_path_assignment_preserves_text_and_property_wrapper_like_microsoft",
+    "rows": 6,
+    "checks": 6,
+    "sites": [
+      [
+        33,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryPathEquivalenceComparisonTests.cs",
+    "sha": "562201d8ed03f60b80a5ab6b4311b5c68af4fa6cce71867e42de78e1f34a6b1e"
+  },
+  {
+    "method": "DirectoryEntryUnboundCommitComparisonTests.Unbound_commit_and_cache_mode_transition_match_microsoft",
+    "rows": 8,
+    "checks": 16,
+    "sites": [
+      [
+        62,
+        null,
+        "null"
+      ],
+      [
+        63,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryUnboundCommitComparisonTests.cs",
+    "sha": "9f779454d037db93ecf9a3359bfc7ce8f5c50f9e13fd78bdec946f602de4193d"
+  },
+  {
+    "method": "PropertyCollectionBindingComparisonTests.Collection_access_defers_binding_like_microsoft",
+    "rows": 5,
+    "checks": 14,
+    "sites": [
+      [
+        37,
+        null,
+        "exception-type|null"
+      ],
+      [
+        38,
+        null,
+        "null"
+      ],
+      [
+        40,
+        null,
+        "boolean|null"
+      ]
+    ],
+    "file": "PropertyCollectionBindingComparisonTests.cs",
+    "sha": "918590de61254de26a89828743b11f787f885d857a69d6561e3438d303a860fb"
+  },
+  {
+    "method": "PrincipalValueCollectionComparisonTests.Non_generic_Add_return_value_matches_microsoft",
+    "rows": 3,
+    "checks": 6,
+    "sites": [
+      [
+        33,
+        null,
+        "int32"
+      ],
+      [
+        34,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "PrincipalValueCollectionComparisonTests.cs",
+    "sha": "cdd52d0fec41fd5cf39bc0cabb4f32d6ef4d0c88652f5e9b2d87d83360551442"
+  },
+  {
+    "method": "NextBatchPrincipalStateComparisonTests.Group_scope_validation_timing_and_retained_value_match",
+    "rows": 4,
+    "checks": 8,
+    "sites": [
+      [
+        86,
+        null,
+        "int32"
+      ],
+      [
+        91,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "NextBatchPrincipalStateComparisonTests.cs",
+    "adaptation": "Unsaved-state projection only. Original Microsoft context construction used a live lab; Linux uses a normal synthetic configured Domain context under the offline guard. Binding, persisted identity and transport equivalence are not covered.",
+    "sha": "6d6699d71d670ce886b3173bdc3c893ee0b1987deda88fe7b2d6bb9a1ee533de"
+  },
+  {
+    "method": "NextBatchPrincipalStateComparisonTests.Unsaved_group_scope_and_security_have_independent_assignment_state",
+    "rows": 4,
+    "checks": 8,
+    "sites": [
+      [
+        112,
+        null,
+        "int32|null"
+      ],
+      [
+        113,
+        null,
+        "boolean|null"
+      ]
+    ],
+    "file": "NextBatchPrincipalStateComparisonTests.cs",
+    "adaptation": "Unsaved-state projection only. Original Microsoft context construction used a live lab; Linux uses a normal synthetic configured Domain context under the offline guard. Binding, persisted identity and transport equivalence are not covered.",
+    "sha": "6d6699d71d670ce886b3173bdc3c893ee0b1987deda88fe7b2d6bb9a1ee533de"
+  },
+  {
+    "method": "CompatibilityUnsavedUnlockComparisonTests.Unlock_unsaved_user_matches_noop_or_disposed_guard",
+    "rows": 2,
+    "checks": 8,
+    "sites": [
+      [
+        53,
+        null,
+        "exception-type|null"
+      ],
+      [
+        54,
+        null,
+        "null"
+      ]
+    ],
+    "file": "CompatibilityUnsavedUnlockComparisonTests.cs",
+    "adaptation": "Unsaved-state projection only. Original Microsoft context construction used a live lab; Linux uses a normal synthetic configured Domain context under the offline guard. Binding, persisted identity and transport equivalence are not covered.",
+    "sha": "aed7a7789b75f2dd58582f6f967df4ab39f3a3ce26ea7c2760e79969bb5e06bd"
+  },
+  {
+    "method": "CompatibilityAuthenticableCredentialConstructorComparisonTests.Protected_credential_constructor_initializes_only_supplied_properties",
+    "rows": 3,
+    "checks": 10,
+    "sites": [
+      [
+        45,
+        null,
+        "null"
+      ],
+      [
+        52,
+        null,
+        "null"
+      ],
+      [
+        53,
+        null,
+        "null"
+      ],
+      [
+        54,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "CompatibilityAuthenticableCredentialConstructorComparisonTests.cs",
+    "adaptation": "Unsaved-state projection only. Original Microsoft context construction used a live lab; Linux uses a normal synthetic configured Domain context under the offline guard. Binding, persisted identity and transport equivalence are not covered.",
+    "sha": "06251c5844030cb1c4cc12f8798750455938ccffafa0638cd9a63f81c485e57c"
+  },
+  {
+    "method": "NextBatchMembershipComparisonTests.Unsaved_member_operations_do_not_require_a_directory_identity",
+    "rows": 3,
+    "checks": 9,
+    "sites": [
+      [
+        45,
+        null,
+        "boolean|null"
+      ],
+      [
+        46,
+        null,
+        "int32"
+      ],
+      [
+        51,
+        null,
+        "boolean"
+      ],
+      [
+        52,
+        null,
+        "boolean"
+      ],
+      [
+        53,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "NextBatchMembershipComparisonTests.cs",
+    "adaptation": "Unsaved-state projection only. Original Microsoft context construction used a live lab; Linux uses a normal synthetic configured Domain context under the offline guard. Binding, persisted identity and transport equivalence are not covered.",
+    "sha": "6d94440ae7ac7638041f3905059a3c63499a49680f37ca30b0b81532c0d04088"
+  },
+  {
+    "method": "CompatibilityNativeSearcherReplacementComparisonTests.Replacing_filter_retains_native_searcher_configuration_like_microsoft",
+    "rows": 2,
+    "checks": 12,
+    "sites": [
+      [
+        55,
+        null,
+        "boolean"
+      ],
+      [
+        57,
+        null,
+        "boolean"
+      ],
+      [
+        63,
+        null,
+        "boolean"
+      ],
+      [
+        64,
+        null,
+        "int32"
+      ],
+      [
+        65,
+        null,
+        "int32"
+      ],
+      [
+        67,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "CompatibilityNativeSearcherReplacementComparisonTests.cs",
+    "sha": "22c4024787342bf1467f774d86d2f77c3497f84de50f5a59f7653d31e16f6e8c",
+    "adaptation": "Unbound native-searcher configuration only. Original Microsoft context initialization used a live lab; Linux uses normal synthetic configured Domain contexts under the offline guard. Binding, transport, redacted filters, projection contents and search equivalence are not covered."
+  },
+  {
+    "method": "CompatibilitySearcherConstructionPagingComparisonTests.Deferred_filter_assignment_preserves_constructor_paging_state",
+    "rows": 2,
+    "checks": 4,
+    "sites": [
+      [
+        47,
+        null,
+        "int32"
+      ],
+      [
+        55,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "CompatibilitySearcherConstructionPagingComparisonTests.cs",
+    "sha": "683e227a1bfb1dc6479037d0dacf9d7615faf861709b9f11941a1a0baa91b2db",
+    "adaptation": "Unbound native-searcher configuration only. Original Microsoft context initialization used a live lab; Linux uses normal synthetic configured Domain contexts under the offline guard. Binding, transport, redacted filters, projection contents and search equivalence are not covered."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.User_account_control_QBE_filters_match",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "rows": 12,
+    "checks": 12,
+    "member": "CompareQuery",
+    "sites": [
+      [
+        460,
+        "CompareQuery",
+        "null"
+      ]
+    ],
+    "adaptation": "Pre-search filter-construction exception projection only. The original shared helper subsequently executes live FindAll calls; these are excluded. Linux uses synthetic configured unbound contexts and calls only GetLdapFilter under the offline guard. Redacted filter strings, Microsoft initialization binds and search-result equivalence remain uncovered."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Group_QBE_filters_match",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "rows": 4,
+    "checks": 4,
+    "member": "CompareQuery",
+    "sites": [
+      [
+        460,
+        "CompareQuery",
+        "null"
+      ]
+    ],
+    "adaptation": "Pre-search filter-construction exception projection only. The original shared helper subsequently executes live FindAll calls; these are excluded. Linux uses synthetic configured unbound contexts and calls only GetLdapFilter under the offline guard. Redacted filter strings, Microsoft initialization binds and search-result equivalence remain uncovered."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Replacing_query_filter_updates_context_like_microsoft",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        208,
+        null,
+        "boolean"
+      ],
+      [
+        211,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Context-reference identity only. Original Microsoft contexts and the class fixture used the live lab; Linux uses normal synthetic configured Domain contexts and a public synthetic SamAccountName. No fixture construction, binding, search or save is executed; identity and transport equivalence remain uncovered."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Account_expiration_and_null_QBE_filters_match",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "member": "CompareQuery",
+    "sites": [
+      [
+        460,
+        "CompareQuery",
+        "null"
+      ]
+    ],
+    "adaptation": "Pre-search exception projection only. Uses the pinned fixture's public fixed UTC expiration value 2030-06-01T12:00:00Z and null with synthetic unbound contexts. The live class fixture and helper FindAll phases are excluded; redacted filter strings and live search results remain uncovered."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Unsupported_user_cannot_change_password_QBE_exception_matches",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "member": "CompareQuery",
+    "sites": [
+      [
+        460,
+        "CompareQuery",
+        "exception-type"
+      ],
+      [
+        461,
+        "CompareQuery",
+        "null"
+      ]
+    ],
+    "adaptation": "Unsupported local query-property translation only. Uses an unsaved user with UserCannotChangePassword=true and a synthetic unbound context. The live class fixture and all searches are excluded. The Microsoft exception name and null filter are admitted; no transport or result equivalence is claimed."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Extension_QBE_converters_and_null_behavior_match",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 7,
+    "member": "CompareQuery",
+    "sites": [
+      [
+        460,
+        "CompareQuery",
+        "exception-type|null"
+      ],
+      [
+        461,
+        "CompareQuery",
+        "null"
+      ]
+    ],
+    "adaptation": "Pre-search extension translation only. Uses the source's public string, boolean, fixed UTC date, object-array, byte-array and null inputs on an unsaved source-shaped subclass with a synthetic unbound context. Setter control flow is retained, but only Microsoft translation errors and a null filter are admitted. The live fixture, redacted filter strings and search results remain uncovered."
+  },
+  {
+    "method": "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.Retained_service_names_mutation_after_owner_disposal_matches_microsoft",
+    "rows": 6,
+    "checks": 30,
+    "sites": [
+      [
+        74,
+        null,
+        "null"
+      ],
+      [
+        75,
+        null,
+        "null"
+      ],
+      [
+        77,
+        null,
+        "int32"
+      ],
+      [
+        79,
+        null,
+        "boolean"
+      ],
+      [
+        80,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Retained unsaved ServicePrincipalNames collection state only. Uses a normal synthetic configured Domain context, the source's public seed/added values and normal owner disposal. No binding, save or persisted identity is involved. Opaque content snapshots and original Microsoft context initialization remain uncovered.",
+    "file": "CompatibilityRetainedPrincipalValuesAfterDisposeComparisonTests.cs",
+    "sha": "e5577586eda5cb42bd2febe74e7ced44da78362c37ebde6088b615c731c32c27"
+  },
+  {
+    "method": "PropertyValueCollectionComparisonTests.Case_varied_strings_and_equal_byte_arrays_use_object_equality",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 6,
+    "sites": [
+      [
+        39,
+        null,
+        "boolean"
+      ],
+      [
+        40,
+        null,
+        "int32"
+      ],
+      [
+        41,
+        null,
+        "int32"
+      ],
+      [
+        42,
+        null,
+        "boolean"
+      ],
+      [
+        43,
+        null,
+        "int32"
+      ],
+      [
+        44,
+        null,
+        "int32"
+      ]
+    ],
+    "adaptation": "Detached collection object-equality projection only. The original source uses property wrappers from a live seeded entry; Linux uses normal detached PropertyCollection fixtures with no owner callbacks. Both values are fully replaced with the source's public inputs before observation. Binding, schema conversion, cache-owner validation and server round trips are not covered.",
+    "file": "PropertyValueCollectionComparisonTests.cs",
+    "sha": "aca018ab2b0f33bd285baf67f27ba84b76a850cc2b849406c9c6d31803ef7df8"
+  },
+  {
+    "method": "CompatibilityRetainedValueReplacementComparisonTests.Whole_value_replacement_preserves_matching_local_state_after_owner_disposal",
+    "file": "CompatibilityRetainedValueReplacementComparisonTests.cs",
+    "sha": "42f6dfbc8ab88a116eef9946858e7e980259b0f5fcf1ede093bf853730a53a4b",
+    "rows": 6,
+    "checks": 27,
+    "sites": [
+      [
+        46,
+        null,
+        "exception-type|null"
+      ],
+      [
+        47,
+        null,
+        "null"
+      ],
+      [
+        49,
+        null,
+        "int32"
+      ],
+      [
+        54,
+        null,
+        "boolean"
+      ],
+      [
+        55,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Retained local wrapper replacement/disposal projection only. Linux creates an ordinary public unsaved child on a synthetic endpoint with UsePropertyCache=true and seeds the source fixture's public description value. No CommitChanges, binding or I/O occurs. The original Microsoft fixture used an existing live entry, so existing-entry loading, schema conversion, redacted contents/ObjectName and provider cache equivalence remain uncovered."
+  },
+  {
+    "method": "PropertyDictionaryEnumeratorComparisonTests.Unpositioned_dictionary_enumerator_read_matches_microsoft",
+    "rows": 12,
+    "checks": 12,
+    "sites": [
+      [
+        36,
+        null,
+        "exception-type"
+      ]
+    ],
+    "adaptation": "Dictionary cursor validation only. Replays the source MemberData's finite three-position/four-accessor matrix against normal cached unsaved child properties. The original Microsoft source used a live seeded entry; binding, property loading, schema conversion and recorded row identities are not reproduced.",
+    "file": "PropertyDictionaryEnumeratorComparisonTests.cs",
+    "sha": "b10fbd8ed79e2e4ebb80a5710d6540d67031b5b96e39aaa6010397b284c93486"
+  },
+  {
+    "method": "PropertyDictionaryEnumeratorComparisonTests.Positioned_reads_return_property_wrappers_with_matching_identity",
+    "rows": 3,
+    "checks": 6,
+    "sites": [
+      [
+        72,
+        null,
+        "boolean"
+      ],
+      [
+        74,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Positioned wrapper identity projection only. Uses a normal cached unsaved child seeded with the source fixture's public description value and locates that attribute by name. Live existing-entry binding, value conversion and redacted property/value comparisons are excluded.",
+    "file": "PropertyDictionaryEnumeratorComparisonTests.cs",
+    "sha": "b10fbd8ed79e2e4ebb80a5710d6540d67031b5b96e39aaa6010397b284c93486"
+  },
+  {
+    "method": "PropertyDictionaryEnumeratorComparisonTests.Pending_attribute_addition_does_not_change_an_existing_enumeration",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        111,
+        null,
+        "null"
+      ]
+    ],
+    "adaptation": "Enumeration exception projection only. Uses normal cached draft-entry properties and the source's public info value after acquiring the cursor. No commit or bind occurs. The original fixture's live loading and redacted enumerated-name set are not covered.",
+    "file": "PropertyDictionaryEnumeratorComparisonTests.cs",
+    "sha": "b10fbd8ed79e2e4ebb80a5710d6540d67031b5b96e39aaa6010397b284c93486"
+  },
+  {
+    "method": "PrincipalSearcherReferentialComparisonTests.Changed_group_members_QBE_exception_matches_in_an_isolated_OU",
+    "file": "PrincipalSearcherReferentialComparisonTests.cs",
+    "sha": "f23736646abfff7b32a9b5900aff07da9696c3560c4e5ed27a93f6abcbbe1bd4",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 3,
+    "member": "CompareInvalidOperation",
+    "sites": [
+      [
+        96,
+        "CompareInvalidOperation",
+        "exception-type"
+      ]
+    ],
+    "adaptation": "Local changed-members query guard only. Replaces real OU/user provisioning and persisted-member resolution with a normal synthetic context and unsaved member role. A clean underlying-searcher getter is a positive control; after Members.Add, GetUnderlyingSearcher/FindOne/FindAll must reject before transport. Offline-boundary refusals fail infrastructure. Persisted identity, live queries and fixture equivalence remain uncovered."
+  },
+  {
+    "method": "CompatibilityAdvancedExtensionQueryComparisonTests.Custom_advanced_filter_conversion_and_replacement_match_microsoft",
+    "file": "CompatibilityAdvancedExtensionQueryComparisonTests.cs",
+    "sha": "bcafc3ed5970d5578ed701d16ec13d14ddd045201682b4c5ea417ab17163761f",
+    "rows": 10,
+    "checks": 40,
+    "member": "CompareError",
+    "sites": [
+      [
+        109,
+        "CompareError",
+        "null"
+      ],
+      [
+        110,
+        "CompareError",
+        "null"
+      ]
+    ],
+    "maxOccurrences": {
+      "109": 2,
+      "110": 2
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        790,
+        791,
+        795,
+        796,
+        1607,
+        1608,
+        1612,
+        1613,
+        3682,
+        3683,
+        3687,
+        3688,
+        3774,
+        3775,
+        3779,
+        3780,
+        4054,
+        4055,
+        4059,
+        4060,
+        6927,
+        6928,
+        6932,
+        6933,
+        7361,
+        7362,
+        7366,
+        7367,
+        8047,
+        8048,
+        8052,
+        8053,
+        9234,
+        9235,
+        9239,
+        9240,
+        10498,
+        10499,
+        10503,
+        10504
+      ],
+      "net10.0-windows": [
+        1411,
+        1412,
+        1416,
+        1417,
+        1878,
+        1879,
+        1883,
+        1884,
+        3532,
+        3533,
+        3537,
+        3538,
+        4853,
+        4854,
+        4858,
+        4859,
+        5055,
+        5056,
+        5060,
+        5061,
+        5071,
+        5072,
+        5076,
+        5077,
+        7548,
+        7549,
+        7553,
+        7554,
+        8571,
+        8572,
+        8576,
+        8577,
+        8602,
+        8603,
+        8607,
+        8608,
+        10068,
+        10069,
+        10073,
+        10074
+      ]
+    },
+    "excludedLiteralHelperRecords": {
+      "net8.0-windows": [
+        792,
+        793,
+        797,
+        798,
+        1609,
+        1610,
+        1614,
+        1615,
+        3684,
+        3685,
+        3689,
+        3690,
+        3776,
+        3777,
+        3781,
+        3782,
+        4056,
+        4057,
+        4061,
+        4062,
+        6929,
+        6930,
+        6934,
+        6935,
+        7363,
+        7364,
+        7368,
+        7369,
+        8049,
+        8050,
+        8054,
+        8055,
+        9236,
+        9237,
+        9241,
+        9242,
+        10500,
+        10501,
+        10505,
+        10506
+      ],
+      "net10.0-windows": [
+        1413,
+        1414,
+        1418,
+        1419,
+        1880,
+        1881,
+        1885,
+        1886,
+        3534,
+        3535,
+        3539,
+        3540,
+        4855,
+        4856,
+        4860,
+        4861,
+        5057,
+        5058,
+        5062,
+        5063,
+        5073,
+        5074,
+        5078,
+        5079,
+        7550,
+        7551,
+        7555,
+        7556,
+        8573,
+        8574,
+        8578,
+        8579,
+        8604,
+        8605,
+        8609,
+        8610,
+        10070,
+        10071,
+        10075,
+        10076
+      ]
+    },
+    "adaptation": "Protected advanced-setter error projection only. Source helper invocations one and three read Microsoft setter errors; invocations two and four pass literal null for translation controls and are excluded by pinned public record identities. Uses the ten public source inputs, an ordinary unsaved owner and a synthetic unbound context. Native-filter readiness/attribute/replacement controls run locally, but redacted filter equivalence, live initialization and schema/provider behavior remain uncovered."
+  },
+  {
+    "method": "CompatibilityQueryEscapingComparisonTests.Papi_quoted_values_and_subsequent_replacement_match_microsoft",
+    "file": "CompatibilityQueryEscapingComparisonTests.cs",
+    "sha": "13a4ff026d916d66d7e0277c384b9af59152482da8828e7e28837846ec28c45b",
+    "rows": 14,
+    "checks": 112,
+    "member": "CompareError",
+    "sites": [
+      [
+        116,
+        "CompareError",
+        "null"
+      ],
+      [
+        117,
+        "CompareError",
+        "null"
+      ]
+    ],
+    "maxOccurrences": {
+      "116": 4,
+      "117": 4
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        242,
+        243,
+        244,
+        245,
+        247,
+        248,
+        249,
+        250,
+        2529,
+        2530,
+        2531,
+        2532,
+        2534,
+        2535,
+        2536,
+        2537,
+        3144,
+        3145,
+        3146,
+        3147,
+        3149,
+        3150,
+        3151,
+        3152,
+        4714,
+        4715,
+        4716,
+        4717,
+        4719,
+        4720,
+        4721,
+        4722,
+        5767,
+        5768,
+        5769,
+        5770,
+        5772,
+        5773,
+        5774,
+        5775,
+        7120,
+        7121,
+        7122,
+        7123,
+        7125,
+        7126,
+        7127,
+        7128,
+        7721,
+        7722,
+        7723,
+        7724,
+        7726,
+        7727,
+        7728,
+        7729,
+        8263,
+        8264,
+        8265,
+        8266,
+        8268,
+        8269,
+        8270,
+        8271,
+        8548,
+        8549,
+        8550,
+        8551,
+        8553,
+        8554,
+        8555,
+        8556,
+        8977,
+        8978,
+        8979,
+        8980,
+        8982,
+        8983,
+        8984,
+        8985,
+        10120,
+        10121,
+        10122,
+        10123,
+        10125,
+        10126,
+        10127,
+        10128,
+        10182,
+        10183,
+        10184,
+        10185,
+        10187,
+        10188,
+        10189,
+        10190,
+        10668,
+        10669,
+        10670,
+        10671,
+        10673,
+        10674,
+        10675,
+        10676,
+        10851,
+        10852,
+        10853,
+        10854,
+        10856,
+        10857,
+        10858,
+        10859
+      ],
+      "net10.0-windows": [
+        68,
+        69,
+        70,
+        71,
+        73,
+        74,
+        75,
+        76,
+        242,
+        243,
+        244,
+        245,
+        247,
+        248,
+        249,
+        250,
+        799,
+        800,
+        801,
+        802,
+        804,
+        805,
+        806,
+        807,
+        4839,
+        4840,
+        4841,
+        4842,
+        4844,
+        4845,
+        4846,
+        4847,
+        6265,
+        6266,
+        6267,
+        6268,
+        6270,
+        6271,
+        6272,
+        6273,
+        6553,
+        6554,
+        6555,
+        6556,
+        6558,
+        6559,
+        6560,
+        6561,
+        6828,
+        6829,
+        6830,
+        6831,
+        6833,
+        6834,
+        6835,
+        6836,
+        7282,
+        7283,
+        7284,
+        7285,
+        7287,
+        7288,
+        7289,
+        7290,
+        7502,
+        7503,
+        7504,
+        7505,
+        7507,
+        7508,
+        7509,
+        7510,
+        7536,
+        7537,
+        7538,
+        7539,
+        7541,
+        7542,
+        7543,
+        7544,
+        8285,
+        8286,
+        8287,
+        8288,
+        8290,
+        8291,
+        8292,
+        8293,
+        8715,
+        8716,
+        8717,
+        8718,
+        8720,
+        8721,
+        8722,
+        8723,
+        10362,
+        10363,
+        10364,
+        10365,
+        10367,
+        10368,
+        10369,
+        10370,
+        10828,
+        10829,
+        10830,
+        10831,
+        10833,
+        10834,
+        10835,
+        10836
+      ]
+    },
+    "adaptation": "Setter/translation error projection only for the 14 public quoting inputs and ordinary replacement control. All four helper invocations read Microsoft errors from Record.Exception; their exact public records are pinned. Uses normal unsaved source-shaped principals and a synthetic unbound context. Redacted filter-string/escaping equivalence, Microsoft context binding and live schema/provider behavior remain uncovered."
+  },
+  {
+    "method": "CompatibilityDirectoryResultCursorComparisonTests.Current_validates_cursor_position",
+    "file": "CompatibilityDirectoryResultCursorComparisonTests.cs",
+    "sha": "c4f8b56c99a9d5d3e91feabaa54011b9bf9da88480d80e1e5b8a78bd2b5f5042",
+    "rows": 8,
+    "checks": 28,
+    "sites": [
+      [
+        45,
+        null,
+        "exception-type|null"
+      ],
+      [
+        46,
+        null,
+        "null"
+      ]
+    ],
+    "maxOccurrences": {
+      "45": 2,
+      "46": 2
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        489,
+        490,
+        493,
+        494,
+        514,
+        518,
+        3903,
+        3907,
+        5595,
+        5596,
+        5599,
+        5600,
+        6191,
+        6192,
+        6195,
+        6196,
+        6764,
+        6765,
+        6768,
+        6769,
+        6883,
+        6884,
+        6887,
+        6888,
+        8610,
+        8611,
+        8614,
+        8615
+      ],
+      "net10.0-windows": [
+        1754,
+        1755,
+        1758,
+        1759,
+        1937,
+        1938,
+        1941,
+        1942,
+        3315,
+        3316,
+        3319,
+        3320,
+        3622,
+        3623,
+        3626,
+        3627,
+        5978,
+        5982,
+        7611,
+        7615,
+        10846,
+        10847,
+        10850,
+        10851,
+        10892,
+        10893,
+        10896,
+        10897
+      ]
+    },
+    "adaptation": "Controlled zero/one-result collection projection only. The source uses an exact-user Base query with a one-result positive probe and an explicit empty filter. Linux uses normal SearchResult/SearchResultCollection streaming constructors with matching cache modes and a synthetic non-null DN role. No LDAP query, binding, schema conversion or Microsoft DN equality is reproduced. Literal reset controls and redacted strings are excluded from recorded observations."
+  },
+  {
+    "method": "CompatibilityDirectoryResultCursorComparisonTests.Reset_rewinds_cached_results_after_optional_materialization",
+    "file": "CompatibilityDirectoryResultCursorComparisonTests.cs",
+    "sha": "c4f8b56c99a9d5d3e91feabaa54011b9bf9da88480d80e1e5b8a78bd2b5f5042",
+    "rows": 6,
+    "checks": 12,
+    "sites": [
+      [
+        84,
+        null,
+        "null"
+      ],
+      [
+        102,
+        null,
+        "null"
+      ]
+    ],
+    "maxOccurrences": {
+      "84": 1,
+      "102": 1
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        5454,
+        5461,
+        6061,
+        6068,
+        6205,
+        6212,
+        8001,
+        8008,
+        8033,
+        8040,
+        10802,
+        10809
+      ],
+      "net10.0-windows": [
+        906,
+        913,
+        4410,
+        4417,
+        6403,
+        6410,
+        7866,
+        7873,
+        8652,
+        8659,
+        9233,
+        9240
+      ]
+    },
+    "adaptation": "Controlled zero/one-result collection projection only. The source uses an exact-user Base query with a one-result positive probe and an explicit empty filter. Linux uses normal SearchResult/SearchResultCollection streaming constructors with matching cache modes and a synthetic non-null DN role. No LDAP query, binding, schema conversion or Microsoft DN equality is reproduced. Literal reset controls and redacted strings are excluded from recorded observations."
+  },
+  {
+    "method": "CompatibilityPrincipalCurrentOwnershipComparisonTests.Repeated_Current_returns_matching_wrapper_ownership",
+    "file": "CompatibilityPrincipalCurrentOwnershipComparisonTests.cs",
+    "sha": "fdf64541b1f6c078f010bb3ab09b8a969bbe6ad611be700185fed0c8e73e5e45",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        54,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Repeated Current reference-identity projection only. Uses the normal count/projection constructor used by FindAll with a factory creating fresh unsaved users in a synthetic context. Local SAM-role and exact one-row controls verify a healthy producer before identity is compared. Normal optional disposal is retained, but persisted DN validation and post-disposal retained-wrapper reads are excluded; no persisted ownership or materialization equivalence is claimed."
+  },
+  {
+    "method": "CompatibilityPrincipalCurrentOwnershipComparisonTests.Interleaved_cursors_observe_matching_shared_result_position",
+    "file": "CompatibilityPrincipalCurrentOwnershipComparisonTests.cs",
+    "sha": "fdf64541b1f6c078f010bb3ab09b8a969bbe6ad611be700185fed0c8e73e5e45",
+    "rows": 3,
+    "checks": 8,
+    "sites": [
+      [
+        137,
+        null,
+        "boolean"
+      ],
+      [
+        139,
+        null,
+        "boolean"
+      ],
+      [
+        169,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Shared cursor-position projection only. Uses the normal count/projection constructor with two fresh unsaved user projections. Distinct local SAM roles replace the two source DN row identities solely for equality-of-position observations. Original two-row and traversal controls are retained locally; no live query, persisted identity, DN equality, provider materialization or opaque DN comparisons are admitted. The source operations advance/reset/exhaust are exercised; only the genuine Microsoft booleans at lines 137,139,169 form the oracle."
+  },
+  {
+    "method": "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_after_entry_disposal_match_microsoft",
+    "file": "CompatibilityEntryOptionsLifecycleComparisonTests.cs",
+    "sha": "7293d4ecaec418d043f459cce62f92a655c3e55a5e37c91f92aeb767c3938086",
+    "rows": 14,
+    "checks": 81,
+    "sites": [
+      [
+        128,
+        "Compare",
+        "exception-type"
+      ],
+      [
+        129,
+        "Compare",
+        "null"
+      ],
+      [
+        130,
+        "Compare",
+        "null"
+      ]
+    ],
+    "maxOccurrences": {
+      "128": 2,
+      "129": 2,
+      "130": 2
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        640,
+        641,
+        642,
+        643,
+        644,
+        645,
+        3750,
+        3751,
+        3752,
+        3753,
+        3754,
+        3755,
+        3941,
+        3943,
+        3944,
+        3945,
+        3946,
+        4368,
+        4369,
+        4370,
+        4371,
+        4372,
+        4373,
+        4427,
+        4428,
+        4429,
+        4430,
+        4431,
+        4432,
+        5057,
+        5058,
+        5059,
+        5060,
+        5061,
+        5062,
+        6672,
+        6673,
+        6674,
+        6675,
+        6676,
+        6677,
+        6742,
+        6743,
+        6744,
+        6745,
+        6746,
+        6747,
+        7327,
+        7328,
+        7329,
+        7330,
+        7331,
+        7332,
+        9074,
+        9075,
+        9076,
+        9077,
+        9078,
+        9079,
+        9502,
+        9503,
+        9504,
+        9505,
+        9506,
+        9507,
+        10446,
+        10448,
+        10449,
+        10450,
+        10451,
+        10627,
+        10629,
+        10630,
+        10631,
+        10632,
+        10637,
+        10638,
+        10639,
+        10640,
+        10641,
+        10642
+      ],
+      "net10.0-windows": [
+        793,
+        794,
+        795,
+        796,
+        797,
+        798,
+        835,
+        837,
+        838,
+        839,
+        840,
+        851,
+        852,
+        853,
+        854,
+        855,
+        856,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        2840,
+        2841,
+        2842,
+        2843,
+        2844,
+        2845,
+        5951,
+        5952,
+        5953,
+        5954,
+        5955,
+        5956,
+        6663,
+        6664,
+        6665,
+        6666,
+        6667,
+        6668,
+        7623,
+        7624,
+        7625,
+        7626,
+        7627,
+        7628,
+        7923,
+        7925,
+        7926,
+        7927,
+        7928,
+        9039,
+        9040,
+        9041,
+        9042,
+        9043,
+        9044,
+        10000,
+        10001,
+        10002,
+        10003,
+        10004,
+        10005,
+        10521,
+        10523,
+        10524,
+        10525,
+        10526,
+        10767,
+        10768,
+        10769,
+        10770,
+        10771,
+        10772,
+        10791,
+        10792,
+        10793,
+        10794,
+        10795,
+        10796
+      ]
+    },
+    "adaptation": "Retained configuration disposal/validation projection only. Obtain Options from a normal synthetic entry, dispose that entry normally, then run the source property/get/valid-set/invalid-set matrix and repeat the getter against the same wrapper. Both helper calls read Microsoft observations. Original live binding, positive SAM lookup, fixture and provider-handle lifecycle are excluded. Redacted non-null parameter names are omitted rather than guessed; only recorded error identities and null parameter/value shapes are compared.",
+    "member": "Compare"
+  },
+  {
+    "method": "CompatibilityEntryOptionsLifecycleComparisonTests.Retained_options_rebind_after_close_like_microsoft",
+    "file": "CompatibilityEntryOptionsLifecycleComparisonTests.cs",
+    "sha": "7293d4ecaec418d043f459cce62f92a655c3e55a5e37c91f92aeb767c3938086",
+    "rows": 2,
+    "checks": 12,
+    "member": "Compare",
+    "sites": [
+      [
+        128,
+        "Compare",
+        "null"
+      ],
+      [
+        129,
+        "Compare",
+        "null"
+      ],
+      [
+        130,
+        "Compare",
+        "int32"
+      ]
+    ],
+    "maxOccurrences": {
+      "128": 3,
+      "129": 3,
+      "130": 3
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        1834,
+        1835,
+        1836,
+        1837,
+        1838,
+        1839,
+        1840,
+        1841,
+        1842,
+        7788,
+        7789,
+        7790
+      ],
+      "net10.0-windows": [
+        1768,
+        1769,
+        1770,
+        1771,
+        1772,
+        1773,
+        1774,
+        1775,
+        1776,
+        5487,
+        5488,
+        5489
+      ]
+    },
+    "excludedMicrosoftOnlyHelperRecords": {
+      "net8.0-windows": [
+        7791,
+        7792,
+        7793,
+        7794,
+        7795,
+        7796
+      ],
+      "net10.0-windows": [
+        5490,
+        5491,
+        5492,
+        5493,
+        5494,
+        5495
+      ]
+    },
+    "excludedLiteralHelperRecords": {
+      "net8.0-windows": [
+        7797,
+        7798,
+        7799,
+        7800,
+        7801,
+        7802
+      ],
+      "net10.0-windows": [
+        5496,
+        5497,
+        5498,
+        5499,
+        5500,
+        5501
+      ]
+    },
+    "adaptation": "Unbound configuration before-Close state and SecurityMasks reset projection only. Uses a normal synthetic entry and retained Options wrapper. Both properties compare genuine Microsoft reads before Close; only SecurityMasks compares genuine cross-implementation reads after Close. PageSize Microsoft-only reset comparisons and portable literal comparisons are excluded by exact helper record pins. Portable PageSize default is deliberately distinct from ADSI. No binding, original fixture or provider-handle rebind equivalence is claimed."
+  },
+  {
+    "method": "DirectoryEntryOptionDefaultsComparisonTests.Fresh_and_rebound_options_match_microsoft",
+    "file": "DirectoryEntryOptionDefaultsComparisonTests.cs",
+    "sha": "9041bfe4d739fabe9f96488e1e53efbf9f6260fac4191bda02aaf9ce110df2f2",
+    "rows": 2,
+    "checks": 9,
+    "sites": [
+      [
+        30,
+        null,
+        "int32"
+      ],
+      [
+        36,
+        null,
+        "int32"
+      ],
+      [
+        48,
+        null,
+        "int32"
+      ],
+      [
+        49,
+        null,
+        "int32"
+      ]
+    ],
+    "maxOccurrences": {
+      "30": 1,
+      "36": 2,
+      "48": 2,
+      "49": 2
+    },
+    "reviewedRecords": {
+      "net8.0-windows": [
+        3100,
+        3106,
+        10215,
+        10216,
+        10220,
+        10221,
+        10222,
+        10226,
+        10227
+      ],
+      "net10.0-windows": [
+        4872,
+        4878,
+        10078,
+        10079,
+        10083,
+        10084,
+        10085,
+        10089,
+        10090
+      ]
+    },
+    "excludedLiteralHelperRecords": {
+      "net8.0-windows": [
+        3099,
+        3104,
+        3105,
+        3110,
+        3111
+      ],
+      "net10.0-windows": [
+        4871,
+        4876,
+        4877,
+        4882,
+        4883
+      ]
+    },
+    "excludedMicrosoftOnlyHelperRecords": {
+      "net8.0-windows": [
+        3101,
+        3102,
+        3103,
+        3107,
+        3108,
+        3109,
+        10217,
+        10218,
+        10219,
+        10223,
+        10224,
+        10225
+      ],
+      "net10.0-windows": [
+        4873,
+        4874,
+        4875,
+        4879,
+        4880,
+        4881,
+        10080,
+        10081,
+        10082,
+        10086,
+        10087,
+        10088
+      ]
+    },
+    "adaptation": "Local option state projection only. Uses normal synthetic entries and retained Options wrappers. Both PageSize assignments and the SecurityMasks initial/assignment/retained/fresh-reset reads are genuine Microsoft-to-clone comparisons. PageSize fresh/reset expected operands are portable literals and excluded by exact record identity, as are every independent-entry and Microsoft-only reset comparison. No live binding, original Microsoft fresh-process isolation or provider-handle rebind equivalence is claimed."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Disposed_entry_lifecycle_matches_for_cached_and_uncached_entries",
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "rows": 2,
+    "checks": 12,
+    "sites": [
+      [
+        85,
+        null,
+        "exception-type"
+      ],
+      [
+        87,
+        null,
+        "exception-type"
+      ],
+      [
+        89,
+        null,
+        "null"
+      ],
+      [
+        90,
+        null,
+        "null"
+      ],
+      [
+        94,
+        null,
+        "exception-type"
+      ],
+      [
+        96,
+        null,
+        "exception-type"
+      ]
+    ],
+    "adaptation": "Normal unbound entry disposal projection only. Applies the source cache-mode inputs and public Dispose, then compares RefreshCache/property/CommitChanges/Name/Parent local outcomes. The original successful live cache load and fixture are excluded. The subsequent DirectorySearcher search may rebind a disposed root, so that search phase and its public null-error records are explicitly excluded, along with redacted ObjectName/path strings. No private bound/disposed flags are fabricated and no search is invoked."
+  },
+  {
+    "method": "CompatibilityNativeFailureStateComparisonTests.Failed_search_preserves_native_limit_like_microsoft",
+    "file": "CompatibilityNativeFailureStateComparisonTests.cs",
+    "sha": "c86770c230f97d76f2503738b2aff6f42dee98510e7b6d3f936235806ddaa978",
+    "rows": 2,
+    "checks": 8,
+    "sites": [
+      [
+        86,
+        null,
+        "exception-type"
+      ],
+      [
+        87,
+        null,
+        "int32"
+      ],
+      [
+        89,
+        null,
+        "int32"
+      ],
+      [
+        90,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Managed controlled-transport failure projection only. Normal transport/session constructors feed NoSuchObject into the real PrincipalSearcher FindOne/FindAll pipeline. A controlled positive root and independently rejected exact missing root establish local producer prerequisites. Default native paging is retained; state reads occur before any preparation accessor, and the original borrowed root is restored. Compares recorded Microsoft error type/code, retained SizeLimit and caller-root identity. No native LDAP handles, live AD, credentials, server absence verification, binding or provider-failure equivalence is claimed; no private lifecycle fields are edited."
+  },
+  {
+    "method": "CompatibilityVlvResultDisposalComparisonTests.View_getter_after_result_disposal_matches_exhaustion_state",
+    "file": "CompatibilityVlvResultDisposalComparisonTests.cs",
+    "sha": "bee2a4311e92bd18732f71afb7c3dd005d7531e14e6f937c3f0c58fb17ff559e",
+    "rows": 2,
+    "checks": 5,
+    "sites": [
+      [
+        138,
+        null,
+        "exception-type|null"
+      ],
+      [
+        139,
+        null,
+        "null"
+      ],
+      [
+        141,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Managed controlled-response ownership projection only. Normal transport/session constructors supply one row and a synthetic successful VLV response through the real DirectorySearcher streaming path, preserving partial versus EOF cursor state. The source disposal/getter/clear/recovery sequence is exercised; compares recorded Microsoft getter error, null object-name shape and supplied-view reference identity. Synthetic row/response controls and bounded session/cursor cleanup are local checks, not live sort/window selection, native ADSI handle, schema/provider or recorded response-payload equivalence. Original fixture, three-object control searches and redacted ObjectName/DN strings remain excluded. No private result/searcher state is edited."
+  },
+  {
+    "method": "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.First_description_read_after_native_close_or_dispose_matches_microsoft",
+    "file": "CompatibilityQueriedPrincipalNativeLifetimeComparisonTests.cs",
+    "sha": "24978e91889596f88742d4b3892a2fc656df33ae9ed660a87cfaf93e597c3c96",
+    "rows": 2,
+    "checks": 6,
+    "sites": [
+      [
+        87,
+        null,
+        "boolean"
+      ],
+      [
+        88,
+        null,
+        "null"
+      ],
+      [
+        89,
+        null,
+        "null"
+      ]
+    ],
+    "adaptation": "Found-principal native-wrapper/cold-Description projection only. Normal materialization constructors consume managed entry responses with the public source description seed and synthetic GUID/DN roles. The principal Description getter remains cold until public native Close/Dispose, while raw entry/type/reference controls establish setup. Compares genuine Microsoft native-wrapper identity and getter error/parameter null shapes. Source-defined content recovery is a local control, not recorded string equality. Live FindByIdentity, lab fixture, binding, schema/provider and Microsoft GUID/DN/string values remain excluded; no private fields are edited."
+  },
+  {
+    "method": "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.Cached_write_through_retained_or_fresh_wrapper_matches_after_close",
+    "file": "CompatibilityRetainedPropertyWriteAfterCloseComparisonTests.cs",
+    "sha": "31d0a2dba82c14636bd10cecf6ff2df81b974273dda011fd532984daed6c6d50",
+    "rows": 3,
+    "checks": 15,
+    "sites": [
+      [
+        66,
+        null,
+        "null"
+      ],
+      [
+        70,
+        null,
+        "boolean"
+      ],
+      [
+        72,
+        null,
+        "boolean"
+      ],
+      [
+        74,
+        null,
+        "boolean"
+      ],
+      [
+        76,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Retained/fresh property-wrapper cache identity projection only. A normal existing-entry constructor consumes managed responses with the source public description seed and synthetic DN/GUID roles. Retains no-close, retained-after-close and fresh-after-close scenarios, public cached setter and local writer-value controls. Compares genuine Microsoft setter-error null and within-implementation wrapper identity reads. No Save/Commit is invoked and the transport exposes no mutation capability. Redacted writer/current/retained string equality, live fixture, server cache, binding and schema/provider equivalence remain excluded; no private cache/lifecycle fields are edited."
+  },
+  {
+    "method": "DirectoryEntryConfigurationCompatibilityTests.Password_port_setter_matches_microsoft_for_nondefault_port",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        22,
+        null,
+        "null"
+      ],
+      [
+        23,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "DirectoryEntryConfigurationCompatibilityTests.cs",
+    "sha": "df48b4b9d14efe2338aa7db32523837be595af083142d5ee94c9ba27efd1ff94",
+    "adaptation": "Normal synthetic DirectoryEntry option setters/getters compare only recorded local setter error and stored numeric value. The original Microsoft Options access may initialize provider state; no equivalent live bind or password operation is claimed. Source first-error expression targets microsoftOptions and both stored-value operands are Microsoft getters."
+  },
+  {
+    "method": "DirectoryEntryConfigurationCompatibilityTests.Clear_password_encoding_setter_matches_microsoft",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        41,
+        null,
+        "null"
+      ],
+      [
+        42,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "DirectoryEntryConfigurationCompatibilityTests.cs",
+    "sha": "df48b4b9d14efe2338aa7db32523837be595af083142d5ee94c9ba27efd1ff94",
+    "adaptation": "Normal synthetic DirectoryEntry option setters/getters compare only recorded local setter error and stored numeric value. The original Microsoft Options access may initialize provider state; no equivalent live bind or password operation is claimed. Source first-error expression targets microsoftOptions and both stored-value operands are Microsoft getters."
+  },
+  {
+    "method": "CompatibilityResultPathMutationComparisonTests.Entry_factory_retains_search_time_root_state_like_microsoft",
+    "rows": 4,
+    "checks": 4,
+    "sites": [
+      [
+        141,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "CompatibilityResultPathMutationComparisonTests.cs",
+    "sha": "c50d80fa5ae86d316116c2002efc815023aec7c1b836bdf5b54b60c82f6e50a3",
+    "adaptation": "Normal FindOne buffered and FindAll streaming dispatch/materialization use managed one-row sessions and synthetic positive SAM roles. Preserve the recorded initial SecureSocketsLayer enum flag and both path/authentication root changes; returned entries remain unbound. Source Microsoft authentication getter is admitted, while both redacted path comparisons are only local synthetic controls. No TLS handshake, real credentials, server bind or recorded path equality is claimed."
+  },
+  {
+    "method": "CompatibilityRetainedSearchRootComparisonTests.Retained_native_root_lifetime_matches_microsoft",
+    "rows": 3,
+    "checks": 6,
+    "sites": [
+      [
+        81,
+        null,
+        "exception-type|null"
+      ],
+      [
+        82,
+        null,
+        "null"
+      ],
+      [
+        84,
+        null,
+        "null"
+      ]
+    ],
+    "file": "CompatibilityRetainedSearchRootComparisonTests.cs",
+    "sha": "f36a6b99252c222a37163b265416888aa39fb9c68dea4812fab81e1f1202933b",
+    "adaptation": "Normal PrincipalContext, PrincipalSearcher and native borrowed root with a managed successful initial Name read; dispose neither owner, searcher only or context before the retained root read. Preserve positive name and session ownership as local controls. Admit Microsoft error and null observations only; non-null Name and ObjectDisposedException.ObjectName strings remain redacted. No context initialization bind or server-backed name equivalence is claimed."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Missing_property_behaves_the_same",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        318,
+        null,
+        "null"
+      ],
+      [
+        320,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal existing entry through managed read sessions, with source-shaped local displayName/mail seeds and no commits. The response honors requested attributes case-insensitively; preserve source wrapper acquisition, pending assignments, requested/empty/invalid refresh ordering and recovery controls. Admit only Microsoft null/count/reference/error observations. Redacted attribute strings, fixture creation/deletion and AD read/bind equivalence remain uncovered; string values are local controls only."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Partial_refresh_cache_and_pending_change_semantics_match",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 3,
+    "sites": [
+      [
+        346,
+        null,
+        "boolean"
+      ],
+      [
+        349,
+        null,
+        "boolean"
+      ],
+      [
+        358,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal existing entry through managed read sessions, with source-shaped local displayName/mail seeds and no commits. The response honors requested attributes case-insensitively; preserve source wrapper acquisition, pending assignments, requested/empty/invalid refresh ordering and recovery controls. Admit only Microsoft null/count/reference/error observations. Redacted attribute strings, fixture creation/deletion and AD read/bind equivalence remain uncovered; string values are local controls only."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Partial_refresh_edge_cases_match",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 8,
+    "sites": [
+      [
+        386,
+        null,
+        "boolean"
+      ],
+      [
+        389,
+        null,
+        "null"
+      ],
+      [
+        392,
+        null,
+        "boolean"
+      ],
+      [
+        401,
+        null,
+        "boolean"
+      ],
+      [
+        402,
+        null,
+        "boolean"
+      ],
+      [
+        405,
+        null,
+        "boolean"
+      ],
+      [
+        414,
+        null,
+        "exception-type"
+      ],
+      [
+        417,
+        null,
+        "exception-type"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal existing entry through managed read sessions, with source-shaped local displayName/mail seeds and no commits. The response honors requested attributes case-insensitively; preserve source wrapper acquisition, pending assignments, requested/empty/invalid refresh ordering and recovery controls. Admit only Microsoft null/count/reference/error observations. Redacted attribute strings, fixture creation/deletion and AD read/bind equivalence remain uncovered; string values are local controls only."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Missing_entry_name_and_parent_errors_match",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 4,
+    "sites": [
+      [
+        189,
+        null,
+        "exception-type"
+      ],
+      [
+        190,
+        null,
+        "int32"
+      ],
+      [
+        191,
+        null,
+        "exception-type"
+      ],
+      [
+        192,
+        null,
+        "int32"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal separate synthetic DirectoryEntry wrappers receive managed NoSuchObject responses for Name, Parent or RefreshCache operations. Compare only Microsoft exception type and HResult/ErrorCode from explicit first operands; the shared AssertEquivalent helper first parameter is the Microsoft-captured error. The clone-side literal HResult assertion is excluded. Managed result-code translation is isolated; actual server binding, generated missing-DN identities and Windows provider failures are not reproduced."
+  },
+  {
+    "method": "ExceptionTranslationComparisonTests.MissingObjectHasDirectoryServicesComExceptionParity",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        207,
+        "AssertEquivalent",
+        "exception-type"
+      ],
+      [
+        208,
+        "AssertEquivalent",
+        "int32"
+      ]
+    ],
+    "file": "ExceptionTranslationComparisonTests.cs",
+    "sha": "cde60e02a4b260dcedfa5491462e4bb84a24b462f310f6e5d9b729243b85369b",
+    "adaptation": "Normal separate synthetic DirectoryEntry wrappers receive managed NoSuchObject responses for Name, Parent or RefreshCache operations. Compare only Microsoft exception type and HResult/ErrorCode from explicit first operands; the shared AssertEquivalent helper first parameter is the Microsoft-captured error. The clone-side literal HResult assertion is excluded. Managed result-code translation is isolated; actual server binding, generated missing-DN identities and Windows provider failures are not reproduced.",
+    "member": "AssertEquivalent"
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Parent_identity_and_inherited_state_match",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        164,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal synthetic child entry selects UsePropertyCache=false before Parent acquisition. Managed successful child/parent reads supply positive local Name/Path and inherited credential/authentication controls. Admit only the Microsoft parent UsePropertyCache getter. Redacted names, paths, usernames and authentication strings are not reconstructed; original fixture setup and server binding remain uncovered."
+  },
+  {
+    "method": "SchemaFilterBindingComparisonTests.Schema_filters_share_parent_binding_state",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        26,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "SchemaFilterBindingComparisonTests.cs",
+    "sha": "a3951b4eb35740196c9f16bf81f1e189bb54fbe28664f92c804fc2a66e01a7c8",
+    "adaptation": "Normal synthetic existing entry with a successful managed Name precondition supplies both reuse-Children inputs. Preserve first/second SchemaFilter wrapper acquisition and source Clear/Add mutations in both directions; compare only the Microsoft wrapper-reference boolean. Source filter snapshots are redacted and remain local string controls, with an additional independent-entry isolation control. Actual ADSI container initialization, filter strings and live binding are not reproduced."
+  },
+  {
+    "method": "ObjectSecurityComparisonTests.Empty_cached_commit_invalidates_initialized_security_like_Microsoft",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        71,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "ObjectSecurityComparisonTests.cs",
+    "sha": "a94470c416945aa5df5d6de66fa54123f7acdcd522d8005442d1f48844ef4e76",
+    "adaptation": "Normal DirectoryEntry.ObjectSecurity reads use a synthetic valid self-relative empty DACL and actual SD-flags request mask 4. Prove initial cached wrapper and loaded binary, run clean CommitChanges, then prove a second descriptor read and loaded binary before comparing Microsoft wrapper invalidation. No mutation is sent by this local clean commit. Actual Microsoft descriptor bytes, ACL policy, fixture creation/cleanup and AD SetInfo/server behavior remain uncovered."
+  },
+  {
+    "method": "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_enabled_is_deferred_like_Microsoft",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        32,
+        null,
+        "boolean"
+      ],
+      [
+        33,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "ObjectSecurityComparisonTests.cs",
+    "sha": "a94470c416945aa5df5d6de66fa54123f7acdcd522d8005442d1f48844ef4e76",
+    "adaptation": "Normal managed ObjectSecurity reads and assignments use a synthetic valid DACL, synthetic SID read through a narrow normal entry refresh and fixed object-type role. Preserve source mode selection, wrapper baseline, AddAccessRule, same-facade assignment, fresh rule visibility before/after optional CommitChanges and exact-rule cleanup through a fresh normal entry. The transport stores actual emitted descriptor bytes under a validated SD-flags mask 4; no recorded visibility is supplied by the producer. Microsoft original SID/descriptor bytes, fixture creation, ACL authorization policy and AD write durability remain uncovered."
+  },
+  {
+    "method": "ObjectSecurityComparisonTests.ObjectSecurity_assignment_with_cache_disabled_commits_immediately_like_Microsoft",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        47,
+        null,
+        "boolean"
+      ],
+      [
+        48,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "ObjectSecurityComparisonTests.cs",
+    "sha": "a94470c416945aa5df5d6de66fa54123f7acdcd522d8005442d1f48844ef4e76",
+    "adaptation": "Normal managed ObjectSecurity reads and assignments use a synthetic valid DACL, synthetic SID read through a narrow normal entry refresh and fixed object-type role. Preserve source mode selection, wrapper baseline, AddAccessRule, same-facade assignment, fresh rule visibility before/after optional CommitChanges and exact-rule cleanup through a fresh normal entry. The transport stores actual emitted descriptor bytes under a validated SD-flags mask 4; no recorded visibility is supplied by the producer. Microsoft original SID/descriptor bytes, fixture creation, ACL authorization policy and AD write durability remain uncovered."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.CommitChanges_after_update_matches_cached_and_uncached_behavior",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        271,
+        null,
+        "boolean"
+      ]
+    ],
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "adaptation": "Normal existing synthetic group entry starts with absent description, matching the source creation helper projection. Preserve cache-mode selection before wrapper acquisition, whole-Value assignment and explicit CommitChanges, then compare the Microsoft property-dictionary invalidation boolean. Actual managed modification commands update optional single-valued description; fresh normal entry reads prove group identity and stored value as local controls. Original group Add/Delete, generated Microsoft names/GUIDs, redacted description strings and AD write policy are excluded."
+  },
+  {
+    "method": "MembershipLifecycleComparisonTests.Pending_member_matches_reloaded_wrapper_after_member_save",
+    "file": "MembershipLifecycleComparisonTests.cs",
+    "sha": "94257258a7465b1ac0cc7918cbc9c2b01e3dd040d000b9ab6b5b8866ee6a63ca",
+    "rows": 3,
+    "checks": 9,
+    "sites": [
+      [
+        61,
+        null,
+        "boolean|null"
+      ],
+      [
+        62,
+        null,
+        "int32"
+      ],
+      [
+        63,
+        null,
+        "boolean"
+      ]
+    ],
+    "relatedSources": [
+      {
+        "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+        "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+        "review": "WithSavedUsers creates disabled new principals, invokes beforeSave before normal Save, observes only after creation/readback, then cleans up exact owned identities. A found-principal substitute would miss pending-member identity acquisition."
+      }
+    ],
+    "adaptation": "A normal unsaved user is added to an unsaved group before actual managed Save when the source requires identity acquisition; the enumeration case adds the normally saved user before staging DisplayName. Positive GUID/reference and staged-value controls preserve the source relationship. Reloaded identity uses normal found materialization of a fresh managed entry; original FindByIdentity is excluded. Admit only Microsoft result/count/Contains or inserted-instance reference values. Redacted Error/DisplayName strings, original live fixture and fresh-lookup cleanup are not recorded equivalence; local operation error guards are independent controls."
+  },
+  {
+    "method": "NextBatchMembershipComparisonTests.Pending_membership_enumeration_retains_the_inserted_principal_instance",
+    "file": "NextBatchMembershipComparisonTests.cs",
+    "sha": "6d94440ae7ac7638041f3905059a3c63499a49680f37ca30b0b81532c0d04088",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        82,
+        null,
+        "boolean"
+      ]
+    ],
+    "relatedSources": [
+      {
+        "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+        "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+        "review": "WithSavedUsers creates disabled new principals, invokes beforeSave before normal Save, observes only after creation/readback, then cleans up exact owned identities. A found-principal substitute would miss pending-member identity acquisition."
+      }
+    ],
+    "adaptation": "A normal unsaved user is added to an unsaved group before actual managed Save when the source requires identity acquisition; the enumeration case adds the normally saved user before staging DisplayName. Positive GUID/reference and staged-value controls preserve the source relationship. Reloaded identity uses normal found materialization of a fresh managed entry; original FindByIdentity is excluded. Admit only Microsoft result/count/Contains or inserted-instance reference values. Redacted Error/DisplayName strings, original live fixture and fresh-lookup cleanup are not recorded equivalence; local operation error guards are independent controls.",
+    "kind": "Fact"
+  },
+  {
+    "method": "NextBatchMembershipComparisonTests.GetMembers_queries_persisted_membership_rather_than_pending_collection",
+    "file": "NextBatchMembershipComparisonTests.cs",
+    "sha": "6d94440ae7ac7638041f3905059a3c63499a49680f37ca30b0b81532c0d04088",
+    "rows": 4,
+    "checks": 8,
+    "sites": [
+      [
+        130,
+        null,
+        "int32"
+      ],
+      [
+        131,
+        null,
+        "int32"
+      ]
+    ],
+    "relatedSources": [
+      {
+        "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+        "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+        "review": "WithSavedUsers creates disabled new principals, invokes beforeSave before normal Save, observes only after creation/readback, then cleans up exact owned identities. A found-principal substitute would miss pending-member identity acquisition."
+      }
+    ],
+    "adaptation": "A user is normally created/saved through the finite managed fixture; the group stays unsaved and may contain that user only as a pending member. Preserve both recursive modes, source pending-count precondition, GetMembers enumeration/disposal and pending collection observation. Compare Microsoft query-result count and retained pending count only. No group/server membership query is executed for an unsaved group. Redacted Error strings, live context/fixture setup and original cleanup are not equivalence claims; successful-completion and resource checks are local controls."
+  },
+  {
+    "method": "MembershipLifecycleComparisonTests.Identity_added_member_remains_usable_after_group_disposal",
+    "file": "MembershipLifecycleComparisonTests.cs",
+    "sha": "94257258a7465b1ac0cc7918cbc9c2b01e3dd040d000b9ab6b5b8866ee6a63ca",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        106,
+        null,
+        "boolean"
+      ]
+    ],
+    "relatedSources": [
+      {
+        "file": "CompatibilityCachedLogonProjectionComparisonTests.cs",
+        "sourceSha256": "31ac61deab40823f1bf2c2e1d32e237e6488d3092c91b33dea77545491fc509c",
+        "review": "WithSavedUsers creates disabled new principals, invokes beforeSave before normal Save, observes only after creation/readback, then cleans up exact owned identities. A found-principal substitute would miss pending-member identity acquisition."
+      }
+    ],
+    "adaptation": "Normally save one synthetic user, then use the actual PrincipalCollection.Add(context, DistinguishedName, DN) overload. Its real FindByIdentity path dispatches one bounded managed subtree identity query with SizeLimit 2 and no paging; normal result/entry/principal materialization must produce a distinct wrapper with the same stored GUID. Dispose the unsaved group before comparing the Microsoft member-readable boolean. Strict target/filter and cursor/session ownership are local controls. Redacted Error/SAM strings, actual server lookup/filter semantics, original names/SIDs and fresh-lookup cleanup remain excluded."
+  },
+  {
+    "method": "UserPrincipalComparisonTests.FindByIdentity_agrees_for_each_identity_type",
+    "file": "UserPrincipalComparisonTests.cs",
+    "sha": "548506823d4aa15fad3eeecb390384f855a3e59239324c76bace71969f58ac30",
+    "kind": "Theory",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        117,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Normally create/save one synthetic user, then execute the actual typed UserPrincipal.FindByIdentity path through a finite managed subtree query and normal result/principal materialization. Explicit SAM/name modes must yield distinct wrappers with the stored GUID; the source missing literal is tested against the nonempty store with only source-reviewed identity predicates allowed. Compare only Microsoft found booleans. Dispatch bounds, cursor/session ownership and GUID are local controls. Actual server matching, inferred probe order, redacted DN strings, original fixture identities and live directory policy are excluded."
+  },
+  {
+    "method": "UserPrincipalComparisonTests.FindByIdentity_agrees_when_the_user_is_missing",
+    "file": "UserPrincipalComparisonTests.cs",
+    "sha": "548506823d4aa15fad3eeecb390384f855a3e59239324c76bace71969f58ac30",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        135,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Normally create/save one synthetic user, then execute the actual typed UserPrincipal.FindByIdentity path through a finite managed subtree query and normal result/principal materialization. Explicit SAM/name modes must yield distinct wrappers with the stored GUID; the source missing literal is tested against the nonempty store with only source-reviewed identity predicates allowed. Compare only Microsoft found booleans. Dispatch bounds, cursor/session ownership and GUID are local controls. Actual server matching, inferred probe order, redacted DN strings, original fixture identities and live directory policy are excluded."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Searcher_findone_agrees_when_nothing_matches",
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        699,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Preserve the source low-level DirectorySearcher constructor, default subtree scope and missing SAM predicate against a nonempty finite managed store. Actual FindOne issues one SizeLimit=1 query and consumes a real empty terminal cursor; compare only Microsoft found=false. Saved unrelated user GUID, cursor/session ownership and strict query shape are local controls. Original directory contents, real server matching and shared live fixture setup are excluded."
+  },
+  {
+    "method": "CompatibilityExtensionPersistenceLifecycleComparisonTests.Extension_array_retains_local_alias_across_save_like_microsoft",
+    "file": "CompatibilityExtensionPersistenceLifecycleComparisonTests.cs",
+    "sha": "29479323b4e0489aa14d2354f309ed7c7eee731c379607f523fc7fd66e275028",
+    "rows": 2,
+    "checks": 2,
+    "sites": [
+      [
+        39,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Preserve attributed user subclass ExtensionSet/ExtensionGet and the supplied object-array identity before and after optional normal Save. Unsaved row stays unsaved; saved row uses actual managed Add/readback/Delete with only the fixed otherTelephone marker additionally allowed. Compare Microsoft retained-array booleans as a two-row method multiset. Local array edit and independent fresh GUID/marker reads prove edits are local after Save, without admitting redacted Show strings or opaque value arrays. Live schema/provider conversion, original generated marker strings and original cleanup are excluded."
+  },
+  {
+    "method": "CompatibilityChildEnumeratorComparisonTests.Child_enumerator_position_and_reset_match_microsoft",
+    "file": "CompatibilityChildEnumeratorComparisonTests.cs",
+    "sha": "b4e377ec985072260e5888cb4527907a6e2c4638c9dd0ae8779e8f547bd14cf1",
+    "rows": 10,
+    "checks": 30,
+    "sites": [
+      [
+        70,
+        null,
+        "int32"
+      ],
+      [
+        71,
+        null,
+        "null"
+      ],
+      [
+        78,
+        null,
+        "int32"
+      ],
+      [
+        79,
+        null,
+        "null"
+      ],
+      [
+        90,
+        null,
+        "int32"
+      ],
+      [
+        91,
+        null,
+        "null"
+      ]
+    ],
+    "adaptation": "Preserve all ten source lifecycle inputs (0/3 children, before/partial/exhausted, Current/Reset) using actual DirectoryEntries.GetEnumerator, tracked normal child wrappers, Name metadata reads, both Reset replays and post-exhaustion MoveNext. Compare only Microsoft remaining/replayed counts and successful completion nulls. Seeded unique child names and cursor/session disposal are local controls. Private subtree creation/deletion, original generated names, Current/MoveNext tuple projections and real server/paging behavior remain excluded."
+  },
+  {
+    "method": "DirectoryEntryComparisonTests.Directory_entries_find_requires_the_actual_schema_class",
+    "file": "DirectoryEntryComparisonTests.cs",
+    "sha": "bdc586a0e18e5952ca822473ce6f50001852787c158d6e76f96a6ad35ff6d88c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        480,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Normally save one synthetic user, then use actual DirectoryEntries.Find against the parent with the source ancestor-class person constraint. Positive user-class lookups before/after rejection must return the stored GUID and actual user schema class. Compare only Microsoft derived-class rejection boolean; clone InvalidOperationException and failure cleanup are source/local controls. The managed objectClass chain drives real SchemaClassName handling. Original live fixture creation, names, schema discovery and provider/server behavior remain excluded."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.FindOne_by_sam_account_name_matches",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 2,
+    "sites": [
+      [
+        70,
+        null,
+        "boolean"
+      ],
+      [
+        72,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Preserve a normal unsaved UserPrincipal SAM query example and actual PrincipalSearcher.FindOne against the nonempty finite managed saved-user store. Admit only Microsoft found and positive user-type booleans. The emitted finite QBE filter shape and SizeLimit=1 query are checked; matching is derived from the stored SAM, not an oracle boolean. A distinct normal materialized GUID and cursor/session cleanup are local controls. Redacted DN strings, live provider/category matching, original fixture identities and server query semantics remain excluded."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.FindOne_agrees_when_nothing_matches",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 1,
+    "sites": [
+      [
+        138,
+        null,
+        "boolean"
+      ]
+    ],
+    "adaptation": "Preserve a normal unsaved UserPrincipal SAM query example and actual PrincipalSearcher.FindOne against the nonempty finite managed saved-user store. Admit only Microsoft found and positive user-type booleans. The emitted finite QBE filter shape and SizeLimit=1 query are checked; matching is derived from the stored SAM, not an oracle boolean. A distinct normal materialized GUID and cursor/session cleanup are local controls. Redacted DN strings, live provider/category matching, original fixture identities and server query semantics remain excluded."
+  },
+  {
+    "method": "PrincipalSearcherComparisonTests.Underlying_searcher_customization_matches",
+    "file": "PrincipalSearcherComparisonTests.cs",
+    "sha": "0fb42d9f01c96af0144031383224c9438906b611c25cfcc97e4a7444a5f0676c",
+    "kind": "Fact",
+    "rows": 1,
+    "checks": 3,
+    "sites": [
+      [
+        161,
+        null,
+        "int32"
+      ],
+      [
+        176,
+        null,
+        "int32"
+      ],
+      [
+        177,
+        null,
+        "int32"
+      ]
+    ],
+    "adaptation": "Use the actual PrincipalSearcher with an unsaved SAM example and its retained underlying DirectorySearcher. Preserve source default PageSize read, then PageSize=1/SizeLimit=1 customization before actual FindAll enumeration. The finite saved-user backend allows paging only for this exact one-user QBE predicate and verifies a bounded real cursor, distinct materialized GUID and owned resource cleanup. Compare Microsoft default/retained integer settings only. Redacted type-name/TimeSpan and DN collection comparisons, original fixture and real server paging/category matching remain excluded; local type/time-limit and positive row controls are not recorded equivalence. The neutral fixture atomically supplies distinct owned search/schema sibling sessions for this one bounded paged admission; production restricted-backend pool planning is unchanged and not claimed as covered."
+  }
+]

@@ -53,9 +53,7 @@ internal static class HardcodedMirrors
 
     private static void Error(Action action)
     {
-        Exception? error = null;
-        try { action(); }
-        catch (Exception ex) { error = ex; }
+        var error = MirrorExceptionCapture.Capture(action);
         Check(257, error?.GetType().FullName);
     }
 

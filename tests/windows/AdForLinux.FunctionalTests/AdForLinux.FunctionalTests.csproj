@@ -26,6 +26,8 @@
     <Compile Include="../account-management-read-probe/ProbeConfiguration.cs" Link="ProbeConfiguration.cs" />
     <Compile Include="../native-session/worker-demo/AdKerberosConfiguration.cs" Link="AdKerberosConfiguration.cs" />
     <Compile Include="../acl-windows-oracle/FacadeContracts.cs" Link="FacadeContracts.cs" />
+    <Compile Include="../../linux/ProtocolTimeCultureTests.cs" Link="ProtocolTimeCultureTests.cs" />
+    <Compile Include="../../linux/GroupPrincipalCultureTests.cs" Link="GroupPrincipalCultureTests.cs" />
     <Compile Include="../Shared/OfflineFactAttribute.cs" Link="OfflineFactAttribute.cs" />
     <Compile Include="../acl-windows-oracle/SddlBoundaryInputs.cs" Link="SddlBoundaryInputs.cs" />
     <Compile Include="../acl-windows-oracle/SddlCompositionContracts.cs" Link="SddlCompositionContracts.cs" />

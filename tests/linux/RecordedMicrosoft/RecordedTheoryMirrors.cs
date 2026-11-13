@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Globalization;
 using DS = AdForLinux.DirectoryServices;
 
 internal readonly record struct TheoryMirrorResult(int Methods, int Executions, int Checks);
@@ -59,17 +60,15 @@ internal static class RecordedTheoryMirrors
             {
                 case null: values.Add("n"); break;
                 case bool boolean: values.Add(boolean ? "b1" : "b0"); break;
-                case int integer: values.Add("i32:" + integer); break;
-                case long integer: values.Add("i64:" + integer); break;
+                case int integer: values.Add("i32:" + integer.ToString(CultureInfo.InvariantCulture)); break;
+                case long integer: values.Add("i64:" + integer.ToString(CultureInfo.InvariantCulture)); break;
                 // Ordinary strings were redacted from the public capture.
             }
         }
 
         internal void Exception(Action action, bool unwrapReflection = false)
         {
-            Exception? error = null;
-            try { action(); }
-            catch (Exception ex) { error = ex; }
+            var error = MirrorExceptionCapture.Capture(action);
             if (unwrapReflection && error is TargetInvocationException invocation) error = invocation.InnerException;
             values.Add(error is null ? "n" : "e:" + error.GetType().FullName);
             Value((error as ArgumentException)?.ParamName);

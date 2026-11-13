@@ -1,17 +1,36 @@
 using System.Reflection;
 using DS = AdForLinux.DirectoryServices;
+using AM = AdForLinux.DirectoryServices.AccountManagement;
 using Sequence = OfflineTheoryMirrors.Sequence;
 
 internal static class ReviewedAssertionMirrors
 {
     internal static void Run(Action<string, List<Sequence>> verify)
     {
+        verify("UserPrincipalComparisonTests.PrincipalContext_default_domain_options_agree", DefaultContextOptions());
+        verify("DirectoryEntryRenameComparisonTests.Rename_parameter_nullability_matches_microsoft", RenameNullability());
         verify("SearcherValidationContractComparisonTests.Detached_enum_rejection_preserves_previous_value", Enums());
         verify("SearcherValidationContractComparisonTests.Detached_time_limits_match_fractional_and_overflow_boundaries", TimeLimits());
         verify("SearcherValidationContractComparisonTests.Detached_paging_and_sync_conflicts_preserve_state_and_allow_recovery", Paging());
         verify("SearcherValidationContractComparisonTests.Detached_virtual_list_conflicts_preserve_explicit_cache_intent", CacheIntent());
         verify("SearcherValidationContractComparisonTests.Detached_virtual_list_rejected_setter_preserves_coupled_state", VlvSetters());
         verify("SearcherValidationContractComparisonTests.Rejected_setter_matches_exception_parameter_and_preserves_state", RejectedSetters());
+    }
+
+    private static List<Sequence> DefaultContextOptions()
+    {
+        using var context=new AM.PrincipalContext(AM.ContextType.Domain,"unused.example.test","DC=example,DC=test",null,null);
+        var row=new Sequence();
+        row.Observe(418,(int)context.Options);
+        return [row];
+    }
+
+    private static List<Sequence> RenameNullability()
+    {
+        var parameter=typeof(DS.DirectoryEntry).GetMethod(nameof(DS.DirectoryEntry.Rename),new[] { typeof(string) })!.GetParameters()[0];
+        var row=new Sequence();
+        row.ObserveNullability(18,new NullabilityInfoContext().Create(parameter).ReadState);
+        return [row];
     }
 
     private static void Failure(Sequence row, Action action)

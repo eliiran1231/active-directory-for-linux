@@ -26,6 +26,12 @@ class SambaRunnerTests(unittest.TestCase):
             self.assertEqual("1", steps[1][1]["ADFL_OFFLINE_TESTS"])
             self.assertNotIn("ADFL_OFFLINE_TESTS", steps[2][1])
 
+    def test_all_partition_project_paths_exist_after_layout_move(self):
+        for framework in ('net8.0','net10.0'):
+            for command,_ in runner.prepare(framework,{}):
+                with self.subTest(framework=framework,command=command[:3]):
+                    self.assertTrue((runner.offline['ROOT']/command[2]).is_file(),command[2])
+
     def test_guarded_parent_is_never_downgraded(self):
         for value in ("1", "0", "false"):
             with self.assertRaises(ValueError):

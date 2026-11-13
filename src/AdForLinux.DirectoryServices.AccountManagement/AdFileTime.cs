@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace AdForLinux.DirectoryServices.AccountManagement;
 
 /// <summary>
@@ -12,7 +14,7 @@ internal static class AdFileTime
     /// <summary>Reads a FILETIME attribute, or null when it means "never".</summary>
     public static DateTime? ToDateTime(string? raw)
     {
-        if (raw is null || !long.TryParse(raw, out var ticks))
+        if (raw is null || !long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticks))
         {
             return null;
         }
@@ -32,10 +34,12 @@ internal static class AdFileTime
         if (value is null)
         {
             // What AD tools write for "never expires".
-            return long.MaxValue.ToString();
+            return long.MaxValue.ToString(CultureInfo.InvariantCulture);
         }
 
-        return value.Value.ToUniversalTime().ToFileTimeUtc().ToString();
+        // Match Microsoft ADUtils: Unspecified keeps its UTC ticks; only an
+        // explicit Local value is offset by ToFileTimeUtc.
+        return value.Value.ToFileTimeUtc().ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -43,9 +47,10 @@ internal static class AdFileTime
     /// as a negative number of 100-ns ticks. Returns null when it means
     /// "forever" (0 or long.MinValue).
     /// </summary>
-    public static TimeSpan? ToDuration(string? raw)
+    public static TimeSpan? ToDuration(object? raw)
     {
-        if (raw is null || !long.TryParse(raw, out var ticks) || ticks == 0 || ticks == long.MinValue)
+        if (raw is null || !long.TryParse(Convert.ToString(raw, CultureInfo.InvariantCulture),
+            NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticks) || ticks == 0 || ticks == long.MinValue)
         {
             return null;
         }
